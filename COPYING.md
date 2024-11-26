@@ -1,13 +1,12 @@
-# Copying Guidelines
+#复制准则
+本仓库中的所有软件包均依据各自相应的许可证获得授权。如需了解更多信息，请查阅每个软件包内的 LICENSE 文件。
 
-All packages in this repository are licensed under their respective licenses. For more information, refer to the LICENSE file in each package.
+如需详细信息，若各软件包存在 COPYING.md 文件，可查阅该文件。
 
-For detailed information, consult each package's COPYING.md file, if available.
+BBSMC 品牌相关规定
 
-## Modrinth Branding
+未经林斯（Rinth）公司明确书面许可，严禁使用BBSMC的品牌元素，包括但不限于带有程序内LOGO、首页图片以及它们的任何变体。这涵盖商标、标识及其他品牌元素在内。
 
-The use of Modrinth branding elements, including but not limited to the wrench-in-labyrinth logo, the landing image, and any variations thereof, is strictly prohibited without explicit written permission from Rinth, Inc. This includes trademarks, logos, or other branding elements.
+版权所有。© 2020 - 2024 青岛柒兮网络科技有限公司
 
-All rights reserved. © 2020-2024 Rinth, Inc.
-
-If you fork this repository, you must remove all Modrinth branding assets from your fork.
+如果您对本仓库进行分支操作，必须从您的分支中移除所有BBSMC的品牌资产。
