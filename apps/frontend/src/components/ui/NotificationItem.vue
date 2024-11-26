@@ -177,7 +177,7 @@
             {{ $formatVersion(notif.extra_data.version.game_versions) }}
             <span
               v-tooltip="
-                $dayjs(notif.extra_data.version.date_published).format('MMMM D, YYYY [at] h:mm A')
+                $dayjs(notif.extra_data.version.date_published).format('YYYY-MM-DD hh:mm:ss')
               "
               class="date"
             >
@@ -193,7 +193,7 @@
     <span class="notification__date">
       <span v-if="notification.read" class="read-badge inline-flex"> <ReadIcon /> 读 </span>
       <span
-        v-tooltip="$dayjs(notification.created).format('MMMM D, YYYY [at] h:mm A')"
+        v-tooltip="$dayjs(notification.created).format('YYYY-MM-DD hh:mm:ss')"
         class="inline-flex"
       >
         <CalendarIcon class="mr-1" /> 已收到 {{ fromNow(notification.created) }}

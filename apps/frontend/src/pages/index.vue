@@ -1,10 +1,11 @@
 <template>
   <div>
     <div class="landing-hero">
-      <ModrinthIcon class="modrinth-icon" />
-      <h1 class="main-header">
+<!--      <ModrinthIcon class="modrinth-icon" />-->
+
+      <h1 class="main-header"style="margin-top: 80px">
         我的世界资源社区
-        <div class="animate-strong">
+        <div class="animate-strong" style="margin-top: 80px">
           <span>
             <strong
               v-for="projectType in tags.projectTypes"
@@ -13,12 +14,11 @@
             >
               {{ projectType.display }} <br />
             </strong>
-            <strong class="main-header-strong">servers <br /></strong>
             <strong class="main-header-strong">mods</strong>
           </span>
         </div>
       </h1>
-      <h2>通过我们的社区发布、托管Minecraft资源，提供快速便捷的附属资源分发下载资源站点</h2>
+      <h2 style="margin-top: 50px">通过我们的社区发布、托管Minecraft资源，提供快速便捷的附属资源分发下载资源站点</h2>
       <div class="button-group">
         <ButtonStyled color="brand" size="large">
           <nuxt-link to="/mods"> <CompassIcon aria-hidden="true" /> 探索模组 </nuxt-link>
@@ -402,7 +402,7 @@ async function updateSearchProjects() {
   flex-direction: column;
 
   .modrinth-icon {
-    width: 50rem;
+    width: 15rem;
     height: 13rem;
     margin-bottom: 2.5rem;
   }

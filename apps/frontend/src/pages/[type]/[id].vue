@@ -886,44 +886,52 @@
                 <span v-else>{{ licenseIdDisplay }}</span>
               </div>
             </div>
+
+<!--            发布-->
             <div
               v-if="project.approved"
-              v-tooltip="$dayjs(project.approved).format('MMMM D, YYYY [at] h:mm A')"
+              v-tooltip="$dayjs(project.approved).format('YYYY-MM-DD hh:mm:ss')"
               class="details-list__item"
             >
               <CalendarIcon aria-hidden="true" />
               <div>
-                {{ formatMessage(detailsMessages.published, { date: publishedDate }) }}
+                发布于: {{fromNow(project.approved)}}
               </div>
             </div>
+
+<!--            提交-->
             <div
               v-else
-              v-tooltip="$dayjs(project.published).format('MMMM D, YYYY [at] h:mm A')"
+              v-tooltip="$dayjs(project.published).format('YYYY-MM-DD hh:mm:ss')"
               class="details-list__item"
             >
               <CalendarIcon aria-hidden="true" />
               <div>
-                {{ formatMessage(detailsMessages.created, { date: createdDate }) }}
+                提交于: {{fromNow(project.published)}}
               </div>
             </div>
+
+<!--            发布-->
             <div
               v-if="project.status === 'processing' && project.queued"
-              v-tooltip="$dayjs(project.queued).format('MMMM D, YYYY [at] h:mm A')"
+              v-tooltip="$dayjs(project.queued).format('YYYY-MM-DD hh:mm:ss')"
               class="details-list__item"
             >
               <ScaleIcon aria-hidden="true" />
               <div>
-                {{ formatMessage(detailsMessages.submitted, { date: submittedDate }) }}
+                发布于: {{fromNow(project.queued)}}
               </div>
             </div>
+
+<!--            更新-->
             <div
               v-if="versions.length > 0 && project.updated"
-              v-tooltip="$dayjs(project.updated).format('MMMM D, YYYY [at] h:mm A')"
+              v-tooltip="$dayjs(project.updated).format('YYYY-MM-DD hh:mm:ss')"
               class="details-list__item"
             >
               <VersionIcon aria-hidden="true" />
               <div>
-                {{ formatMessage(detailsMessages.updated, { date: updatedDate }) }}
+                更新于: {{fromNow(project.updated)}}
               </div>
             </div>
           </div>
@@ -1012,7 +1020,6 @@ import {
   ContentPageHeader,
 } from "@modrinth/ui";
 import { formatCategory, isRejected, isStaff, isUnderReview, renderString } from "@modrinth/utils";
-import dayjs from "dayjs";
 import Badge from "~/components/ui/Badge.vue";
 import NavTabs from "~/components/ui/NavTabs.vue";
 import NavStack from "~/components/ui/NavStack.vue";
@@ -1028,6 +1035,9 @@ import Accordion from "~/components/ui/Accordion.vue";
 import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
+import dayjs from "dayjs";
+import 'dayjs/locale/zh-cn';
+dayjs.locale('zh-cn');
 
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -1079,7 +1089,6 @@ const currentPlatform = computed(() => {
 const gameVersionAccordion = ref();
 const platformAccordion = ref();
 
-const formatRelativeTime = useRelativeTime();
 
 const compatibilityMessages = defineMessages({
   title: {
@@ -1189,18 +1198,11 @@ const detailsMessages = defineMessages({
 const modalLicense = ref(null);
 const licenseText = ref("");
 
-const createdDate = computed(() =>
-  project.value.published ? formatRelativeTime(project.value.published) : "unknown",
-);
-const submittedDate = computed(() =>
-  project.value.queued ? formatRelativeTime(project.value.queued) : "unknown",
-);
-const publishedDate = computed(() =>
-  project.value.approved ? formatRelativeTime(project.value.approved) : "unknown",
-);
-const updatedDate = computed(() =>
-  project.value.updated ? formatRelativeTime(project.value.updated) : "unknown",
-);
+
+const fromNow = (date) => {
+  const currentDate = useCurrentDate();
+  return dayjs(date).from(currentDate.value);
+};
 
 const licenseIdDisplay = computed(() => {
   const id = project.value.license.id;

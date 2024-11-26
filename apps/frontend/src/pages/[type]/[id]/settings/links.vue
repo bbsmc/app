@@ -68,7 +68,7 @@
         />
       </div>
       <span class="label">
-        <span class="label__title">爱发电链接</span>
+        <span class="label__title">捐助链接</span>
         <span class="label__description"> 添加爱发电链接，以便用户直接支持您。 </span>
       </span>
 
@@ -218,7 +218,7 @@ function updateDonationLinks() {
     if (link.url) {
       const url = link.url.toLowerCase();
       if (url.includes("afdian.com")) {
-        link.id = "爱发电";
+        link.id = "afdian";
       }
     }
   });
