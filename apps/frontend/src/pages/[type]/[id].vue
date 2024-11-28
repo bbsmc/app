@@ -610,7 +610,7 @@
                 </template>
                 <template #report>
                   <ReportIcon aria-hidden="true" />
-                  报告
+                  举报
                 </template>
                 <template #copy-id>
                   <ClipboardCopyIcon aria-hidden="true" />
@@ -636,7 +636,7 @@
           :tags="tags"
         />
         <MessageBanner v-if="project.status === 'archived'" message-type="warning" class="mb-4">
-          {{ project.title }} 已归档. {{ project.title }} 将不会再进行任何更新,除非作者取消归档状态
+          {{ project.title }} 已停更. {{ project.title }} 将不会再进行任何更新,除非作者取消停更状态
         </MessageBanner>
       </div>
       <div class="normal-page__sidebar">

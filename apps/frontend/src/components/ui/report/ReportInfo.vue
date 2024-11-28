@@ -50,7 +50,7 @@
     </div>
     <div v-else class="item-info">
       <div class="backed-svg" :class="{ raised: raised }"><UnknownIcon /></div>
-      <span>未知的报告类型</span>
+      <span>未知的举报类型</span>
     </div>
     <div class="report-type">
       <Badge v-if="report.closed" type="closed" />
@@ -66,7 +66,7 @@
       :auth="auth"
     />
     <div class="reporter-info">
-      <ReportIcon class="inline-svg" /> 报告发送者
+      <ReportIcon class="inline-svg" /> 举报发送者
       <span v-if="auth.user.id === report.reporterUser.id">你</span>
       <nuxt-link v-else :to="`/user/${report.reporterUser.username}`" class="iconified-link">
         <Avatar

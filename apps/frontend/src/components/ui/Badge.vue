@@ -21,7 +21,7 @@
     <template v-else-if="type === 'private'"><LockIcon /> 私有</template>
     <template v-else-if="type === 'scheduled'"> <CalendarIcon /> 已安排</template>
     <template v-else-if="type === 'draft'"><DraftIcon /> 草稿</template>
-    <template v-else-if="type === 'archived'"> <ArchiveIcon /> 已归档</template>
+    <template v-else-if="type === 'archived'"> <ArchiveIcon /> 已停更</template>
     <template v-else-if="type === 'rejected'"><CrossIcon /> 已拒绝</template>
     <template v-else-if="type === 'processing'"> <ProcessingIcon /> 审核中</template>
 

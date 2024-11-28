@@ -65,3 +65,6 @@ apps/frontend/.env.example
 apps/frontend/.env.example
 apps/labrinth/.env
 apps/labrinth/.env.dev
+apps/rust1.82.0_build.tar
+apps/rust_build_tools.tar
+apps/labrinth/.env

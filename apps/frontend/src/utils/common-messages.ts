@@ -97,7 +97,7 @@ export const commonMessages = defineMessages({
   },
   reportButton: {
     id: "button.report",
-    defaultMessage: "报告",
+    defaultMessage: "举报",
   },
   passwordLabel: {
     id: "label.password",

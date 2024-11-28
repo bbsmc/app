@@ -148,11 +148,11 @@
       </div>
     </div>
   </Modal>
-  <Modal ref="videoModal" header="Insert YouTube video">
+  <Modal ref="videoModal" header="插入B站视频链接">
     <div class="modal-insert">
       <label class="label" for="insert-video-url">
-        <span class="label__title">YouTube video URL<span class="required">*</span></span>
-        <span class="label__description"> Enter a valid link to a YouTube video. </span>
+        <span class="label__title">B站视频链接<span class="required">*</span></span>
+        <span class="label__description"> 请输入b站视频链接 </span>
       </label>
       <div class="iconified-input">
         <YouTubeIcon />
@@ -160,7 +160,7 @@
           id="insert-video-url"
           v-model="linkUrl"
           type="text"
-          placeholder="Enter YouTube video URL"
+          placeholder="b站视频链接"
           @input="validateURL"
         />
         <Button class="r-btn" @click="() => (linkUrl = '')">
@@ -548,11 +548,11 @@ const BUTTONS: ButtonGroupMap = {
         icon: ImageIcon,
         action: () => openImageModal(),
       },
-      // {
-      //   label: '视频',
-      //   icon: YouTubeIcon,
-      //   action: () => openVideoModal(),
-      // },
+      {
+        label: '视频',
+        icon: YouTubeIcon,
+        action: () => openVideoModal(),
+      },
     ],
   },
 }
@@ -650,7 +650,7 @@ function validateURL() {
 
 function cleanUrl(input: string): string {
   let url: URL
-
+  console.log(input)
   // Attempt to validate and parse the URL
   try {
     url = new URL(input)
@@ -673,7 +673,7 @@ function cleanUrl(input: string): string {
   if (blockedDomains.some((domain) => url.hostname.includes(domain))) {
     throw new Error('Invalid URL. This domain is not allowed.')
   }
-
+  
   return url.toString()
 }
 
@@ -737,13 +737,13 @@ const canInsertImage = computed(() => {
   )
 })
 
-const youtubeRegex =
-  /^(?:https?:)?(?:\/\/)?(?:youtu\.be\/|(?:www\.|m\.)?youtube\.com\/(?:watch|v|embed)(?:\.php)?(?:\?.*v=|\/))(?<temp1>[a-zA-Z0-9_-]{7,15})(?:[?&][a-zA-Z0-9_-]+=[a-zA-Z0-9_-]+)*$/
+const regex = /(?:video\/|bangumi\/play\/)([a-zA-Z0-9]{1,12})/;
+
 
 const videoMarkdown = computed(() => {
-  const match = youtubeRegex.exec(linkUrl.value)
+  const match = regex.exec(linkUrl.value)
   if (match) {
-    return `<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/${match[1]}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
+    return `<iframe src="//player.bilibili.com/player.html?isOutside=true&&bvid=${match[1]}&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>`
   }
   return ''
 })

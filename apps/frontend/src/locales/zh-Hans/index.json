@@ -396,7 +396,7 @@
     "message": "非官方 MINECRAFT 服务。未经 MOJANG 或 MICROSOFT 批准或与之关联。"
   },
   "layout.footer.open-source": {
-    "message": "BBSMC 是<github-link>开源资源</github-link>。"
+    "message": "BBSMC 是<github-link>开源程序</github-link>。"
   },
   "layout.footer.resources.blog": {
     "message": "博客"

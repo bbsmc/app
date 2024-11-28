@@ -211,7 +211,7 @@ export const formatProjectStatus = (name) => {
     return '公开'
   }
   else if (name === 'archived') {
-    return '归档'
+    return '停更'
   }
   else if (name === 'private') {
     return '私有'

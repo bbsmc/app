@@ -1,5 +1,5 @@
 #FROM rust:1.82.0 as build
-FROM rust1.82.0_build:latest  as build
+FROM rust_build_tools:latest  as build
 ENV PKG_CONFIG_ALLOW_CROSS=1
 
 WORKDIR /usr/src/labrinth
@@ -24,8 +24,10 @@ RUN apt-get update \
 RUN update-ca-certificates
 
 COPY --from=build /usr/src/labrinth/target/release/labrinth /labrinth/labrinth
+COPY --from=build /usr/src/labrinth/.env /labrinth/.env
 COPY --from=build /usr/src/labrinth/migrations/* /labrinth/migrations/
 COPY --from=build /usr/src/labrinth/assets /labrinth/assets
 WORKDIR /labrinth
+
 
 CMD /labrinth/labrinth

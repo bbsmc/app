@@ -41,7 +41,7 @@
         />
         <MicrophoneIcon
           v-if="report && message.author_id === report.reporterUser.id"
-          v-tooltip="'报告'"
+          v-tooltip="'举报'"
           class="reporter-icon"
         />
       </span>

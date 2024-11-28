@@ -10,7 +10,7 @@
           <NavStackItem link="/dashboard/notifications" label="通知">
             <NotificationsIcon aria-hidden="true" />
           </NavStackItem>
-          <NavStackItem link="/dashboard/reports" label="活跃报告">
+          <NavStackItem link="/dashboard/reports" label="活跃举报">
             <ReportIcon aria-hidden="true" />
           </NavStackItem>
           <NavStackItem link="/dashboard/analytics" label="统计">

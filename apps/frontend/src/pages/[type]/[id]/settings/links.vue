@@ -8,7 +8,7 @@
           title="A place for users to report bugs, issues, and concerns about your project."
         >
           <span class="label__title">问题提交</span>
-          <span class="label__description"> 用户报告项目错误、问题和疑虑的地方。 </span>
+          <span class="label__description"> 用户举报项目错误、问题和疑虑的地方。 </span>
         </label>
         <input
           id="project-issue-tracker"

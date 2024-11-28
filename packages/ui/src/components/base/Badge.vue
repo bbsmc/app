@@ -103,7 +103,7 @@ const messages = defineMessages({
   },
   archivedLabel: {
     id: 'omorphia.component.badge.label.archived',
-    defaultMessage: '已归档',
+    defaultMessage: '已停更',
   },
   closedLabel: {
     id: 'omorphia.component.badge.label.closed',

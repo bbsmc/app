@@ -3,7 +3,7 @@
     <section class="universal-card">
       <Breadcrumbs
         v-if="breadcrumbsStack"
-        :current-title="`报告 ${reportId}`"
+        :current-title="`举报 ${reportId}`"
         :link-stack="breadcrumbsStack"
       />
       <h2>Report details</h2>

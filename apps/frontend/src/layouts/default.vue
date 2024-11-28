@@ -465,64 +465,64 @@
       <slot id="main" />
     </main>
     <footer>
-      <!--      <div class="logo-info" role="region" aria-label="Modrinth information">-->
-      <!--        <BrandTextLogo-->
-      <!--          aria-hidden="true"-->
-      <!--          class="text-logo button-base mx-auto mb-4 lg:mx-0"-->
-      <!--          @click="developerModeIncrement()"-->
-      <!--        />-->
-      <!--        <p class="mb-4">-->
-      <!--          <IntlFormatted :message-id="footerMessages.openSource">-->
-      <!--            <template #github-link="{ children }">-->
-      <!--              <a-->
-      <!--                :target="$external()"-->
-      <!--                href="https://github.com/modrinth"-->
-      <!--                class="text-link"-->
-      <!--                rel="noopener"-->
-      <!--              >-->
-      <!--                <component :is="() => children" />-->
-      <!--              </a>-->
-      <!--            </template>-->
-      <!--          </IntlFormatted>-->
-      <!--        </p>-->
+            <div class="logo-info" role="region" aria-label="Modrinth information">
+              <!-- <BrandTextLogo
+                aria-hidden="true"
+                class="text-logo button-base mx-auto mb-4 lg:mx-0"
+              /> -->
+              <p class="mb-4">
+                <IntlFormatted :message-id="footerMessages.openSource">
+                  <template #github-link="{ children }">
+                    <a
+                      :target="$external()"
+                      href="https://github.com/bbsmc/app"
+                      class="text-link"
+                      rel="noopener"
+                    >
+                      <component :is="() => children" />
+                    </a>
+                  </template>
+                </IntlFormatted>
+              </p>
+              <p class="mb-4">BBSMC使用Modrinth程序开发,遵循LGPL许可证开源</p>
 
-      <!--      </div>-->
-      <!--      <div class="links links-1" role="region" aria-label="Legal">-->
-      <!--        <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>-->
-      <!--        <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>-->
-      <!--        <nuxt-link to="/legal/privacy"> {{ formatMessage(footerMessages.privacy) }}</nuxt-link>-->
-      <!--        <nuxt-link to="/legal/rules"> {{ formatMessage(footerMessages.rules) }}</nuxt-link>-->
+            </div>
+<!--            <div class="links links-1" role="region" aria-label="Legal">-->
+<!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>-->
+<!--              <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>-->
+<!--              <nuxt-link to="/legal/privacy"> {{ formatMessage(footerMessages.privacy) }}</nuxt-link>-->
+<!--              <nuxt-link to="/legal/rules"> {{ formatMessage(footerMessages.rules) }}</nuxt-link>-->
 
-      <!--      </div>-->
-      <!--      <div class="links links-2" role="region" aria-label="Resources">-->
-      <!--        <h4 aria-hidden="true">{{ formatMessage(footerMessages.resourcesTitle) }}</h4>-->
-      <!--        <a :target="$external()" href="https://support.modrinth.com">-->
-      <!--          {{ formatMessage(footerMessages.support) }}-->
-      <!--        </a>-->
-      <!--        <a :target="$external()" href="https://blog.modrinth.com">-->
-      <!--          {{ formatMessage(footerMessages.blog) }}-->
-      <!--        </a>-->
-      <!--        <a :target="$external()" href="https://docs.modrinth.com">-->
-      <!--          {{ formatMessage(footerMessages.docs) }}-->
-      <!--        </a>-->
-      <!--        <a :target="$external()" href="https://status.modrinth.com">-->
-      <!--          {{ formatMessage(footerMessages.status) }}-->
-      <!--        </a>-->
-      <!--      </div>-->
-      <!--      <div class="links links-3" role="region" aria-label="Interact">-->
-      <!--        <h4 aria-hidden="true">{{ formatMessage(footerMessages.interactTitle) }}</h4>-->
-      <!--        <a rel="noopener" :target="$external()" href="https://discord.modrinth.com"> Discord </a>-->
-      <!--        <a rel="noopener" :target="$external()" href="https://x.com/modrinth"> X (Twitter) </a>-->
-      <!--        <a rel="noopener" :target="$external()" href="https://floss.social/@modrinth"> Mastodon </a>-->
-      <!--        <a rel="noopener" :target="$external()" href="https://crowdin.com/project/modrinth">-->
-      <!--          Crowdin-->
-      <!--        </a>-->
-      <!--      </div>-->
+<!--            </div>-->
+<!--            <div class="links links-2" role="region" aria-label="Resources">-->
+<!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.resourcesTitle) }}</h4>-->
+<!--              <a :target="$external()" href="https://support.modrinth.com">-->
+<!--                {{ formatMessage(footerMessages.support) }}-->
+<!--              </a>-->
+<!--              <a :target="$external()" href="https://blog.modrinth.com">-->
+<!--                {{ formatMessage(footerMessages.blog) }}-->
+<!--              </a>-->
+<!--              <a :target="$external()" href="https://docs.modrinth.com">-->
+<!--                {{ formatMessage(footerMessages.docs) }}-->
+<!--              </a>-->
+<!--              <a :target="$external()" href="https://status.modrinth.com">-->
+<!--                {{ formatMessage(footerMessages.status) }}-->
+<!--              </a>-->
+<!--            </div>-->
+<!--            <div class="links links-3" role="region" aria-label="Interact">-->
+<!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.interactTitle) }}</h4>-->
+<!--              <a rel="noopener" :target="$external()" href="https://discord.modrinth.com"> Discord </a>-->
+<!--              <a rel="noopener" :target="$external()" href="https://x.com/modrinth"> X (Twitter) </a>-->
+<!--              <a rel="noopener" :target="$external()" href="https://floss.social/@modrinth"> Mastodon </a>-->
+<!--              <a rel="noopener" :target="$external()" href="https://crowdin.com/project/modrinth">-->
+<!--                Crowdin-->
+<!--              </a>-->
+<!--            </div>-->
       <div class="buttons">
-        <!--        <nuxt-link class="btn btn-outline btn-primary" to="/app">-->
-        <!--          <DownloadIcon aria-hidden="true" />-->
-        <!--          {{ formatMessage(messages.getModrinthApp) }}-->
-        <!--        </nuxt-link>-->
+<!--                <nuxt-link class="btn btn-outline btn-primary" to="/app">-->
+<!--                  <DownloadIcon aria-hidden="true" />-->
+<!--                  {{ formatMessage(messages.getModrinthApp) }}-->
+<!--                </nuxt-link>-->
         <button class="iconified-button raised-button" @click="changeTheme">
           <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
           <SunIcon v-else aria-hidden="true" />

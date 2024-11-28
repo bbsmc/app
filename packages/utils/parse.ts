@@ -1,7 +1,8 @@
 import MarkdownIt from 'markdown-it'
 
 import pkg from 'xss'
-const { FilterXSS, whiteList, escapeAttrValue, safeAttrValue } = pkg as any;
+
+const { FilterXSS, whiteList, escapeAttrValue, safeAttrValue } = pkg as any
 // import { escapeAttrValue, FilterXSS, safeAttrValue, whiteList } from 'xss'
 
 export const configuredXss = new FilterXSS({
@@ -26,45 +27,37 @@ export const configuredXss = new FilterXSS({
     picture: [],
     source: ['media', 'sizes', 'src', 'srcset', 'type'],
     p: [...(whiteList.p || []), 'align'],
-    div: [...(whiteList.p || []), 'align'],
+    div: [...(whiteList.p || []), 'align']
   },
   css: {
     whiteList: {
       'image-rendering': /^pixelated$/,
       'text-align': /^center|left|right$/,
-      float: /^left|right$/,
-    },
+      float: /^left|right$/
+    }
   },
   onIgnoreTagAttr: (tag, name, value) => {
     // Allow iframes from acceptable sources
     if (tag === 'iframe' && name === 'src') {
       const allowedSources = [
         {
-          url: /^https?:\/\/(www\.)?youtube(-nocookie)?\.com\/embed\/[a-zA-Z0-9_-]{11}/,
-          allowedParameters: [/start=\d+/, /end=\d+/],
-        },
-        {
-          url: /^https?:\/\/(www\.)?discord\.com\/widget/,
-          allowedParameters: [/id=\d{18,19}/],
+          url: /^https?:\/\/player\.bilibili\.com\/player\.html/,
+          allowedParameters: ['aid', 'bvid', 'cid', 'p'],
         },
       ]
 
-      const url = new URL(value)
+      const url = new URL(value.startsWith('//') ? 'https:' + value : value)
 
       for (const source of allowedSources) {
-        if (!source.url.test(url.href)) {
-          continue
+        if (source.url.test(url.href)) {
+          // Remove all parameters not in the allowed list
+          Array.from(url.searchParams.keys()).forEach(param => {
+            if (!source.allowedParameters.includes(param)) {
+              url.searchParams.delete(param);
+            }
+          });
+          return `${name}="${escapeAttrValue(url.toString())}"`
         }
-
-        const newSearchParams = new URLSearchParams()
-        url.searchParams.forEach((value, key) => {
-          if (!source.allowedParameters.some((param) => param.test(`${key}=${value}`))) {
-            newSearchParams.delete(key)
-          }
-        })
-
-        url.search = newSearchParams.toString()
-        return `${name}="${escapeAttrValue(url.toString())}"`
       }
     }
 
@@ -79,6 +72,9 @@ export const configuredXss = new FilterXSS({
       return `${name}="${escapeAttrValue(allowedClasses.join(' '))}"`
     }
   },
+
+
+
   safeAttrValue(tag, name, value, cssFilter) {
     if (
       (tag === 'img' || tag === 'video' || tag === 'audio' || tag === 'source') &&
@@ -106,7 +102,7 @@ export const configuredXss = new FilterXSS({
           'i.postimg.cc',
           'wsrv.nl',
           'cf.way2muchnoise.eu',
-          'bstats.org',
+          'bstats.org'
         ]
 
         if (!allowedHostnames.includes(url.hostname)) {
@@ -114,9 +110,9 @@ export const configuredXss = new FilterXSS({
             tag,
             name,
             `https://wsrv.nl/?url=${encodeURIComponent(
-              url.toString().replaceAll('&amp;', '&'),
+              url.toString().replaceAll('&amp;', '&')
             )}&n=-1`,
-            cssFilter,
+            cssFilter
           )
         }
         return safeAttrValue(tag, name, url.toString(), cssFilter)
@@ -126,7 +122,7 @@ export const configuredXss = new FilterXSS({
     }
 
     return safeAttrValue(tag, name, value, cssFilter)
-  },
+  }
 })
 
 export const md = (options = {}) => {
@@ -134,16 +130,16 @@ export const md = (options = {}) => {
     html: true,
     linkify: true,
     breaks: false,
-    ...options,
+    ...options
   })
 
   const defaultLinkOpenRenderer =
     md.renderer.rules.link_open ||
-    function (tokens, idx, options, _env, self) {
+    function(tokens, idx, options, _env, self) {
       return self.renderToken(tokens, idx, options)
     }
 
-  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+  md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
     const token = tokens[idx]
     const index = token.attrIndex('href')
 
@@ -152,7 +148,7 @@ export const md = (options = {}) => {
 
       try {
         const url = new URL(href)
-        const allowedHostnames = ["bbsmc.net"]
+        const allowedHostnames = ['bbsmc.net']
 
         if (allowedHostnames.includes(url.hostname)) {
           return defaultLinkOpenRenderer(tokens, idx, options, env, self)

@@ -1,7 +1,7 @@
 <template>
   <nuxt-link :to="link" class="thread-summary" :class="{ raised: raised }">
     <div class="thread-title-row">
-      <span v-if="report" class="thread-title">报告会话</span>
+      <span v-if="report" class="thread-title">举报会话</span>
       <span v-else class="thread-title">会话</span>
       <span class="thread-messages"
         >{{ props.thread.messages.length }} 消息 <ChevronRightIcon

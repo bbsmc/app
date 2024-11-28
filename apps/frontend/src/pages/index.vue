@@ -62,7 +62,7 @@
       <div class="users-section">
         <div class="section-header">
           <div class="section-label green">对于玩家</div>
-          <h2 class="section-tagline">国内外热门资源获得授权的搬运许可</h2>
+          <h2 class="section-tagline">国内外热门资源依据资源所设的的许可证搬运</h2>
           <p class="section-description">快速下载最新的热门模组、光影、整合包等玩家所需要的资源</p>
         </div>
         <div class="feature-blob">
@@ -235,7 +235,7 @@
             </svg>
           </div>
           <h3>数据和统计</h3>
-          <p>获取有关页面浏览量、下载次数和收入的详细报告</p>
+          <p>获取有关页面浏览量、下载次数和收入的详细举报</p>
         </div>
       </div>
     </div>
@@ -377,9 +377,12 @@ const rows = ref([
   newProjects.slice(val * 2, val * 3),
 ]);
 
+
+
 const searchProjects = ref(homePageSearch.hits ?? []);
 
 async function updateSearchProjects() {
+  console.log(searchQuery)
   const res = await useBaseFetch(
     `search?limit=3&query=${searchQuery.value}&index=${sortType.value}`,
   );

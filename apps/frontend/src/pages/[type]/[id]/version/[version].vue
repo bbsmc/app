@@ -150,13 +150,13 @@
         <ButtonStyled v-if="!auth.user">
           <nuxt-link to="/auth/sign-in">
             <ReportIcon aria-hidden="true" />
-            报告反馈
+            举报反馈
           </nuxt-link>
         </ButtonStyled>
         <ButtonStyled v-else-if="!currentMember">
           <button @click="() => reportVersion(version.id)">
             <ReportIcon aria-hidden="true" />
-            报告反馈
+            举报反馈
           </button>
         </ButtonStyled>
         <ButtonStyled>

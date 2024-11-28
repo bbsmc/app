@@ -49,10 +49,16 @@ export default defineNuxtConfig({
   srcDir: "src/",
   app: {
     head: {
+      charset: "utf-8",
       htmlAttrs: {
-        lang: "en",
+        lang: "zh-CN",
       },
       title: "BBSMC 我的世界资源社区",
+      script: [
+        {
+          src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979"
+        }
+      ],
       link: [
         // The type is necessary because the linter can't always compare this very nested/complex type on itself
         ...preloadedFonts.map((font): object => {
@@ -173,7 +179,7 @@ export default defineNuxtConfig({
         $fetch(`${API_URL}tag/donation_platform`, headers),
         $fetch(`${API_URL}tag/report_type`, headers),
         $fetch(`${API_URL}projects_random?count=60`, headers),
-        $fetch(`${API_URL}search?limit=3&query=leave&index=relevance`, headers),
+        $fetch(`${API_URL}search?limit=3&query=&index=relevance`, headers),
         $fetch(`${API_URL}search?limit=3&query=&index=updated`, headers),
       ]);
 
