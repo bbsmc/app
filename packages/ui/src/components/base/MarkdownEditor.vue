@@ -152,7 +152,7 @@
     <div class="modal-insert">
       <label class="label" for="insert-video-url">
         <span class="label__title">B站视频链接<span class="required">*</span></span>
-        <span class="label__description"> 请输入b站视频链接 </span>
+        <span class="label__description"> 请输入b站视频链接,请使用BVID的链接，不要使用AVID</span>
       </label>
       <div class="iconified-input">
         <YouTubeIcon />

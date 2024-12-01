@@ -186,6 +186,10 @@ export const formatProjectType = (name) => {
     return "资源包";
   } else if (name === "datapack") {
     return "数据包";
+  } else if (name === "plugin") {
+    return "插件";
+  }else if (name === "mod") {
+    return "模组";
   }
 
   return capitalizeString(name);

@@ -465,12 +465,12 @@
       <slot id="main" />
     </main>
     <footer>
-            <div class="logo-info" role="region" aria-label="Modrinth information">
+            <!-- <div class="logo-info" role="region" aria-label="Modrinth information"> -->
               <!-- <BrandTextLogo
                 aria-hidden="true"
                 class="text-logo button-base mx-auto mb-4 lg:mx-0"
               /> -->
-              <p class="mb-4">
+              <!-- <p class="mb-4">
                 <IntlFormatted :message-id="footerMessages.openSource">
                   <template #github-link="{ children }">
                     <a
@@ -483,10 +483,10 @@
                     </a>
                   </template>
                 </IntlFormatted>
-              </p>
-              <p class="mb-4">BBSMC使用Modrinth程序开发,遵循LGPL许可证开源</p>
+              </p> -->
+              <!-- <p class="mb-4">BBSMC使用Modrinth程序开发,遵循LGPL许可证开源</p> -->
 
-            </div>
+            <!-- </div> -->
 <!--            <div class="links links-1" role="region" aria-label="Legal">-->
 <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>-->
 <!--              <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>-->
@@ -518,24 +518,22 @@
 <!--                Crowdin-->
 <!--              </a>-->
 <!--            </div>-->
-      <div class="buttons">
-<!--                <nuxt-link class="btn btn-outline btn-primary" to="/app">-->
-<!--                  <DownloadIcon aria-hidden="true" />-->
-<!--                  {{ formatMessage(messages.getModrinthApp) }}-->
-<!--                </nuxt-link>-->
-        <button class="iconified-button raised-button" @click="changeTheme">
-          <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
-          <SunIcon v-else aria-hidden="true" />
-          {{ formatMessage(messages.changeTheme) }}
-        </button>
+      <!-- <div class="buttons">
         <nuxt-link class="iconified-button raised-button" to="/settings">
           <SettingsIcon aria-hidden="true" />
-          {{ formatMessage(commonMessages.settingsLabel) }}
+          外观设置
         </nuxt-link>
-      </div>
+      </div> -->
 
       <div class="not-affiliated-notice">
-        {{ formatMessage(footerMessages.legalDisclaimer) }}
+        "Minecraft"以及"我的世界"为美国微软公司的商标 本站与微软公司没有从属关系
+        <br /><br />
+        本站与Modrinth无从属关系，网站遵循Modrinth网站程序的LGPL协议开源 <a
+                      :target="$external()"
+                      href="https://github.com/bbsmc/app"
+                      class="text-link"
+                      rel="noopener"
+                    >开源地址</a>
         <br /><br />
         版权所有 © 2019-2024 青岛柒兮网络科技有限公司 | ICP经营许可证: 鲁B2-20210590 | ICP备案:
         鲁ICP备2021009459号-12

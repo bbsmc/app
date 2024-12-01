@@ -15,6 +15,15 @@ import _AppleIcon from './external/apple.svg?component'
 import _BuyMeACoffeeIcon from './external/bmac.svg?component'
 import _DiscordIcon from './external/discord.svg?component'
 import _KoFiIcon from './external/kofi.svg?component'
+import _BiliBiliIcon from './external/bilibili-fill.svg?component'
+import _QQPDIcon from './external/qq-pd.svg?component'
+import _ModrinthIcon2 from './external/modrinth.svg?component'
+import _WebIcon2 from './external/Web.svg?component'
+import _AifadianIcon from './external/aifadian-line.svg?component'
+import _oopzIcon from './external/oopz.svg?component'
+import _kookIcon from './external/kook.svg?component'
+import _CurseforgeIcon from './external/curseforge.svg?component'
+import _SpigotmcIcon from './external/spigotmc.svg?component'
 import _MastodonIcon from './external/mastodon.svg?component'
 import _OpenCollectiveIcon from './external/opencollective.svg?component'
 import _PatreonIcon from './external/patreon.svg?component'
@@ -194,6 +203,15 @@ export const SSOSteamIcon = _SSOSteamIcon
 export const BuyMeACoffeeIcon = _BuyMeACoffeeIcon
 export const DiscordIcon = _DiscordIcon
 export const KoFiIcon = _KoFiIcon
+export const BiliBiliIcon = _BiliBiliIcon
+export const SpigotMcIcon = _SpigotmcIcon
+export const CurseforgeIcon = _CurseforgeIcon
+export const ModrinthIcon2 = _ModrinthIcon2
+export const QQPDIcon = _QQPDIcon
+export const WebIcon2 = _WebIcon2
+export const AifadianIcon = _AifadianIcon
+export const OopzIcon = _oopzIcon
+export const KookIcon = _kookIcon
 export const MastodonIcon = _MastodonIcon
 export const OpenCollectiveIcon = _OpenCollectiveIcon
 export const PatreonIcon = _PatreonIcon

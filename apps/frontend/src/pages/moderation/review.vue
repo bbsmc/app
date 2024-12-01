@@ -1,6 +1,6 @@
 <template>
   <section class="universal-card">
-    <h2>Review projects</h2>
+    <h2>审核资源</h2>
     <div class="input-group">
       <Chips
         v-model="projectType"
@@ -10,6 +10,24 @@
             switch (x) {
               case 'all': {
                 return '全部';
+              }
+              case 'mod': {
+                return '模组';
+              }
+              case 'shaders': {
+                return '光影';
+              }
+              case 'resourcepacks': {
+                return '资源包';
+              }
+              case 'plugin': {
+                return '插件';
+              }
+              case 'datapack': {
+                return '数据包';
+              }
+              case 'modpack': {
+                return '整合包';
               }
               case 'status_change': {
                 return '状态变更';
@@ -25,31 +43,28 @@
         "
       />
       <button v-if="oldestFirst" class="iconified-button push-right" @click="oldestFirst = false">
-        <SortDescIcon />Sorting by oldest
+        <SortDescIcon />最早提交
       </button>
       <button v-else class="iconified-button push-right" @click="oldestFirst = true">
-        <SortAscIcon />Sorting by newest
+        <SortAscIcon />最新提交
       </button>
       <button
         class="btn btn-highlight"
         :disabled="projectsFiltered.length === 0"
         @click="goToProjects()"
       >
-        <ModerationIcon /> Start moderating
+        <ModerationIcon /> 开始审核
       </button>
     </div>
     <p v-if="projectType !== 'all'" class="project-count">
-      Showing {{ projectsFiltered.length }} {{ projectTypePlural }} of {{ projects.length }} total
-      projects in the queue.
+      一共 {{ projects.length }} 待审核资源，{{ projectTypePlural }} 有{{ projectsFiltered.length }} 个
     </p>
-    <p v-else class="project-count">There are {{ projects.length }} projects in the queue.</p>
+    <p v-else class="project-count">一共有 {{ projects.length }} 个资源未审核</p>
     <p v-if="projectsOver24Hours.length > 0" class="warning project-count">
-      <WarningIcon /> {{ projectsOver24Hours.length }} {{ projectTypePlural }}
-      have been in the queue for over 24 hours.
+      <WarningIcon /> {{ projectsOver24Hours.length }} 个 {{ projectTypePlural }} 已经超过 24 小时未审核
     </p>
     <p v-if="projectsOver48Hours.length > 0" class="danger project-count">
-      <WarningIcon /> {{ projectsOver48Hours.length }} {{ projectTypePlural }}
-      have been in the queue for over 48 hours.
+      <WarningIcon /> {{ projectsOver48Hours.length }} {{ projectTypePlural }} 已经超过 48 小时未审核
     </p>
     <div
       v-for="project in projectsFiltered.sort((a, b) => {
@@ -71,7 +86,7 @@
             <Avatar :src="project.icon_url" size="xs" no-shadow raised />
             <span class="stacked">
               <span class="title">{{ project.name }}</span>
-              <span>{{ $formatProjectType(project.inferred_project_type) }}</span>
+              <!-- <span>{{ $formatProjectType(project.inferred_project_type) }}</span> -->
             </span>
           </nuxt-link>
         </div>
@@ -95,20 +110,21 @@
           </nuxt-link>
         </div>
         <div class="mobile-row">
-          is requesting to be
+          请求资源发布为
           <Badge :type="project.requested_status ? project.requested_status : 'approved'" />
         </div>
       </div>
       <div class="input-group">
         <nuxt-link
           :to="`/${project.inferred_project_type}/${project.slug}`"
+          target="_blank"
           class="iconified-button raised-button"
-          ><EyeIcon /> View project</nuxt-link
+          ><EyeIcon /> 查看该资源</nuxt-link
         >
       </div>
       <span v-if="project.queued" :class="`submitter-info ${project.age_warning}`">
         <WarningIcon v-if="project.age_warning" />
-        Submitted
+          提交于
         <span v-tooltip="$dayjs(project.queued).format('YYYY-MM-DD hh:mm:ss')">{{
           fromNow(project.queued)
         }}</span>
@@ -130,7 +146,7 @@ import Badge from "~/components/ui/Badge.vue";
 import { formatProjectType } from "~/plugins/shorthands.js";
 
 useHead({
-  title: "Review projects - Modrinth",
+  title: "审核资源 - BBSMC",
 });
 
 const app = useNuxtApp();
@@ -164,8 +180,8 @@ const projectsOver48Hours = computed(() =>
 );
 const projectTypePlural = computed(() =>
   projectType.value === "all"
-    ? "projects"
-    : (formatProjectType(projectType.value) + "s").toLowerCase(),
+    ? "资源"
+    : (formatProjectType(projectType.value)).toLowerCase(),
 );
 
 const projectTypes = computed(() => {

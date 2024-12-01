@@ -724,12 +724,11 @@
             project.issues_url ||
             project.source_url ||
             project.wiki_url ||
-            project.discord_url ||
             project.donation_urls.length > 0
           "
           class="card flex-card experimental-styles-within"
         >
-          <h2>{{ formatMessage(linksMessages.title) }}</h2>
+          <h2>其他链接</h2>
           <div class="links-list">
             <a
               v-if="project.issues_url"
@@ -738,7 +737,7 @@
               rel="noopener nofollow ugc"
             >
               <IssuesIcon aria-hidden="true" />
-              {{ formatMessage(linksMessages.issues) }}
+              反馈问题
               <ExternalIcon aria-hidden="true" class="external-icon" />
             </a>
             <a
@@ -748,7 +747,7 @@
               rel="noopener nofollow ugc"
             >
               <CodeIcon aria-hidden="true" />
-              {{ formatMessage(linksMessages.source) }}
+              查看源码
               <ExternalIcon aria-hidden="true" class="external-icon" />
             </a>
             <a
@@ -758,17 +757,7 @@
               rel="noopener nofollow ugc"
             >
               <WikiIcon aria-hidden="true" />
-              {{ formatMessage(linksMessages.wiki) }}
-              <ExternalIcon aria-hidden="true" class="external-icon" />
-            </a>
-            <a
-              v-if="project.discord_url"
-              :href="project.discord_url"
-              :target="$external()"
-              rel="noopener nofollow ugc"
-            >
-              <DiscordIcon class="shrink" aria-hidden="true" />
-              {{ formatMessage(linksMessages.discord) }}
+              访问 wiki
               <ExternalIcon aria-hidden="true" class="external-icon" />
             </a>
             <hr
@@ -785,30 +774,40 @@
               :key="index"
               :href="donation.url"
               :target="$external()"
-              rel="noopener nofollow ugc"
+              rel="noopener nofollow ugc"`
             >
               <BuyMeACoffeeIcon v-if="donation.id === 'bmac'" aria-hidden="true" />
               <PatreonIcon v-else-if="donation.id === 'patreon'" aria-hidden="true" />
               <KoFiIcon v-else-if="donation.id === 'ko-fi'" aria-hidden="true" />
               <PayPalIcon v-else-if="donation.id === 'paypal'" aria-hidden="true" />
+              <BiliBiliIcon v-else-if="donation.id === 'bilibili'" aria-hidden="true" />
+              <QQPDIcon v-else-if="donation.id === 'pd-qq'" aria-hidden="true" />
+              <OopzIcon v-else-if="donation.id === 'oopz'" aria-hidden="true" />
+              <DiscordIcon v-else-if="donation.id === 'discord'" aria-hidden="true" />
+              <CurseforgeIcon v-else-if="donation.id === 'curseforge'" aria-hidden="true" />
+              <ModrinthIcon2 v-else-if="donation.id === 'modrinth'" aria-hidden="true" />
+              <SSOGitHubIcon v-else-if="donation.id === 'github'" aria-hidden="true" />
+              <KookIcon v-else-if="donation.id === 'kook'" aria-hidden="true" />
+              <SpigotMcIcon v-else-if="donation.id === 'spigotmc'" aria-hidden="true" />
+              <WebIcon2 v-else-if="donation.id === 'site'" aria-hidden="true" />
+              <AifadianIcon v-else-if="donation.id === 'afdian'" aria-hidden="true" />
               <OpenCollectiveIcon
                 v-else-if="donation.id === 'open-collective'"
                 aria-hidden="true"
               />
               <HeartIcon v-else-if="donation.id === 'github'" />
               <CurrencyIcon v-else />
-              <span v-if="donation.id === 'bmac'">{{
-                formatMessage(linksMessages.donateBmac)
-              }}</span>
-              <span v-else-if="donation.id === 'patreon'">{{
-                formatMessage(linksMessages.donatePatreon)
-              }}</span>
-              <span v-else-if="donation.id === 'paypal'">{{
-                formatMessage(linksMessages.donatePayPal)
-              }}</span>
-              <span v-else-if="donation.id === 'ko-fi'">{{
-                formatMessage(linksMessages.donateKoFi)
-              }}</span>
+              <span v-if="donation.id === 'afdian'">爱发电</span>
+              <span v-else-if="donation.id === 'pd-qq'">QQ频道</span>
+              <span v-else-if="donation.id === 'bilibili'">哔哩哔哩</span>
+              <span v-else-if="donation.id === 'kook'">KOOK</span>
+              <span v-else-if="donation.id === 'oopz'">oopz</span>
+              <span v-else-if="donation.id === 'discord'">Discord</span>
+              <span v-else-if="donation.id === 'site'">发布地址</span>
+              <span v-else-if="donation.id === 'modrinth'">Modrinth</span>
+              <span v-else-if="donation.id === 'github'">Github</span>
+              <span v-else-if="donation.id === 'spigotmc'">SpigotMc</span>
+              <span v-else-if="donation.id === 'curseforge'">CurseForge</span>
               <span v-else-if="donation.id === 'github'">{{
                 formatMessage(linksMessages.donateGithub)
               }}</span>
@@ -895,7 +894,7 @@
             >
               <CalendarIcon aria-hidden="true" />
               <div>
-                发布于: {{fromNow(project.approved)}}
+                发布于 {{fromNow(project.approved)}}
               </div>
             </div>
 
@@ -907,7 +906,7 @@
             >
               <CalendarIcon aria-hidden="true" />
               <div>
-                提交于: {{fromNow(project.published)}}
+                提交于 {{fromNow(project.published)}}
               </div>
             </div>
 
@@ -919,7 +918,7 @@
             >
               <ScaleIcon aria-hidden="true" />
               <div>
-                发布于: {{fromNow(project.queued)}}
+                发布于 {{fromNow(project.queued)}}
               </div>
             </div>
 
@@ -931,7 +930,7 @@
             >
               <VersionIcon aria-hidden="true" />
               <div>
-                更新于: {{fromNow(project.updated)}}
+                更新于 {{fromNow(project.updated)}}
               </div>
             </div>
           </div>
@@ -998,6 +997,16 @@ import {
   DiscordIcon,
   CalendarIcon,
   KoFiIcon,
+  BiliBiliIcon,
+  SpigotMcIcon,
+  CurseforgeIcon,
+  ModrinthIcon2,
+  SSOGitHubIcon,
+  AifadianIcon,
+  QQPDIcon,
+  WebIcon2,
+  OopzIcon,
+  KookIcon,
   BuyMeACoffeeIcon,
   IssuesIcon,
   UserIcon,
@@ -1131,7 +1140,7 @@ const linksMessages = defineMessages({
   },
   donateGeneric: {
     id: "project.about.links.donate.generic",
-    defaultMessage: "捐赠",
+    defaultMessage: "其他",
   },
   donateGitHub: {
     id: "project.about.links.donate.github",
