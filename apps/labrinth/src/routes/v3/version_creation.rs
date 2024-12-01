@@ -811,7 +811,7 @@ pub async fn upload_file(
 
     if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传!"
+            "此文件在这之前已经被上传到BBSMC过,无法重复上传!1"
                 .to_string(),
         ));
     }
@@ -850,8 +850,9 @@ pub async fn upload_file(
     .unwrap_or(false);
 
     if exists {
+        println!("已存在 {}", hash);
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传"
+            "此文件在这之前已经被上传到BBSMC过,无法重复上传2"
                 .to_string(),
         ));
     }
@@ -963,13 +964,15 @@ pub async fn upload_file(
     let sha1_bytes = upload_data.content_sha1.into_bytes();
     let sha512_bytes = upload_data.content_sha512.into_bytes();
 
+
+
     if version_files.iter().any(|x| {
         x.hashes
             .iter()
             .any(|y| y.hash == sha1_bytes || y.hash == sha512_bytes)
     }) {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传"
+            "此文件在这之前已经被上传到BBSMC过,无法重复上传3"
                 .to_string(),
         ));
     }

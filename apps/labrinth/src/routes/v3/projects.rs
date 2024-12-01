@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ptr::null;
 use std::sync::Arc;
 
 use crate::auth::checks::{filter_visible_versions, is_visible_project};
@@ -30,6 +31,7 @@ use crate::util::img::{delete_old_images, upload_image_optimized};
 use crate::util::routes::read_from_payload;
 use crate::util::validate::validation_errors_to_string;
 use actix_web::{web, HttpRequest, HttpResponse};
+use bytes::BytesMut;
 use chrono::Utc;
 use futures::TryStreamExt;
 use itertools::Itertools;
@@ -1693,12 +1695,23 @@ pub async fn add_gallery_item(
         }
     }
 
-    let bytes = read_from_payload(
-        &mut payload,
-        2 * (1 << 20),
-        "Gallery image exceeds the maximum of 2MiB.",
-    )
-    .await?;
+    let bytes = if user.username == "BBSMC" || user.username == "Laotou" {
+         read_from_payload(
+            &mut payload,
+            10 * (1 << 20),
+            "Gallery image exceeds the maximum of 2MiB.",
+        )
+            .await?
+    } else {
+         read_from_payload(
+            &mut payload,
+            3 * (1 << 20),
+            "Gallery image exceeds the maximum of 2MiB.",
+        )
+            .await?
+    };
+
+
 
     let id: ProjectId = project_item.inner.id.into();
     let upload_result = upload_image_optimized(

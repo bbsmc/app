@@ -18,8 +18,8 @@ pub struct ReturnCountry {
     pub total: u64,
 }
 
-// Only one of project_id or version_id should be used
-// Fetches playtimes as a Vec of ReturnPlaytimes
+// 只能使用 project_id 或 version_id 之一
+// 获取播放时间，返回 ReturnPlaytimes 的 Vec
 pub async fn fetch_playtimes(
     projects: Vec<ProjectId>,
     start_date: DateTime<Utc>,

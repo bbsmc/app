@@ -68,7 +68,7 @@
         <div class="feature-blob">
           <div class="blob-text">
             <h3>快速轻松地找到所需内容</h3>
-            <p>BBSMC 的闪电般快速的搜索和强大的过滤器让您在输入时就能找到您想要的内容。</p>
+            <p>使用Modrinth网站程序二次开发，毫秒级的搜索速度</p>
           </div>
           <div class="blob-demonstration gradient-border bigger">
             <div class="demo-search">
@@ -130,7 +130,7 @@
         </div>
       </div>
     </div>
-    <div class="creator-section">
+    <!-- <div class="creator-section">
       <div class="section-header">
         <div class="section-label blue">对于创作者</div>
         <h2 class="section-tagline">为喜欢您作品的玩家提供快速下载途径</h2>
@@ -238,7 +238,7 @@
           <p>获取有关页面浏览量、下载次数和收入的详细举报</p>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!--    <div class="logo-banner">-->
     <!--      <svg-->

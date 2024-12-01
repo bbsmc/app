@@ -2,20 +2,14 @@
   <NuxtLayout>
     <div class="main">
       <div class="error">
-        <Logo404 v-if="error.statusCode === 404" />
+        <BrandTextLogo v-if="error.statusCode === 404" />
         <h1 v-else>An error occurred!</h1>
         <p>{{ error.message }}</p>
         <div class="button-group">
           <nuxt-link to="/" class="iconified-button raised-button brand-button">
-            Go home
+            前往主页
           </nuxt-link>
-          <a
-            href="https://discord.modrinth.com"
-            class="iconified-button raised-button"
-            rel="noopener"
-          >
-            Get help on Discord
-          </a>
+        
         </div>
       </div>
     </div>

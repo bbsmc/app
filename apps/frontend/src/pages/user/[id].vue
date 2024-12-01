@@ -225,7 +225,7 @@
           </div>
         </div>
         <div v-if="badges.length > 0" class="card flex-card">
-          <h2 class="text-lg text-contrast">{{ formatMessage(messages.profileBadges) }}</h2>
+          <h2 class="text-lg text-contrast">勋章</h2>
           <div class="flex flex-wrap gap-2">
             <div v-for="badge in badges" :key="badge">
               <StaffBadge v-if="badge === 'staff'" class="h-14 w-14" />

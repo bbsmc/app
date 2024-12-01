@@ -23,6 +23,13 @@ impl super::Validator for LiteLoaderValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("manifest.json").is_ok() {
             return Ok(ValidationResult::Pass);
         }

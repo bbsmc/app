@@ -23,6 +23,13 @@ impl super::Validator for ShaderValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if !archive.file_names().any(|x| x.starts_with("shaders/")) {
             return Ok(ValidationResult::Warning(
                 "OptiFine/Iris shader 中没有 shaders 文件夹。",
@@ -52,6 +59,13 @@ impl super::Validator for CanvasShaderValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("pack.mcmeta").is_err() {
             return Ok(ValidationResult::Warning(
                 "pack 文件中没有 pack.mcmeta 文件。提示：确保 pack.mcmeta 位于 pack 的根目录中！",

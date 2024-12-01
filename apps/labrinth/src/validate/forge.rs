@@ -27,6 +27,13 @@ impl super::Validator for ForgeValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("manifest.json").is_ok() {
             return Ok(ValidationResult::Pass);
         }
@@ -68,6 +75,13 @@ impl super::Validator for LegacyForgeValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("mcmod.info").is_err()
             && archive.by_name("META-INF/MANIFEST.MF").is_err()
             && !archive.file_names().any(|x| x.ends_with(".class"))

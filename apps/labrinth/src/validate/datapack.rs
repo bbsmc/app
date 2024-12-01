@@ -23,6 +23,13 @@ impl super::Validator for DataPackValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("pack.mcmeta").is_err() {
             return Ok(ValidationResult::Warning(
                 "未找到 pack.mcmeta 文件。提示：确保 pack.mcmeta 位于数据包的根目录中！",

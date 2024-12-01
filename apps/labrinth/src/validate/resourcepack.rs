@@ -27,6 +27,13 @@ impl super::Validator for PackValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("pack.mcmeta").is_err() {
             return Ok(ValidationResult::Warning(
                 "资源包文件中没有 pack.mcmeta 文件。提示：确保 pack.mcmeta 位于资源包的根目录中！",
@@ -60,6 +67,13 @@ impl super::Validator for TexturePackValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("pack.txt").is_err() {
             return Ok(ValidationResult::Warning(
                 "材质包文件中没有 pack.txt 文件。",

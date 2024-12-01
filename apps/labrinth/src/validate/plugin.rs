@@ -23,6 +23,13 @@ impl super::Validator for PluginYmlValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if !archive
             .file_names()
             .any(|name| name == "plugin.yml" || name == "paper-plugin.yml")
@@ -55,6 +62,13 @@ impl super::Validator for BungeeCordValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if !archive
             .file_names()
             .any(|name| name == "plugin.yml" || name == "bungee.yml")
@@ -87,6 +101,13 @@ impl super::Validator for VelocityValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if archive.by_name("velocity-plugin.json").is_err() {
             return Ok(ValidationResult::Warning(
                 "插件文件中没有 velocity-plugin.json 文件。",
@@ -116,6 +137,13 @@ impl super::Validator for SpongeValidator {
         &self,
         archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     ) -> Result<ValidationResult, ValidationError> {
+        if dotenvy::var("DEV")
+            .ok()
+            .and_then(|x| x.parse::<bool>().ok())
+            .unwrap_or(false)
+        {
+            return Ok(ValidationResult::Pass);
+        }
         if !archive.file_names().any(|name| {
             name == "sponge_plugins.json"
                 || name == "mcmod.info"

@@ -192,15 +192,15 @@ pub async fn views_get(
     Ok(HttpResponse::Ok().json(hm))
 }
 
-/// Get download data for a set of projects or versions
-/// Data is returned as a hashmap of project/version ids to a hashmap of days to downloads
-/// eg:
+/// 获取一组项目或版本的下载数据
+/// 数据以哈希映射的形式返回，项目/版本 ID 映射到每天的下载量的哈希映射。
+/// 例如:
 /// {
 ///     "4N1tEhnO": {
 ///         "20230824": 32
 ///    }
 ///}
-/// Either a list of project_ids or version_ids can be used, but not both. Unauthorized projects/versions will be filtered out.
+/// 可以使用项目 ID 列表或版本 ID 列表，但不能同时使用。未经授权的项目/版本将被过滤掉。
 pub async fn downloads_get(
     req: HttpRequest,
     clickhouse: web::Data<clickhouse::Client>,
@@ -395,18 +395,18 @@ pub async fn revenue_get(
     Ok(HttpResponse::Ok().json(hm))
 }
 
-/// Get country data for a set of projects or versions
-/// Data is returned as a hashmap of project/version ids to a hashmap of coutnry to downloads.
-/// Unknown countries are labeled "".
-/// This is usuable to see significant performing countries per project
-/// eg:
+/// 获取一组项目或版本的国家数据
+/// 数据以哈希映射的形式返回，项目/版本 ID 映射到国家下载量的哈希映射。
+/// 未知国家标记为 ""。
+/// 这可以用来查看每个项目的显著表现国家
+/// 例如:
 /// {
 ///     "4N1tEhnO": {
 ///         "CAN":  22
 ///    }
 ///}
-/// Either a list of project_ids or version_ids can be used, but not both. Unauthorized projects/versions will be filtered out.
-/// For this endpoint, provided dates are a range to aggregate over, not specific days to fetch
+/// 可以使用项目 ID 列表或版本 ID 列表，但不能同时使用。未经授权的项目/版本将被过滤掉。
+/// 对于此端点，提供的日期是要聚合的范围，而不是要获取的特定日期
 pub async fn countries_downloads_get(
     req: HttpRequest,
     clickhouse: web::Data<clickhouse::Client>,
