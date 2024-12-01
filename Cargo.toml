@@ -1,10 +1,7 @@
 [workspace]
 resolver = '2'
 members = [
-  './packages/app-lib',
-  './apps/app-playground',
   './apps/labrinth',
-  './apps/daedalus_client',
   './packages/daedalus',
 ]
 
