@@ -790,7 +790,6 @@ export default defineNuxtComponent({
     let isCreating = false;
     let uploading = "";
     let uploadSpeed = "";
-    let controller = null;
     let isEditing = false;
 
     let version = {};
@@ -929,7 +928,6 @@ export default defineNuxtComponent({
       isCreating: ref(isCreating),
       uploading: ref(uploading),
       uploadSpeed: ref(uploadSpeed),
-      controller: ref(controller),
       isEditing: ref(isEditing),
       version: ref(version),
       primaryFile: ref(primaryFile),
@@ -1318,14 +1316,6 @@ export default defineNuxtComponent({
         method: "DELETE",
       });
 
-      await this.resetProjectVersions();
-      await this.$router.replace(`/${this.project.project_type}/${this.project.id}/versions`);
-      stopLoading();
-    },
-    async cancelUpload() {
-      this.controller.abort();
-
-      startLoading();
       await this.resetProjectVersions();
       await this.$router.replace(`/${this.project.project_type}/${this.project.id}/versions`);
       stopLoading();
