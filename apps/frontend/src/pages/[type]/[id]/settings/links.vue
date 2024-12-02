@@ -75,40 +75,7 @@
           v-model="donationLink.id"
           name="Donation platform selector"
           :options="['bilibili','pd-qq','afdian','site','kook','modrinth','spigotmc','curseforge','other']"
-          :display-name="(x) => {
-  switch (x) {
-     case 'other':
-      return '其他';
-    case 'site':
-      return '发布地址';
-
-    case 'modrinth':
-      return 'Modrinth地址';
-
-    case 'bilibili':
-      return '哔哩哔哩';
-
-    case 'pd-qq':
-      return 'QQ频道';
-
-    case 'oopz':
-      return 'Oopz频道';
-
-    case 'kook':
-      return 'KOOK频道';
-
-    case 'afdian':
-      return '爱发电';
-
-    case 'spigotmc':
-      return '水龙头';
-
-    case 'curseforge':
-      return 'CurseForge地址';
-
-
-  }}"
-
+          :display-name="webDisplayLabel"
           placeholder="选择平台"
           render-up
           class="platform-selector"
@@ -157,6 +124,41 @@ const props = defineProps({
     }
   }
 })
+
+const webDisplayLabel = (x) => {
+  switch (x) {
+    case 'other':
+      return '其他';
+    case 'site':
+      return '发布地址';
+
+    case 'modrinth':
+      return 'Modrinth地址';
+
+    case 'bilibili':
+      return '哔哩哔哩';
+
+    case 'pd-qq':
+      return 'QQ频道';
+
+    case 'oopz':
+      return 'Oopz频道';
+
+    case 'kook':
+      return 'KOOK频道';
+
+    case 'afdian':
+      return '爱发电';
+
+    case 'spigotmc':
+      return '水龙头';
+
+    case 'curseforge':
+      return 'CurseForge地址';
+    default:
+      return x;
+  }
+}
 
 const issuesUrl = ref(props.project.issues_url)
 const sourceUrl = ref(props.project.source_url)

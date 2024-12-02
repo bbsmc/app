@@ -724,6 +724,7 @@
             project.issues_url ||
             project.source_url ||
             project.wiki_url ||
+            project.discord_url ||
             project.donation_urls.length > 0
           "
           class="card flex-card experimental-styles-within"
@@ -774,44 +775,27 @@
               :key="index"
               :href="donation.url"
               :target="$external()"
-              rel="noopener nofollow ugc"`
+              rel="noopener nofollow ugc"
             >
-              <BuyMeACoffeeIcon v-if="donation.id === 'bmac'" aria-hidden="true" />
-              <PatreonIcon v-else-if="donation.id === 'patreon'" aria-hidden="true" />
-              <KoFiIcon v-else-if="donation.id === 'ko-fi'" aria-hidden="true" />
-              <PayPalIcon v-else-if="donation.id === 'paypal'" aria-hidden="true" />
+              <AifadianIcon v-if="donation.id === 'afdian'" aria-hidden="true" />
               <BiliBiliIcon v-else-if="donation.id === 'bilibili'" aria-hidden="true" />
+              <WebIcon2 v-else-if="donation.id === 'other'" aria-hidden="true" />
+              <WebIcon2 v-else-if="donation.id === 'site'" aria-hidden="true" />
+              <ModrinthIcon2 v-else-if="donation.id === 'modrinth'" aria-hidden="true" />
               <QQPDIcon v-else-if="donation.id === 'pd-qq'" aria-hidden="true" />
               <OopzIcon v-else-if="donation.id === 'oopz'" aria-hidden="true" />
-              <DiscordIcon v-else-if="donation.id === 'discord'" aria-hidden="true" />
-              <CurseforgeIcon v-else-if="donation.id === 'curseforge'" aria-hidden="true" />
-              <ModrinthIcon2 v-else-if="donation.id === 'modrinth'" aria-hidden="true" />
-              <SSOGitHubIcon v-else-if="donation.id === 'github'" aria-hidden="true" />
               <KookIcon v-else-if="donation.id === 'kook'" aria-hidden="true" />
               <SpigotMcIcon v-else-if="donation.id === 'spigotmc'" aria-hidden="true" />
-              <WebIcon2 v-else-if="donation.id === 'site'" aria-hidden="true" />
-              <AifadianIcon v-else-if="donation.id === 'afdian'" aria-hidden="true" />
+              <CurseforgeIcon v-else-if="donation.id === 'curseforge'" aria-hidden="true" />
+              <KoFiIcon v-else-if="donation.id === 'ko-fi'" aria-hidden="true" />
+              <PayPalIcon v-else-if="donation.id === 'paypal'" aria-hidden="true" />
               <OpenCollectiveIcon
                 v-else-if="donation.id === 'open-collective'"
-                aria-hidden="true"
-              />
+                aria-hidden="true" />
               <HeartIcon v-else-if="donation.id === 'github'" />
               <CurrencyIcon v-else />
-              <span v-if="donation.id === 'afdian'">爱发电</span>
-              <span v-else-if="donation.id === 'pd-qq'">QQ频道</span>
-              <span v-else-if="donation.id === 'bilibili'">哔哩哔哩</span>
-              <span v-else-if="donation.id === 'kook'">KOOK</span>
-              <span v-else-if="donation.id === 'oopz'">oopz</span>
-              <span v-else-if="donation.id === 'discord'">Discord</span>
-              <span v-else-if="donation.id === 'site'">发布地址</span>
-              <span v-else-if="donation.id === 'modrinth'">Modrinth</span>
-              <span v-else-if="donation.id === 'github'">Github</span>
-              <span v-else-if="donation.id === 'spigotmc'">SpigotMc</span>
-              <span v-else-if="donation.id === 'curseforge'">CurseForge</span>
-              <span v-else-if="donation.id === 'github'">{{
-                formatMessage(linksMessages.donateGithub)
-              }}</span>
-              <span v-else>{{ formatMessage(linksMessages.donateGeneric) }}</span>
+
+              <span>{{ webDisplayLabel(donation.id) }}</span>
               <ExternalIcon aria-hidden="true" class="external-icon" />
             </a>
           </div>
@@ -997,6 +981,12 @@ import {
   DiscordIcon,
   CalendarIcon,
   KoFiIcon,
+  BuyMeACoffeeIcon,
+  IssuesIcon,
+  UserIcon,
+  PayPalIcon,
+  ServerIcon,
+  PatreonIcon,
   BiliBiliIcon,
   SpigotMcIcon,
   CurseforgeIcon,
@@ -1007,12 +997,6 @@ import {
   WebIcon2,
   OopzIcon,
   KookIcon,
-  BuyMeACoffeeIcon,
-  IssuesIcon,
-  UserIcon,
-  PayPalIcon,
-  ServerIcon,
-  PatreonIcon,
   CrownIcon,
   OpenCollectiveIcon,
   CodeIcon,
@@ -1140,7 +1124,7 @@ const linksMessages = defineMessages({
   },
   donateGeneric: {
     id: "project.about.links.donate.generic",
-    defaultMessage: "其他",
+    defaultMessage: "捐赠",
   },
   donateGitHub: {
     id: "project.about.links.donate.github",
@@ -1207,6 +1191,40 @@ const detailsMessages = defineMessages({
 const modalLicense = ref(null);
 const licenseText = ref("");
 
+const webDisplayLabel = (x) => {
+  switch (x) {
+    case 'other':
+      return '其他';
+    case 'site':
+      return '发布地址';
+
+    case 'modrinth':
+      return 'Modrinth地址';
+
+    case 'bilibili':
+      return '哔哩哔哩';
+
+    case 'pd-qq':
+      return 'QQ频道';
+
+    case 'oopz':
+      return 'Oopz频道';
+
+    case 'kook':
+      return 'KOOK频道';
+
+    case 'afdian':
+      return '爱发电';
+
+    case 'spigotmc':
+      return '水龙头';
+
+    case 'curseforge':
+      return 'CurseForge地址';
+    default:
+      return x;
+  }
+}
 
 const fromNow = (date) => {
   const currentDate = useCurrentDate();

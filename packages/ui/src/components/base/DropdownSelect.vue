@@ -108,7 +108,7 @@ const dropdown = ref(null)
 const optionElements = ref(null)
 
 const selectedOption = computed(() => {
-  return props.displayName(selectedValue.value) || props.placeholder || 'Select an option'
+  return props.displayName(selectedValue.value) || props.placeholder || '请选择一个'
 })
 
 const radioValue = computed({
