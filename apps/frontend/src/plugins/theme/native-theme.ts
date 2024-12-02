@@ -5,7 +5,7 @@ function useNativeThemeServer() {
 
   switch (useRequestHeader("Sec-CH-Prefers-Color-Scheme")) {
     case "light":
-      clientHint = "light";
+      clientHint = "dark";
       break;
     case "dark":
       clientHint = "dark";
@@ -29,7 +29,8 @@ function useNativeThemeClient() {
 
   onScopeDispose(() => lightPreference.removeEventListener("change", onPreferenceChange));
 
-  return computed<SystemTheme>(() => (isLight.value ? "light" : "dark"));
+  return computed<SystemTheme>(() => "dark");
+  // return computed<SystemTheme>(() => (isLight.value ? "light" : "dark"));
 }
 
 export function useNativeTheme() {
