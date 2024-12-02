@@ -11,7 +11,7 @@
         <span>
           <strong>请手动输入 </strong>
           <em class="confirmation-text">{{ confirmationText }} </em>
-          <strong>  到下方输入框:</strong>
+          <strong> 到下方输入框:</strong>
         </span>
       </label>
       <div class="confirmation-input">
@@ -32,7 +32,7 @@
           </button>
         </ButtonStyled>
         <ButtonStyled>
-          <button @click="modal.hide()">
+          <button @click="modal.value.hide()">
             <XIcon />
             取消
           </button>
@@ -79,7 +79,8 @@ const props = defineProps({
   onHide: {
     type: Function,
     default() {
-      return () => {}
+      return () => {
+      }
     },
   },
 })
@@ -91,7 +92,9 @@ const action_disabled = ref(props.hasToType)
 const confirmation_typed = ref('')
 
 function proceed() {
-  modal.value.hide()
+  if (modal.value) {
+    modal.value.hide()
+  }
   emit('proceed')
 }
 
@@ -103,7 +106,9 @@ function type() {
 }
 
 function show() {
-  modal.value.show()
+  if (modal.value) {
+    modal.value.show()
+  }
 }
 
 defineExpose({ show })

@@ -28,14 +28,14 @@ html {
   --text-24: 1.5rem;
   --text-32: 2rem;
 
-  --weight-normal: 500; // used for general body text
-  --weight-bold: 600; // used for text needing extra emphasis
-  --weight-extrabold: 800; // used for main titles and headings
+  --weight-normal: 500; // 用于一般正文
+  --weight-bold: 600; // 用于需要额外强调的文本
+  --weight-extrabold: 800; // 用于主标题和标题
 
-  --icon-14: 0.875rem; // used for icons inside a small container alongside a label
-  --icon-16: 1rem; // used for normal-sized icons alongside a label
-  --icon-20: 1.25rem; // used for icons in normal sized buttons
-  --icon-24: 1.5rem; // used for icons that are used as a primary label or in large buttons
+  --icon-14: 0.875rem; // 用于小容器内带标签的图标
+  --icon-16: 1rem; // 用于带标签的正常大小图标
+  --icon-20: 1.25rem; // 用于正常大小按钮中的图标
+  --icon-24: 1.5rem; // 用于作为主要标签或大按钮中的图标
   --icon-32: 2rem;
 }
 
@@ -51,7 +51,7 @@ html {
   --color-text-inverted: initial !important;
   --color-bg-inverted: initial !important;
 
-  --color-brand: var(--color-green) !important;
+  --color-brand: var(--color-gray) !important; //定义品牌的主要颜色, 用于强调
   --color-brand-inverted: initial !important;
 
   --tab-underline-hovered: initial !important;
@@ -140,10 +140,10 @@ html {
   --color-text-inverted: var(--color-bg);
   --color-bg-inverted: var(--color-text);
 
-  --color-brand: var(--color-green);
-  --color-brand-highlight: rgba(0, 175, 92, 0.25);
-  --color-brand-shadow: rgba(0, 175, 92, 0.7);
-  --color-brand-inverted: #ffffff;
+  --color-brand: var(--color-orange); //定义品牌的主要颜色, 用于强调
+  --color-brand-highlight: rgba(0, 175, 92, 0.25); //定义品牌颜色的高亮状态，通常用于悬停或聚焦时的效果。
+  --color-brand-shadow: rgba(0, 175, 92, 0.7); //定义品牌颜色的阴影状态，通常用于按下或激活时的效果。
+  --color-brand-inverted: #ffffff; //定义品牌颜色的反转状态，通常用于深色背景上的文本或图标。
 
   --tab-underline-hovered: #e2e8f0;
 
@@ -209,10 +209,10 @@ html {
 
   --shadow-raised-lg: 0px 2px 4px hsla(221, 39%, 11%, 0.2);
   --shadow-raised: 0.3px 0.5px 0.6px hsl(var(--shadow-color) / 0.15),
-    1px 2px 2.2px -1.7px hsl(var(--shadow-color) / 0.12),
-    4.4px 8.8px 9.7px -3.4px hsl(var(--shadow-color) / 0.09);
+  1px 2px 2.2px -1.7px hsl(var(--shadow-color) / 0.12),
+  4.4px 8.8px 9.7px -3.4px hsl(var(--shadow-color) / 0.09);
   --shadow-floating: hsla(0, 0%, 0%, 0) 0px 0px 0px 0px, hsla(0, 0%, 0%, 0) 0px 0px 0px 0px,
-    hsla(0, 0%, 0%, 0.1) 0px 4px 6px -1px, hsla(0, 0%, 0%, 0.1) 0px 2px 4px -1px;
+  hsla(0, 0%, 0%, 0.1) 0px 4px 6px -1px, hsla(0, 0%, 0%, 0.1) 0px 2px 4px -1px;
 
   --shadow-card: rgba(50, 50, 100, 0.1) 0px 2px 4px 0px;
 
@@ -226,25 +226,25 @@ html {
   --landing-transition-gradient-start: rgba(255, 255, 255, 0);
   --landing-transition-gradient-end: #ffffff;
   --landing-hover-card-gradient: radial-gradient(
-    50% 50% at 50% 50%,
-    #fff 0%,
-    rgba(204, 204, 204, 0.77) 100%
+                  50% 50% at 50% 50%,
+                  #fff 0%,
+                  rgba(204, 204, 204, 0.77) 100%
   );
   --landing-border-gradient: linear-gradient(
-    to bottom right,
-    rgba(129, 137, 175, 0.75) 0%,
-    rgba(66, 71, 97, 0.34) 100%
+                  to bottom right,
+                  rgba(129, 137, 175, 0.75) 0%,
+                  rgba(66, 71, 97, 0.34) 100%
   );
   --landing-border-color: rgba(129, 137, 175, 0.55);
   --landing-creator-gradient: linear-gradient(180deg, #f8f8f8 0%, #f8f8f8 63.19%);
 
   --landing-blob-gradient: radial-gradient(
-    50% 50% at 50% 50%,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.2695) 100%
+                  50% 50% at 50% 50%,
+                  rgba(255, 255, 255, 0.35) 0%,
+                  rgba(255, 255, 255, 0.2695) 100%
   );
   --landing-blob-shadow: 2px 2px 12px rgba(0, 0, 0, 0.16),
-    inset 2px 2px 64px rgba(255, 255, 255, 0.45);
+  inset 2px 2px 64px rgba(255, 255, 255, 0.45);
 
   --landing-card-bg: rgba(255, 255, 255, 0.8);
   --landing-card-shadow: 2px 2px 12px rgba(0, 0, 0, 0.16);
@@ -281,9 +281,10 @@ html {
   --color-blue-bg: rgba(79, 156, 255, 0.2);
   --color-purple-bg: rgba(199, 138, 255, 0.2);
 
-  --color-brand: var(--color-green);
-  --color-brand-highlight: rgba(27, 217, 106, 0.25);
-  --color-brand-shadow: rgba(27, 217, 106, 0.7);
+  --color-brand: var(--color-gray);
+  --color-brand-highlight: rgba(255, 255, 255, 0.25);
+  --color-brand-highlight: rgba(255, 255, 255, 0.25);
+  --color-brand-shadow: rgba(255, 255, 255, 0.7); //例如输入框 点击一下以后的颜色
   --color-brand-inverted: #000;
 
   --tab-underline-hovered: #414146;
@@ -342,7 +343,7 @@ html {
   --shadow-raised-lg: 0px 2px 4px hsla(221, 39%, 11%, 0.2);
   --shadow-raised: 0px -2px 4px hsla(221, 39%, 11%, 0.1);
   --shadow-floating: hsla(0, 0%, 0%, 0) 0px 0px 0px 0px, hsla(0, 0%, 0%, 0) 0px 0px 0px 0px,
-    hsla(0, 0%, 0%, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -1px;
+  hsla(0, 0%, 0%, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -1px;
 
   --shadow-card: rgba(0, 0, 0, 0.25) 0px 2px 4px 0px;
 
@@ -354,7 +355,7 @@ html {
 
   --landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing.webp");
   --landing-maze-gradient-bg: linear-gradient(0deg, #31375f 0%, rgba(8, 14, 55, 0) 100%),
-    url("https://cdn.bbsmc.net/raw/landing-new/landing-lower.webp");
+  url("https://cdn.bbsmc.net/raw/landing-new/landing-lower.webp");
   --landing-maze-outer-bg: linear-gradient(180deg, #06060d 0%, #000000 100%);
 
   //--landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing.webp");
@@ -368,31 +369,32 @@ html {
   --landing-transition-gradient-start: rgba(14, 16, 32, 0);
   --landing-transition-gradient-end: #060a1c;
   --landing-hover-card-gradient: radial-gradient(
-    50% 50% at 50% 50%,
-    #2c304f 0%,
-    rgba(32, 35, 50, 0.77) 100%
+                  50% 50% at 50% 50%,
+                  #2c304f 0%,
+                  rgba(32, 35, 50, 0.77) 100%
   );
   --landing-border-gradient: linear-gradient(
-    to bottom right,
-    rgba(168, 177, 221, 0.75) 0%,
-    rgba(168, 177, 221, 0.18) 100%
+                  to bottom right,
+                  rgba(168, 177, 221, 0.75) 0%,
+                  rgba(168, 177, 221, 0.18) 100%
   );
   --landing-border-color: rgba(168, 177, 221, 0.55);
   --landing-creator-gradient: linear-gradient(180deg, #000000 0%, #0e101d 100%);
 
   --landing-blob-gradient: radial-gradient(
-    50% 50% at 50% 50%,
-    rgba(44, 48, 79, 0.35) 0%,
-    rgba(32, 35, 50, 0.2695) 100%
+                  50% 50% at 50% 50%,
+                  rgba(44, 48, 79, 0.35) 0%,
+                  rgba(32, 35, 50, 0.2695) 100%
   );
   --landing-blob-shadow: 2px 2px 12px rgba(0, 0, 0, 0.16), inset 2px 2px 64px rgba(57, 61, 94, 0.45);
 
   --landing-card-bg: rgba(59, 63, 85, 0.15);
   --landing-card-shadow: 2px 2px 12px rgba(0, 0, 0, 0.16);
 
+  --landing-white-label: #ffffff;
   --landing-blue-label: #10c0e7;
   --landing-blue-label-bg: rgba(0, 177, 216, 0.15);
-  --landing-green-label: #00d845;
+  --landing-green-label: rgba(76, 255, 0, 0.25);
   --landing-green-label-bg: rgba(0, 216, 69, 0.15);
 
   --landing-raw-bg: #000;
@@ -434,6 +436,7 @@ html {
   --color-orange: rgb(232, 141, 13);
   --color-green: rgb(60, 219, 54);
   --color-blue: rgb(9, 159, 239);
+  --color-white: rgb(255, 255, 255);
   --color-purple: rgb(139, 129, 230);
   --color-gray: #718096;
 
@@ -450,7 +453,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   --font-standard: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Oxygen, Ubuntu, Roboto,
-    Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
   --mono-font: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   font-family: var(--font-standard);
   font-size: 16px;
@@ -560,17 +563,15 @@ textarea {
   font-weight: var(--font-weight-medium);
   border: none;
   outline: 2px solid transparent;
-  box-shadow:
-    var(--shadow-inset-sm),
-    0 0 0 0 transparent;
+  box-shadow: var(--shadow-inset-sm),
+  0 0 0 0 transparent;
   transition: box-shadow 0.1s ease-in-out;
   min-height: 40px;
 
   &:focus,
   &:focus-visible {
-    box-shadow:
-      inset 0 0 0 transparent,
-      0 0 0 0.25rem var(--color-brand-shadow);
+    box-shadow: inset 0 0 0 transparent,
+    0 0 0 0.25rem var(--color-brand-shadow);
     color: var(--color-button-text-active);
   }
 
@@ -611,7 +612,6 @@ kbd {
 @import "~/assets/styles/layout.scss";
 @import "~/assets/styles/utils.scss";
 @import "~/assets/styles/components.scss";
-
 button:focus-visible,
 a:focus-visible,
 [tabindex="0"]:focus-visible {
@@ -629,11 +629,10 @@ input {
 }
 
 .button-animation {
-  transition:
-    opacity 0.5s ease-in-out,
-    filter 0.2s ease-in-out,
-    transform 0.05s ease-in-out,
-    outline-width 0.2s ease-in-out;
+  transition: opacity 0.5s ease-in-out,
+  filter 0.2s ease-in-out,
+  transform 0.05s ease-in-out,
+  outline-width 0.2s ease-in-out;
 }
 
 .button-transparent {

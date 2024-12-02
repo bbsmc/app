@@ -9,6 +9,12 @@
       proceed-label="删除"
       @proceed="deleteVersion()"
     />
+    <UploadModal
+      ref="uploading_modal"
+      title="文件上传中"
+      :description="parseFloat(uploading).toFixed(0) === '100' ? '文件处理中,请稍等' :`当前进度 ${parseFloat(uploading).toFixed(2)}%`"
+      :speed="parseFloat(uploading).toFixed(0) === '100' ? '' :`上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`"
+    />
     <Modal v-if="auth.user && currentMember" ref="modal_package_mod" header="Package data pack">
       <div class="modal-package-mod universal-labels">
         <div class="markdown-body">
@@ -94,7 +100,7 @@
       </div>
       <div v-if="isCreating" class="input-group">
         <ButtonStyled color="brand">
-          <button :disabled="shouldPreventActions" @click="createVersion">
+          <button :disabled="shouldPreventActions" @click="createVersion" >
             <PlusIcon aria-hidden="true" />
             创建
           </button>
@@ -679,9 +685,12 @@ import BoxIcon from "~/assets/images/utils/box.svg?component";
 import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
+import { useBaseFetchFile } from '~/composables/fetch.js'
+import UploadModal from '@modrinth/ui/src/components/modal/UploadModal.vue'
 
 export default defineNuxtComponent({
   components: {
+    UploadModal,
     MarkdownEditor,
     Modal,
     FileInput,
@@ -779,6 +788,9 @@ export default defineNuxtComponent({
     let oldFileTypes = [];
 
     let isCreating = false;
+    let uploading = "";
+    let uploadSpeed = "";
+    let controller = null;
     let isEditing = false;
 
     let version = {};
@@ -915,6 +927,9 @@ export default defineNuxtComponent({
       fileTypes: ref(fileTypes),
       oldFileTypes: ref(oldFileTypes),
       isCreating: ref(isCreating),
+      uploading: ref(uploading),
+      uploadSpeed: ref(uploadSpeed),
+      controller: ref(controller),
       isEditing: ref(isEditing),
       version: ref(version),
       primaryFile: ref(primaryFile),
@@ -1163,6 +1178,7 @@ export default defineNuxtComponent({
     reportVersion,
     async createVersion() {
       this.shouldPreventActions = true;
+
       startLoading();
       if (this.fieldErrors) {
         this.showKnownErrors = true;
@@ -1262,15 +1278,31 @@ export default defineNuxtComponent({
           console.log(manifest);
         }
       }
+      this.$refs.uploading_modal.show()
 
-      const data = await useBaseFetch("version", {
+      const data = await useBaseFetchFile("version", {
         method: "POST",
         body: formData,
         headers: {
           "Content-Disposition": formData,
         },
-      });
 
+        onUploadProgress: (progress,uploadSpeed) => {
+
+          this.uploading = progress;
+          this.uploadSpeed = uploadSpeed;
+        },
+
+        onError: (error) => {
+          this.$refs.uploading_modal.proceed()
+          this.$notify({
+            group: "main",
+            title: `${error.error}`,
+            text: `${error.description}`,
+            type: "error",
+          });
+        }
+      });
       await this.resetProjectVersions();
 
       await this.$router.push(
@@ -1286,6 +1318,14 @@ export default defineNuxtComponent({
         method: "DELETE",
       });
 
+      await this.resetProjectVersions();
+      await this.$router.replace(`/${this.project.project_type}/${this.project.id}/versions`);
+      stopLoading();
+    },
+    async cancelUpload() {
+      this.controller.abort();
+
+      startLoading();
       await this.resetProjectVersions();
       await this.$router.replace(`/${this.project.project_type}/${this.project.id}/versions`);
       stopLoading();

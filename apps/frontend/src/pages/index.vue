@@ -60,11 +60,11 @@
       </div>
       <div class="projects-transition" />
       <div class="users-section">
-        <div class="section-header">
+        <!-- <div class="section-header">
           <div class="section-label green">对于玩家</div>
           <h2 class="section-tagline">国内外热门资源依据资源所设的的许可证搬运</h2>
           <p class="section-description">快速下载最新的热门模组、光影、整合包等玩家所需要的资源</p>
-        </div>
+        </div> -->
         <div class="feature-blob">
           <div class="blob-text">
             <h3>快速轻松地找到所需内容</h3>
