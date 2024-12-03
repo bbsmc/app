@@ -140,7 +140,7 @@ html {
   --color-text-inverted: var(--color-bg);
   --color-bg-inverted: var(--color-text);
 
-  --color-brand: var(--color-orange); //定义品牌的主要颜色, 用于强调
+  --color-brand: var(--color-green); //定义品牌的主要颜色, 用于强调
   --color-brand-highlight: rgba(0, 175, 92, 0.25); //定义品牌颜色的高亮状态，通常用于悬停或聚焦时的效果。
   --color-brand-shadow: rgba(0, 175, 92, 0.7); //定义品牌颜色的阴影状态，通常用于按下或激活时的效果。
   --color-brand-inverted: #ffffff; //定义品牌颜色的反转状态，通常用于深色背景上的文本或图标。
@@ -282,7 +282,6 @@ html {
   --color-purple-bg: rgba(199, 138, 255, 0.2);
 
   --color-brand: var(--color-gray);
-  --color-brand-highlight: rgba(255, 255, 255, 0.25);
   --color-brand-highlight: rgba(255, 255, 255, 0.25);
   --color-brand-shadow: rgba(255, 255, 255, 0.7); //例如输入框 点击一下以后的颜色
   --color-brand-inverted: #000;

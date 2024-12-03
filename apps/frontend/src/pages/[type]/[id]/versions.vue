@@ -5,7 +5,7 @@
       class="card flex items-center gap-4"
     >
       <FileInput
-        :max-size="524288000"
+        :max-size="1073741824"
         :accept="acceptFileFromProjectType(project.project_type)"
         prompt="上传版本"
         class="btn btn-primary"

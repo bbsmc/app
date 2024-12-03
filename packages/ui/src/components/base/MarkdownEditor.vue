@@ -287,7 +287,7 @@ import {
   PlusIcon,
   XIcon,
   UploadIcon,
-  InfoIcon,
+
 } from '@modrinth/assets'
 import { markdownCommands, modrinthMarkdownEditorKeymap } from '@modrinth/utils/codemirror'
 import { renderHighlightedString } from '@modrinth/utils/highlight'

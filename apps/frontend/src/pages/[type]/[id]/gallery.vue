@@ -15,7 +15,7 @@
               class="iconified-button raised-button"
               prompt="替换图片"
               :accept="acceptFileTypes"
-              :max-size="524288000"
+              :max-size="104857600"
               should-always-reset
               aria-label="替换图片"
               @change="
@@ -196,7 +196,7 @@
     </div>
     <div v-if="currentMember" class="card header-buttons">
       <FileInput
-        :max-size="524288000"
+        :max-size="104857600"
         :accept="acceptFileTypes"
         prompt="上传渲染图"
         aria-label="上传渲染图"

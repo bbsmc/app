@@ -14,13 +14,13 @@
             >
               {{ projectType.display }} <br />
             </strong>
-            <strong class="main-header-strong">mods</strong>
+<!--            <strong class="main-header-strong">mods</strong>-->
           </span>
         </div>
       </h1>
       <h2 style="margin-top: 50px">通过我们的社区发布、托管Minecraft资源，提供快速便捷的附属资源分发下载资源站点</h2>
       <div class="button-group">
-        <ButtonStyled color="brand" size="large">
+        <ButtonStyled color="green" size="large">
           <nuxt-link to="/mods"> <CompassIcon aria-hidden="true" /> 探索模组 </nuxt-link>
         </ButtonStyled>
         <ButtonStyled size="large" type="outlined">

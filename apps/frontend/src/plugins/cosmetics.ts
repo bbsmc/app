@@ -45,7 +45,7 @@ export default defineNuxtPlugin({
           mod: "list",
           plugin: "list",
           resourcepack: "gallery",
-          modpack: "list",
+          modpack: "gallery",
           shader: "gallery",
           datapack: "list",
           user: "list",

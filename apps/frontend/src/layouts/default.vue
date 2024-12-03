@@ -286,7 +286,7 @@
           <template #moderation> <ModerationIcon aria-hidden="true" /> 管理 </template>
           <template #sign-out> <LogOutIcon aria-hidden="true" /> 登出 </template>
         </OverflowMenu>
-        <ButtonStyled v-else color="brand">
+        <ButtonStyled v-else color="green">
           <nuxt-link to="/auth/sign-in">
             <LogInIcon aria-hidden="true" />
             登录

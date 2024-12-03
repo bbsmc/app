@@ -143,8 +143,9 @@
         </ButtonStyled>
       </div>
       <div v-else class="input-group">
-        <ButtonStyled v-if="primaryFile" color="brand">
+        <ButtonStyled v-if="primaryFile" color="green">
           <a
+
             v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'"
             :href="primaryFile.url"
             @click="emit('onDownload')"
@@ -352,7 +353,7 @@
           prompt="替换"
           aria-label="替换"
           :accept="acceptFileFromProjectType(project.project_type)"
-          :max-size="524288000"
+          :max-size="1073741824"
           should-always-reset
           @change="(x) => (replaceFile = x[0])"
         >
@@ -476,7 +477,7 @@
             multiple
             long-style
             :accept="acceptFileFromProjectType(project.project_type)"
-            :max-size="524288000"
+            :max-size="1073741824"
             @change="
               (x) =>
                 x.forEach((y) => {

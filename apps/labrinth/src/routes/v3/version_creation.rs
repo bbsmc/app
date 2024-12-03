@@ -828,8 +828,8 @@ pub async fn upload_file(
         })?;
 
     let data = read_from_field(
-        field, 500 * (1 << 20),
-        "项目文件超出了 500MB 的上限。请联系版主或管理员以请求上传更大文件的权限。"
+        field, 1024 * (1 << 20),
+        "项目文件超出了 1GB 的上限。请联系版主或管理员以请求上传更大文件的权限。"
     ).await?;
 
     let hash = sha1::Sha1::from(&data).hexdigest();

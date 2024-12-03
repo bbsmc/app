@@ -462,7 +462,8 @@
             <div class="hidden sm:contents">
               <ButtonStyled
                 size="large"
-                :color="route.name === 'type-id-version-version' ? `standard` : `brand`"
+                color="green"
+                :color="route.name === 'type-id-version-version' ? `green` : `brand`"
               >
                 <button @click="(event) => downloadModal.show(event)">
                   <DownloadIcon aria-hidden="true" />
@@ -978,20 +979,16 @@ import {
   BookTextIcon,
   MonitorSmartphoneIcon,
   WikiIcon,
-  DiscordIcon,
   CalendarIcon,
   KoFiIcon,
-  BuyMeACoffeeIcon,
   IssuesIcon,
   UserIcon,
   PayPalIcon,
   ServerIcon,
-  PatreonIcon,
   BiliBiliIcon,
   SpigotMcIcon,
   CurseforgeIcon,
   ModrinthIcon2,
-  SSOGitHubIcon,
   AifadianIcon,
   QQPDIcon,
   WebIcon2,
