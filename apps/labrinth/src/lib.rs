@@ -21,7 +21,6 @@ use util::cors::default_cors;
 use crate::queue::moderation::AutomatedModerationQueue;
 use crate::util::ratelimit::KeyedRateLimiter;
 use crate::{
-    queue::payouts::process_payout,
     search::indexing::index_projects,
     util::env::{parse_strings_from_var, parse_var},
 };

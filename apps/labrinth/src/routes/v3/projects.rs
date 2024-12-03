@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ptr::null;
 use std::sync::Arc;
 
 use crate::auth::checks::{filter_visible_versions, is_visible_project};
@@ -31,7 +30,6 @@ use crate::util::img::{delete_old_images, upload_image_optimized};
 use crate::util::routes::read_from_payload;
 use crate::util::validate::validation_errors_to_string;
 use actix_web::{web, HttpRequest, HttpResponse};
-use bytes::BytesMut;
 use chrono::Utc;
 use futures::TryStreamExt;
 use itertools::Itertools;

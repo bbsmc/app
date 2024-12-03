@@ -174,15 +174,15 @@ pub async fn validate_file(
     .await
 }
 
-async fn validate_curseforge(data: bytes::Bytes) -> Result<ValidationResult, ValidationError> {
-    let reader = Cursor::new(data);
-    let mut zip = ZipArchive::new(reader)?;
-    if zip.by_name("manifest.json").is_ok() {
-        return Ok(ValidationResult::Pass);
-    }
-    Ok(ValidationResult::Pass)
-
-}
+// async fn validate_curseforge(data: bytes::Bytes) -> Result<ValidationResult, ValidationError> {
+//     let reader = Cursor::new(data);
+//     let mut zip = ZipArchive::new(reader)?;
+//     if zip.by_name("manifest.json").is_ok() {
+//         return Ok(ValidationResult::Pass);
+//     }
+//     Ok(ValidationResult::Pass)
+//
+// }
 
 async fn validate_minecraft_file(
     data: bytes::Bytes,
