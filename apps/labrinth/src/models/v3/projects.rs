@@ -23,6 +23,12 @@ pub struct ProjectId(pub u64);
 #[serde(into = "Base62Id")]
 pub struct VersionId(pub u64);
 
+
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Debug)]
+#[serde(from = "Base62Id")]
+#[serde(into = "Base62Id")]
+pub struct WikiId(pub u64);
+
 /// A project returned from the API
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Project {
@@ -434,15 +440,15 @@ impl From<LinkUrl> for Link {
     }
 }
 
-/// A status decides the visibility of a project in search, URLs, and the whole site itself.
-/// Approved - Project is displayed on search, and accessible by URL
-/// Rejected - Project is not displayed on search, and not accessible by URL (Temporary state, project can reapply)
-/// Draft - Project is not displayed on search, and not accessible by URL
-/// Unlisted - Project is not displayed on search, but accessible by URL
-/// Withheld - Same as unlisted, but set by a moderator. Cannot be switched to another type without moderator approval
-/// Processing - Project is not displayed on search, and not accessible by URL (Temporary state, project under review)
-/// Scheduled - Project is scheduled to be released in the future
-/// Private - Project is approved, but is not viewable to the public
+/// 状态决定了项目在搜索、URL和整个网站中的可见性。
+/// Approved - 项目显示在搜索中，并且可以通过URL访问
+/// Rejected - 项目不显示在搜索中，并且无法通过URL访问（临时状态，项目可以重新申请）
+/// Draft - 项目不显示在搜索中，并且无法通过URL访问
+/// Unlisted - 项目不显示在搜索中，但可以通过URL访问
+/// Withheld - 与Unlisted相同，但由管理员设置。未经管理员批准无法切换到其他类型
+/// Processing - 项目不显示在搜索中，并且无法通过URL访问（临时状态，项目正在审核中）
+/// Scheduled - 项目计划在未来发布
+/// Private - 项目已批准，但公众无法查看
 #[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectStatus {

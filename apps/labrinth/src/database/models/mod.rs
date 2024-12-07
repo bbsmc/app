@@ -24,6 +24,9 @@ pub mod thread_item;
 pub mod user_item;
 pub mod user_subscription_item;
 pub mod version_item;
+pub mod wiki_item;
+
+pub mod wiki_cache_item;
 
 pub use collection_item::Collection;
 pub use ids::*;
@@ -36,6 +39,8 @@ pub use team_item::TeamMember;
 pub use thread_item::{Thread, ThreadMessage};
 pub use user_item::User;
 pub use version_item::Version;
+pub use wiki_item::Wiki;
+pub use wiki_cache_item::WikiCache;
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {

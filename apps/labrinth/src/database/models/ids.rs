@@ -88,6 +88,24 @@ generate_ids!(
     "SELECT EXISTS(SELECT 1 FROM versions WHERE id=$1)",
     VersionId
 );
+
+generate_ids!(
+    pub generate_wiki_cache_id,
+    WikiCacheId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM wiki_cache WHERE id=$1)",
+    WikiCacheId
+);
+
+generate_ids!(
+    pub generate_wiki_id,
+    WikiId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM wikis WHERE id=$1)",
+    WikiId
+);
+
+
 generate_ids!(
     pub generate_team_id,
     TeamId,
@@ -323,6 +341,32 @@ pub struct LinkPlatformId(pub i32);
 )]
 #[sqlx(transparent)]
 pub struct VersionId(pub i64);
+
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Type,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+)]
+#[sqlx(transparent)]
+pub struct WikiId(pub i64);
+
+
+
+
+#[derive(
+    Copy, Clone, Debug, Type, Serialize, Deserialize, PartialEq, Eq, Hash,
+)]
+#[sqlx(transparent)]
+pub struct WikiCacheId(pub i64);
+
 #[derive(
     Copy, Clone, Debug, Type, Serialize, Deserialize, PartialEq, Eq, Hash,
 )]
@@ -516,6 +560,19 @@ impl From<VersionId> for ids::VersionId {
         ids::VersionId(id.0 as u64)
     }
 }
+
+impl From<ids::WikiId> for WikiId {
+    fn from(id: ids::WikiId) -> Self {
+        WikiId(id.0 as i64)
+    }
+}
+impl From<WikiId> for ids::WikiId {
+    fn from(id: WikiId) -> Self {
+        ids::WikiId(id.0 as u64)
+    }
+}
+
+
 impl From<ids::CollectionId> for CollectionId {
     fn from(id: ids::CollectionId) -> Self {
         CollectionId(id.0 as i64)

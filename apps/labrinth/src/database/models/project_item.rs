@@ -125,6 +125,7 @@ pub struct ModCategory {
 }
 
 impl ModCategory {
+    //noinspection ALL
     pub async fn insert_many(
         items: Vec<Self>,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -330,6 +331,7 @@ impl Project {
         Ok(())
     }
 
+    //noinspection ALL
     pub async fn remove(
         id: ProjectId,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -518,6 +520,7 @@ impl Project {
         Project::get_many(&ids, exec, redis).await
     }
 
+    //noinspection ALL
     pub async fn get_many<
         'a,
         E,
@@ -572,6 +575,29 @@ impl Project {
                             acc.entry(ProjectId(m.mod_id))
                                 .or_default()
                                 .push((version_id, date_published));
+                            async move { Ok(acc) }
+                        },
+                    )
+                    .await?;
+                let wikis: DashMap<ProjectId, Vec<(WikiId, i32)>> = sqlx::query!(
+                    "
+                    SELECT DISTINCT mod_id, w.id as id, w.sort_order
+                    FROM mods m
+                    INNER JOIN wikis w ON m.id = w.mod_id
+                    WHERE m.id = ANY($1) OR m.slug = ANY($2)
+                    ",
+                    &project_ids_parsed,
+                    &slugs
+                )
+                    .fetch(&mut *exec)
+                    .try_fold(
+                        DashMap::new(),
+                        |acc: DashMap<ProjectId, Vec<(WikiId, i32)>>, m| {
+                            let wiki_id = WikiId(m.id);
+                            let sort_order = m.sort_order;
+                            acc.entry(ProjectId(m.mod_id))
+                                .or_default()
+                                .push((wiki_id, sort_order));
                             async move { Ok(acc) }
                         },
                     )
@@ -787,6 +813,10 @@ impl Project {
                             loader_loader_field_ids,
                         } = loaders_ptypes_games.remove(&project_id).map(|x|x.1).unwrap_or_default();
                         let mut versions = versions.remove(&project_id).map(|x| x.1).unwrap_or_default();
+
+                        let mut wikis = wikis.remove(&project_id).map(|x| x.1).unwrap_or_default();
+
+
                         let mut gallery = mods_gallery.remove(&project_id).map(|x| x.1).unwrap_or_default();
                         let urls = links.remove(&project_id).map(|x| x.1).unwrap_or_default();
                         let version_fields = version_fields.remove(&project_id).map(|x| x.1).unwrap_or_default();
@@ -837,6 +867,10 @@ impl Project {
                                 // Each version is a tuple of (VersionId, DateTime<Utc>)
                                 versions.sort_by(|a, b| a.1.cmp(&b.1));
                                 versions.into_iter().map(|x| x.0).collect()
+                            },
+                            wikis: {
+                                wikis.sort_by(|a, b| a.1.cmp(&b.1));
+                                wikis.into_iter().map(|x| x.0).collect()
                             },
                             gallery_items: {
                                 gallery.sort_by(|a, b| a.ordering.cmp(&b.ordering));
@@ -953,6 +987,7 @@ pub struct QueryProject {
     pub categories: Vec<String>,
     pub additional_categories: Vec<String>,
     pub versions: Vec<VersionId>,
+    pub wikis: Vec<WikiId>,
     pub project_types: Vec<String>,
     pub games: Vec<String>,
     pub urls: Vec<LinkUrl>,

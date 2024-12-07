@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::pin::Pin;
 use std::time::Duration;
 
-const DEFAULT_EXPIRY: i64 = 60 * 60 * 12; // 12 hour
+pub const DEFAULT_EXPIRY: i64 = 60 * 60 * 12; // 12 hour
 const ACTUAL_EXPIRY: i64 = 60 * 30; // 30 minutess
 
 #[derive(Clone)]

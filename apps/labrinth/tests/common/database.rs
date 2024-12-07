@@ -44,13 +44,13 @@ pub struct TemporaryDatabase {
 }
 
 impl TemporaryDatabase {
-    // Creates a temporary database like sqlx::test does (panics)
-    // 1. Logs into the main database
-    // 2. Creates a new randomly generated database
-    // 3. Runs migrations on the new database
-    // 4. (Optionally, by using create_with_dummy) adds dummy data to the database
-    // If a db is created with create_with_dummy, it must be cleaned up with cleanup.
-    // This means that dbs will only 'remain' if a test fails (for examination of the db), and will be cleaned up otherwise.
+// 创建一个临时数据库，类似于 sqlx::test（可能会引发 panic）
+// 1. 登录到主数据库
+// 2. 创建一个新的随机生成的数据库
+// 3. 在新数据库上运行迁移
+// 4. （可选，通过使用 create_with_dummy）向数据库添加虚拟数据
+// 如果使用 create_with_dummy 创建数据库，则必须使用 cleanup 进行清理。
+// 这意味着只有在测试失败时，数据库才会“保留”（以便检查数据库），否则将被清理。
     pub async fn create(max_connections: Option<u32>) -> Self {
         let temp_database_name = generate_random_name("labrinth_tests_db_");
         println!("Creating temporary database: {}", &temp_database_name);
@@ -98,14 +98,14 @@ impl TemporaryDatabase {
         }
     }
 
-    // Creates a template and temporary databse (panics)
-    // 1. Waits to obtain a pg lock on the main database
-    // 2. Creates a new template database called 'TEMPLATE_DATABASE_NAME', if needed
-    // 3. Switches to the template database
-    // 4. Runs migrations on the new database (for most tests, this should not take time)
-    // 5. Creates dummy data on the new db
-    // 6. Creates a temporary database at 'temp_database_name' from the template
-    // 7. Drops lock and all created connections in the function
+// 创建模板和临时数据库（可能会引发 panic）
+// 1. 等待获取主数据库上的 pg 锁
+// 2. 如果需要，创建一个名为 'TEMPLATE_DATABASE_NAME' 的新模板数据库
+// 3. 切换到模板数据库
+// 4. 在新数据库上运行迁移（对于大多数测试，这不应该花费时间）
+// 5. 在新数据库上创建虚拟数据
+// 6. 从模板创建一个名为 'temp_database_name' 的临时数据库
+// 7. 释放锁并删除函数中创建的所有连接
     async fn create_temporary(database_url: &str, temp_database_name: &str) {
         let main_pool = PgPool::connect(database_url)
             .await

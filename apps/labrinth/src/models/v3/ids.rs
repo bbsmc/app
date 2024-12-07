@@ -6,7 +6,7 @@ pub use super::oauth_clients::{OAuthClientId, OAuthRedirectUriId};
 pub use super::organizations::OrganizationId;
 pub use super::pats::PatId;
 pub use super::payouts::PayoutId;
-pub use super::projects::{ProjectId, VersionId};
+pub use super::projects::{ProjectId, VersionId,WikiId};
 pub use super::reports::ReportId;
 pub use super::sessions::SessionId;
 pub use super::teams::TeamId;
@@ -125,6 +125,7 @@ macro_rules! base62_id_impl {
 base62_id_impl!(ProjectId, ProjectId);
 base62_id_impl!(UserId, UserId);
 base62_id_impl!(VersionId, VersionId);
+base62_id_impl!(WikiId, WikiId);
 base62_id_impl!(CollectionId, CollectionId);
 base62_id_impl!(TeamId, TeamId);
 base62_id_impl!(OrganizationId, OrganizationId);

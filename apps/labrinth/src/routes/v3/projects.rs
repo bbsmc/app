@@ -69,6 +69,14 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                         web::get().to(super::versions::version_list),
                     )
                     .route(
+                        "wiki",
+                        web::get().to(super::wikis::wiki_list),
+                    )
+                    .route(
+                        "wiki",
+                        web::put().to(super::wikis::wiki_edit),
+                    )
+                    .route(
                         "version/{slug}",
                         web::get().to(super::versions::version_project_get),
                     )
