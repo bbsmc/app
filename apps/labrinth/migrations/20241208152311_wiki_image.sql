@@ -1,0 +1,1 @@
+ALTER TABLE uploaded_images ADD COLUMN wiki_id bigint NULL REFERENCES wikis;

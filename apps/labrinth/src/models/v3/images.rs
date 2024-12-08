@@ -7,6 +7,7 @@ use super::{
 use crate::database::models::image_item::Image as DBImage;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use crate::models::projects::WikiId;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "Base62Id")]
@@ -39,6 +40,9 @@ impl From<DBImage> for Image {
             ImageContext::ThreadMessage { thread_message_id } => {
                 *thread_message_id = x.thread_message_id.map(|x| x.into());
             }
+            ImageContext::Wiki { wiki_id } => {
+                *wiki_id = x.wiki_id.map(|x| x.into());
+            }
             ImageContext::Report { report_id } => {
                 *report_id = x.report_id.map(|x| x.into());
             }
@@ -67,6 +71,9 @@ pub enum ImageContext {
         // version changelogs
         version_id: Option<VersionId>,
     },
+    Wiki {
+        wiki_id: Option<WikiId>,
+    },
     ThreadMessage {
         thread_message_id: Option<ThreadMessageId>,
     },
@@ -83,6 +90,7 @@ impl ImageContext {
             ImageContext::Version { .. } => "version",
             ImageContext::ThreadMessage { .. } => "thread_message",
             ImageContext::Report { .. } => "report",
+            ImageContext::Wiki { .. } => "wiki",
             ImageContext::Unknown => "unknown",
         }
     }
@@ -93,6 +101,9 @@ impl ImageContext {
             ImageContext::ThreadMessage { thread_message_id } => {
                 thread_message_id.map(|x| x.0)
             }
+            ImageContext::Wiki { wiki_id } => {
+                wiki_id.map(|x| x.0)
+            }
             ImageContext::Report { report_id } => report_id.map(|x| x.0),
             ImageContext::Unknown => None,
         }
@@ -102,6 +113,7 @@ impl ImageContext {
             ImageContext::Project { .. } => Scopes::PROJECT_WRITE,
             ImageContext::Version { .. } => Scopes::VERSION_WRITE,
             ImageContext::ThreadMessage { .. } => Scopes::THREAD_WRITE,
+            ImageContext::Wiki { .. } => Scopes::WIKI_WRITE,
             ImageContext::Report { .. } => Scopes::REPORT_WRITE,
             ImageContext::Unknown => Scopes::NONE,
         }
@@ -116,6 +128,9 @@ impl ImageContext {
             },
             "thread_message" => ImageContext::ThreadMessage {
                 thread_message_id: id.map(ThreadMessageId),
+            },
+            "wiki" => ImageContext::Wiki {
+                wiki_id: id.map(WikiId),
             },
             "report" => ImageContext::Report {
                 report_id: id.map(ReportId),

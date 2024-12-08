@@ -1,13 +1,11 @@
-use super::ids::*;use super::ids::*;use super::ids::*;
+use super::ids::*;
 use crate::database::models::DatabaseError;
-use crate::database::redis::RedisPool;
 use chrono::{DateTime, Utc};
-use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 
 pub const WIKI_CACHE_NAMESPACE: &str = "wikis_cache";
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug)]
 pub struct WikiCache {
     pub id: WikiCacheId,
     pub project_id: ProjectId,
@@ -21,8 +19,7 @@ impl WikiCache {
     pub async fn get_draft<'a, E>(
         project_id: ProjectId,
         user_id: UserId,
-        exec: E,
-        redis: &RedisPool,
+        exec: E
     ) -> Result<Option<WikiCache>, DatabaseError>
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
@@ -74,7 +71,6 @@ impl WikiCache {
 
     pub async fn insert(
         &self,
-        redis: &RedisPool,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> Result<WikiCache, sqlx::Error>
     {
@@ -87,11 +83,6 @@ impl WikiCache {
             self.cache
         ).fetch_one(&mut **transaction).await?;
 
-
-        println!("row:   {:?}",row);
-
-
-
         Ok(WikiCache {
             id: WikiCacheId(row.id),
             project_id: ProjectId(row.mod_id),
@@ -103,27 +94,22 @@ impl WikiCache {
     }
     pub async fn update_cache(
         &self,
-        redis: &RedisPool,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    ) -> Result<(), sqlx::Error>
+    ) -> Result<WikiCache, sqlx::Error>
     {
-        // let mut redis = redis.connect().await?;
-        // let id = format!("{}:{}", self.project_id.0, self.user_id.0);
-        // let _ = redis
-        //     .set(
-        //         WIKI_CACHE_NAMESPACE,
-        //         &id,
-        //         &serde_json::to_string(self)?,
-        //         Option::from(crate::database::redis::DEFAULT_EXPIRY),
-        //     )
-        //     .await?;
-        //
-        sqlx::query!(
-            "UPDATE wiki_cache SET caches = $1,status = $2 WHERE id=$3",
+        let row = sqlx::query!(
+            "UPDATE wiki_cache SET caches = $1,status = $2 WHERE id=$3 RETURNING *",
             self.cache,
             self.status,
-            self.id.0 as i32
-        ).execute(&mut **transaction).await?;
-        Ok(())
+            self.id.0
+        ).fetch_one(&mut **transaction).await?;
+        Ok(WikiCache {
+            id: WikiCacheId(row.id),
+            project_id: ProjectId(row.mod_id),
+            user_id: UserId(row.user_id),
+            created: row.created,
+            status: row.status,
+            cache: row.caches,
+        })
     }
 }

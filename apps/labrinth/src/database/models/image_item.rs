@@ -22,6 +22,7 @@ pub struct Image {
     pub project_id: Option<ProjectId>,
     pub version_id: Option<VersionId>,
     pub thread_message_id: Option<ThreadMessageId>,
+    pub wiki_id: Option<WikiId>,
     pub report_id: Option<ReportId>,
 }
 
@@ -33,10 +34,10 @@ impl Image {
         sqlx::query!(
             "
             INSERT INTO uploaded_images (
-                id, url, raw_url, size, created, owner_id, context, mod_id, version_id, thread_message_id, report_id
+                id, url, raw_url, size, created, owner_id, context, mod_id, version_id, thread_message_id, report_id, wiki_id
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
             );
             ",
             self.id as ImageId,
@@ -50,6 +51,7 @@ impl Image {
             self.version_id.map(|x| x.0),
             self.thread_message_id.map(|x| x.0),
             self.report_id.map(|x| x.0),
+            self.wiki_id.map(|x| x.0),
         )
         .execute(&mut **transaction)
         .await?;
@@ -94,6 +96,7 @@ impl Image {
         let mut version_id = None;
         let mut thread_message_id = None;
         let mut report_id = None;
+        let mut wiki_id = None;
         match context {
             ImageContext::Project {
                 project_id: Some(id),
@@ -115,19 +118,25 @@ impl Image {
             } => {
                 report_id = Some(ReportId::from(id));
             }
+            ImageContext::Wiki {
+                wiki_id: Some(id),
+            } => {
+                wiki_id = Some(WikiId::from(id));
+            }
             _ => {}
         }
 
         use futures::stream::TryStreamExt;
         sqlx::query!(
             "
-            SELECT id, url, raw_url, size, created, owner_id, context, mod_id, version_id, thread_message_id, report_id
+            SELECT id, url, raw_url, size, created, owner_id, context, mod_id, version_id, thread_message_id,wiki_id, report_id
             FROM uploaded_images
             WHERE context = $1
             AND (mod_id = $2 OR ($2 IS NULL AND mod_id IS NULL))
             AND (version_id = $3 OR ($3 IS NULL AND version_id IS NULL))
             AND (thread_message_id = $4 OR ($4 IS NULL AND thread_message_id IS NULL))
             AND (report_id = $5 OR ($5 IS NULL AND report_id IS NULL))
+            AND (wiki_id = $6 OR ($6 IS NULL AND wiki_id IS NULL))
             GROUP BY id
             ",
             context.context_as_str(),
@@ -135,6 +144,7 @@ impl Image {
             version_id.map(|x| x.0),
             thread_message_id.map(|x| x.0),
             report_id.map(|x| x.0),
+            wiki_id.map(|x| x.0),
 
         )
         .fetch(&mut **transaction)
@@ -151,6 +161,7 @@ impl Image {
                 context: row.context,
                 project_id: row.mod_id.map(ProjectId),
                 version_id: row.version_id.map(VersionId),
+                wiki_id: row.wiki_id.map(WikiId),
                 thread_message_id: row.thread_message_id.map(ThreadMessageId),
                 report_id: row.report_id.map(ReportId),
             }
@@ -188,7 +199,7 @@ impl Image {
             |image_ids| async move {
                 let images = sqlx::query!(
                     "
-                    SELECT id, url, raw_url, size, created, owner_id, context, mod_id, version_id, thread_message_id, report_id
+                    SELECT id, url, raw_url, size, created, owner_id, context, mod_id,wiki_id, version_id, thread_message_id, report_id
                     FROM uploaded_images
                     WHERE id = ANY($1)
                     GROUP BY id;
@@ -206,6 +217,7 @@ impl Image {
                             owner_id: UserId(i.owner_id),
                             context: i.context,
                             project_id: i.mod_id.map(ProjectId),
+                            wiki_id: i.mod_id.map(WikiId),
                             version_id: i.version_id.map(VersionId),
                             thread_message_id: i.thread_message_id.map(ThreadMessageId),
                             report_id: i.report_id.map(ReportId),

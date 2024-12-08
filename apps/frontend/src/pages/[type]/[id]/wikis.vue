@@ -1,7 +1,7 @@
 <template>
   <section class="normal-page__content">
     <div
-      v-if="wiki.body"
+      v-if="wiki"
       class="markdown-body card"
       v-html="renderHighlightedString(wiki.body || '')"
     />
@@ -28,6 +28,7 @@ const props = defineProps({
 const title = `${props.project.title} - WIKI`;
 const description = `浏览 ${props.project.title} 个图片的WIKI页面`;
 let wiki = ref(null);
+
 useSeoMeta({
   title,
   description,
@@ -35,11 +36,17 @@ useSeoMeta({
   ogDescription: description,
 });
 
-console.log(props.wikis)
 if (props.wikis.is_editor === true){
   props.wikis.cache.cache.forEach((wiki_) => {
     if (wiki_.featured){
       wiki = wiki_;
+    }
+    if (wiki_.child && wiki_.child.length > 0){
+      wiki_.child.forEach((wiki__) => {
+        if (wiki__.featured){
+          wiki = wiki__;
+        }
+      });
     }
   });
 }else {
@@ -47,9 +54,17 @@ if (props.wikis.is_editor === true){
     if (wiki_.featured){
       wiki = wiki_;
     }
+    if (wiki_.child && wiki_.child.length > 0){
+      wiki_.child.forEach((wiki__) => {
+        if (wiki__.featured){
+          wiki = wiki__;
+        }
+      });
+    }
   });
-
 }
+
+
 
 
 console.log('wikis', props.wikis);

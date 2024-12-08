@@ -1,5 +1,5 @@
 <template>
-  <NewModal ref="modal" :noblur="noblur" danger :on-hide="onHide">
+  <NewModal ref="modal" :noblur="false" :on-hide="onHide">
     <template #title>
       <slot name="title">
         <span class="font-extrabold text-contrast text-lg">{{ title }}</span>
@@ -7,32 +7,15 @@
     </template>
     <div>
       <div class="markdown-body" v-html="renderString(description)" />
-      <label v-if="hasToType" for="confirmation" class="confirmation-label">
-        <span>
-          <strong>请手动输入 </strong>
-          <em class="confirmation-text">{{ confirmationText }} </em>
-          <strong> 到下方输入框:</strong>
-        </span>
-      </label>
-      <div class="confirmation-input">
-        <input
-          v-if="hasToType"
-          id="confirmation"
-          v-model="confirmation_typed"
-          type="text"
-          placeholder="在此处输入..."
-          @input="type"
-        />
-      </div>
       <div class="flex gap-2 mt-6">
-        <ButtonStyled color="red">
+        <ButtonStyled color="blue">
           <button :disabled="action_disabled" @click="proceed">
-            <TrashIcon />
+            <StarIcon />
             {{ proceedLabel }}
           </button>
         </ButtonStyled>
-        <ButtonStyled>
-          <button @click="hide">
+        <ButtonStyled >
+          <button @click="hide" style="margin-left: auto">
             <XIcon />
             取消
           </button>
@@ -45,7 +28,7 @@
 <script setup>
 import { renderString } from '@modrinth/utils'
 import { ref } from 'vue'
-import { TrashIcon, XIcon } from '@modrinth/assets'
+import { StarIcon, XIcon } from '@modrinth/assets'
 import NewModal from './NewModal.vue'
 import ButtonStyled from '../base/ButtonStyled.vue'
 
@@ -72,10 +55,6 @@ const props = defineProps({
     type: String,
     default: 'Proceed',
   },
-  noblur: {
-    type: Boolean,
-    default: false,
-  },
   onHide: {
     type: Function,
     default() {
@@ -89,7 +68,6 @@ const emit = defineEmits(['proceed'])
 const modal = ref(null)
 
 const action_disabled = ref(props.hasToType)
-const confirmation_typed = ref('')
 
 function proceed() {
   if (modal.value) {
@@ -101,13 +79,6 @@ function proceed() {
 function hide() {
   if (modal.value) {
     modal.value.hide()
-  }
-}
-
-function type() {
-  if (props.hasToType) {
-    action_disabled.value =
-      confirmation_typed.value.toLowerCase() !== props.confirmationText.toLowerCase()
   }
 }
 

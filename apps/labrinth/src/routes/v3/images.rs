@@ -4,9 +4,7 @@ use super::threads::is_authorized_thread;
 use crate::auth::checks::{is_team_member_project, is_team_member_version};
 use crate::auth::get_user_from_headers;
 use crate::database;
-use crate::database::models::{
-    project_item, report_item, thread_item, version_item,
-};
+use crate::database::models::{project_item, report_item, thread_item, version_item, wiki_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::ids::{ThreadMessageId, VersionId};
@@ -19,6 +17,7 @@ use crate::util::routes::read_from_payload;
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use crate::models::projects::WikiId;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("image", web::post().to(images_add));
@@ -34,6 +33,7 @@ pub struct ImageUpload {
 
     // Optional context id to associate with
     pub project_id: Option<String>, // allow slug or id
+    pub wiki_id: Option<i64>, // allow slug or id
     pub version_id: Option<VersionId>,
     pub thread_message_id: Option<ThreadMessageId>,
     pub report_id: Option<ReportId>,
@@ -80,14 +80,36 @@ pub async fn images_add(
                         *project_id = Some(project.inner.id.into());
                     } else {
                         return Err(ApiError::CustomAuthentication(
-                            "You are not authorized to upload images for this project".to_string(),
+                            "您无权为此项目上传图片".to_string(),
                         ));
                     }
                 } else {
                     return Err(ApiError::InvalidInput(
-                        "The project could not be found.".to_string(),
+                        "未找到该项目。".to_string(),
                     ));
                 }
+            }
+        }
+        ImageContext::Wiki { wiki_id } => {
+            // let mut transaction = pool.begin().await?;
+            if let Some(id) = data.wiki_id {
+                let wiki =
+                    wiki_item::Wiki::get(id, &**pool).await?;
+                let cached_wiki = crate::database::models::WikiCache::get_draft(
+                    wiki.project_id,
+                    user.id.into(),
+                    &**pool
+                ).await?;
+
+                if cached_wiki.is_none() {
+                    return Err(ApiError::InvalidInput(
+                        "无权上传。".to_string(),
+                    ));
+                }else {
+                    *wiki_id = Some(WikiId(wiki.id.0 as u64));
+                }
+
+
             }
         }
         ImageContext::Version { version_id } => {
@@ -107,12 +129,12 @@ pub async fn images_add(
                         *version_id = Some(version.inner.id.into());
                     } else {
                         return Err(ApiError::CustomAuthentication(
-                            "You are not authorized to upload images for this version".to_string(),
+                            "您无权为此版本上传图片".to_string(),
                         ));
                     }
                 } else {
                     return Err(ApiError::InvalidInput(
-                        "The version could not be found.".to_string(),
+                        "未找到该版本。".to_string(),
                     ));
                 }
             }
@@ -124,7 +146,7 @@ pub async fn images_add(
                         .await?
                         .ok_or_else(|| {
                             ApiError::InvalidInput(
-                                "The thread message could not found."
+                                "未找到该消息。"
                                     .to_string(),
                             )
                         })?;
@@ -132,16 +154,14 @@ pub async fn images_add(
                     .await?
                     .ok_or_else(|| {
                         ApiError::InvalidInput(
-                            "The thread associated with the thread message could not be found"
-                                .to_string(),
+                            "未找到与该消息关联的线程".to_string(),
                         )
                     })?;
                 if is_authorized_thread(&thread, &user, &pool).await? {
                     *thread_message_id = Some(thread_message.id.into());
                 } else {
                     return Err(ApiError::CustomAuthentication(
-                        "You are not authorized to upload images for this thread message"
-                            .to_string(),
+                        "您无权为此线程消息上传图片".to_string(),
                     ));
                 }
             }
@@ -152,28 +172,28 @@ pub async fn images_add(
                     .await?
                     .ok_or_else(|| {
                         ApiError::InvalidInput(
-                            "The report could not be found.".to_string(),
+                            "未找到该举报。".to_string(),
                         )
                     })?;
                 let thread = thread_item::Thread::get(report.thread_id, &**pool)
                     .await?
                     .ok_or_else(|| {
                         ApiError::InvalidInput(
-                            "The thread associated with the report could not be found.".to_string(),
+                            "未找到与该举报关联的线程。".to_string(),
                         )
                     })?;
                 if is_authorized_thread(&thread, &user, &pool).await? {
                     *report_id = Some(report.id.into());
                 } else {
                     return Err(ApiError::CustomAuthentication(
-                        "You are not authorized to upload images for this report".to_string(),
+                        "您无权为此举报上传图片".to_string(),
                     ));
                 }
             }
         }
         ImageContext::Unknown => {
             return Err(ApiError::InvalidInput(
-                "Context must be one of: project, version, thread_message, report".to_string(),
+               "Context 必须是以下之一：project, version, thread_message, wiki, report".to_string(),
             ));
         }
     }
@@ -181,8 +201,8 @@ pub async fn images_add(
     // Upload the image to the file host
     let bytes = read_from_payload(
         &mut payload,
-        1_048_576,
-        "Icons must be smaller than 1MiB",
+        4_194_304,
+        "图片大小必须小于4MB",
     )
     .await?;
 
@@ -228,6 +248,14 @@ pub async fn images_add(
         } = context
         {
             Some(database::models::ThreadMessageId::from(id))
+        } else {
+            None
+        },
+        wiki_id: if let ImageContext::Wiki {
+            wiki_id: Some(id),
+        } = context
+        {
+            Some(database::models::WikiId::from(id))
         } else {
             None
         },

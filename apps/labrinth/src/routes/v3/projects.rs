@@ -58,6 +58,12 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("{id}/follow", web::post().to(project_follow))
             .route("{id}/follow", web::delete().to(project_unfollow))
             .route("{id}/organization", web::get().to(project_get_organization))
+            .route("{id}/wiki", web::get().to(super::wikis::wiki_list))
+            .route("{id}/wiki_edit_start", web::put().to(super::wikis::wiki_edit_start))
+            .route("{id}/wiki_create", web::post().to(super::wikis::wiki_create))
+            .route("{id}/wiki_edit", web::post().to(super::wikis::wiki_edit))
+            .route("{id}/wiki_edit_star", web::post().to(super::wikis::wiki_star))
+            .route("{id}/wiki_delete", web::delete().to(super::wikis::wiki_delete))
             .service(
                 web::scope("{project_id}")
                     .route(
@@ -67,14 +73,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                     .route(
                         "version",
                         web::get().to(super::versions::version_list),
-                    )
-                    .route(
-                        "wiki",
-                        web::get().to(super::wikis::wiki_list),
-                    )
-                    .route(
-                        "wiki",
-                        web::put().to(super::wikis::wiki_edit),
                     )
                     .route(
                         "version/{slug}",

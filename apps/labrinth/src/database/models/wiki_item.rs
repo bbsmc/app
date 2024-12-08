@@ -1,9 +1,8 @@
-use std::process::Child;
 use super::ids::*;
 use crate::database::models::{DatabaseError, WikiCache};
 use crate::database::redis::RedisPool;
 use chrono::{DateTime, Utc};
-use dashmap::{DashMap};
+use dashmap::DashMap;
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -41,50 +40,49 @@ pub struct WikiDisplays {
 pub struct Wikis {
     pub wikis: Vec<WikiDisplays>,
     pub is_editor: bool,
-    pub cache: Option<WikiCache>
+    pub cache: Option<WikiCache>,
 }
 
 impl Wiki {
-    // pub async fn insert(
-    //     &self,
-    //     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    // ) -> Result<(), sqlx::error::Error> {
-    //     sqlx::query!(
-    //         "
-    //         INSERT INTO wikis (id, mod_id, sort_order, title, body, parent_wiki_id, featured, created, updated, slug)
-    //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    //         ",
-    //         self.id.0,
-    //         self.project_id.0,
-    //         self.sort_order,
-    //         self.title,
-    //         self.body,
-    //         self.parent_wiki_id.map(|x| x.0),
-    //         self.featured,
-    //         self.created,
-    //         self.updated,
-    //         self.slug,
-    //     )
-    //     .execute(&mut **transaction)
-    //     .await?;
-    //     Ok(())
-    // }
+    pub async fn insert(
+        &self,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<Wiki, sqlx::Error> {
+        let row = sqlx::query!(
+            "
+            INSERT INTO wikis (id, mod_id, sort_order, title, body, parent_wiki_id, featured, slug)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
+            ",
+            self.id.0,
+            self.project_id.0,
+            self.sort_order,
+            self.title,
+            self.body,
+            self.parent_wiki_id.0,
+            self.featured,
+            self.slug,
+        )
+        .fetch_one(&mut **transaction)
+        .await?;
+        println!("row_wiki_insert {:?}", row);
 
-    // pub async fn get<'a, 'b, E>(
-    //     id: WikiId,
-    //     executor: E,
-    //     redis: &RedisPool,
-    // ) -> Result<Option<Self>, DatabaseError>
-    // where
-    //     E: sqlx::Executor<'a, Database = sqlx::Postgres>,
-    // {
-    //     Self::get_many(&[id], executor, redis)
-    //         .await
-    //         .map(|x| x.into_iter().next())
-    // }
+        Ok(Wiki {
+            id: WikiId(row.id),
+            project_id: ProjectId(row.mod_id),
+            sort_order: row.sort_order,
+            title: row.title,
+            body: row.body,
+            parent_wiki_id: WikiId(row.parent_wiki_id),
+            featured: row.featured,
+            created: row.created,
+            updated: row.updated,
+            slug: row.slug,
+        })
+    }
 
     pub async fn get_many<'a, E>(
         wiki_ids: &[WikiId],
+        draft: bool,
         exec: E,
         redis: &RedisPool,
     ) -> Result<Vec<Wiki>, DatabaseError>
@@ -101,9 +99,10 @@ impl Wiki {
                 let res = sqlx::query!("
                     SELECT id, mod_id, sort_order, title, body, parent_wiki_id, featured, created, updated, slug
                     FROM wikis
-                    WHERE id = ANY($1);
+                    WHERE id = ANY($1) and draft = $2;
                     ",
-                    &wiki_ids
+                    &wiki_ids,
+                    draft
                 )
                     .fetch(&mut *exec)
                     .try_fold(DashMap::new(), | acc, w| {
@@ -131,5 +130,36 @@ impl Wiki {
 
         val.sort_by(|a, b| a.sort_order.cmp(&b.sort_order));
         Ok(val)
+    }
+
+    pub async fn get<'a, E>(
+        wiki_id: i64,
+        exec: E,
+    ) -> Result<Wiki, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let mut exec = exec.acquire().await?;
+
+        let row = sqlx::query!("
+                    SELECT id, mod_id, sort_order, title, body, parent_wiki_id, featured, created, updated, slug
+                    FROM wikis
+                    WHERE id = $1;
+                    ",
+                    &wiki_id
+                ).fetch_one(&mut *exec)
+            .await?;
+        Ok(Wiki {
+            id: WikiId(row.id),
+            project_id: ProjectId(row.mod_id),
+            sort_order: row.sort_order,
+            title: row.title,
+            body: row.body,
+            parent_wiki_id: WikiId(row.parent_wiki_id),
+            featured: row.featured,
+            created: row.created,
+            updated: row.updated,
+            slug: row.slug,
+        })
     }
 }

@@ -1,6 +1,7 @@
 type ImageUploadContext = {
   projectID?: string;
-  context: 'project' | 'version' | 'thread_message' | 'report';
+  wiki_id?: string;
+  context: 'project' | 'version' | 'thread_message' | 'report' | 'wiki';
 };
 
 interface ImageUploadResponse {
@@ -18,12 +19,13 @@ export const useImageUpload = async (file: File, ctx: ImageUploadContext) => {
   }
 
 // 确保文件小于 1MB
-  if (file.size > 1024 * 1024) {
-    throw new Error('文件太大，请小于1MB')
+  if (file.size > 1024 * 4096) {
+    throw new Error('文件太大，请小于4MB')
   }
 
   const qs = new URLSearchParams()
   if (ctx.projectID) qs.set('project_id', ctx.projectID)
+  if (ctx.wiki_id) qs.set('wiki_id', ctx.wiki_id)
   qs.set('context', ctx.context)
   qs.set('ext', file.type.split('/')[1])
   const url = `image?${qs.toString()}`

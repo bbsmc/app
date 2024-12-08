@@ -1,10 +1,77 @@
 <template>
+  <ConfirmModal2
+    ref="modal_confirm_index"
+    title="你确定要将该页面设置为主页吗?"
+    description="设置成主页后访问该资源的 /wikis 页面会直接显示该页面的内容"
+    proceed-label="确认"
+    @proceed="confirm_index()"
+  />
+
+  <ConfirmModal
+    ref="modal_confirm_delete"
+    title="你确定要将该该页面删除吗?"
+    description="若页面为目录并且目录下含有子页面，请先删除子页面后再提交删除"
+    proceed-label="确认"
+    @proceed="deleteWiki()"
+  />
   <section class="normal-page__content">
-    <div
-      v-if="wiki.body"
-      class="markdown-body card"
-      v-html="renderHighlightedString(wiki.body || '')"
-    />
+    <div  v-if="props.wikis.is_editor" class="universal-card">
+      <div class="markdown-disclaimer">
+        <h2>正在编辑      [  {{wiki.title}}   ]</h2>
+        <span class="label__description">
+          请尽量单个页面只包含一个内容，以便于查找和编辑以及分类，
+          <br><br>
+
+
+        </span>
+      </div>
+      <MarkdownEditor
+        v-model="wiki.body"
+        :on-image-upload="onUploadHandler"
+      />
+      <div class="input-group markdown-disclaimer" >
+
+        <button
+          type="button"
+          class="iconified-button brand-button"
+          :disabled="check()"
+          @click="saveChanges()"
+        >
+          <SaveIcon />
+          保存草稿
+        </button>
+
+        <button
+          v-if="wiki.featured === false"
+          type="button"
+          class="iconified-button brand-button"
+          style="margin-left: auto;"
+          @click="$refs.modal_confirm_index.show()"
+        >
+          <StarIcon />
+          设置主页
+        </button>
+
+        <button
+          type="button"
+          class="iconified-button brand-button"
+          style="background-color: rgb(255,73,110); margin-left: auto;"
+          @click="$refs.modal_confirm_delete.show()"
+        >
+          <TrashIcon />
+          删除该页面
+        </button>
+      </div>
+    </div>
+
+    <div v-else>
+      <div
+        v-if="wiki.body"
+        class="markdown-body card"
+        v-html="renderHighlightedString(wiki.body || '')"
+      />
+    </div>
+
   </section>
 </template>
 
@@ -12,6 +79,13 @@
 <script setup>
 
 import { renderHighlightedString } from "~/helpers/highlight.js";
+import { ButtonStyled, ConfirmModal, MarkdownEditor } from '@modrinth/ui'
+import SaveIcon from 'assets/images/utils/save.svg'
+import TrashIcon from 'assets/images/utils/trash.svg'
+import StarIcon from 'assets/images/utils/star.svg'
+import { useImageUpload } from "~/composables/image-upload.ts";
+import ConfirmModal2 from '@modrinth/ui/src/components/modal/ConfirmModal2.vue'
+
 
 const props = defineProps({
   project: {
@@ -31,6 +105,12 @@ const title = `${props.project.title} - WIKI`;
 const description = `浏览 ${props.project.title} 个图片的WIKI页面`;
 let wiki = ref(null);
 const route = useNativeRoute();
+const router = useNativeRouter();
+const data = useNuxtApp()
+let wikiBodyCache = ref("");
+
+
+
 useSeoMeta({
   title,
   description,
@@ -65,6 +145,100 @@ if (props.wikis.is_editor === true) {
       wiki = wiki_;
     }
   });
+}
+
+wikiBodyCache = wiki.body;
+
+async function saveChanges(){
+
+  if (wikiBodyCache === wiki.body){
+    data.$notify({
+      group: 'main',
+      title: '错误',
+      text: '</br>未修改任何内容',
+      type: 'error'
+    })
+    return
+  }
+
+  const resData = {
+    id: wiki.id,
+    body: wiki.body,
+    sort_order: wiki.sort_order
+  }
+
+  await useAsyncData(
+    `project/${route.params.id}/wiki_create`,
+    () => useBaseFetch(`project/${route.params.id}/wiki_edit`, { apiVersion: 3, method: 'POST', body: resData })
+  )
+  wikiBodyCache = wiki.body;
+  data.$notify({
+    group: 'main',
+    title: '成功',
+    text: '</br>草稿保存成功,若要提交发布请前往到WIKI页面的主页提交',
+    type: 'success'
+  })
+  router.push(`/project/${route.params.id}/wiki/${wiki.slug}`);
+}
+
+function check(){
+  console.log(wikiBodyCache)
+  console.log(wiki.body)
+  if (wikiBodyCache === wiki.body){
+    return true
+  }
+  return false
+}
+
+
+async function confirm_index(){
+  // const resData = {
+  //   id: wiki.id,
+  //   featured: true
+  // }
+
+  await useAsyncData(
+    `project/${route.params.id}/wiki_edit_star`,
+    () => useBaseFetch(`project/${route.params.id}/wiki_edit_star`, { apiVersion: 3, method: 'POST', body: {id: wiki.id} })
+  )
+
+  data.$notify({
+    group: 'main',
+    title: '成功',
+    text: '</br>已成功设置为主页',
+    type: 'success'
+  })
+  router.push(`/project/${route.params.id}/wikis`);
+
+}
+async function deleteWiki(){
+
+
+  if (wiki.child && wiki.child.length > 0){
+    data.$notify({
+      group: 'main',
+      title: '发生错误',
+      text: '</br>当前为目录,请先删除目录下所有页面后再删除该页面',
+      type: 'error'
+    })
+    return
+  }
+
+  await useAsyncData(
+    `project/${route.params.id}/wiki_create`,
+    () => useBaseFetch(`project/${route.params.id}/wiki_delete`, { apiVersion: 3, method: 'DELETE', body: {id: wiki.id} })
+  )
+
+  // router.push("/dashboard/notifications");
+  router.push(`/project/${route.params.id}/wikis`);
+
+}
+async function onUploadHandler(file){
+  const response = await useImageUpload(file, {
+    context: "wiki",
+    wiki_id: wiki.id,
+  });
+  return response.url;
 }
 
 

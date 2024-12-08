@@ -187,7 +187,7 @@
         <div class="truncate text-lg font-extrabold text-contrast">创建WIKI页面</div>
       </template>
 
-      <div class="flex flex-col gap-3"  style="width: 500px">
+      <div class="flex flex-col gap-3" style="width: 500px">
         <div class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
@@ -207,28 +207,28 @@
           </div>
         </div>
 
-          <div class="flex flex-col gap-2">
-            <label for="name">
+        <div class="flex flex-col gap-2">
+          <label for="name">
           <span class="text-lg font-semibold text-contrast">
             页面SLUG
             <span class="text-brand-red">*</span>
           </span>
-            </label>
-            <input
-              id="name"
-              v-model="createWikiSlug"
-              type="text"
-              maxlength="64"
-              placeholder="纯英文,用于在URL中使用不要使用除了横杠 - 之外的符号"
-              autocomplete="off"
-            />
-          </div>
+          </label>
+          <input
+            id="name"
+            v-model="createWikiSlug"
+            type="text"
+            maxlength="64"
+            placeholder="纯英文,用于在URL中使用不要使用除了横杠 - 之外的符号"
+            autocomplete="off"
+          />
+        </div>
 
         <div class="flex flex-col gap-2">
           <label for="name">
           <span class="text-lg font-semibold text-contrast">
             上级目录(若新建的是子页面可选择上级)
-            <span class="text-brand-red">*</span>
+            <!--            <span class="text-brand-red">*</span>-->
           </span>
           </label>
           <ButtonStyled
@@ -236,7 +236,7 @@
           >
             <div class="disabled button-like">
               <WrenchIcon aria-hidden="true" />
-             未创建任何主目录
+              未创建任何主目录
             </div>
           </ButtonStyled>
           <Accordion
@@ -269,7 +269,7 @@
                       }
                     "
                 >
-                  {{wiki.title}}
+                  {{ wiki.title }}
                   <CheckIcon v-if="createWikiFather === wiki" />
                 </button>
               </ButtonStyled>
@@ -282,7 +282,7 @@
           <ButtonStyled color="brand">
             <button @click="createWiki">
               <PlusIcon aria-hidden="true" />
-              创建资源
+              创建页面
             </button>
           </ButtonStyled>
           <ButtonStyled>
@@ -295,7 +295,6 @@
 
 
       </div>
-
 
 
     </NewModal>
@@ -765,18 +764,27 @@
       <div v-if="route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')" class="normal-page__sidebar">
 
         <aside class="universal-card">
-          <ButtonStyled v-if="wikis.is_editor" color="red"  type="standard" @click="(event) => createWikiModal.show(event)">
+          <ButtonStyled v-if="wikis.is_editor" type="standard"
+                        @click="(event) => createWikiModal.show(event)">
             <nuxt-link>
               新建页面
             </nuxt-link>
 
           </ButtonStyled>
-          <hr v-if="wikis.is_editor" color="red"/>
+          <ButtonStyled v-if="wikis.is_editor" type="standard"
+                        @click="(event) => createWikiModal.show(event)" >
+            <nuxt-link class="mt-3">
+              提交草稿审核
+            </nuxt-link>
+
+          </ButtonStyled>
+          <hr v-if="wikis.is_editor"/>
           <NavStack v-if="wikis.is_editor">
 
             <div v-for="wiki in wikis.cache.cache" :key="wiki.id" class="my-1">
 
-              <NuxtLink class="nav-link button-base" :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
+              <NuxtLink class="nav-link button-base"
+                        :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
                 <div class="nav-content">
                   <slot />
                   <h3>{{ wiki.title }}</h3>
@@ -793,7 +801,8 @@
           <NavStack v-else>
             <div v-for="wiki in wikis.wikis" :key="wiki.id" class="my-1">
 
-              <NuxtLink class="nav-link button-base" :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
+              <NuxtLink class="nav-link button-base"
+                        :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
                 <div class="nav-content">
                   <slot />
                   <h3>{{ wiki.title }}</h3>
@@ -1228,10 +1237,10 @@ const gameVersionFilterInput = ref()
 
 const versionFilter = ref('')
 
-const createWikiTitle = ref("");
-const createWikiSlug = ref("");
-const createWikiFather = ref();
-
+const createWikiTitle = ref('')
+const createWikiSlug = ref('')
+const createWikiSort = ref(0)
+const createWikiFather = ref(null)
 
 
 const currentGameVersion = computed(() => {
@@ -1837,12 +1846,12 @@ async function updateMembers() {
 
 async function createWiki() {
 
-  if (createWikiTitle.value === "" || createWikiSlug.value === ""){
+  if (createWikiTitle.value === '' || createWikiSlug.value === '') {
 
     data.$notify({
       group: 'main',
       title: '发生错误',
-      text: "</br>请填写完整数据",
+      text: '</br>请填写完整数据',
       type: 'error'
     })
     return
@@ -1850,20 +1859,51 @@ async function createWiki() {
 
   const resData = {
     title: createWikiTitle.value,
-    slug: createWikiSlug.value
+    slug: createWikiSlug.value,
+    sort_order: createWikiSort.value
   }
 
-  console.log(createWikiFather.value)
-  if (createWikiFather.value){
+  if (createWikiFather.value) {
     resData.father_id = createWikiFather.value.id
   }
-  console.log(resData)
 
 
-  await useAsyncData(
+  // console.log(wikis.value.cache.cache.value)
+  for (const wiki of wikis.value['cache']['cache']) {
+    console.log(wiki)
+    if (wiki.slug === resData.slug) {
+      data.$notify({
+        group: 'main',
+        title: '发生错误',
+        text: '</br>已存在相同slug',
+        type: 'error'
+      })
+    }
+    if (wiki.title === resData.title) {
+      data.$notify({
+        group: 'main',
+        title: '发生错误',
+        text: '</br>已存在相同标题',
+        type: 'error'
+      })
+    }
+  }
+
+  const { data: newWiki } = await useAsyncData(
     `project/${route.params.id}/wiki_create`,
-    () => useBaseFetch(`project/${route.params.id}/wiki_create`)
+    () => useBaseFetch(`project/${route.params.id}/wiki_create`, { apiVersion: 3, method: 'POST', body: resData })
   )
+  wikis.value.cache.cache.push(newWiki)
+  wikis.value = newWiki.value
+  // console.log('接收')
+  // console.log(wikis.value)
+  createWikiModal.value.hide()
+  createWikiFather.value = null
+  createWikiTitle.value = ''
+  createWikiSort.value = 0
+  createWikiSlug.value = ''
+
+  // console.log(wikis.value)
 
 }
 
@@ -1898,7 +1938,6 @@ function onDownload(event) {
     closeDownloadModal(event)
   }, 400)
 }
-
 
 
 const navLinks = computed(() => {

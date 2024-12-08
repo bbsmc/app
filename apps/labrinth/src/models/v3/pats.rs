@@ -106,6 +106,8 @@ bitflags::bitflags! {
         // only accessible by modrinth-issued sessions
         const SESSION_ACCESS = 1 << 39;
 
+        const WIKI_WRITE = 1 << 40;
+
         const NONE = 0b0;
     }
 }
