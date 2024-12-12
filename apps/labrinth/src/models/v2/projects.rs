@@ -67,6 +67,7 @@ pub struct LegacyProject {
     pub color: Option<u32>,
     pub thread_id: ThreadId,
     pub monetization_status: MonetizationStatus,
+    pub wiki_open: bool,
 }
 
 impl LegacyProject {
@@ -206,6 +207,7 @@ impl LegacyProject {
             loaders,
             versions: data.versions,
             icon_url: data.icon_url,
+            wiki_open: data.wiki_open,
             issues_url,
             source_url,
             wiki_url,

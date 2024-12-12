@@ -761,7 +761,7 @@
         </MessageBanner>
       </div>
       <!--      百科导航栏    -->
-      <div v-if="route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')" class="normal-page__sidebar">
+      <div v-if="(route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')) && (wikis.wikis.length > 0 || wikis.is_editor)" class="normal-page__sidebar">
 
         <aside class="universal-card">
           <ButtonStyled v-if="wikis.is_editor" type="standard"

@@ -16,6 +16,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use validator::Validate;
+use crate::util::validate::validation_errors_to_string;
 
 #[derive(Deserialize, Serialize,Validate)]
 pub struct CreateWiki {
@@ -30,14 +31,16 @@ pub struct CreateWiki {
     )]
     pub slug: String,
     pub father_id: Option<i64>,
+    #[validate(range(min = 0, max = 1000))]
     pub sort_order: i32,
 }
 
-#[derive(Deserialize, Serialize,Debug)]
+#[derive(Deserialize, Serialize,Debug,Validate)]
 pub struct EditWiki {
     pub id: i64,
     #[validate(length(max = 65536))]
     pub body: String,
+    #[validate(range(min = 0, max = 1000))]
     pub sort_order: i32,
 }
 
@@ -132,19 +135,24 @@ pub async fn wiki_delete(
 pub async fn wiki_edit(
     req: HttpRequest,
     info: web::Path<(String,)>,
-    mut body: web::Payload,
+    new_wiki: web::Json<EditWiki>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError> {
-    let mut bytes = web::BytesMut::new();
-    while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.map_err(|_| {
-            ApiError::InvalidInput(
-                "Error while parsing request payload!".to_string(),
-            )
-        })?);
-    }
+) -> Result<HttpResponse, ApiError>
+{
+    // let mut bytes = web::BytesMut::new();
+    // while let Some(item) = body.next().await {
+    //     bytes.extend_from_slice(&item.map_err(|_| {
+    //         ApiError::InvalidInput(
+    //             "Error while parsing request payload!".to_string(),
+    //         )
+    //     })?);
+    // }
+    new_wiki.validate().map_err(|err| {
+        ApiError::Validation(validation_errors_to_string(err, None))
+    })?;
+
     let string = info.into_inner().0;
     let result =
         database::models::Project::get(&string, &**pool, &redis).await?;
@@ -181,11 +189,12 @@ pub async fn wiki_edit(
         }
         let mut cache = wiki_cache.unwrap();
         let cache_json = cache.cache.as_array_mut().unwrap();
-        let new_wiki: EditWiki = serde_json::from_slice(bytes.as_ref())?;
+        // let new_wiki: EditWiki = serde_json::from_slice(bytes.as_ref())?;
 
         for i in 0..cache_json.len() {
             if cache_json[i]["id"] == new_wiki.id {
                 cache_json[i]["body"] = new_wiki.body.clone().into();
+                cache_json[i]["sort_order"] = new_wiki.sort_order.clone().into();
                 break;
             } else {
                 if !cache_json[i]["child"].is_null() {
@@ -195,6 +204,8 @@ pub async fn wiki_edit(
                         if child_array[j]["id"] == new_wiki.id {
                             child_array[j]["body"] =
                                 new_wiki.body.clone().into();
+                            child_array[j]["sort_order"] =
+                                new_wiki.sort_order.clone().into();
                             break;
                         }
                     }
@@ -218,7 +229,8 @@ pub async fn wiki_star(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError> {
+) -> Result<HttpResponse, ApiError>
+{
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.map_err(|_| {
@@ -302,19 +314,15 @@ pub async fn wiki_star(
 pub async fn wiki_create(
     req: HttpRequest,
     info: web::Path<(String,)>,
-    mut body: web::Payload,
+    new_wiki: web::Json<CreateWiki>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    let mut bytes = web::BytesMut::new();
-    while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.map_err(|_| {
-            ApiError::InvalidInput(
-                "Error while parsing request payload!".to_string(),
-            )
-        })?);
-    }
+
+    new_wiki.validate().map_err(|err| {
+        ApiError::Validation(validation_errors_to_string(err, None))
+    })?;
 
     let string = info.into_inner().0;
     let result =
@@ -353,20 +361,19 @@ pub async fn wiki_create(
         let mut transaction = pool.begin().await?;
 
         let wiki_id = generate_wiki_id(&mut transaction).await?.into();
-        let new_wiki: CreateWiki = serde_json::from_slice(bytes.as_ref())?;
         let father_id = new_wiki.father_id;
 
         let mut wiki = Wiki {
             id: wiki_id,
             project_id: project.inner.id,
             sort_order: new_wiki.sort_order,
-            title: new_wiki.title,
+            title: new_wiki.title.clone(),
             body: "".to_string(),
             parent_wiki_id: wiki_id,
             featured: false,
             created: Default::default(),
             updated: Default::default(),
-            slug: new_wiki.slug,
+            slug: new_wiki.slug.clone(),
         };
         if father_id.is_some() {
             wiki.parent_wiki_id = WikiId(father_id.unwrap());
@@ -451,15 +458,21 @@ pub async fn wiki_edit_start(
         {
             return Err(ApiError::NotFound);
         }
-        let wiki_cache = database::models::WikiCache::get_draft(
-            project.inner.id,
-            UserId::from(user_option.as_ref().unwrap().id),
-            &**pool,
-        )
-        .await?;
-        if wiki_cache.is_some() {
-            return Ok(HttpResponse::Ok().json(wiki_cache.unwrap()));
-            // return return Err(ApiError::ISExists);
+        // let wiki_cache = database::models::WikiCache::get_draft(
+        //     project.inner.id,
+        //     UserId::from(user_option.as_ref().unwrap().id),
+        //     &**pool,
+        // )
+        // .await?;
+        // if wiki_cache.is_some() {
+        //     return Ok(HttpResponse::Ok().json(wiki_cache.unwrap()));
+        //     // return return Err(ApiError::ISExists);
+        // }
+
+        let has_draft_or_review = database::models::WikiCache::get_has_draft_or_review(project.inner.id, &**pool).await?;
+
+        if has_draft_or_review.is_some() {
+            return Err(ApiError::ISConflict);
         }
 
         let mut transaction = pool.begin().await?;
@@ -552,9 +565,18 @@ pub async fn wiki_list(
                 &**pool,
             )
             .await?;
+            // wiki_cache.sort_by_key(|x| x.sort_order);
 
             if wiki_cache.is_some() {
-                wikis.cache = wiki_cache;
+                let mut wiki_cache_ = wiki_cache.unwrap();
+
+                wiki_cache_.cache.as_array_mut().unwrap().sort_by_key(|x| x["sort_order"].as_i64().unwrap());
+                for x in wiki_cache_.cache.as_array_mut().unwrap() {
+                    if !x["child"].is_null() {
+                        x["child"].as_array_mut().unwrap().sort_by_key(|x| x["sort_order"].as_i64().unwrap());
+                    }
+                }
+                wikis.cache = Option::from(wiki_cache_);
                 wikis.is_editor = true;
             }
         }

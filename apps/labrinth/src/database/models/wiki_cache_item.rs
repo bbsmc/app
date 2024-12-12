@@ -69,6 +69,31 @@ impl WikiCache {
         Ok(wiki_cache)
     }
 
+    pub async fn get_has_draft_or_review<'a, E>(
+        project_id: ProjectId,
+        exec: E
+    ) -> Result<Option<WikiCache>, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let mut exec = exec.acquire().await?;
+        let wiki_cache= sqlx::query!(
+            "SELECT id, mod_id, user_id, created, status ,caches FROM wiki_cache WHERE mod_id = $1 AND (status = 'draft' OR status = 'review')",
+            &project_id.0,
+        ).fetch_optional(&mut *exec)
+            .await?
+            .map(|row| WikiCache {
+                id: WikiCacheId(row.id),
+                project_id: ProjectId(row.mod_id),
+                user_id: UserId(row.user_id),
+                created: row.created,
+                status: row.status,
+                cache: row.caches,
+            });
+
+        Ok(wiki_cache)
+    }
+
     pub async fn insert(
         &self,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,

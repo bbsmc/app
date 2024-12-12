@@ -408,6 +408,8 @@ pub struct EditProject {
     #[validate(length(max = 65536))]
     pub moderation_message_body: Option<Option<String>>,
     pub monetization_status: Option<MonetizationStatus>,
+
+    pub wiki_open: Option<bool>,
 }
 
 #[patch("{id}")]
@@ -516,6 +518,7 @@ pub async fn project_edit(
         moderation_message: v2_new_project.moderation_message,
         moderation_message_body: v2_new_project.moderation_message_body,
         monetization_status: v2_new_project.monetization_status,
+        wiki_open: v2_new_project.wiki_open,
     };
 
     // This returns 204 or failure so we don't need to do anything with it

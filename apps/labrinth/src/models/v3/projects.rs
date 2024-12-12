@@ -111,6 +111,8 @@ pub struct Project {
     /// Aggregated loader-fields across its myriad of versions
     #[serde(flatten)]
     pub fields: HashMap<String, Vec<serde_json::Value>>,
+
+    pub wiki_open: bool,
 }
 
 fn remove_duplicates(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
@@ -214,6 +216,7 @@ impl From<QueryProject> for Project {
             loaders: m.loaders,
             versions: data.versions.into_iter().map(|v| v.into()).collect(),
             icon_url: m.icon_url,
+            wiki_open: m.wiki_open,
             link_urls: data
                 .urls
                 .into_iter()

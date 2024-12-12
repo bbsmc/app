@@ -59,7 +59,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("{id}/follow", web::delete().to(project_unfollow))
             .route("{id}/organization", web::get().to(project_get_organization))
             .route("{id}/wiki", web::get().to(super::wikis::wiki_list))
-            .route("{id}/wiki_edit_start", web::put().to(super::wikis::wiki_edit_start))
+            .route("{id}/wiki_edit_start", web::post().to(super::wikis::wiki_edit_start))
             .route("{id}/wiki_create", web::post().to(super::wikis::wiki_create))
             .route("{id}/wiki_edit", web::post().to(super::wikis::wiki_edit))
             .route("{id}/wiki_edit_star", web::post().to(super::wikis::wiki_star))
@@ -247,6 +247,8 @@ pub struct EditProject {
     #[validate(length(max = 65536))]
     pub moderation_message_body: Option<Option<String>>,
     pub monetization_status: Option<MonetizationStatus>,
+
+    pub wiki_open: Option<bool>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -299,7 +301,7 @@ pub async fn project_edit(
             if let Some(name) = &new_project.name {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the name of this project!"
+                        "您没有权限编辑此项目的名称！"
                             .to_string(),
                     ));
                 }
@@ -311,6 +313,27 @@ pub async fn project_edit(
                     WHERE (id = $2)
                     ",
                     name.trim(),
+                    id as db_ids::ProjectId,
+                )
+                .execute(&mut *transaction)
+                .await?;
+            }
+
+            if let Some(wiki_open) = &new_project.wiki_open {
+                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
+                    return Err(ApiError::CustomAuthentication(
+                        "您没有权限编辑此项目的该分类!"
+                            .to_string(),
+                    ));
+                }
+
+                sqlx::query!(
+                    "
+                    UPDATE mods
+                    SET wiki_open = $1
+                    WHERE (id = $2)
+                    ",
+                    wiki_open,
                     id as db_ids::ProjectId,
                 )
                 .execute(&mut *transaction)

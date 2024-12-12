@@ -909,6 +909,7 @@ async fn project_create_inner(
             thread_id: thread_id.into(),
             monetization_status: MonetizationStatus::Monetized,
             fields: HashMap::new(), // Fields instantiate to empty
+            wiki_open: false,
         };
 
         Ok(HttpResponse::Ok().json(response))

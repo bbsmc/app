@@ -136,6 +136,8 @@ pub enum ApiError {
     NotFound,
     #[error("已存在")]
     ISExists,
+    #[error("该资源正在被其他用户修改百科页面，请等待其他用户修改完并且被审核完成后再进行提交修改")]
+    ISConflict,
     #[error("您已被限速。请等待 {0} 毫秒。0/{1} 剩余。")]
     RateLimitError(u128, u32),
     #[error("与支付处理器交互时出错: {0}")]
@@ -170,6 +172,7 @@ impl ApiError {
                 ApiError::Reroute(..) => "reroute_error",
                 ApiError::NotFound => "not_found",
                 ApiError::ISExists => "is_exists`",
+                ApiError::ISConflict => "is_conflict`",
                 ApiError::Zip(..) => "zip_error",
                 ApiError::Io(..) => "io_error",
                 ApiError::RateLimitError(..) => "ratelimit_error",
@@ -207,6 +210,7 @@ impl actix_web::ResponseError for ApiError {
             ApiError::Reroute(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::ISExists => StatusCode::BAD_REQUEST,
+            ApiError::ISConflict => StatusCode::BAD_REQUEST,
             ApiError::Zip(..) => StatusCode::BAD_REQUEST,
             ApiError::Io(..) => StatusCode::BAD_REQUEST,
             ApiError::RateLimitError(..) => StatusCode::TOO_MANY_REQUESTS,

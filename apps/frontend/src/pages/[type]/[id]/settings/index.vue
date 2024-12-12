@@ -90,6 +90,21 @@
           :disabled="!hasPermission"
         />
       </div>
+      <div class="adjacent-input">
+        <label for="project-wiki-open">
+          <span class="label__title">百科</span>
+          <span class="label__description">
+          选择是否开启百科的公共编辑，开启后任何人都可以编辑百科页面，并且创建和修改的页面需要经过你审核后才能展示出来
+        </span>
+        </label>
+        <input
+          id="advanced-rendering"
+          v-model="wiki_open"
+          :disabled="!hasPermission"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
+      </div>
       <template
         v-if="
           project.versions?.length !== 0 &&
@@ -180,7 +195,7 @@
                   class="good"
                 />
                 <ExitIcon v-else class="bad" />
-                {{ hasModifiedVisibility() ? "未" : "" }}允许被搜索
+                {{ hasModifiedVisibility() ? '未' : '' }}允许被搜索
               </li>
               <li>
                 <ExitIcon
@@ -188,7 +203,7 @@
                   class="bad"
                 />
                 <CheckIcon v-else class="good" />
-                {{ hasModifiedVisibility() ? "未" : "" }}允许显示在个人资料
+                {{ hasModifiedVisibility() ? '未' : '' }}允许显示在个人资料
               </li>
               <li>
                 <CheckIcon v-if="visibility !== 'private'" class="good" />
@@ -199,7 +214,7 @@
                   }"
                   class="warn"
                 />
-                {{ hasModifiedVisibility() ? "未" : "" }}被允许使用URL访问
+                {{ hasModifiedVisibility() ? '未' : '' }}被允许使用URL访问
               </li>
             </ul>
           </div>
@@ -252,174 +267,181 @@
 </template>
 
 <script setup>
-import { Multiselect } from "vue-multiselect";
+import { Multiselect } from 'vue-multiselect'
 
-import { formatProjectStatus } from "@modrinth/utils";
-import Avatar from "~/components/ui/Avatar.vue";
-import ModalConfirm from "~/components/ui/ModalConfirm.vue";
-import FileInput from "~/components/ui/FileInput.vue";
+import { formatProjectStatus } from '@modrinth/utils'
+import Avatar from '~/components/ui/Avatar.vue'
+import ModalConfirm from '~/components/ui/ModalConfirm.vue'
+import FileInput from '~/components/ui/FileInput.vue'
 
-import UploadIcon from "~/assets/images/utils/upload.svg?component";
-import SaveIcon from "~/assets/images/utils/save.svg?component";
-import TrashIcon from "~/assets/images/utils/trash.svg?component";
-import ExitIcon from "~/assets/images/utils/x.svg?component";
-import IssuesIcon from "~/assets/images/utils/issues.svg?component";
-import CheckIcon from "~/assets/images/utils/check.svg?component";
+import UploadIcon from '~/assets/images/utils/upload.svg?component'
+import SaveIcon from '~/assets/images/utils/save.svg?component'
+import TrashIcon from '~/assets/images/utils/trash.svg?component'
+import ExitIcon from '~/assets/images/utils/x.svg?component'
+import IssuesIcon from '~/assets/images/utils/issues.svg?component'
+import CheckIcon from '~/assets/images/utils/check.svg?component'
 
 const props = defineProps({
   project: {
     type: Object,
     required: true,
-    default: () => ({}),
+    default: () => ({})
   },
   currentMember: {
     type: Object,
     required: true,
-    default: () => ({}),
+    default: () => ({})
   },
   patchProject: {
     type: Function,
     required: true,
-    default: () => {},
+    default: () => {
+    }
   },
   patchIcon: {
     type: Function,
     required: true,
-    default: () => {},
+    default: () => {
+    }
   },
   resetProject: {
     type: Function,
     required: true,
-    default: () => {},
-  },
-});
+    default: () => {
+    }
+  }
+})
 
-const tags = useTags();
-const router = useNativeRouter();
+const tags = useTags()
+const router = useNativeRouter()
 
-const name = ref(props.project.title);
-const slug = ref(props.project.slug);
-const summary = ref(props.project.description);
-const icon = ref(null);
-const previewImage = ref(null);
-const clientSide = ref(props.project.client_side);
-const serverSide = ref(props.project.server_side);
-const deletedIcon = ref(false);
+const name = ref(props.project.title)
+const slug = ref(props.project.slug)
+const wiki_open = ref(props.project.wiki_open)
+const summary = ref(props.project.description)
+const icon = ref(null)
+const previewImage = ref(null)
+const clientSide = ref(props.project.client_side)
+const serverSide = ref(props.project.server_side)
+const deletedIcon = ref(false)
 const visibility = ref(
   tags.value.approvedStatuses.includes(props.project.status)
     ? props.project.status
-    : props.project.requested_status,
-);
+    : props.project.requested_status
+)
 
 const hasPermission = computed(() => {
-  const EDIT_DETAILS = 1 << 2;
-  return (props.currentMember.permissions & EDIT_DETAILS) === EDIT_DETAILS;
-});
+  const EDIT_DETAILS = 1 << 2
+  return (props.currentMember.permissions & EDIT_DETAILS) === EDIT_DETAILS
+})
 
 const hasDeletePermission = computed(() => {
-  const DELETE_PROJECT = 1 << 7;
-  return (props.currentMember.permissions & DELETE_PROJECT) === DELETE_PROJECT;
-});
+  const DELETE_PROJECT = 1 << 7
+  return (props.currentMember.permissions & DELETE_PROJECT) === DELETE_PROJECT
+})
 
-const sideTypes = ["required", "optional", "unsupported"];
+const sideTypes = ['required', 'optional', 'unsupported']
 
 const patchData = computed(() => {
-  const data = {};
+  const data = {}
 
   if (name.value !== props.project.title) {
-    data.title = name.value.trim();
+    data.title = name.value.trim()
   }
   if (slug.value !== props.project.slug) {
-    data.slug = slug.value.trim();
+    data.slug = slug.value.trim()
   }
   if (summary.value !== props.project.description) {
-    data.description = summary.value.trim();
+    data.description = summary.value.trim()
+  }
+  if (wiki_open.value !== props.project.wiki_open) {
+    data.wiki_open = wiki_open.value
   }
   if (clientSide.value !== props.project.client_side) {
-    data.client_side = clientSide.value;
+    data.client_side = clientSide.value
   }
   if (serverSide.value !== props.project.server_side) {
-    data.server_side = serverSide.value;
+    data.server_side = serverSide.value
   }
   if (tags.value.approvedStatuses.includes(props.project.status)) {
     if (visibility.value !== props.project.status) {
-      data.status = visibility.value;
+      data.status = visibility.value
     }
   } else if (visibility.value !== props.project.requested_status) {
-    data.requested_status = visibility.value;
+    data.requested_status = visibility.value
   }
 
-  return data;
-});
+  return data
+})
 
 const hasChanges = computed(() => {
-  return Object.keys(patchData.value).length > 0 || deletedIcon.value || icon.value;
-});
+  return Object.keys(patchData.value).length > 0 || deletedIcon.value || icon.value
+})
 
 const hasModifiedVisibility = () => {
   const originalVisibility = tags.value.approvedStatuses.includes(props.project.status)
     ? props.project.status
-    : props.project.requested_status;
+    : props.project.requested_status
 
-  return originalVisibility !== visibility.value;
-};
+  return originalVisibility !== visibility.value
+}
 
 const saveChanges = async () => {
   if (hasChanges.value) {
-    await props.patchProject(patchData.value);
+    await props.patchProject(patchData.value)
   }
 
   if (deletedIcon.value) {
-    await deleteIcon();
-    deletedIcon.value = false;
+    await deleteIcon()
+    deletedIcon.value = false
   } else if (icon.value) {
-    await props.patchIcon(icon.value);
-    icon.value = null;
+    await props.patchIcon(icon.value)
+    icon.value = null
   }
-};
+}
 
 const showPreviewImage = (files) => {
-  const reader = new FileReader();
-  icon.value = files[0];
-  deletedIcon.value = false;
-  reader.readAsDataURL(icon.value);
+  const reader = new FileReader()
+  icon.value = files[0]
+  deletedIcon.value = false
+  reader.readAsDataURL(icon.value)
   reader.onload = (event) => {
-    previewImage.value = event.target.result;
-  };
-};
+    previewImage.value = event.target.result
+  }
+}
 
 const deleteProject = async () => {
   await useBaseFetch(`project/${props.project.id}`, {
-    method: "DELETE",
-  });
-  await initUserProjects();
-  await router.push("/dashboard/projects");
+    method: 'DELETE'
+  })
+  await initUserProjects()
+  await router.push('/dashboard/projects')
   addNotification({
-    group: "main",
-    title: "资源已删除",
-    text: "您的资源已删除.",
-    type: "success",
-  });
-};
+    group: 'main',
+    title: '资源已删除',
+    text: '您的资源已删除.',
+    type: 'success'
+  })
+}
 
 const markIconForDeletion = () => {
-  deletedIcon.value = true;
-  icon.value = null;
-  previewImage.value = null;
-};
+  deletedIcon.value = true
+  icon.value = null
+  previewImage.value = null
+}
 
 const deleteIcon = async () => {
   await useBaseFetch(`project/${props.project.id}/icon`, {
-    method: "DELETE",
-  });
-  await props.resetProject();
+    method: 'DELETE'
+  })
+  await props.resetProject()
   addNotification({
-    group: "main",
-    title: "图片已移除",
-    text: "您的资源图标已被移除",
-    type: "success",
-  });
-};
+    group: 'main',
+    title: '图片已移除',
+    text: '您的资源图标已被移除',
+    type: 'success'
+  })
+}
 </script>
 <style lang="scss" scoped>
 .visibility-info {

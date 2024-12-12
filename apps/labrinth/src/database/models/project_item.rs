@@ -213,6 +213,7 @@ impl ProjectBuilder {
             color: self.color,
             monetization_status: self.monetization_status,
             loaders: vec![],
+            wiki_open: false,
         };
         project_struct.insert(&mut *transaction).await?;
 
@@ -285,6 +286,7 @@ pub struct Project {
     pub color: Option<u32>,
     pub monetization_status: MonetizationStatus,
     pub loaders: Vec<String>,
+    pub wiki_open: bool,
 }
 
 impl Project {
@@ -336,7 +338,8 @@ impl Project {
         id: ProjectId,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         redis: &RedisPool,
-    ) -> Result<Option<()>, DatabaseError> {
+    ) -> Result<Option<()>, DatabaseError>
+    {
         let project = Self::get_id(id, &mut **transaction, redis).await?;
 
         if let Some(project) = project {
@@ -788,7 +791,7 @@ impl Project {
                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                     m.license_url license_url,
                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                    m.webhook_sent, m.color,
+                    m.webhook_sent, m.color, m.wiki_open,
                     t.id thread_id, m.monetization_status monetization_status,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -852,6 +855,7 @@ impl Project {
                                 moderation_message_body: m.moderation_message_body,
                                 approved: m.approved,
                                 webhook_sent: m.webhook_sent,
+                                wiki_open: m.wiki_open,
                                 color: m.color.map(|x| x as u32),
                                 queued: m.queued,
                                 monetization_status: MonetizationStatus::from_string(
