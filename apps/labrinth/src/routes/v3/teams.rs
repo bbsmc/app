@@ -548,7 +548,7 @@ pub async fn add_team_member(
     if let Some(req) = request {
         if req.accepted {
             return Err(ApiError::InvalidInput(
-                "The user is already a member of that team".to_string(),
+                "该用户已经是项目成员".to_string(),
             ));
         } else {
             return Err(ApiError::InvalidInput(
@@ -584,6 +584,8 @@ pub async fn add_team_member(
             } else {
                 None
             };
+        // println!("{:?}", new_user_organization_team_member);
+        // println!("{:?}", new_member.permissions);
         if new_user_organization_team_member
             .as_ref()
             .map(|tm| tm.is_owner)
@@ -591,15 +593,15 @@ pub async fn add_team_member(
             && new_member.permissions != ProjectPermissions::all()
         {
             return Err(ApiError::InvalidInput(
-                "You cannot override the owner of an organization's permissions in a project team"
+                "您不能覆盖项目团队中组织所有者的权限"
                     .to_string(),
             ));
         }
 
-        // In the case of adding a user that is in an org, to a project that is owned by that same org,
-        // the user is automatically accepted into that project.
-        // That is because the user is part of the org, and project teame-membership in an org can also be used to reduce permissions
-        // (Which should not be a deniable action by that user)
+        // 如果将一个组织中的用户添加到该组织拥有的项目中，
+// 该用户会自动被接受到该项目中。
+// 因为该用户是组织的一部分，项目团队成员资格也可以用来减少权限
+// （这不应该是用户可以拒绝的操作）
         if new_user_organization_team_member.is_some() {
             force_accepted = true;
         }
@@ -728,6 +730,7 @@ pub async fn edit_team_member(
                     project_id, &**pool,
                 )
                 .await?;
+            // 该用户在团队里的权限
             let organization_team_member =
                 if let Some(organization) = &organization {
                     TeamMember::get_from_user_id(
@@ -740,14 +743,26 @@ pub async fn edit_team_member(
                     None
                 };
 
-            if organization_team_member
+            let edit_member_organization_team_member =
+                if let Some(organization) = &organization {
+                    TeamMember::get_from_user_id(
+                        organization.team_id,
+                        user_id,
+                        &**pool,
+                    )
+                        .await?
+                } else {
+                    None
+                };
+
+            if edit_member_organization_team_member
                 .as_ref()
                 .map(|x| x.is_owner)
                 .unwrap_or(false)
                 && edit_member
-                    .permissions
-                    .map(|x| x != ProjectPermissions::all())
-                    .unwrap_or(false)
+                .permissions
+                .map(|x| x != ProjectPermissions::all())
+                .unwrap_or(false)
             {
                 return Err(ApiError::CustomAuthentication(
                     "You cannot override the project permissions of the organization owner!"
@@ -763,7 +778,7 @@ pub async fn edit_team_member(
             .unwrap_or_default();
             if !permissions.contains(ProjectPermissions::EDIT_MEMBER) {
                 return Err(ApiError::CustomAuthentication(
-                    "You don't have permission to edit members of this team"
+                    "你没有权限编辑成员的权限"
                         .to_string(),
                 ));
             }
@@ -778,7 +793,7 @@ pub async fn edit_team_member(
 
             if edit_member.organization_permissions.is_some() {
                 return Err(ApiError::InvalidInput(
-                    "The organization permissions of a project team member cannot be edited"
+                    "项目团队成员的组织权限无法编辑"
                         .to_string(),
                 ));
             }
