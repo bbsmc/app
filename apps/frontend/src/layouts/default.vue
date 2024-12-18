@@ -263,6 +263,12 @@
             </template>
           </OverflowMenu>
         </ButtonStyled>
+        <ButtonStyled
+            type="transparent"
+            v-if="unreadNotifications !== 0"
+          >
+            <nuxt-link to="/dashboard/notifications" class="notification-link" > <BellIcon aria-hidden="true" /><span class="notification-badge" v-if="unreadNotifications !== 0"></span> </nuxt-link>
+          </ButtonStyled>
         <OverflowMenu
           v-if="auth.user"
           class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
@@ -586,6 +592,7 @@ const { formatMessage } = useVIntl();
 
 const app = useNuxtApp();
 const auth = await useAuth();
+const unreadNotifications = ref(0);
 
 const flags = useFeatureFlags();
 
@@ -879,6 +886,20 @@ watch(
     runAnalytics();
   },
 );
+
+async function fetchNotifications() {
+  if (auth.value.user) {
+    const notifications = await useBaseFetch(`user/${auth.value.user.id}/notifications`);
+    notifications.forEach(notification => {
+      if (!notification.read) {
+        unreadNotifications.value++;
+      }
+    });
+  }
+}
+
+// 调用异步函数
+fetchNotifications();
 
 async function logoutUser() {
   await logout();
@@ -1347,6 +1368,19 @@ const { cycle: changeTheme } = useTheme();
   main {
     padding-top: 0.75rem;
   }
+}
+.notification-link {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
