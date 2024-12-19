@@ -1099,7 +1099,7 @@
           </div>
         </div>
         <div class="card flex-card experimental-styles-within">
-          <h2>{{organization ? (organization.slug='bbsmc'?'搬运团队':'创作团队') : '创作者'}}</h2>
+          <h2>{{organization ? (organization.slug ==='bbsmc' ?'搬运团队':'创作团队') : '创作者'}}</h2>
           <div class="details-list">
             <template v-if="organization">
               <nuxt-link
