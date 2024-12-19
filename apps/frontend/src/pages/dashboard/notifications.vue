@@ -34,6 +34,18 @@
               case 'moderator_message': {
                 return '版主消息';
               }
+              case 'project_update': {
+                return '资源更新';
+              }
+              case 'team_invite': {
+                return '项目邀请';
+              }
+              case 'wiki_cache': {
+                return '百科';
+              }
+              case 'organization_invite': {
+                return '团队邀请';
+              }
               default: {
                 return x;
               }
@@ -156,6 +168,7 @@ function updateRoute() {
   selectedType.value = "all";
   page.value = 1;
 }
+const fetchNotifications = inject('fetchNotifications');
 
 async function readAll() {
   const ids = notifications.value.flatMap((notification) => [
@@ -165,6 +178,8 @@ async function readAll() {
 
   const updateNotifs = await markAsRead(ids);
   allNotifs.value = updateNotifs(allNotifs.value);
+  fetchNotifications();
+
 }
 
 function changePage(newPage) {

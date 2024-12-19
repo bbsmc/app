@@ -13,9 +13,5 @@ CREATE TABLE IF NOT EXISTS wikis
     featured       BOOLEAN      NOT NULL DEFAULT FALSE,
     created        timestamptz           DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated        timestamptz           DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    draft          BOOLEAN      NOT NULL DEFAULT TRUE,
-    -- 添加外键约束（可选，如果希望建立和自身主键的关联约束）
-    CONSTRAINT fk_parent_wiki
-        FOREIGN KEY (parent_wiki_id)
-            REFERENCES wikis (id)
+    draft          BOOLEAN      NOT NULL DEFAULT TRUE
 );

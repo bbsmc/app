@@ -233,6 +233,8 @@ impl TempUser {
                 created: Utc::now(),
                 role: Role::Developer.to_string(),
                 badges: Badges::default(),
+                wiki_ban_time: Default::default(),
+                wiki_overtake_count: 0,
             }
             .insert(transaction)
             .await?;
@@ -1557,6 +1559,8 @@ pub async fn create_account_with_password(
         created: Utc::now(),
         role: Role::Developer.to_string(),
         badges: Badges::default(),
+        wiki_ban_time: Default::default(),
+        wiki_overtake_count: 0,
     }
     .insert(&mut transaction)
     .await?;

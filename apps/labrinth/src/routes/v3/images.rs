@@ -4,7 +4,7 @@ use super::threads::is_authorized_thread;
 use crate::auth::checks::{is_team_member_project, is_team_member_version};
 use crate::auth::get_user_from_headers;
 use crate::database;
-use crate::database::models::{project_item, report_item, thread_item, version_item, wiki_item};
+use crate::database::models::{project_item, report_item, thread_item, version_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::ids::{ThreadMessageId, VersionId};
@@ -17,7 +17,6 @@ use crate::util::routes::read_from_payload;
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use crate::models::projects::WikiId;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("image", web::post().to(images_add));
@@ -88,28 +87,6 @@ pub async fn images_add(
                         "未找到该项目。".to_string(),
                     ));
                 }
-            }
-        }
-        ImageContext::Wiki { wiki_id } => {
-            // let mut transaction = pool.begin().await?;
-            if let Some(id) = data.wiki_id {
-                let wiki =
-                    wiki_item::Wiki::get(id, &**pool).await?;
-                let cached_wiki = crate::database::models::WikiCache::get_draft(
-                    wiki.project_id,
-                    user.id.into(),
-                    &**pool
-                ).await?;
-
-                if cached_wiki.is_none() {
-                    return Err(ApiError::InvalidInput(
-                        "无权上传。".to_string(),
-                    ));
-                }else {
-                    *wiki_id = Some(WikiId(wiki.id.0 as u64));
-                }
-
-
             }
         }
         ImageContext::Version { version_id } => {
@@ -248,14 +225,6 @@ pub async fn images_add(
         } = context
         {
             Some(database::models::ThreadMessageId::from(id))
-        } else {
-            None
-        },
-        wiki_id: if let ImageContext::Wiki {
-            wiki_id: Some(id),
-        } = context
-        {
-            Some(database::models::WikiId::from(id))
         } else {
             None
         },

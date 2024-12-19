@@ -59,7 +59,7 @@
     </div>
   </NewModal>
   <section class="normal-page__content">
-    <div v-if="props.wikis.is_editor" class="universal-card">
+    <div v-if="props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache.status === 'draft'" class="universal-card">
       <div class="markdown-disclaimer">
         <h2>正在编辑 [ {{ wiki.title }} ]</h2>
         <span class="label__description">
@@ -139,6 +139,7 @@ import SunriseIcon from 'assets/images/utils/sunrise.svg'
 import { useImageUpload } from '~/composables/image-upload.ts'
 import ConfirmModal2 from '@modrinth/ui/src/components/modal/ConfirmModal2.vue'
 import { PlusIcon, XIcon } from '@modrinth/assets'
+import projects from '~/pages/dashboard/projects.vue'
 
 
 const props = defineProps({
@@ -174,7 +175,7 @@ useSeoMeta({
 })
 
 // console.log('wikis', props.wikis);
-if (props.wikis.is_editor === true) {
+if (props.wikis.is_editor === true && props.wikis.is_editor_user && props.wikis.cache.status === 'draft') {
   props.wikis.cache.cache.forEach((wiki_) => {
     if (wiki_.child) {
       wiki_.child.forEach((wiki__) => {
@@ -307,8 +308,8 @@ async function deleteWiki() {
 
 async function onUploadHandler(file) {
   const response = await useImageUpload(file, {
-    context: 'wiki',
-    wiki_id: wiki.id
+    context: 'project',
+    projectID: props.project.id
   })
   return response.url
 }

@@ -112,6 +112,31 @@
           <Badge :type="notification.body.new_status" />
         </template>
       </template>
+
+      <template v-else-if="type === 'wiki_cache'">
+        <div v-if="notification.body.type_ === 'review'">
+          您管理的资源 <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }} </nuxt-link> 有用户提交修改百科的请求，请前往审核
+        </div>
+
+        <div v-if="notification.body.type_ === 'reject'">
+          您提交的百科修改 <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }} </nuxt-link> 被该资源管理员拒绝
+          <br/>
+          <br/>
+          理由: {{notification.body.msg}}
+        </div>
+        <div v-if="notification.body.type_ === 'accept'">
+          您提交的百科修改 <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }} </nuxt-link> 已通过审核
+          <br/>
+        </div>
+        <div v-if="notification.body.type_ === 'time_out'">
+          您提交的百科修改 <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }} </nuxt-link> {{notification.body.msg}}
+          <br/>
+        </div>
+
+
+      </template>
+
+
       <template v-else-if="type === 'moderator_message' && thread && project && !report">
         您的资源
         <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link
@@ -120,6 +145,9 @@
         <template v-else>消息</template>
 
       </template>
+
+
+
       <template v-else-if="type === 'moderator_message' && thread && report">
         版主已回复您
         <template v-if="version">
@@ -141,6 +169,7 @@
       </nuxt-link>
       <!--      <span v-else class="known-errors">Error reading notification.</span>-->
     </div>
+
     <div v-if="hasBody" class="notification__body">
       <ThreadSummary
         v-if="type === 'moderator_message' && thread"
@@ -190,16 +219,18 @@
         {{ notification.text }}
       </template>
     </div>
+
     <span class="notification__date">
-      <span v-if="notification.read" class="read-badge inline-flex"> <ReadIcon /> 读 </span>
+      <span v-if="notification.read" class="read-badge inline-flex"> <ReadIcon /> 已读 </span>
       <span
         v-tooltip="$dayjs(notification.created).format('YYYY-MM-DD hh:mm:ss')"
         class="inline-flex"
       >
-        <CalendarIcon class="mr-1" /> 已收到 {{ fromNow(notification.created) }}
+        <CalendarIcon class="mr-1" /> 通知时间 {{ fromNow(notification.created) }}
       </span>
     </span>
     <div v-if="compact" class="notification__actions">
+
       <template v-if="type === 'team_invite' || type === 'organization_invite'">
         <button
           v-tooltip="`接受`"
@@ -226,6 +257,7 @@
           <CrossIcon />
         </button>
       </template>
+
       <button
         v-else-if="!notification.read"
         v-tooltip="`标记为已读`"
@@ -236,7 +268,39 @@
       </button>
     </div>
     <div v-else class="notification__actions">
+
+
       <div v-if="type !== null" class="input-group">
+
+        <template
+          v-if="(type === 'wiki_cache' && notification.body.type_ === 'review') && !notification.read"
+
+        >
+          <button
+            class="iconified-button brand-button"
+
+            @click="
+              () => {
+                router.push(`/project/${notification.body.project_id}/wikis`)
+                read();
+              }
+            "
+          >
+            前往审核
+          </button>
+        </template>
+        <template
+          v-if="(type === 'wiki_cache' && notification.body.type_ === 'reject') && !notification.read"
+        >
+          <button
+            class="iconified-button brand-button"
+
+            @click="again"
+          >
+            重新编辑百科提交
+          </button>
+        </template>
+
         <template
           v-if="(type === 'team_invite' || type === 'organization_invite') && !notification.read"
         >
@@ -269,7 +333,12 @@
           :class="{ 'raised-button': raised }"
           @click="read()"
         >
-          <CheckIcon /> 标记为已读
+          <div v-if="type === 'wiki_cache' && notification.body.type_ === 'reject'">
+            <CheckIcon /> 放弃修改并已读
+          </div>
+          <div v-else>
+            <CheckIcon /> 标记为已读
+          </div>
         </button>
         <CopyCode v-if="flags.developerMode" :text="notification.id" />
       </div>
@@ -330,10 +399,10 @@ import Avatar from "~/components/ui/Avatar.vue";
 import Badge from "~/components/ui/Badge.vue";
 import CopyCode from "~/components/ui/CopyCode.vue";
 import Categories from "~/components/ui/search/Categories.vue";
-
+const data = useNuxtApp()
 const app = useNuxtApp();
 const emit = defineEmits(["update:notifications"]);
-
+const router = useNativeRouter()
 const props = defineProps({
   notification: {
     type: Object,
@@ -383,6 +452,7 @@ const threadLink = computed(() => {
 });
 
 const hasBody = computed(() => !type.value || thread.value || type.value === "project_update");
+const fetchNotifications = inject('fetchNotifications');
 
 async function read() {
   try {
@@ -395,6 +465,7 @@ async function read() {
     const updateNotifs = await markAsRead(ids);
     const newNotifs = updateNotifs(props.notifications);
     emit("update:notifications", newNotifs);
+    fetchNotifications();
   } catch (err) {
     app.$notify({
       group: "main",
@@ -403,6 +474,33 @@ async function read() {
       type: "error",
     });
   }
+}
+
+async function again() {
+
+  try {
+    await useBaseFetch(`project/${project.value.slug}/wiki_submit_again/${props.notification.body.wiki_cache_id}`, { apiVersion: 3, method: 'POST' })
+    app.$notify({
+      group: 'main',
+      title: '成功',
+      text: '重新编辑百科',
+      type: 'success'
+    })
+    await read();
+    router.push(`/project/${project.value.slug}/wikis`)
+  } catch (err) {
+    app.$notify({
+      group: 'main',
+      title: '发生错误',
+      text: err.data.description,
+      type: 'error'
+    })
+    if (err.data.description.includes('已无法再次')){
+      await read();
+    }
+  }
+
+
 }
 
 async function performAction(notification, actionIndex) {

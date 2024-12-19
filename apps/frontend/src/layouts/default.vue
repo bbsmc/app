@@ -587,6 +587,7 @@ import { getProjectTypeMessage } from "~/utils/i18n-project-type.ts";
 import { commonMessages } from "~/utils/common-messages.ts";
 import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
 import OrganizationCreateModal from "~/components/ui/OrganizationCreateModal.vue";
+import { provide } from 'vue';
 
 const { formatMessage } = useVIntl();
 
@@ -887,14 +888,20 @@ watch(
   },
 );
 
+provide('fetchNotifications', fetchNotifications);
+
 async function fetchNotifications() {
+
   if (auth.value.user) {
+
+    let count = 0;
     const notifications = await useBaseFetch(`user/${auth.value.user.id}/notifications`);
     notifications.forEach(notification => {
       if (!notification.read) {
-        unreadNotifications.value++;
+        count++;
       }
     });
+    unreadNotifications.value = count;
   }
 }
 

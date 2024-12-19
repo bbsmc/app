@@ -55,6 +55,8 @@ pub struct User {
 
     // DEPRECATED. Always returns None
     pub github_id: Option<u64>,
+    pub wiki_ban_time: DateTime<Utc>,
+    pub wiki_overtake_count: i64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -85,6 +87,8 @@ impl From<DBUser> for User {
             has_totp: None,
             github_id: None,
             stripe_customer_id: None,
+            wiki_ban_time: data.wiki_ban_time,
+            wiki_overtake_count: data.wiki_overtake_count,
         }
     }
 }
@@ -136,6 +140,8 @@ impl User {
                 balance: Decimal::ZERO,
             }),
             stripe_customer_id: db_user.stripe_customer_id,
+            wiki_ban_time: db_user.wiki_ban_time,
+            wiki_overtake_count: db_user.wiki_overtake_count,
         }
     }
 }

@@ -35,11 +35,11 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     );
 }
 
-// Returns all members of a project,
-// including the team members of the project's team, but
-// also the members of the organization's team if the project is associated with an organization
-// (Unlike team_members_get_project, which only returns the members of the project's team)
-// They can be differentiated by the "organization_permissions" field being null or not
+// 返回项目的所有成员，
+// 包括项目团队的成员，但
+// 如果项目与组织相关联，还包括组织团队的成员
+// （与 team_members_get_project 不同，它只返回项目团队的成员）
+// 它们可以通过 "organization_permissions" 字段是否为空来区分
 pub async fn team_members_get_project(
     req: HttpRequest,
     info: web::Path<(String,)>,
@@ -396,7 +396,7 @@ pub async fn join_team(
 }
 
 fn default_role() -> String {
-    "Member".to_string()
+    "成员".to_string()
 }
 
 fn default_ordering() -> i64 {

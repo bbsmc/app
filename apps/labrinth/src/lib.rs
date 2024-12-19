@@ -1,8 +1,10 @@
 use std::num::NonZeroU32;
+use std::ops::Add;
 use std::sync::Arc;
 use std::time::Duration;
 
 use actix_web::web;
+use chrono::Utc;
 use database::redis::RedisPool;
 use queue::{
     analytics::AnalyticsQueue, payouts::PayoutsQueue, session::AuthQueue,
@@ -18,6 +20,15 @@ use governor::{Quota, RateLimiter};
 use log::{info, warn};
 use util::cors::default_cors;
 
+use crate::database::models::notification_item::NotificationBuilder;
+use crate::database::models::{
+    OrganizationId, ProjectId, TeamId, User, UserId,
+};
+use crate::database::Project;
+use crate::models::notifications::NotificationBody;
+use crate::models::projects::{MonetizationStatus, ProjectStatus};
+use crate::models::teams::ProjectPermissions;
+use crate::models::users::{Badges, Role};
 use crate::queue::moderation::AutomatedModerationQueue;
 use crate::util::ratelimit::KeyedRateLimiter;
 use crate::{
@@ -69,10 +80,7 @@ pub fn app_setup(
     file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
     maxmind: Arc<queue::maxmind::MaxMindIndexer>,
 ) -> LabrinthConfig {
-    info!(
-        "启动 Labrinth 于 {}",
-        dotenvy::var("BIND_ADDR").unwrap()
-    );
+    info!("启动 Labrinth 于 {}", dotenvy::var("BIND_ADDR").unwrap());
 
     let automated_moderation_queue =
         web::Data::new(AutomatedModerationQueue::default());
@@ -96,15 +104,9 @@ pub fn app_setup(
     );
     let limiter_clone = Arc::clone(&limiter);
     scheduler.run(Duration::from_secs(60), move || {
-        info!(
-            "清理速率限制器，存储大小：{}",
-            limiter_clone.len()
-        );
+        info!("清理速率限制器，存储大小：{}", limiter_clone.len());
         limiter_clone.retain_recent();
-        info!(
-            "完成清理速率限制器，存储大小：{}",
-            limiter_clone.len()
-        );
+        info!("完成清理速率限制器，存储大小：{}", limiter_clone.len());
 
         async move {}
     });
@@ -129,7 +131,7 @@ pub fn app_setup(
                 redis_pool_ref.clone(),
                 &search_config_ref,
             )
-                .await;
+            .await;
             if let Err(e) = result {
                 warn!("本地项目索引失败：{:?}", e);
             }
@@ -208,21 +210,21 @@ pub fn app_setup(
     let reader = maxmind.clone();
     {
         let reader_ref = reader;
-        scheduler.run(std::time::Duration::from_secs(60 * 60 * 24), move || {
-            let reader_ref = reader_ref.clone();
+        scheduler.run(
+            std::time::Duration::from_secs(60 * 60 * 24),
+            move || {
+                let reader_ref = reader_ref.clone();
 
-            async move {
-                info!("下载 MaxMind GeoLite2 国家数据库");
-                let result = reader_ref.index().await;
-                if let Err(e) = result {
-                    warn!(
-                        "下载 MaxMind GeoLite2 国家数据库失败: {:?}",
-                        e
-                    );
+                async move {
+                    info!("下载 MaxMind GeoLite2 国家数据库");
+                    let result = reader_ref.index().await;
+                    if let Err(e) = result {
+                        warn!("下载 MaxMind GeoLite2 国家数据库失败: {:?}", e);
+                    }
+                    info!("已完成下载 MaxMind GeoLite2 国家数据库");
                 }
-                info!("已完成下载 MaxMind GeoLite2 国家数据库");
-            }
-        });
+            },
+        );
     }
     info!("下载 MaxMind GeoLite2 国家数据库");
 
@@ -247,6 +249,375 @@ pub fn app_setup(
                     warn!("分析服务索引失败: {:?}", e);
                 }
                 info!("分析索引完成");
+            }
+        });
+    }
+
+    info!("启动检测超时百科编辑");
+    {
+        let pool_ref_clone2 = pool.clone();
+        let redis_ref2 = redis_pool.clone();
+
+        scheduler.run(std::time::Duration::from_secs(60), move || {
+            let pool_ref_clone2 = pool_ref_clone2.clone();
+            let redis_ref2 = redis_ref2.clone();
+
+            async move {
+                info!("开始检测超时百科编辑");
+
+                let result = database::models::WikiCache::get_all_draft(&pool_ref_clone2).await;
+                match result {
+                    Ok(items) => {
+                        for item in items {
+                            if item.again_time.add(Duration::from_secs(3600 * 5)) < Utc::now() {
+
+
+                                let projects = sqlx::query!(
+                                    "
+                                    SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,
+                                    m.icon_url icon_url, m.raw_icon_url raw_icon_url, m.description description, m.published published,
+                                    m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
+                                    m.license_url license_url,
+                                    m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
+                                    m.webhook_sent, m.color, m.wiki_open,
+                                    t.id thread_id, m.monetization_status monetization_status,
+                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
+                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
+                                    FROM mods m
+                                    INNER JOIN threads t ON t.mod_id = m.id
+                                    LEFT JOIN mods_categories mc ON mc.joining_mod_id = m.id
+                                    LEFT JOIN categories c ON mc.joining_category_id = c.id
+                                    WHERE m.id = ANY($1)
+                                    GROUP BY t.id, m.id;
+                                    ",
+                                    &[item.project_id.clone().0]
+                                ).fetch_all(&pool_ref_clone2).await;
+                                match projects {
+                                    Ok(projects) => {
+                                        let m = projects.get(0).unwrap();
+                                        let id = m.id;
+                                        let inner = Project {
+                                            id: ProjectId(id),
+                                            team_id: TeamId(m.team_id),
+                                            organization_id: m.organization_id.map(OrganizationId),
+                                            name: m.name.clone(),
+                                            summary: m.summary.clone(),
+                                            downloads: m.downloads,
+                                            icon_url: m.icon_url.clone(),
+                                            raw_icon_url: m.raw_icon_url.clone(),
+                                            published: m.published,
+                                            updated: m.updated,
+                                            license_url: m.license_url.clone(),
+                                            status: ProjectStatus::from_string(
+                                                &m.status,
+                                            ),
+                                            requested_status: None,
+                                            license: m.license.clone(),
+                                            slug: m.slug.clone(),
+                                            description: m.description.clone(),
+                                            follows: m.follows,
+                                            moderation_message: None,
+                                            moderation_message_body: None,
+                                            approved: m.approved,
+                                            webhook_sent: m.webhook_sent,
+                                            wiki_open: m.wiki_open,
+                                            color: m.color.map(|x| x as u32),
+                                            queued: m.queued,
+                                            monetization_status: MonetizationStatus::from_string(
+                                                &m.monetization_status,
+                                            ),
+                                            loaders: vec![],
+                                        };
+                                        // println!("{:?}", inner);
+
+                                        let users = sqlx::query!(
+                                            "
+                                            SELECT id, email,
+                                                avatar_url, raw_avatar_url, username, bio,
+                                                created, role, badges,
+                                                github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
+                                                email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
+                                                venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time
+                                            FROM users
+                                            WHERE id = $1
+                                            ",
+                                            &item.user_id.0
+                                        ).fetch_all(&pool_ref_clone2).await;
+                                        match users {
+                                            Ok(users) => {
+                                                let u = users.get(0).unwrap();
+                                                let user = User {
+                                                    id: UserId(u.id.clone()),
+                                                    github_id: None,
+                                                    discord_id: None,
+                                                    gitlab_id: None,
+                                                    google_id: None,
+                                                    steam_id: None,
+                                                    microsoft_id: None,
+                                                    email: None,
+                                                    email_verified: true,
+                                                    avatar_url: None,
+                                                    raw_avatar_url: None,
+                                                    username: u.username.clone(),
+                                                    bio: u.bio.clone(),
+                                                    created: u.created,
+                                                    role: u.role.clone(),
+                                                    badges: Badges::from_bits(u.badges as u64).unwrap_or_default(),
+                                                    password: None,
+                                                    paypal_id: None,
+                                                    paypal_country: None,
+                                                    paypal_email: None,
+                                                    venmo_handle: None,
+                                                    stripe_customer_id: None,
+                                                    totp_secret: None,
+                                                    wiki_overtake_count: u.wiki_overtake_count,
+                                                    wiki_ban_time: u.wiki_ban_time,
+                                                };
+
+                                                let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id.clone(), &pool_ref_clone2).await {
+                                                    Ok(result) => result,
+                                                    Err(e) => {
+                                                        warn!("Failed to get team member: {:?}", e);
+                                                        continue;
+                                                    }
+                                                };
+                                                // println!("{:?}", team_member);
+
+                                                let permissions = ProjectPermissions::get_permissions_by_role(
+                                                    &Role::from_string(&user.role),
+                                                    &team_member,
+                                                    &organization_team_member,
+                                                );
+                                                if !permissions.is_none() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) {
+                                                    println!("有权限超时");
+                                                    let mut transaction = match pool_ref_clone2.begin().await{
+                                                        Ok(transaction) => transaction,
+                                                        Err(e) => {
+                                                            println!("Failed to get transaction: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+
+                                                    let _ = match sqlx::query!(
+                                                       "UPDATE wiki_cache SET status = $1, message = $2 WHERE id = $3",
+                                                        "reject",
+                                                        item.message,
+                                                        item.id.0
+                                                    ).execute( &mut *transaction).await{
+                                                        Ok(_) => {},
+                                                        Err(e) => {
+                                                            println!("Failed to update wiki_cache: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+                                                    let n = NotificationBuilder {
+                                                        body: NotificationBody::WikiCache {
+                                                            project_id: crate::models::ids::ProjectId::from(inner.id),
+                                                            project_title: inner.name.clone(),
+                                                            wiki_cache_id: item.id.clone(),
+                                                            type_: "reject".to_string(),
+                                                            msg: "资源编辑超时，您是该资源的管理员可重新发起编辑".to_string(),
+                                                        },
+                                                    };
+                                                    let _ = match n.insert(user.id, &mut transaction, &redis_ref2).await{
+                                                        Ok(_) => {},
+                                                        Err(e) => {
+                                                            println!("Failed to insert notification: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+                                                    let _ = match transaction.commit().await{
+                                                        Ok(_) => {},
+                                                        Err(e) => {
+                                                            println!("Failed to commit transaction: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+
+                                                }else {
+                                                    println!("无权限超时");
+
+                                                    let mut transaction = match pool_ref_clone2.begin().await{
+                                                        Ok(transaction) => transaction,
+                                                        Err(e) => {
+                                                            println!("Failed to get transaction: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+                                                    let _ = match sqlx::query!(
+                                                       "UPDATE wiki_cache SET status = $1, message = $2 WHERE id = $3",
+                                                        "timeout",
+                                                        item.message,
+                                                        item.id.0
+                                                    ).execute(&mut *transaction).await {
+                                                        Ok(_) => {},
+                                                        Err(e) => {
+                                                            println!("Failed to update wiki_cache: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+
+                                                    if user.wiki_overtake_count+1 >= 3 {
+                                                        let _ = match sqlx::query!(
+                                                           "UPDATE users SET wiki_ban_time = now() + interval '1 hour' * $1,wiki_overtake_count=0 WHERE id = $2",
+                                                            72 as i64,
+                                                            user.id.0
+                                                        ).execute(&mut *transaction).await{
+                                                            Ok(_) => {},
+                                                            Err(e) => {
+                                                                println!("Failed to update users: {:?}", e);
+                                                                continue
+                                                            }
+                                                        };
+                                                        println!("{:?} 超时未提交,并累计超过3次,已被禁止编辑72小时", user.username);
+                                                        let n = NotificationBuilder {
+                                                            body: NotificationBody::WikiCache {
+                                                                project_id: crate::models::ids::ProjectId::from(inner.id),
+                                                                project_title: inner.name.clone(),
+                                                                wiki_cache_id: item.id.clone(),
+                                                                type_: "time_out".to_string(),
+                                                                msg: "资源编辑超时，并且累计3次超时/取消编辑 您已经被禁止编辑72小时".to_string(),
+                                                            },
+                                                        };
+                                                        let _ = match n.insert(user.id, &mut transaction, &redis_ref2).await{
+                                                            Ok(_) => {},
+                                                            Err(e) => {
+                                                                println!("Failed to insert notification: {:?}", e);
+                                                                continue
+                                                            }
+                                                        };
+
+                                                    }else {
+                                                        let _ = match sqlx::query!(
+                                                           "UPDATE users SET wiki_ban_time = now() + interval '1 hour' * $1,wiki_overtake_count=wiki_overtake_count+1 WHERE id = $2",
+                                                            24 as i64,
+                                                            user.id.0
+                                                        ).execute(&mut *transaction).await{
+                                                            Ok(_) => {},
+                                                            Err(e) => {
+                                                                println!("Failed to update users: {:?}", e);
+                                                                continue
+                                                            }
+                                                        };
+                                                        println!("{:?} 超时未提交 已被禁止编辑24小时",user.username);
+                                                        let n = NotificationBuilder {
+                                                            body: NotificationBody::WikiCache {
+                                                                project_id: crate::models::ids::ProjectId::from(inner.id),
+                                                                project_title: inner.name.clone(),
+                                                                wiki_cache_id: item.id.clone(),
+                                                                type_: "time_out".to_string(),
+                                                                msg: "资源编辑超时，您已被禁止编辑24小时".to_string(),
+                                                            },
+                                                        };
+                                                        let _ = match n.insert(user.id, &mut transaction, &redis_ref2)
+                                                            .await{
+
+                                                            Ok(_) => {},
+                                                            Err(e) => {
+                                                                println!("Failed to insert notification: {:?}", e);
+                                                                continue
+                                                            }
+                                                        };
+                                                    }
+
+
+                                                    let _ = match transaction.commit().await{
+                                                        Ok(_) => {},
+                                                        Err(e) => {
+                                                            println!("Failed to commit transaction: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+                                                    let _ = match User::clear_caches(&[(UserId::from(user.id.clone()), Some(user.username.clone()))], &redis_ref2)
+                                                        .await{
+                                                        Ok(_) => {},
+                                                        Err(e) => {
+                                                            println!("Failed to clear caches: {:?}", e);
+                                                            continue
+                                                        }
+                                                    };
+                                                    continue
+
+                                                }
+
+                                            }
+                                            Err(e) => {
+                                                println!("Failed to get user with ID {:?}: {:?}", item.user_id.clone(), e);
+                                                continue
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("Failed to get user with ID {:?}: {:?}", item.user_id.clone(), e);
+                                        continue
+                                    }
+                                }
+                                // let project_result_ = database::models::Project::get_id(item.project_id.clone(), &pool_ref_clone2).await;
+                                // if project_result_.is_err() {
+                                // if project_result_.await.is_err() {
+                                //     continue;
+                                // }
+                                //     .await;
+                                // 处理 project_result_ 的逻辑
+
+                                // if let DatabaseError(e) = project_result_ {
+                                //     println!("Failed to get project with ID {:?}: {:?}", item.project_id.clone(), e);
+                                //     continue;
+                                // }
+                                // if project_result_.is_err() {
+                                //     continue
+                                // }
+
+                                // let project = project_result_.await.unwrap(); // 此时 unwrap 是安全的，因为前面已经检查过错误情况
+                                // if project.is_none() {
+                                //     continue
+                                // }
+                                // let project = project.unwrap();
+                                // println!("{:?}", project);
+
+                                // let user_option =
+                                //     match database::models::User::get_id(
+                                //         item.user_id.clone(),
+                                //         &pool_ref_clone2, &redis_ref2,
+                                //     ).await{
+                                //         Ok(user) => user,
+                                //         Err(e) => {
+                                //             warn!("Failed to get user: {:?}", e);
+                                //             return;
+                                //         }
+                                //     };
+                                // if user_option.is_none() {
+                                //     continue;
+                                // }
+                                // let user_option = user_option.unwrap();
+                                // let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&project.inner, item.user_id.clone(), &pool_ref_clone2).await {
+                                //     Ok(result) => result,
+                                //     Err(e) => {
+                                //         warn!("Failed to get team member: {:?}", e);
+                                //         return;
+                                //     }
+                                // };
+                                //
+                                //
+                                // let permissions = ProjectPermissions::get_permissions_by_role(
+                                //     &Role::from_string(&user_option.role),
+                                //     &team_member,
+                                //     &organization_team_member,
+                                // );
+                                // if !permissions.is_none() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) {
+                                //     println!("有权限超时");
+                                //     continue
+                                // }else {
+                                //     println!("无权限超时")
+                                // }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        warn!("检测超时百科编辑失败: {:?}", e);
+                    }
+                }
+                info!("检测超时百科编辑完成");
             }
         });
     }
@@ -282,7 +653,7 @@ pub fn app_setup(
                 pool_ref,
                 redis_ref,
             )
-                .await;
+            .await;
         });
     }
 
@@ -330,33 +701,33 @@ pub fn app_config(
     cfg.app_data(web::FormConfig::default().error_handler(|err, _req| {
         routes::ApiError::Validation(err.to_string()).into()
     }))
-        .app_data(web::PathConfig::default().error_handler(|err, _req| {
-            routes::ApiError::Validation(err.to_string()).into()
-        }))
-        .app_data(web::QueryConfig::default().error_handler(|err, _req| {
-            routes::ApiError::Validation(err.to_string()).into()
-        }))
-        .app_data(web::JsonConfig::default().error_handler(|err, _req| {
-            routes::ApiError::Validation(err.to_string()).into()
-        }))
-        .app_data(web::Data::new(labrinth_config.redis_pool.clone()))
-        .app_data(web::Data::new(labrinth_config.pool.clone()))
-        .app_data(web::Data::new(labrinth_config.file_host.clone()))
-        .app_data(web::Data::new(labrinth_config.search_config.clone()))
-        .app_data(labrinth_config.session_queue.clone())
-        .app_data(labrinth_config.payouts_queue.clone())
-        .app_data(web::Data::new(labrinth_config.ip_salt.clone()))
-        .app_data(web::Data::new(labrinth_config.analytics_queue.clone()))
-        .app_data(web::Data::new(labrinth_config.clickhouse.clone()))
-        .app_data(web::Data::new(labrinth_config.maxmind.clone()))
-        .app_data(labrinth_config.active_sockets.clone())
-        .app_data(labrinth_config.automated_moderation_queue.clone())
-        .app_data(web::Data::new(labrinth_config.stripe_client.clone()))
-        .configure(routes::v2::config)
-        .configure(routes::v3::config)
-        .configure(routes::internal::config)
-        .configure(routes::root_config)
-        .default_service(web::get().wrap(default_cors()).to(routes::not_found));
+    .app_data(web::PathConfig::default().error_handler(|err, _req| {
+        routes::ApiError::Validation(err.to_string()).into()
+    }))
+    .app_data(web::QueryConfig::default().error_handler(|err, _req| {
+        routes::ApiError::Validation(err.to_string()).into()
+    }))
+    .app_data(web::JsonConfig::default().error_handler(|err, _req| {
+        routes::ApiError::Validation(err.to_string()).into()
+    }))
+    .app_data(web::Data::new(labrinth_config.redis_pool.clone()))
+    .app_data(web::Data::new(labrinth_config.pool.clone()))
+    .app_data(web::Data::new(labrinth_config.file_host.clone()))
+    .app_data(web::Data::new(labrinth_config.search_config.clone()))
+    .app_data(labrinth_config.session_queue.clone())
+    .app_data(labrinth_config.payouts_queue.clone())
+    .app_data(web::Data::new(labrinth_config.ip_salt.clone()))
+    .app_data(web::Data::new(labrinth_config.analytics_queue.clone()))
+    .app_data(web::Data::new(labrinth_config.clickhouse.clone()))
+    .app_data(web::Data::new(labrinth_config.maxmind.clone()))
+    .app_data(labrinth_config.active_sockets.clone())
+    .app_data(labrinth_config.automated_moderation_queue.clone())
+    .app_data(web::Data::new(labrinth_config.stripe_client.clone()))
+    .configure(routes::v2::config)
+    .configure(routes::v3::config)
+    .configure(routes::internal::config)
+    .configure(routes::root_config)
+    .default_service(web::get().wrap(default_cors()).to(routes::not_found));
 }
 
 // This is so that env vars not used immediately don't panic at runtime

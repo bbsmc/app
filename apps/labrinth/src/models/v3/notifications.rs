@@ -9,6 +9,7 @@ use crate::models::ids::{
 use crate::models::projects::ProjectStatus;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use crate::database::models::WikiCacheId;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "Base62Id")]
@@ -67,6 +68,13 @@ pub enum NotificationBody {
         link: String,
         actions: Vec<NotificationAction>,
     },
+    WikiCache {
+        project_id: ProjectId,
+        project_title: String,
+        msg: String,
+        wiki_cache_id: WikiCacheId,
+        type_: String,
+    },
     Unknown,
 }
 
@@ -83,6 +91,20 @@ impl From<DBNotification> for Notification {
                     format!("/project/{}/version/{}", project_id, version_id),
                     vec![],
                 ),
+
+                NotificationBody::WikiCache {
+                    project_id,
+                    project_title,
+                    type_,
+                    ..
+                } => {
+                    (
+                        "百科修改状态变更".to_string(),
+                        format!("您提交的项目 {} 的百科页面修改状态变更为 {}", project_title,type_),
+                        format!("/project/{}/wikis", project_id),
+                        vec![],
+                    )
+                },
                 NotificationBody::TeamInvite {
                     project_id,
                     role,
@@ -118,8 +140,8 @@ impl From<DBNotification> for Notification {
                     team_id,
                     ..
                 } => (
-                    "您已被邀请加入组织！".to_string(),
-                    format!("已向您发送邀请，成为组织的 {}", role),
+                    "您已被邀请加入团队！".to_string(),
+                    format!("已向您发送邀请，成为团队的 {}", role),
                     format!("/organization/{}", organization_id),
                     vec![
                         NotificationAction {

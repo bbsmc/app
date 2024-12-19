@@ -75,7 +75,7 @@
           <ButtonStyled color="brand">
             <button :disabled="!hasChanges || isSaving" @click="saveSettings">
               <SaveIcon class="h-5 w-5" />
-              {{ isSaving ? "Saving..." : "Save changes" }}
+              {{ isSaving ? "保存中..." : "保存修改" }}
             </button>
           </ButtonStyled>
           <ButtonStyled>

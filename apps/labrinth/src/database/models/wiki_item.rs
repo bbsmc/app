@@ -5,10 +5,11 @@ use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
+use crate::models::users::User;
 
 pub const WIKI_NAMESPACE: &str = "wikis";
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug)]
 pub struct Wiki {
     pub id: WikiId,
     pub project_id: ProjectId,
@@ -21,6 +22,8 @@ pub struct Wiki {
     pub updated: DateTime<Utc>,
     pub slug: String,
 }
+
+
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct WikiDisplays {
@@ -36,11 +39,14 @@ pub struct WikiDisplays {
     pub slug: String,
     pub child: Vec<Wiki>,
 }
-#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Wikis {
     pub wikis: Vec<WikiDisplays>,
     pub is_editor: bool,
     pub cache: Option<WikiCache>,
+    pub is_editor_user: bool,
+    pub editor_user: Option<User>,
+    pub is_visitors: bool,
 }
 
 impl Wiki {
@@ -78,6 +84,34 @@ impl Wiki {
             updated: row.updated,
             slug: row.slug,
         })
+    }
+
+    pub async fn update(
+        &self,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE wikis SET body = $1,sort_order = $2,title = $3,featured = $4,updated = $5,draft = false WHERE id=$6",
+            self.body,
+            self.sort_order,
+            self.title,
+            self.featured,
+            self.updated,
+            self.id.0
+        ).execute(&mut **transaction)
+            .await?;
+
+        Ok(())
+    }
+    pub async fn delete(
+        &self,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM wikis WHERE id = $1", self.id.0)
+            .execute(&mut **transaction)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn get_many<'a, E>(
@@ -161,5 +195,18 @@ impl Wiki {
             updated: row.updated,
             slug: row.slug,
         })
+    }
+    pub async fn clear_cache(
+        &self,
+        redis: &RedisPool,
+    ) -> Result<(), DatabaseError> {
+        let mut redis = redis.connect().await?;
+
+        redis
+            .delete_many([
+                (WIKI_NAMESPACE, Some(self.id.0.to_string()))
+            ])
+            .await?;
+        Ok(())
     }
 }

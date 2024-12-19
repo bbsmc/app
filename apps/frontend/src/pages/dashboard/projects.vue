@@ -387,6 +387,7 @@ export default defineNuxtComponent({
     this.REMOVE_MEMBER = 1 << 5;
     this.EDIT_MEMBER = 1 << 6;
     this.DELETE_PROJECT = 1 << 7;
+    this.WIKI_EDIT = 1 << 10;
   },
   methods: {
     updateDescending() {

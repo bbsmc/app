@@ -181,6 +181,113 @@
       </div>
     </div>
 
+    <NewModal ref="preReviewWiki">
+      <template #title>
+        <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" />
+        <div class="truncate text-lg font-extrabold text-contrast">预览提交</div>
+      </template>
+      <ScrollablePanel :class="((preIndexSetReview.length + preBodyReview.length + preADDReview.length + preSortReview.length + preREMOVEReview.length) > 4) ? 'h-[30rem]' : ''">
+        <div class="flex flex-col gap-3" style="width: 500px">
+
+          <div class="flex flex-col gap-2"  v-if="preIndexSetReview.length > 0">
+            <div class="flex flex-col gap-2">
+              <label for="name">
+          <span class="text-lg font-semibold text-contrast">
+            设置主页:
+          </span>
+              </label>
+              <span v-for="wiki in preIndexSetReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+            </div>
+          </div>
+
+
+           <div class="flex flex-col gap-2"  v-if="preBodyReview.length > 0">
+            <div class="flex flex-col gap-2">
+              <label for="name">
+          <span class="text-lg font-semibold text-contrast">
+            修改正文:
+          </span>
+              </label>
+              <span v-for="wiki in preBodyReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+            </div>
+          </div>
+
+
+
+
+          <div class="flex flex-col gap-2" v-if="preSortReview.length > 0">
+            <div class="flex flex-col gap-2">
+              <label for="name">
+          <span class="text-lg font-semibold text-contrast">
+            修改权重:
+          </span>
+              </label>
+              <span v-for="wiki in preSortReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2" v-if="preADDReview.length > 0">
+            <div class="flex flex-col gap-2">
+              <label for="name">
+          <span class="text-lg font-semibold text-contrast">
+            新增页面:
+          </span>
+              </label>
+              <span v-for="wiki in preADDReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+            </div>
+          </div>
+        <div class="flex flex-col gap-2" v-if="preREMOVEReview.length > 0">
+            <div class="flex flex-col gap-2">
+              <label for="name">
+          <span class="text-lg font-semibold text-contrast">
+            移除页面:
+          </span>
+              </label>
+              <span v-for="wiki in preREMOVEReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+            </div>
+          </div>
+
+
+
+        </div>
+
+        <span style="margin-top: 20px"></span>
+
+      </ScrollablePanel>
+
+
+<!--      理由-->
+
+      <div class="flex flex-col gap-2">
+        <label for="name">
+        <span class="text-lg font-semibold text-contrast">
+          备注:
+        </span>
+        </label>
+        <textarea v-model="submitWikiCacheMsg" type="text" placeholder="请输入提交的原因" />
+      </div>
+      <div class="flex gap-2 mt-5" v-if="wikis.cache.again_count > 0" style="font-size: 14px">
+        已重复编辑了 {{wikis.cache.again_count}} 次，超过5次后将无法再次发起重复编辑或被拒绝后再次发起编辑
+        <br/>
+        <br/>
+        第5次重复编辑后将被禁止发起新的编辑申请3小时
+      </div>
+
+      <div class="flex gap-2 mt-5">
+        <ButtonStyled color="green">
+          <button @click="submitConfirmForReview">
+            <PlusIcon aria-hidden="true" />
+            提交
+          </button>
+        </ButtonStyled>
+        <ButtonStyled>
+          <button @click="preReviewWiki.hide()"  style="margin-left: auto">
+            <XIcon aria-hidden="true" />
+            取消
+          </button>
+        </ButtonStyled>
+      </div>
+    </NewModal>
     <NewModal ref="createWikiModal">
       <template #title>
         <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" />
@@ -536,6 +643,7 @@
         'alt-layout': route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')
       }"
     >
+
       <div class="normal-page__header relative my-4">
         <ContentPageHeader>
           <template #icon>
@@ -761,44 +869,51 @@
         </MessageBanner>
       </div>
       <!--      百科导航栏    -->
-      <div v-if="(route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')) && (wikis.wikis.length > 0 || wikis.is_editor)" class="normal-page__sidebar">
+      <div
+        v-if="(route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')) && (wikis.wikis.length > 0 || wikis.is_editor)"
+        class="normal-page__sidebar">
 
         <aside class="universal-card">
-          <ButtonStyled v-if="wikis.is_editor" type="standard"
-                        @click="(event) => createWikiModal.show(event)">
-            <nuxt-link>
-              新建页面
-            </nuxt-link>
+          <div v-if="wikis.is_editor && wikis.is_editor_user && wikis.cache.status === 'draft'">
+            <ButtonStyled type="standard"
+                          @click="(event) => createWikiModal.show(event)">
+              <nuxt-link>
+                新建页面
+              </nuxt-link>
 
-          </ButtonStyled>
-          <ButtonStyled v-if="wikis.is_editor" type="standard"
-                        @click="(event) => createWikiModal.show(event)" >
-            <nuxt-link class="mt-3">
-              提交草稿审核
-            </nuxt-link>
+            </ButtonStyled>
+            <ButtonStyled type="standard"
+                          @click="submitForReview">
+              <nuxt-link style="margin-top: 10px">
+                提交草稿审核
+              </nuxt-link>
 
-          </ButtonStyled>
-          <hr v-if="wikis.is_editor"/>
-          <NavStack v-if="wikis.is_editor">
+            </ButtonStyled>
+            <hr />
+            <NavStack >
 
-            <div v-for="wiki in wikis.cache.cache" :key="wiki.id" class="my-1">
+              <div v-for="wiki in wikis.cache.cache" :key="wiki.id" class="my-1">
 
-              <NuxtLink class="nav-link button-base"
-                        :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
-                <div class="nav-content">
-                  <slot />
-                  <h3>{{ wiki.title }}</h3>
-                </div>
-              </NuxtLink>
-              <NavStackItem
-                v-for="w in wiki.child"
-                :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${w.slug}`"
-                :label="w.title"
-              />
+                <NuxtLink class="nav-link button-base"
+                          :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
+                  <div class="nav-content">
+                    <slot />
+                    <h3>{{ wiki.title }}</h3>
+                  </div>
+                </NuxtLink>
+                <NavStackItem
+                  v-for="w in wiki.child"
+                  :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${w.slug}`"
+                  :label="w.title"
+                />
 
-            </div>
-          </NavStack>
+              </div>
+            </NavStack>
+          </div>
+
+
           <NavStack v-else>
+
             <div v-for="wiki in wikis.wikis" :key="wiki.id" class="my-1">
 
               <NuxtLink class="nav-link button-base"
@@ -823,6 +938,7 @@
       <!--      侧边栏-->
       <div v-else class="normal-page__sidebar">
         <div v-if="versions.length > 0" class="card flex-card experimental-styles-within">
+
           <h2>{{ formatMessage(compatibilityMessages.title) }}</h2>
           <section>
             <h3>{{ formatMessage(compatibilityMessages.minecraftJava) }}</h3>
@@ -983,7 +1099,7 @@
           </div>
         </div>
         <div class="card flex-card experimental-styles-within">
-          <h2>{{ formatMessage(creatorsMessages.title) }}</h2>
+          <h2>{{organization ? (organization.slug='bbsmc'?'搬运团队':'创作团队') : '创作者'}}</h2>
           <div class="details-list">
             <template v-if="organization">
               <nuxt-link
@@ -1143,6 +1259,7 @@ import {
   CopyrightIcon,
   DownloadIcon,
   ExternalIcon,
+  EditIcon,
   GameIcon,
   HeartIcon,
   ImageIcon as GalleryIcon,
@@ -1227,6 +1344,7 @@ const { formatMessage } = useVIntl()
 const settingsModal = ref()
 const downloadModal = ref()
 const createWikiModal = ref()
+const preReviewWiki = ref()
 const overTheTopDownloadAnimation = ref()
 
 const userSelectedGameVersion = ref(null)
@@ -1601,6 +1719,13 @@ try {
   })
 }
 
+if (wikis.value && wikis.value.wikis) {
+  wikis.value.wikis.sort((a, b) => a.sort_order - b.sort_order)
+  wikis.value.wikis.forEach((wiki) => {
+    wiki.child.sort((a, b) => a.sort_order - b.sort_order)
+  })
+}
+
 if (!project.value) {
   throw createError({
     fatal: true,
@@ -1659,7 +1784,7 @@ const currentMember = computed(() => {
       team_id: project.team_id,
       user: auth.value.user,
       role: auth.value.role,
-      permissions: auth.value.user.role === 'admin' ? 1023 : 12,
+      permissions: auth.value.user.role === 'admin' ? 2047 : 12,
       accepted: true,
       payouts_split: 0,
       avatar_url: auth.value.user.avatar_url,
@@ -1904,6 +2029,194 @@ async function createWiki() {
   createWikiSlug.value = ''
 
   // console.log(wikis.value)
+
+}
+
+const preSortReview = ref([])
+const preBodyReview = ref([])
+const preADDReview = ref([])
+const preREMOVEReview = ref([])
+const preIndexSetReview = ref([])
+async function submitForReview() {
+
+  // console.log('提交审核')
+  // 开始计算和之前有哪些变动
+
+  submitWikiCacheMsg.value = ''
+  //第一步，获取到所有的新增的和被移除的WIKI
+  const wikiNew = wikis.value.cache.cache
+  const wikiOld = wikis.value.wikis
+
+  wikiNew.forEach(wiki => {
+    if (!wiki.child){
+      wiki.child = []
+    }
+  })
+  wikiOld.forEach(wiki => {
+    if (!wiki.child){
+      wiki.child = []
+    }
+  })
+
+
+  const wikiNews = wikiNew.flatMap(x => [x, ...x.child.map(child => child)])
+  const wikiOlds = wikiOld.flatMap(x => [x, ...x.child.map(child => child)])
+  const wikiNewId = wikiNew.flatMap(x => [x.id, ...x.child.map(child => child.id)])
+  const wikiOldId = wikiOld.flatMap(x => [x.id, ...x.child.map(child => child.id)])
+
+
+  const commonIds = wikiNewId.filter(id => wikiOldId.includes(id)) // 交集
+  const addWiki = [...wikiNews].filter(wiki => !wikiOldId.includes(wiki.id))
+  const removedWiki = [...wikiOlds].filter(wiki => !wikiNewId.includes(wiki.id))
+
+
+  const commonObjects = new Map(wikiNews.map(wiki => [wiki.id, [wikiOlds.find(oldWiki => oldWiki.id === wiki.id), wiki]]))
+
+  preSortReview.value = []
+  preBodyReview.value = []
+  preADDReview.value = []
+  preREMOVEReview.value = []
+  preIndexSetReview.value = []
+  let featured = null
+  wikiOlds.forEach(wiki => {
+    if (wiki.featured){
+      featured = wiki
+    }else if (wiki.child && wiki.child.length > 0) {
+      wiki.child.forEach((wiki__) => {
+        if (wiki__.featured) {
+          featured = wiki__
+        }
+      })
+    }
+  })
+  wikiNews.forEach(wiki => {
+    if (wiki.featured){
+      if (!featured){
+        preIndexSetReview.value.push({
+          wiki_id: wiki.id,
+          title: wiki.title,
+        })
+      }else if (featured && featured.id !== wiki.id){
+        preIndexSetReview.value.push({
+          wiki_id: wiki.id,
+          title: wiki.title,
+        })
+      }
+    }else if (wiki.child && wiki.child.length > 0) {
+      wiki.child.forEach((wiki__) => {
+        if (wiki__.featured) {
+          if (!featured){
+            preIndexSetReview.value.push({
+              wiki_id: wiki__.id,
+              title: wiki__.title,
+            })
+          }else if (featured && featured.id !== wiki__.id){
+            preIndexSetReview.value.push({
+              wiki_id: wiki__.id,
+              title: wiki__.title,
+            })
+          }
+        }
+      })
+    }
+  })
+
+
+
+  commonObjects.forEach(([oldWiki, newWiki]) => {
+
+    if (oldWiki && commonIds.includes(oldWiki.id)) {
+      if (oldWiki.sort_order !== newWiki.sort_order) {
+        preSortReview.value.push({
+          wiki_id: oldWiki.id,
+          title: newWiki.title,
+          old_sort_order: oldWiki.sort_order,
+          new_sort_order: newWiki.sort_order
+        })
+      }
+      if (oldWiki.body !== newWiki.body) {
+        preBodyReview.value.push({
+          wiki_id: oldWiki.id,
+          title: newWiki.title,
+          old_body: oldWiki.body,
+          new_body: newWiki.body
+        })
+      }
+    }
+  })
+  addWiki.forEach(wiki => {
+    preADDReview.value.push({
+      wiki_id: wiki.id,
+      title: wiki.title,
+      sort_order: wiki.sort_order,
+      body: wiki.body
+    })
+  })
+
+  removedWiki.forEach(wiki => {
+    preREMOVEReview.value.push({
+      wiki_id: wiki.id,
+      title: wiki.title,
+      sort_order: wiki.sort_order,
+      body: wiki.body
+    })
+  })
+
+  if ((preIndexSetReview.value.length + preBodyReview.value.length + preSortReview.value.length + preREMOVEReview.value.length + preADDReview.value.length) === 0) {
+    data.$notify({
+      group: 'main',
+      title: '发生错误',
+      text: '</br>没有任何修改',
+      type: 'error'
+    })
+    return
+  }
+  preReviewWiki.value.show()
+
+
+  // console.log('wikiNew ' + wikiNewId)
+  // console.log('wikiOld ' + wikiOldId)
+
+
+  // 第二部，获取所有被修改过的WIKI
+
+  // 第三步， 获取所有修改了权重的WIKI
+
+
+}
+const router = useNativeRouter()
+const submitWikiCacheMsg = ref("")
+
+async function submitConfirmForReview() {
+  if (submitWikiCacheMsg.value === '') {
+    data.$notify({
+      group: 'main',
+      title: '发生错误',
+      text: '</br>请填写提交原因',
+      type: 'error'
+    })
+    return
+  }
+  try {
+    await useBaseFetch(`project/${route.params.id}/wiki_submit`, { apiVersion: 3, method: 'POST', body: {msg: submitWikiCacheMsg.value,} })
+    data.$notify({
+      group: 'main',
+      title: '成功',
+      text: '</br>提交成功',
+      type: 'success'
+    })
+    preReviewWiki.value.hide()
+
+    router.push(`/project/${route.params.id}/wikis`)
+
+  } catch (err) {
+    data.$notify({
+      group: 'main',
+      title: '发生错误',
+      text: err.data.description,
+      type: 'error'
+    })
+  }
 
 }
 

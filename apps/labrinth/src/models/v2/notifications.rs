@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-
+use crate::database::models::WikiCacheId;
 use crate::models::{
     ids::{
         NotificationId, OrganizationId, ProjectId, ReportId, TeamId, ThreadId,
@@ -72,6 +72,14 @@ pub enum LegacyNotificationBody {
         link: String,
         actions: Vec<NotificationAction>,
     },
+    // 通过，拒绝 提交
+    WikiCache {
+        project_id: ProjectId,
+        project_title: String,
+        msg: String,
+        wiki_cache_id: WikiCacheId,
+        type_: String,
+    },
     Unknown,
 }
 
@@ -92,6 +100,9 @@ impl LegacyNotification {
             }
             NotificationBody::ModeratorMessage { .. } => {
                 Some("moderator_message".to_string())
+            }
+            NotificationBody::WikiCache { .. } => {
+                Some("wiki_cache".to_string())
             }
             NotificationBody::LegacyMarkdown {
                 notification_type, ..
@@ -161,6 +172,19 @@ impl LegacyNotification {
                 text,
                 link,
                 actions,
+            },
+            NotificationBody::WikiCache {
+                project_id,
+                project_title,
+                msg,
+                wiki_cache_id,
+                type_,
+            } => LegacyNotificationBody::WikiCache {
+                project_id,
+                project_title,
+                msg,
+                wiki_cache_id,
+                type_,
             },
             NotificationBody::Unknown => LegacyNotificationBody::Unknown,
         };

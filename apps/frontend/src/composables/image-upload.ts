@@ -1,7 +1,6 @@
 type ImageUploadContext = {
   projectID?: string;
-  wiki_id?: string;
-  context: 'project' | 'version' | 'thread_message' | 'report' | 'wiki';
+  context: 'project' | 'version' | 'thread_message' | 'report';
 };
 
 interface ImageUploadResponse {
@@ -25,7 +24,6 @@ export const useImageUpload = async (file: File, ctx: ImageUploadContext) => {
 
   const qs = new URLSearchParams()
   if (ctx.projectID) qs.set('project_id', ctx.projectID)
-  if (ctx.wiki_id) qs.set('wiki_id', ctx.wiki_id)
   qs.set('context', ctx.context)
   qs.set('ext', file.type.split('/')[1])
   const url = `image?${qs.toString()}`

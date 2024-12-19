@@ -5,5 +5,8 @@ CREATE TABLE IF NOT EXISTS wiki_cache (
     user_id        BIGINT       NOT NULL REFERENCES users,
     created        timestamptz           DEFAULT CURRENT_TIMESTAMP NOT NULL,
     status        VARCHAR(255) NOT NULL DEFAULT 'draft',
-    caches          jsonb        NOT NULL DEFAULT '[]'::jsonb
+--  status -> draft, review , success, reject
+    old          jsonb        NOT NULL DEFAULT '[]'::jsonb, -- 旧的内容
+    caches          jsonb        NOT NULL DEFAULT '[]'::jsonb, -- 新的内容
+    message          jsonb        NOT NULL DEFAULT '[]'::jsonb  -- 如果被驳回，驳回的原因和来回重新提交修改的内容
 )

@@ -141,6 +141,20 @@ pub async fn user_get(
         Err(ApiError::NotFound)
     }
 }
+pub async fn user_get_(
+    userid: crate::database::models::UserId,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+) -> Result<Option<crate::models::users::User>, ApiError> {
+    let user_data = User::get_id(userid, &**pool, &redis).await?;
+
+    if let Some(data) = user_data {
+        let response: crate::models::users::User = data.into();
+        Ok(Some(response))
+    } else {
+        Err(ApiError::NotFound)
+    }
+}
 
 pub async fn collections_list(
     req: HttpRequest,

@@ -116,7 +116,7 @@
         <!--        </div>-->
         <template v-if="!member.is_owner">
           <span class="label">
-            <span class="label__title">Permissions</span>
+            <span class="label__title">权限</span>
           </span>
           <div v-if="allTeamMembers[index]" class="permissions">
             <Checkbox
@@ -198,14 +198,24 @@
               @update:model-value="allTeamMembers[index].permissions ^= VIEW_ANALYTICS"
             />
             <Checkbox
-              :model-value="(member.permissions & VIEW_PAYOUTS) === VIEW_PAYOUTS"
+              :model-value="(member.permissions & WIKI_EDIT) === WIKI_EDIT"
               :disabled="
                 (props.currentMember?.permissions & EDIT_MEMBER) !== EDIT_MEMBER ||
-                (props.currentMember?.permissions & VIEW_PAYOUTS) !== VIEW_PAYOUTS
+                (props.currentMember?.permissions & WIKI_EDIT) !== WIKI_EDIT
               "
-              label="查看收入"
-              @update:model-value="allTeamMembers[index].permissions ^= VIEW_PAYOUTS"
+              label="管理百科"
+              @update:model-value="allTeamMembers[index].permissions ^= WIKI_EDIT"
             />
+
+<!--            <Checkbox-->
+<!--              :model-value="(member.permissions & VIEW_PAYOUTS) === VIEW_PAYOUTS"-->
+<!--              :disabled="-->
+<!--                (props.currentMember?.permissions & EDIT_MEMBER) !== EDIT_MEMBER ||-->
+<!--                (props.currentMember?.permissions & VIEW_PAYOUTS) !== VIEW_PAYOUTS-->
+<!--              "-->
+<!--              label="查看收入"-->
+<!--              @update:model-value="allTeamMembers[index].permissions ^= VIEW_PAYOUTS"-->
+<!--            />-->
           </div>
         </template>
         <div class="input-group">
@@ -476,6 +486,16 @@
               label="查看分析"
               @update:model-value="allOrgMembers[index].permissions ^= VIEW_ANALYTICS"
             />
+            <Checkbox
+              :model-value="(member.permissions & WIKI_EDIT) === WIKI_EDIT"
+              :disabled="
+                (props.currentMember?.permissions & EDIT_MEMBER) !== EDIT_MEMBER ||
+                (props.currentMember?.permissions & WIKI_EDIT) !== WIKI_EDIT ||
+                !allOrgMembers[index].override
+              "
+              label="管理百科"
+              @update:model-value="allOrgMembers[index].permissions ^= WIKI_EDIT"
+            />
             <!--            <Checkbox-->
             <!--              :model-value="(member.permissions & VIEW_PAYOUTS) === VIEW_PAYOUTS"-->
             <!--              :disabled="-->
@@ -624,6 +644,7 @@ const EDIT_MEMBER = 1 << 6;
 const DELETE_PROJECT = 1 << 7;
 const VIEW_ANALYTICS = 1 << 8;
 const VIEW_PAYOUTS = 1 << 9;
+const WIKI_EDIT = 1 << 10;
 
 const onAddToOrg = useClientTry(async () => {
   if (!selectedOrganization.value) return;

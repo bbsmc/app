@@ -34,6 +34,7 @@ bitflags::bitflags! {
         const DELETE_PROJECT = 1 << 7;
         const VIEW_ANALYTICS = 1 << 8;
         const VIEW_PAYOUTS = 1 << 9;
+        const WIKI_EDIT = 1 << 10;
     }
 }
 

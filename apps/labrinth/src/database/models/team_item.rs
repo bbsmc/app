@@ -697,9 +697,9 @@ impl TeamMember {
         }
     }
 
-    // Gets both required members for checking permissions of an action on a project
-    // - project team member (a user's membership to a given project)
-    // - organization team member (a user's membership to a given organization that owns a given project)
+// 获取检查项目操作权限所需的两个成员
+// - 项目团队成员（用户在给定项目中的成员身份）
+// - 组织团队成员（用户在拥有给定项目的组织中的成员身份）
     pub async fn get_for_project_permissions<'a, 'b, E>(
         project: &Project,
         user_id: UserId,

@@ -26,8 +26,8 @@ impl LegacyTeamMember {
     pub fn from(team_member: TeamMember) -> Self {
         LegacyTeamMember {
             role: match (team_member.is_owner, team_member.role.as_str()) {
-                (true, _) => "Owner".to_string(),
-                (false, "Owner") => "Member".to_string(), // The odd case of a non-owner with the owner role should show as 'Member'
+                (true, _) => "所有者".to_string(),
+                (false, "所有者") => "成员".to_string(), // The odd case of a non-owner with the owner role should show as 'Member'
                 (false, role) => role.to_string(),
             },
             team_id: team_member.team_id,

@@ -44,6 +44,9 @@ pub struct User {
     pub created: DateTime<Utc>,
     pub role: String,
     pub badges: Badges,
+    pub wiki_ban_time: DateTime<Utc>,
+    pub wiki_overtake_count: i64,
+
 }
 
 impl User {
@@ -172,7 +175,7 @@ impl User {
                         created, role, badges,
                         github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
                         email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
-                        venmo_handle, stripe_customer_id
+                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time
                     FROM users
                     WHERE id = ANY($1) OR LOWER(username) = ANY($2)
                     ",
@@ -205,6 +208,8 @@ impl User {
                             venmo_handle: u.venmo_handle,
                             stripe_customer_id: u.stripe_customer_id,
                             totp_secret: u.totp_secret,
+                            wiki_overtake_count: u.wiki_overtake_count,
+                            wiki_ban_time: u.wiki_ban_time,
                         };
 
                         acc.insert(u.id, (Some(u.username), user));

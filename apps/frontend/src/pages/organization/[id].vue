@@ -362,7 +362,7 @@ const currentMember = computed(() => {
       return {
         user: auth.value.user,
         role: auth.value.user.role,
-        permissions: auth.value.user.role === "admin" ? 1023 : 12,
+        permissions: auth.value.user.role === "admin" ? 2047 : 12,
         accepted: true,
         payouts_split: 0,
         avatar_url: auth.value.user.avatar_url,

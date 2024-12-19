@@ -110,7 +110,7 @@
             @click="editApp"
           >
             <SaveIcon />
-            Save changes
+            保存修改
           </button>
           <button
             v-else

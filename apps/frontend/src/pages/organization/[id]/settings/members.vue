@@ -180,7 +180,7 @@
             @click="onUpdateTeamMember(organization.team_id, member)"
           >
             <SaveIcon />
-            Save changes
+            保存修改
           </Button>
           <Button
             v-if="!member.is_owner"
@@ -255,6 +255,7 @@ const projectPermissions = {
   DELETE_PROJECT: 1 << 7,
   VIEW_ANALYTICS: 1 << 8,
   VIEW_PAYOUTS: 1 << 9,
+  WIKI_EDIT: 1 << 10,
 };
 
 const organizationPermissions = {
@@ -269,6 +270,60 @@ const organizationPermissions = {
 };
 
 const permToLabel = (key) => {
+  if (key === "UPLOAD_VERSION") {
+    return "上传版本";
+  }
+  if (key === "DELETE_VERSION") {
+    return "删除版本";
+  }
+  if (key === "EDIT_DETAILS") {
+    return "编辑详情";
+  }
+  if (key === "EDIT_BODY") {
+    return "编辑正文";
+  }
+  if (key === "MANAGE_INVITES") {
+    return "管理邀请";
+  }
+  if (key === "REMOVE_MEMBER") {
+    return "移除成员";
+  }
+  if (key === "EDIT_MEMBER") {
+    return "编辑成员";
+  }
+  if (key === "ADD_PROJECT") {
+    return "添加项目";
+  }
+  if (key === "REMOVE_PROJECT") {
+    return "移除项目";
+  }
+  if (key === "DELETE_ORGANIZATION") {
+    return "删除组织";
+  }
+  if (key === "EDIT_DETAILS") {
+    return "编辑详情";
+  }
+  if (key === "EDIT_MEMBER_DEFAULT_PERMISSIONS") {
+    return "编辑默认权限";
+  }
+
+  if (key === "DELETE_PROJECT") {
+    return "删除项目";
+  }
+  if (key === "VIEW_ANALYTICS") {
+    return "查看分析";
+  }
+  if (key === "VIEW_PAYOUTS") {
+    return "查看支付";
+  }
+  if (key === "WIKI_EDIT") {
+    return "管理百科";
+  }
+  if (key === "EDIT_MEMBER_DEFAULT_PERMISSIONS") {
+    return "编辑默认权限";
+  }
+  // return key;
+
   const o = key.split("_").join(" ");
   return o.charAt(0).toUpperCase() + o.slice(1).toLowerCase();
 };
