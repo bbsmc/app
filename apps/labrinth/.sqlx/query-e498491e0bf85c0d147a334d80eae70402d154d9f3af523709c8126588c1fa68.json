@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, mod_id, user_id, created, status ,caches, old, message,again_count,again_time FROM wiki_cache WHERE mod_id = $1 AND user_id = $2 AND status = 'draft'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "mod_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "caches",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "old",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "message",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "again_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "again_time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e498491e0bf85c0d147a334d80eae70402d154d9f3af523709c8126588c1fa68"
+}

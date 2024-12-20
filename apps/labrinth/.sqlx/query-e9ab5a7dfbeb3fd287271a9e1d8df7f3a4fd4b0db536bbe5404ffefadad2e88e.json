@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE wiki_cache SET caches = $1,status = $2,message=$3 WHERE id=$4 RETURNING *",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "mod_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "old",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "caches",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "message",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "again_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "again_time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Varchar",
+        "Jsonb",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e9ab5a7dfbeb3fd287271a9e1d8df7f3a4fd4b0db536bbe5404ffefadad2e88e"
+}

@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,\n        m.icon_url icon_url, m.updated updated, m.approved approved, m.published, m.license license, m.slug slug, m.color, m.default_type default_type, m.default_game_loaders default_game_loaders\n        FROM mods m\n        WHERE m.status = ANY($1)\n        GROUP BY m.id;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "summary",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "downloads",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "follows",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "icon_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "approved",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "published",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "license",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "color",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "default_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "default_game_loaders",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "9061e2f355ccebf417e170ff289cd00f1078877e068a6fc4729741db1597f34a"
+}

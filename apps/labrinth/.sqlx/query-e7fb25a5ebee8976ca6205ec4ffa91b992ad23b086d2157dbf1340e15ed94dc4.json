@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE wikis SET body = $1,sort_order = $2,title = $3,featured = $4,updated = $5,draft = false WHERE id=$6",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int4",
+        "Varchar",
+        "Bool",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e7fb25a5ebee8976ca6205ec4ffa91b992ad23b086d2157dbf1340e15ed94dc4"
+}

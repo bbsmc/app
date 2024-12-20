@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET wiki_ban_time = now() + interval '1 hour' * $1,wiki_overtake_count=wiki_overtake_count+1 WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9815ba028be9183868d7852166d556dda606d0eb8666f5d504d6ad7165d9c291"
+}
