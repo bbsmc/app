@@ -273,7 +273,7 @@ pub async fn index_local(
                 (None, vec![])
             };
 
-        let (categories, display_categories) =
+        let (mut categories, display_categories) =
             if let Some((_, categories)) = categories.remove(&project.id) {
                 let mut vals = Vec::new();
                 let mut featured_vals = Vec::new();
@@ -422,13 +422,17 @@ pub async fn index_local(
             }
         }else {
 
-
             let mut default_game_loaders = vec![];
             project.default_game_loaders.clone().split(" ").for_each(|x| {
                 if !x.is_empty() {
                     default_game_loaders.push(x.to_string());
                 }
             });
+            for x in &default_game_loaders {
+                if !categories.contains(&x) {
+                    categories.push(x.clone());
+                }
+            }
 
 
             let project_types = vec![project.default_type.clone()];

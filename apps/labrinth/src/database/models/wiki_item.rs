@@ -70,7 +70,7 @@ impl Wiki {
         )
         .fetch_one(&mut **transaction)
         .await?;
-        println!("row_wiki_insert {:?}", row);
+        // println!("row_wiki_insert {:?}", row);
 
         Ok(Wiki {
             id: WikiId(row.id),
