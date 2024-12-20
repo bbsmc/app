@@ -2,9 +2,7 @@ use crate::database::models::categories::LinkPlatform;
 use crate::database::models::{project_item, version_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
-use crate::models::projects::{
-    Link, MonetizationStatus, Project, ProjectStatus, SearchRequest, Version,
-};
+use crate::models::projects::{Link, MonetizationStatus, Project, ProjectStatus, SearchRequest, Version};
 use crate::models::v2::projects::{
     DonationLink, LegacyProject, LegacySideType, LegacyVersion,
 };
@@ -410,6 +408,16 @@ pub struct EditProject {
     pub monetization_status: Option<MonetizationStatus>,
 
     pub wiki_open: Option<bool>,
+
+
+    pub default_game_loaders: Option<Vec<String>>,
+    pub default_game_version: Option<Vec<String>>,
+
+    #[validate(
+        length(min = 3, max = 64),
+        custom(function = "crate::util::validate::validate_name")
+    )]
+    pub default_type: Option<String>,
 }
 
 #[patch("{id}")]
@@ -519,6 +527,9 @@ pub async fn project_edit(
         moderation_message_body: v2_new_project.moderation_message_body,
         monetization_status: v2_new_project.monetization_status,
         wiki_open: v2_new_project.wiki_open,
+        default_type: v2_new_project.default_type,
+        default_game_version: v2_new_project.default_game_version,
+        default_game_loaders: v2_new_project.default_game_loaders,
     };
 
     // This returns 204 or failure so we don't need to do anything with it

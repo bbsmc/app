@@ -910,6 +910,9 @@ async fn project_create_inner(
             monetization_status: MonetizationStatus::Monetized,
             fields: HashMap::new(), // Fields instantiate to empty
             wiki_open: false,
+            default_type: "project".to_string(),
+            default_game_loaders: vec![],
+            default_game_version: vec![],
         };
 
         Ok(HttpResponse::Ok().json(response))

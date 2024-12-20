@@ -105,9 +105,81 @@
           type="checkbox"
         />
       </div>
+      <div class="adjacent-input" v-if="project.versions.length === 0">
+        <label for="project-wiki-open">
+          <span class="label__title">资源类型</span>
+          <span class="label__description">
+          搬运资源,并且没有任何版本上传请在这里设置，设置后前端将同步为该类型的URL,非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
+        </span>
+        </label>
+        <Multiselect
+          id="project-default_type"
+          v-model="default_type"
+          class="small-multiselect"
+          placeholder="选择"
+          :options="['mod','project','plugin','datapack','resourcepack','shader','modpack']"
+          :searchable="false"
+          :close-on-select="true"
+          :show-labels="false"
+          :allow-empty="false"
+          :disabled="!hasPermission"
+        />
+      </div>
+      <div class="adjacent-input" v-if="project.versions.length === 0">
+        <label for="project-wiki-open">
+          <span class="label__title">游戏版本</span>
+          <span class="label__description">
+          搬运资源,并且没有任何版本上传请在这里设置，设置后前端将同步为该类型的URL,非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
+        </span>
+        </label>
+        <multiselect
+          v-model="default_game_version"
+          class="small-multiselect"
+          :options="
+                tags.gameVersions
+                      .filter((it) => it.version_type === 'release')
+                      .map((x) => x.version)
+              "
+          :loading="tags.gameVersions.length === 0"
+          :disabled="!hasPermission"
+          :multiple="true"
+          :searchable="true"
+          :show-no-results="false"
+          :close-on-select="false"
+          :clear-on-select="false"
+          :show-labels="false"
+          :hide-selected="true"
+          placeholder="选择支持的MC版本"
+        />
+      </div>
+      <div class="adjacent-input" v-if="project.versions.length === 0 && project.project_type !== 'resourcepack'">
+        <label for="project-wiki-open">
+          <span class="label__title">运行平台</span>
+          <span class="label__description">
+          搬运资源,并且没有任何版本上传请在这里设置，非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
+        </span>
+        </label>
+
+        <multiselect
+          v-model="default_game_loaders"
+          class="small-multiselect"
+          :options="
+                tags.loaderData.allLoaders
+              "
+          :disabled="!hasPermission"
+          :multiple="true"
+          :searchable="true"
+          :show-no-results="false"
+          :close-on-select="false"
+          :clear-on-select="false"
+          :show-labels="false"
+          :hide-selected="true"
+          placeholder="选择运行平台"
+        />
+      </div>
       <template
         v-if="
-          project.versions?.length !== 0 &&
+          project.versions.length !== 0 &&
           project.project_type !== 'resourcepack' &&
           project.project_type !== 'plugin' &&
           project.project_type !== 'shader' &&
@@ -318,6 +390,12 @@ const router = useNativeRouter()
 const name = ref(props.project.title)
 const slug = ref(props.project.slug)
 const wiki_open = ref(props.project.wiki_open)
+const default_type = ref(props.project.default_type)
+const default_game_version = ref(props.project.default_game_version)
+const default_game_loaders = ref(props.project.default_game_loaders)
+if (default_game_loaders.value === null) {
+  default_game_loaders.value = []
+}
 const summary = ref(props.project.description)
 const icon = ref(null)
 const previewImage = ref(null)
@@ -356,6 +434,15 @@ const patchData = computed(() => {
   }
   if (wiki_open.value !== props.project.wiki_open) {
     data.wiki_open = wiki_open.value
+  }
+  if (default_type.value !== props.project.default_type) {
+    data.default_type = default_type.value
+  }
+  if (default_game_version.value !== props.project.default_game_version) {
+    data.default_game_version = default_game_version.value
+  }
+  if (default_game_loaders.value !== props.project.default_game_loaders) {
+    data.default_game_loaders = default_game_loaders.value
   }
   if (clientSide.value !== props.project.client_side) {
     data.client_side = clientSide.value

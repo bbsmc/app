@@ -214,6 +214,9 @@ impl ProjectBuilder {
             monetization_status: self.monetization_status,
             loaders: vec![],
             wiki_open: false,
+            default_type: "project".to_string(),
+            default_game_version: vec![],
+            default_game_loaders: vec![],
         };
         project_struct.insert(&mut *transaction).await?;
 
@@ -287,6 +290,9 @@ pub struct Project {
     pub monetization_status: MonetizationStatus,
     pub loaders: Vec<String>,
     pub wiki_open: bool,
+    pub default_type: String,
+    pub default_game_version: Vec<String>,
+    pub default_game_loaders: Vec<String>,
 }
 
 impl Project {
@@ -791,7 +797,7 @@ impl Project {
                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                     m.license_url license_url,
                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                    m.webhook_sent, m.color, m.wiki_open,
+                    m.webhook_sent, m.color, m.wiki_open,m.default_type,m.default_game_loaders,m.default_game_version,
                     t.id thread_id, m.monetization_status monetization_status,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -811,7 +817,7 @@ impl Project {
                         let project_id = ProjectId(id);
                         let VersionLoaderData {
                             loaders,
-                            project_types,
+                            mut project_types,
                             games,
                             loader_loader_field_ids,
                         } = loaders_ptypes_games.remove(&project_id).map(|x|x.1).unwrap_or_default();
@@ -828,6 +834,22 @@ impl Project {
                             .filter(|x| loader_loader_field_ids.contains(&x.id))
                             .collect::<Vec<_>>();
 
+                        if project_types.len() == 0 {
+                            project_types.push(m.default_type.clone());
+                        }
+                        let mut default_game_version = vec![];
+                        m.default_game_version.clone().split(" ").for_each(|x| {
+                            if !x.is_empty() {
+                                default_game_version.push(x.to_string());
+                            }
+
+                        });
+                        let mut default_game_loaders = vec![];
+                        m.default_game_loaders.clone().split(" ").for_each(|x| {
+                            if !x.is_empty() {
+                                default_game_loaders.push(x.to_string());
+                            }
+                        });
                         let project = QueryProject {
                             inner: Project {
                                 id: ProjectId(id),
@@ -861,6 +883,10 @@ impl Project {
                                 monetization_status: MonetizationStatus::from_string(
                                     &m.monetization_status,
                                 ),
+                                default_type: m.default_type.clone(),
+                                default_game_version: default_game_version,
+                                default_game_loaders: default_game_loaders,
+
                                 loaders,
                             },
                             categories: m.categories.unwrap_or_default(),

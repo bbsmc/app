@@ -420,33 +420,6 @@
             "
             class="modrinth-app-section contents"
           >
-            <!--            <div class="mx-auto flex w-fit flex-col">-->
-            <!--              <ButtonStyled color="brand">-->
-            <!--                <a-->
-            <!--                  class="w-fit"-->
-            <!--                  :href="`modrinth://mod/${project.slug}`"-->
-            <!--                  @click="() => installWithApp()"-->
-            <!--                >-->
-            <!--                  <ModrinthIcon aria-hidden="true" />-->
-            <!--                  Install with BBSMC App-->
-            <!--                  <ExternalIcon aria-hidden="true" />-->
-            <!--                </a>-->
-            <!--              </ButtonStyled>-->
-            <!--              <Accordion ref="getModrinthAppAccordion">-->
-            <!--                <nuxt-link-->
-            <!--                  class="mt-2 flex justify-center text-brand-blue hover:underline"-->
-            <!--                  to="/app"-->
-            <!--                >-->
-            <!--                  Don't have Modrinth App?-->
-            <!--                </nuxt-link>-->
-            <!--              </Accordion>-->
-            <!--            </div>-->
-
-            <!--            <div class="flex items-center gap-4 px-4">-->
-            <!--              <div class="flex h-[2px] w-full rounded-2xl bg-button-bg"></div>-->
-            <!--              <span class="flex-shrink-0 text-sm font-semibold text-secondary"> or </span>-->
-            <!--              <div class="flex h-[2px] w-full rounded-2xl bg-button-bg"></div>-->
-            <!--            </div>-->
           </div>
           <div class="mx-auto flex w-fit flex-col gap-2">
             <ButtonStyled v-if="project.game_versions.length === 1">
@@ -693,7 +666,9 @@
                 color="green"
                 :color="route.name === 'type-id-version-version' ? `green` : `brand`"
               >
-                <button @click="(event) => downloadModal.show(event)">
+                <button @click="(event) => {
+                    onDownloadClick(event)
+                }">
                   <DownloadIcon aria-hidden="true" />
                   下载
                 </button>
@@ -937,7 +912,7 @@
       </div>
       <!--      侧边栏-->
       <div v-else class="normal-page__sidebar">
-        <div v-if="versions.length > 0" class="card flex-card experimental-styles-within">
+        <div class="card flex-card experimental-styles-within">
 
           <h2>{{ formatMessage(compatibilityMessages.title) }}</h2>
           <section>
@@ -1125,7 +1100,7 @@
               <Avatar :src="member.avatar_url" :alt="member.name" size="32px" circle />
               <div class="rows">
                 <span class="flex items-center gap-1">
-                  {{ member.name }}
+                  {{ member.name }}r
                   <CrownIcon
                     v-if="member.is_owner"
                     v-tooltip="formatMessage(creatorsMessages.owner)"
@@ -1393,7 +1368,7 @@ const WikiFatherAccordion = ref()
 const compatibilityMessages = defineMessages({
   title: {
     id: 'project.about.compatibility.title',
-    defaultMessage: '兼容度'
+    defaultMessage: '基本信息'
   },
   minecraftJava: {
     id: 'project.about.compatibility.game.minecraftJava',
@@ -1732,9 +1707,12 @@ if (!project.value) {
     statusCode: 404,
     message: '资源不存在'
   })
+
 }
 
 if (project.value.project_type !== route.params.type || route.params.id !== project.value.slug) {
+  console.log(project.value.project_type)
+  console.log(project.value)
   let path = route.fullPath.split('/')
   path.splice(0, 3)
   path = path.filter((x) => x)
@@ -2250,6 +2228,25 @@ function onDownload(event) {
   setTimeout(() => {
     closeDownloadModal(event)
   }, 400)
+}
+
+function onDownloadClick(event) {
+  if (project.value.versions.length === 0) {
+    for (const url of project.value.donation_urls) {
+      if (url.id === 'site') {
+        window.open(url.url, '_blank')
+        return
+      }
+    }
+    data.$notify({
+      group: 'main',
+      title: '发生错误',
+      text: "该资源没有可用下载源",
+      type: 'error'
+    })
+    return
+  }
+  downloadModal.value.show(event)
 }
 
 

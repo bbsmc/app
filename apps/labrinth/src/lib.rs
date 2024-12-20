@@ -69,7 +69,7 @@ pub struct LabrinthConfig {
     pub active_sockets: web::Data<RwLock<ActiveSockets>>,
     pub automated_moderation_queue: web::Data<AutomatedModerationQueue>,
     pub rate_limiter: KeyedRateLimiter,
-    pub stripe_client: stripe::Client,
+    // pub stripe_client: stripe::Client,
 }
 
 pub fn app_setup(
@@ -104,9 +104,9 @@ pub fn app_setup(
     );
     let limiter_clone = Arc::clone(&limiter);
     scheduler.run(Duration::from_secs(60), move || {
-        info!("清理速率限制器，存储大小：{}", limiter_clone.len());
+        // info!("清理速率限制器，存储大小：{}", limiter_clone.len());
         limiter_clone.retain_recent();
-        info!("完成清理速率限制器，存储大小：{}", limiter_clone.len());
+        // info!("完成清理速率限制器，存储大小：{}", limiter_clone.len());
 
         async move {}
     });
@@ -125,7 +125,7 @@ pub fn app_setup(
         let redis_pool_ref = redis_pool_ref.clone();
         let search_config_ref = search_config_ref.clone();
         async move {
-            info!("索引本地数据库");
+            // info!("索引本地数据库");
             let result = index_projects(
                 pool_ref,
                 redis_pool_ref.clone(),
@@ -135,7 +135,7 @@ pub fn app_setup(
             if let Err(e) = result {
                 warn!("本地项目索引失败：{:?}", e);
             }
-            info!("完成索引本地数据库");
+            // info!("完成索引本地数据库");
         }
     });
 
@@ -144,7 +144,7 @@ pub fn app_setup(
     // TODO: Clear cache when these are run
     scheduler.run(std::time::Duration::from_secs(60 * 5), move || {
         let pool_ref = pool_ref.clone();
-        info!("发布计划的版本/项目！");
+        // info!("发布计划的版本/项目！");
 
         async move {
             let projects_results = sqlx::query!(
@@ -177,7 +177,7 @@ pub fn app_setup(
                 warn!("同步计划的版本发布失败：{:?}", e);
             }
 
-            info!("完成发布计划的版本/项目");
+            // info!("完成发布计划的版本/项目");
         }
     });
 
@@ -198,12 +198,12 @@ pub fn app_setup(
         let session_queue_ref = session_queue_ref.clone();
 
         async move {
-            info!("索引会话队列");
+            // info!("索引会话队列");
             let result = session_queue_ref.index(&pool_ref, &redis_ref).await;
             if let Err(e) = result {
                 warn!("索引会话队列失败： {:?}", e);
             }
-            info!("完成索引会话队列");
+            // info!("完成索引会话队列");
         }
     });
 
@@ -241,14 +241,14 @@ pub fn app_setup(
             let redis_ref = redis_ref.clone();
 
             async move {
-                info!("开始索引分析服务");
+                // info!("开始索引分析服务");
                 let result = analytics_queue_ref
                     .index(client_ref, &redis_ref, &pool_ref)
                     .await;
                 if let Err(e) = result {
                     warn!("分析服务索引失败: {:?}", e);
                 }
-                info!("分析索引完成");
+                // info!("分析索引完成");
             }
         });
     }
@@ -263,7 +263,7 @@ pub fn app_setup(
             let redis_ref2 = redis_ref2.clone();
 
             async move {
-                info!("开始检测超时百科编辑");
+                // info!("开始检测超时百科编辑");
 
                 let result = database::models::WikiCache::get_all_draft(&pool_ref_clone2).await;
                 match result {
@@ -279,7 +279,7 @@ pub fn app_setup(
                                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                                     m.license_url license_url,
                                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                                    m.webhook_sent, m.color, m.wiki_open,
+                                    m.webhook_sent, m.color, m.wiki_open,m.default_type,
                                     t.id thread_id, m.monetization_status monetization_status,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -327,6 +327,9 @@ pub fn app_setup(
                                                 &m.monetization_status,
                                             ),
                                             loaders: vec![],
+                                            default_type: m.default_type.clone(),
+                                            default_game_version: vec![],
+                                            default_game_loaders: vec![],
                                         };
                                         // println!("{:?}", inner);
 
@@ -617,7 +620,7 @@ pub fn app_setup(
                         warn!("检测超时百科编辑失败: {:?}", e);
                     }
                 }
-                info!("检测超时百科编辑完成");
+                // info!("检测超时百科编辑完成");
             }
         });
     }
@@ -640,32 +643,32 @@ pub fn app_setup(
     //     });
     // }
 
-    let stripe_client =
-        stripe::Client::new(dotenvy::var("STRIPE_API_KEY").unwrap());
-    {
-        let pool_ref = pool.clone();
-        let redis_ref = redis_pool.clone();
-        let stripe_client_ref = stripe_client.clone();
-
-        actix_rt::spawn(async move {
-            routes::internal::billing::task(
-                stripe_client_ref,
-                pool_ref,
-                redis_ref,
-            )
-            .await;
-        });
-    }
-
-    {
-        let pool_ref = pool.clone();
-        let redis_ref = redis_pool.clone();
-
-        actix_rt::spawn(async move {
-            routes::internal::billing::subscription_task(pool_ref, redis_ref)
-                .await;
-        });
-    }
+    // let stripe_client =
+    //     stripe::Client::new(dotenvy::var("STRIPE_API_KEY").unwrap());
+    // {
+    //     let pool_ref = pool.clone();
+    //     let redis_ref = redis_pool.clone();
+    //     let stripe_client_ref = stripe_client.clone();
+    //
+    //     actix_rt::spawn(async move {
+    //         routes::internal::billing::task(
+    //             stripe_client_ref,
+    //             pool_ref,
+    //             redis_ref,
+    //         )
+    //         .await;
+    //     });
+    // }
+    //
+    // {
+    //     let pool_ref = pool.clone();
+    //     let redis_ref = redis_pool.clone();
+    //
+    //     actix_rt::spawn(async move {
+    //         routes::internal::billing::subscription_task(pool_ref, redis_ref)
+    //             .await;
+    //     });
+    // }
 
     let ip_salt = Pepper {
         pepper: models::ids::Base62Id(models::ids::random_base62(11))
@@ -690,7 +693,6 @@ pub fn app_setup(
         active_sockets,
         automated_moderation_queue,
         rate_limiter: limiter,
-        stripe_client,
     }
 }
 
@@ -722,7 +724,7 @@ pub fn app_config(
     .app_data(web::Data::new(labrinth_config.maxmind.clone()))
     .app_data(labrinth_config.active_sockets.clone())
     .app_data(labrinth_config.automated_moderation_queue.clone())
-    .app_data(web::Data::new(labrinth_config.stripe_client.clone()))
+    // .app_data(web::Data::new(labrinth_config.stripe_client.clone()))
     .configure(routes::v2::config)
     .configure(routes::v3::config)
     .configure(routes::internal::config)

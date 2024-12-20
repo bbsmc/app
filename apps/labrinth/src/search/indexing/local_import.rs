@@ -38,12 +38,14 @@ pub async fn index_local(
         slug: Option<String>,
         color: Option<i32>,
         license: String,
+        default_type: String,
+        default_game_loaders: String,
     }
 
     let db_projects = sqlx::query!(
         "
         SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,
-        m.icon_url icon_url, m.updated updated, m.approved approved, m.published, m.license license, m.slug slug, m.color
+        m.icon_url icon_url, m.updated updated, m.approved approved, m.published, m.license license, m.slug slug, m.color, m.default_type default_type, m.default_game_loaders default_game_loaders
         FROM mods m
         WHERE m.status = ANY($1)
         GROUP BY m.id;
@@ -67,6 +69,8 @@ pub async fn index_local(
                 slug: m.slug,
                 color: m.color,
                 license: m.license,
+                default_type: m.default_type,
+                default_game_loaders: m.default_game_loaders,
             }
         })
         .try_collect::<Vec<PartialProject>>()
@@ -278,16 +282,15 @@ pub async fn index_local(
                     if !is_additional {
                         featured_vals.push(val.clone());
                     }
-
                     vals.push(val);
                 }
-
                 (vals, featured_vals)
             } else {
                 (vec![], vec![])
             };
 
         if let Some(versions) = versions.remove(&project.id) {
+
             // Aggregated project loader fields
             let project_version_fields = versions
                 .iter()
@@ -323,7 +326,13 @@ pub async fn index_local(
                     .collect();
                 let mut loader_fields =
                     from_duplicate_version_fields(version_fields);
-                let project_types = version.project_types;
+                let mut project_types = version.project_types;
+                if project_types.is_empty() {
+                    project_types.push(project.default_type.clone());
+                }
+
+
+
 
                 let mut version_loaders = version.loaders;
 
@@ -354,11 +363,10 @@ pub async fn index_local(
                     categories.retain(|x| *x != "mrpack");
                 }
 
-                // SPECIAL BEHAVIOUR:
-                // For consitency with v2 searching, we manually input the
-                // client_side and server_side fields from the loader fields into
-                // separate loader fields.
-                // 'client_side' and 'server_side' remain supported by meilisearch even though they are no longer v3 fields.
+                // 特殊行为：
+                // 为了与 v2 搜索保持一致，我们手动将 loader 字段中的 client\_side 和 server\_side 字段
+                // 输入到单独的 loader 字段中。
+                // 尽管它们不再是 v3 字段，但 meilisearch 仍然支持 'client\_side' 和 'server\_side'。
                 let (_, v2_og_project_type) =
                     LegacyProject::get_project_type(&project_types);
                 let (client_side, server_side) =
@@ -376,6 +384,9 @@ pub async fn index_local(
                         .insert("server_side".to_string(), vec![server_side]);
                 }
 
+                // if project_types.is_empty() {
+                //     project_types.push(project.default_type.clone());
+                // }
                 let usp = UploadSearchProject {
                     version_id: crate::models::ids::VersionId::from(version.id)
                         .to_string(),
@@ -409,6 +420,47 @@ pub async fn index_local(
 
                 uploads.push(usp);
             }
+        }else {
+
+
+            let mut default_game_loaders = vec![];
+            project.default_game_loaders.clone().split(" ").for_each(|x| {
+                if !x.is_empty() {
+                    default_game_loaders.push(x.to_string());
+                }
+            });
+
+
+            let project_types = vec![project.default_type.clone()];
+            let usp = UploadSearchProject {
+                version_id: crate::models::ids::ProjectId::from(project.id)
+                    .to_string(),
+                project_id: crate::models::ids::ProjectId::from(project.id)
+                    .to_string(),
+                project_types,
+                slug: project.slug.clone(),
+                author: owner.clone(),
+                name: project.name.clone(),
+                summary: project.summary.clone(),
+                categories: categories.clone(),
+                display_categories: display_categories.clone(),
+                follows: project.follows,
+                downloads: project.downloads,
+                icon_url: project.icon_url.clone(),
+                license,
+                gallery,
+                featured_gallery,
+                date_created: project.approved,
+                created_timestamp: project.approved.timestamp(),
+                date_modified: project.updated,
+                modified_timestamp: project.updated.timestamp(),
+                open_source,
+                color: project.color.map(|x| x as u32),
+                loaders: default_game_loaders,
+                project_loader_fields: Default::default(),
+                loader_fields: Default::default(),
+            };
+            uploads.push(usp);
         }
     }
 
