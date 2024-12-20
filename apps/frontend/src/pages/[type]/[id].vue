@@ -1711,8 +1711,6 @@ if (!project.value) {
 }
 
 if (project.value.project_type !== route.params.type || route.params.id !== project.value.slug) {
-  console.log(project.value.project_type)
-  console.log(project.value)
   let path = route.fullPath.split('/')
   path.splice(0, 3)
   path = path.filter((x) => x)
