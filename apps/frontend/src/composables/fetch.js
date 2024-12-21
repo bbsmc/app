@@ -99,7 +99,14 @@ export const useBaseFetchFile = async (url, options = {}, skipAuth = false) => {
     return new Promise((resolve, reject) => {
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(JSON.parse(xhr.responseText));
+          if (xhr.responseText.length === 0){
+            resolve(JSON.parse("{}"));
+          }else {
+            console.log(xhr.responseText)
+            console.log(xhr.responseText.length)
+            resolve(JSON.parse(xhr.responseText));
+
+          }
         } else {
           onError(JSON.parse(xhr.responseText));
         }

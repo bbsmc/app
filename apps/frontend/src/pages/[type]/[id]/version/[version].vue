@@ -1111,13 +1111,44 @@ export default defineNuxtComponent({
             formData.append(fileParts[i], new Blob([this.newFiles[i]]), this.newFiles[i].name);
           }
 
-          await useBaseFetch(`version/${this.version.id}/file`, {
+          // await useBaseFetch(`version/${this.version.id}/file`, {
+          //   method: "POST",
+          //   body: formData,
+          //   headers: {
+          //     "Content-Disposition": formData,
+          //   },
+          // });
+
+
+
+          this.$refs.uploading_modal.show()
+
+          await useBaseFetchFile(`version/${this.version.id}/file`, {
             method: "POST",
             body: formData,
             headers: {
               "Content-Disposition": formData,
             },
+
+            onUploadProgress: (progress,uploadSpeed) => {
+
+              this.uploading = progress;
+              this.uploadSpeed = uploadSpeed;
+            },
+
+            onError: (error) => {
+              this.$refs.uploading_modal.proceed()
+              this.$notify({
+                group: "main",
+                title: `${error.error}`,
+                text: `${error.description}`,
+                type: "error",
+              });
+            }
           });
+          // this.$refs.uploading_modal.proceed()
+
+
         }
 
         const body = {
@@ -1156,12 +1187,10 @@ export default defineNuxtComponent({
 
         await this.resetProjectVersions();
 
-        await this.$router.replace(
+        await this.$router.push(
           `/${this.project.project_type}/${
             this.project.slug ? this.project.slug : this.project.id
-          }/version/${encodeURI(
-            this.versions.find((x) => x.id === this.version.id).displayUrlEnding,
-          )}`,
+          }/version/${this.version.id}`,
         );
       } catch (err) {
         this.$notify({
