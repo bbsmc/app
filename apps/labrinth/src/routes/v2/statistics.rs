@@ -16,6 +16,7 @@ pub struct V2Stats {
     pub versions: Option<i64>,
     pub authors: Option<i64>,
     pub files: Option<i64>,
+    pub users: Option<i64>,
 }
 
 #[get("statistics")]
@@ -33,6 +34,7 @@ pub async fn get_stats(
                 versions: stats.versions,
                 authors: stats.authors,
                 files: stats.files,
+                users: stats.users,
             };
             Ok(HttpResponse::Ok().json(stats))
         }

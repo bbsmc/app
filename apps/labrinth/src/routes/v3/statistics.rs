@@ -12,6 +12,7 @@ pub struct V3Stats {
     pub versions: Option<i64>,
     pub authors: Option<i64>,
     pub files: Option<i64>,
+    pub users: Option<i64>,
 }
 
 pub async fn get_stats(
@@ -64,6 +65,13 @@ pub async fn get_stats(
     )
     .fetch_one(&**pool)
     .await?;
+    let users = sqlx::query!(
+        "
+        SELECT COUNT(id) FROM users
+        "
+    )
+    .fetch_one(&**pool)
+    .await?;
 
     let files = sqlx::query!(
         "
@@ -88,6 +96,7 @@ pub async fn get_stats(
         versions: versions.count,
         authors: authors.count,
         files: files.count,
+        users: users.count,
     };
 
     Ok(HttpResponse::Ok().json(v3_stats))

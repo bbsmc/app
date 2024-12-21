@@ -13,7 +13,7 @@
     </div>
     <ButtonStyled color="brand">
       <a :href="downloadUrl" class="min-w-0" @click="emit('onDownload')">
-        <DownloadIcon aria-hidden="true" /> 下载
+        <DownloadIcon aria-hidden="true" />
       </a>
     </ButtonStyled>
     <ButtonStyled circular>

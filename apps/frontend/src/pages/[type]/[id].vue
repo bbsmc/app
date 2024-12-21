@@ -683,7 +683,7 @@
                 <button
                   aria-label="Download"
                   class="flex sm:hidden"
-                  @click="(event) => downloadModal.show(event)"
+                  @click="(event) => onDownloadClick(event)"
                 >
                   <DownloadIcon aria-hidden="true" />
                 </button>
