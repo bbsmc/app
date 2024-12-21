@@ -1059,6 +1059,8 @@
               <OopzIcon v-else-if="donation.id === 'oopz'" aria-hidden="true" />
               <KookIcon v-else-if="donation.id === 'kook'" aria-hidden="true" />
               <SpigotMcIcon v-else-if="donation.id === 'spigotmc'" aria-hidden="true" />
+              <QuarkIcon v-else-if="donation.id === 'quark'" aria-hidden="true" />
+              <BaiduIcon v-else-if="donation.id === 'baidu'" aria-hidden="true" />
               <CurseforgeIcon v-else-if="donation.id === 'curseforge'" aria-hidden="true" />
               <KoFiIcon v-else-if="donation.id === 'ko-fi'" aria-hidden="true" />
               <PayPalIcon v-else-if="donation.id === 'paypal'" aria-hidden="true" />
@@ -1261,6 +1263,8 @@ import {
   ServerIcon,
   BiliBiliIcon,
   SpigotMcIcon,
+  QuarkIcon,
+  BaiduIcon,
   CurseforgeIcon,
   ModrinthIcon2,
   AifadianIcon,
@@ -1503,6 +1507,10 @@ const webDisplayLabel = (x) => {
 
     case 'curseforge':
       return 'CurseForge地址'
+    case 'quark':
+      return '夸克网盘'
+    case 'baidu':
+      return '百度网盘'
     default:
       return x
   }

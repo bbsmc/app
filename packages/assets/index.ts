@@ -24,6 +24,8 @@ import _oopzIcon from './external/oopz.svg?component'
 import _kookIcon from './external/kook.svg?component'
 import _CurseforgeIcon from './external/curseforge.svg?component'
 import _SpigotmcIcon from './external/spigotmc.svg?component'
+import _QuarkIcon from './external/quark.svg?component'
+import _BaiduIcon from './external/baidu.svg?component'
 import _MastodonIcon from './external/mastodon.svg?component'
 import _OpenCollectiveIcon from './external/opencollective.svg?component'
 import _PatreonIcon from './external/patreon.svg?component'
@@ -205,6 +207,8 @@ export const DiscordIcon = _DiscordIcon
 export const KoFiIcon = _KoFiIcon
 export const BiliBiliIcon = _BiliBiliIcon
 export const SpigotMcIcon = _SpigotmcIcon
+export const QuarkIcon = _QuarkIcon
+export const BaiduIcon = _BaiduIcon
 export const CurseforgeIcon = _CurseforgeIcon
 export const ModrinthIcon2 = _ModrinthIcon2
 export const QQPDIcon = _QQPDIcon

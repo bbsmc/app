@@ -74,7 +74,7 @@
         <DropdownSelect
           v-model="donationLink.id"
           name="Donation platform selector"
-          :options="['bilibili','pd-qq','afdian','site','kook','modrinth','spigotmc','curseforge','other']"
+          :options="['bilibili','pd-qq','afdian','site','kook','modrinth','spigotmc','curseforge','quark','baidu','other']"
           :display-name="webDisplayLabel"
           placeholder="选择平台"
           render-up
@@ -155,6 +155,10 @@ const webDisplayLabel = (x) => {
 
     case 'curseforge':
       return 'CurseForge地址';
+    case 'quark':
+      return '夸克网盘';
+    case 'baidu':
+      return '百度网盘';
     default:
       return x;
   }
