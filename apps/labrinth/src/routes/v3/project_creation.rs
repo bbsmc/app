@@ -997,6 +997,7 @@ async fn create_initial_version(
         version_type: version_data.release_channel.to_string(),
         requested_status: None,
         ordering: version_data.ordering,
+        disk_url: version_data.disk_url.clone()
     };
 
     Ok(version)

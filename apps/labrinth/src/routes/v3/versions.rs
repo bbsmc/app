@@ -236,6 +236,13 @@ pub struct EditVersion {
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
     pub fields: HashMap<String, serde_json::Value>,
+
+    pub disk_only: Option<bool>,
+    #[validate(
+        custom(function = "crate::util::validate::validate_url"),
+        length(max = 2048)
+    )]
+    pub disk_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -363,6 +370,43 @@ pub async fn version_edit_helper(
                 .execute(&mut *transaction)
                 .await?;
             }
+
+            if let Some(disk_only) = &new_version.disk_only {
+                if *disk_only {
+                   let url =  new_version.disk_url;
+                    if url.is_none(){
+                        return Err(ApiError::InvalidInput(
+                            "未填写网盘链接".to_string(),
+                        ));
+                    }
+
+                    sqlx::query!(
+                        "
+                        UPDATE versions
+                        SET disk_url = $1, downloads = 0
+                        WHERE (id = $2)
+                        ",
+                        url.unwrap()
+                        ,
+                        id as database::models::ids::VersionId,
+                    )
+                        .execute(&mut *transaction)
+                        .await?;
+                }else {
+                    sqlx::query!(
+                    "
+                    UPDATE versions
+                    SET disk_url = $1
+                    WHERE (id = $2)
+                    ",
+                    Option::<String>::None,
+                    id as database::models::ids::VersionId,
+                )
+                        .execute(&mut *transaction)
+                        .await?;
+                }
+            }
+
 
             if let Some(version_type) = &new_version.version_type {
                 sqlx::query!(

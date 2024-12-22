@@ -333,6 +333,8 @@ pub struct LegacyVersion {
     pub requested_status: Option<VersionStatus>,
     pub files: Vec<VersionFile>,
     pub dependencies: Vec<Dependency>,
+    pub disk_url: Option<String>,
+    pub disk_only: bool,
 }
 
 impl From<Version> for LegacyVersion {
@@ -386,6 +388,8 @@ impl From<Version> for LegacyVersion {
             dependencies: data.dependencies,
             game_versions,
             loaders,
+            disk_url: data.disk_url,
+            disk_only: data.disk_only,
         }
     }
 }

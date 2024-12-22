@@ -7,17 +7,24 @@
       <FileInput
         :max-size="1073741824"
         :accept="acceptFileFromProjectType(project.project_type)"
-        prompt="上传版本"
+        prompt="上传版本(文件)"
         class="btn btn-primary"
         aria-label="上传版本"
         @change="handleFiles"
       >
         <UploadIcon aria-hidden="true" />
       </FileInput>
-      <span class="flex items-center gap-2">
-        <InfoIcon aria-hidden="true" /> 单击选择文件或将其拖到此页面
+      <span class="flex items-center gap-2" style="flex-grow: 1;"> <!-- 添加 flex-grow 属性让其可占据剩余空间 -->
+      <InfoIcon aria-hidden="true" /> 单击选择文件或将其拖到此页面
       </span>
       <DropArea :accept="acceptFileFromProjectType(project.project_type)" @change="handleFiles" />
+
+      <button-styled style="margin-left: auto;" @click="createDiskUrl">
+        <button class="btn btn-primary">
+          上传版本(网盘下载方式)
+          <UploadIcon aria-hidden="true" />
+        </button>
+      </button-styled>
     </div>
     <div class="mb-3 flex flex-wrap gap-2">
       <VersionFilterControl
@@ -401,6 +408,13 @@ async function handleFiles(files) {
       newPrimaryFile: files[0],
     },
   });
+}
+async function createDiskUrl() {
+  await router.push(
+    `/${props.project.project_type}/${
+      props.project.slug ? props.project.slug : props.project.id
+    }/version/create`,
+  )
 }
 
 async function copyToClipboard(text) {

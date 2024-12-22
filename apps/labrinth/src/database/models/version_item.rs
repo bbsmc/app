@@ -35,6 +35,7 @@ pub struct VersionBuilder {
     pub status: VersionStatus,
     pub requested_status: Option<VersionStatus>,
     pub ordering: Option<i32>,
+    pub disk_url: Option<String>,
 }
 
 #[derive(Clone)]
@@ -193,6 +194,7 @@ impl VersionBuilder {
             status: self.status,
             requested_status: self.requested_status,
             ordering: self.ordering,
+            disk_url: self.disk_url,
         };
 
         version.insert(transaction).await?;
@@ -284,6 +286,7 @@ pub struct Version {
     pub status: VersionStatus,
     pub requested_status: Option<VersionStatus>,
     pub ordering: Option<i32>,
+    pub disk_url: Option<String>,
 }
 
 impl Version {
@@ -296,12 +299,12 @@ impl Version {
             INSERT INTO versions (
                 id, mod_id, author_id, name, version_number,
                 changelog, date_published, downloads,
-                version_type, featured, status, ordering
+                version_type, featured, status, ordering, disk_url
             )
             VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7, $8,
-                $9, $10, $11, $12
+                $9, $10, $11, $12, $13
             )
             ",
             self.id as VersionId,
@@ -315,7 +318,8 @@ impl Version {
             &self.version_type,
             self.featured,
             self.status.as_str(),
-            self.ordering
+            self.ordering,
+            self.disk_url
         )
         .execute(&mut **transaction)
         .await?;
@@ -708,7 +712,7 @@ impl Version {
                     "
                     SELECT v.id id, v.mod_id mod_id, v.author_id author_id, v.name version_name, v.version_number version_number,
                     v.changelog changelog, v.date_published date_published, v.downloads downloads,
-                    v.version_type version_type, v.featured featured, v.status status, v.requested_status requested_status, v.ordering ordering
+                    v.version_type version_type, v.featured featured, v.status status, v.requested_status requested_status, v.ordering ordering, v.disk_url disk_url
                     FROM versions v
                     WHERE v.id = ANY($1);
                     ",
@@ -748,6 +752,7 @@ impl Version {
                                 requested_status: v.requested_status
                                     .map(|x| VersionStatus::from_string(&x)),
                                 ordering: v.ordering,
+                                disk_url: v.disk_url.clone(),
                             },
                             files: {
                                 let mut files = files.into_iter().map(|x| {
@@ -782,6 +787,18 @@ impl Version {
                                         a.filename.cmp(&b.filename)
                                     }
                                 });
+                                if v.disk_url.is_some(){
+                                    files.clear();
+                                    files.push(QueryFile {
+                                        id: FileId(-1),
+                                        url: v.disk_url.unwrap(),
+                                        filename: "".to_string(),
+                                        hashes: HashMap::new(),
+                                        primary: true,
+                                        size: 0,
+                                        file_type: None,
+                                    });
+                                }
 
                                 files
                             },
@@ -1047,6 +1064,7 @@ mod tests {
             featured: Default::default(),
             status: VersionStatus::Listed,
             requested_status: Default::default(),
+            disk_url: Default::default(),
         }
     }
 }

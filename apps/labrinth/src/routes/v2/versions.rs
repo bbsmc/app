@@ -236,6 +236,12 @@ pub struct EditVersion {
     pub downloads: Option<u32>,
     pub status: Option<VersionStatus>,
     pub file_types: Option<Vec<EditVersionFileType>>,
+    pub disk_only: Option<bool>,
+    #[validate(
+        custom(function = "crate::util::validate::validate_url"),
+        length(max = 2048)
+    )]
+    pub disk_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -315,6 +321,8 @@ pub async fn version_edit(
         }),
         ordering: None,
         fields,
+        disk_only: new_version.disk_only,
+        disk_url: new_version.disk_url,
     };
 
     let response = v3::versions::version_edit(

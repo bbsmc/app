@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        UPDATE versions\n                        SET disk_url = $1, downloads = 0\n                        WHERE (id = $2)\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2e5c260f2d5a3bc5f91c3305bc18d461d590119c9c40fc39abe95f3cd8ca60d3"
+}

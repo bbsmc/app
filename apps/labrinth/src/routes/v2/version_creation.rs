@@ -33,7 +33,7 @@ pub fn default_requested_status() -> VersionStatus {
 pub struct InitialVersionData {
     #[serde(alias = "mod_id")]
     pub project_id: Option<ProjectId>, // 项目ID
-    #[validate(length(min = 1, max = 256))]
+    #[validate(length(min = 0, max = 256))]
     pub file_parts: Vec<String>, // 文件部分
     #[validate(
         length(min = 1, max = 32),
@@ -70,7 +70,15 @@ pub struct InitialVersionData {
     #[serde(default)]
     pub uploaded_images: Vec<ImageId>, // 上传的图片
     pub ordering: Option<i32>,        // 排序
-    pub curse: bool
+    pub curse: bool,
+    pub disk_only: bool,
+    #[validate(
+        custom(function = "crate::util::validate::validate_url"),
+        length(max = 2048)
+    )]
+    pub disk_url: Option<String>,
+
+
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -185,6 +193,7 @@ pub async fn version_create(
                         );
                     }
                 }
+
                 // 通过文件扩展名预测处理项目类型
                 let mut project_type = None;
                 for file_part in &legacy_create.file_parts {
@@ -254,6 +263,8 @@ pub async fn version_create(
                     uploaded_images: legacy_create.uploaded_images,
                     ordering: legacy_create.ordering,
                     fields,
+                    disk_only: legacy_create.disk_only,
+                    disk_url: legacy_create.disk_url,
                 })
             }
         },
@@ -261,53 +272,7 @@ pub async fn version_create(
     .await?;
 
 
-    // let mut error = None;
-    //
-    // while let Some(item) = payload.next().await {
-    //     let mut field: Field = item?;
-    //     let result = async {
-    //         let content_disposition = field.content_disposition().clone();
-    //         let name = content_disposition.get_name().ok_or_else(|| {
-    //             CreateError::MissingValueError("Missing content name".to_string())
-    //         })?;
-    //         println!("{}", name);
-    //
-    //         if name == "data" {
-    //             let mut data = Vec::new();
-    //             while let Some(chunk) = field.next().await {
-    //                 data.extend_from_slice(&chunk?);
-    //             }
-    //             let file_data: InitialFileData = serde_json::from_slice(&data)?;
-    //             // 将解析后的数据转换为 JSON 字符串
-    //             let json_output = serde_json::to_string(&file_data)?;
-    //             // 如果需要更具可读性的格式，可以使用 serde_json::to_string_pretty
-    //             // let json_output = serde_json::to_string_pretty(&file_data)?;
-    //
-    //             println!("{}", json_output);  // 输出 JSON 字符串到控制台
-    //
-    //             return Ok(());
-    //         }
-    //         // let data = read_from_field(
-    //         //     &mut field, 500 * (1 << 20),
-    //         //     "项目文件超出了 500MB 的上限。请联系版主或管理员以请求上传更大文件的权限。"
-    //         // ).await?;
-    //         //
-    //         // info!("Reading field 4");
-    //
-    //
-    //
-    //
-    //         Ok(())
-    //     }
-    //         .await;
-    //     if result.is_err() {
-    //         error = result.err();
-    //     }
-    // }
-    //
-    // if let Some(error) = error {
-    //     return Err(error);
-    // }
+
 
     // 调用 V3 项目创建
     let response = v3::version_creation::version_create(

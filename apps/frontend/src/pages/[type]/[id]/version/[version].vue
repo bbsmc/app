@@ -90,7 +90,7 @@
         <ul>
           <li v-if="version.version_number === ''">您必须输入一个版本号</li>
           <li v-if="version.game_versions.length === 0">您必须选择支持的 Minecraft 版本</li>
-          <li v-if="newFiles.length === 0 && version.files.length === 0 && !replaceFile">
+          <li v-if="newFiles.length === 0 && version.files.length === 0 && !replaceFile && !version.disk_only">
             您必须要有一个上传的文件
           </li>
           <li v-if="version.loaders.length === 0 && project.project_type !== 'resourcepack'">
@@ -149,6 +149,15 @@
             v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'"
             :href="primaryFile.url"
             @click="emit('onDownload')"
+            v-if="primaryFile.url.includes('cdn.bbsmc.net')"
+          >
+            <DownloadIcon aria-hidden="true" />
+            下载
+          </a>
+          <a
+            :href="primaryFile.url"
+            target="_blank"
+            v-else
           >
             <DownloadIcon aria-hidden="true" />
             下载
@@ -198,6 +207,7 @@
         </ButtonStyled>
       </div>
     </div>
+
     <div class="version-page__changelog universal-card">
       <h3>更新日志</h3>
       <template v-if="isEditing">
@@ -211,6 +221,52 @@
         v-html="version.changelog ? renderHighlightedString(version.changelog) : '无'"
       />
     </div>
+    <div class="version-page__disk_url universal-card" v-if="isEditing">
+
+      <div class="adjacent-input" v-if="isEditing">
+        <label for="project-wiki-open">
+          <span class="label__title">夸克网盘</span>
+          <span class="label__description">
+          如果您有夸克的合作，需要参与夸克的拉新激励，可选择只提供夸克网盘链接，则无需选择要上传的文件，提供夸克下载方式后，点击下载按钮会直接跳转到夸克进行下载便可得到夸克的拉新激励。
+            如果您启用夸克网盘，本网站将不提供直接下载文件的功能，且不会记录下载次数
+        </span>
+        </label>
+        <input
+          id="advanced-rendering"
+          v-model="version.disk_only"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
+      </div>
+
+
+      <div v-if="version.disk_only === true">
+        <h3>夸克网盘</h3>
+        <template v-if ="isEditing">
+          <input
+            id="version-number"
+            v-model="version.disk_url"
+            type="text"
+            autocomplete="off"
+            style="width: 100%"
+          />
+
+        </template>
+      </div>
+    </div>
+<!--    <div class="version-page__disk_url universal-card" v-if="!isEditing && version.disk_only === true">-->
+<!--      <h3>夸克网盘</h3>-->
+<!--      <h4>网盘链接</h4>-->
+<!--      <input-->
+<!--        id="version-number"-->
+<!--        v-model="version.disk_url"-->
+<!--        type="text"-->
+<!--        autocomplete="off"-->
+<!--        disabled-->
+<!--        style="width: 100%"-->
+<!--      />-->
+<!--    </div>-->
+
     <div
       v-if="deps.length > 0 || (isEditing && project.project_type !== 'modpack')"
       class="version-page__dependencies universal-card"
@@ -340,7 +396,7 @@
         </div>
       </div>
     </div>
-    <div class="version-page__files universal-card">
+    <div class="version-page__files universal-card" v-if="version.disk_only === false">
       <h3>文件</h3>
       <div v-if="isEditing && replaceFile" class="file primary">
         <FileIcon aria-hidden="true" />
@@ -424,6 +480,18 @@
             class="raised-button"
             :title="`Download ${file.filename}`"
             tabindex="0"
+            v-if="file.url.includes('cdn.bbsmc.net')"
+          >
+            <DownloadIcon aria-hidden="true" />
+          </a>
+
+          <a
+            :href="file.url"
+            class="raised-button"
+            :title="`Download ${file.filename}`"
+            target="_blank"
+            tabindex="0"
+            v-else
           >
             <DownloadIcon aria-hidden="true" />
             下载
@@ -822,6 +890,8 @@ export default defineNuxtComponent({
         game_versions: [],
         loaders: [],
         featured: false,
+        disk_url: null,
+        disk_only: false,
         curseforge: "",
       };
       // 用于从版本页面导航/上传文件提示
@@ -913,6 +983,7 @@ export default defineNuxtComponent({
           .format("MMM D, YYYY")}. ${version.downloads} downloads.`,
     );
 
+
     useSeoMeta({
       title,
       description,
@@ -963,7 +1034,7 @@ export default defineNuxtComponent({
         this.version.version_number === "" ||
         this.version.game_versions.length === 0 ||
         (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
-        (this.newFiles.length === 0 && this.version.files.length === 0 && !this.replaceFile)
+        (this.newFiles.length === 0 && this.version.files.length === 0 && !this.replaceFile && this.version.disk_only === false)
       );
     },
     deps() {
@@ -1159,9 +1230,11 @@ export default defineNuxtComponent({
           dependencies: this.version.dependencies,
           game_versions: this.version.game_versions,
           loaders: this.version.loaders,
+          disk_url: this.version.disk_url,
+          disk_only: this.version.disk_only,
           primary_file: ["sha1", this.primaryFile.hashes.sha1],
           featured: this.version.featured,
-          file_types: this.oldFileTypes.map((x, i) => {
+          file_types: this.version.disk_only ? {} :  this.oldFileTypes.map((x, i) => {
             return {
               algorithm: "sha1",
               hash: this.version.files[i].hashes.sha1,
@@ -1217,6 +1290,7 @@ export default defineNuxtComponent({
       }
 
       try {
+
         await this.createVersionRaw(this.version);
       } catch (err) {
         this.$notify({
@@ -1273,7 +1347,9 @@ export default defineNuxtComponent({
         loaders: version.loaders,
         release_channel: version.version_type,
         featured: version.featured,
-        file_types: this.newFileTypes.reduce(
+        disk_only: version.disk_only,
+        disk_url: version.disk_url,
+        file_types: version.disk_only ? {} : this.newFileTypes.reduce(
           (acc, x, i) => ({
             ...acc,
             [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
@@ -1381,6 +1457,8 @@ export default defineNuxtComponent({
           game_versions: this.version.game_versions,
           loaders: this.packageLoaders,
           featured: this.version.featured,
+          disk_only: this.version.disk_only,
+          disk_url: this.version.disk_url,
         });
 
         this.$refs.modal_package_mod.hide();
@@ -1435,6 +1513,7 @@ export default defineNuxtComponent({
 
   grid-template:
     "title" auto
+    "disk_url" auto
     "changelog" auto
     "dependencies" auto
     "metadata" auto
@@ -1444,6 +1523,7 @@ export default defineNuxtComponent({
   @media (min-width: 1200px) {
     grid-template:
       "title title" auto
+      "disk_url metadata" auto
       "changelog metadata" auto
       "dependencies metadata" auto
       "files metadata" auto
@@ -1500,6 +1580,10 @@ export default defineNuxtComponent({
 
   .version-page__changelog {
     grid-area: changelog;
+    overflow-x: hidden;
+  }
+  .version-page__disk_url {
+    grid-area: disk_url;
     overflow-x: hidden;
   }
 

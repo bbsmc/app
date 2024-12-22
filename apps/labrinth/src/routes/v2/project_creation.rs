@@ -200,6 +200,8 @@ pub async fn project_create(
                         uploaded_images: v.uploaded_images,
                         ordering: v.ordering,
                         fields,
+                        disk_only: v.disk_only,
+                        disk_url: v.disk_url,
                     }
                 })
                 .collect();

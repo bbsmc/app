@@ -176,6 +176,7 @@
         <div
           class="animation-ring-1 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight"
         >
+
           <DownloadIcon class="h-20 w-20 text-contrast" />
         </div>
       </div>
@@ -685,7 +686,7 @@
                   class="flex sm:hidden"
                   @click="(event) => onDownloadClick(event)"
                 >
-                  <DownloadIcon aria-hidden="true" />
+                  <DownloadIcon aria-hidden="true" />1
                 </button>
               </ButtonStyled>
             </div>

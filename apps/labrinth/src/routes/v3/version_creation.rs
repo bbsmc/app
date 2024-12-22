@@ -45,7 +45,7 @@ fn default_requested_status() -> VersionStatus {
 pub struct InitialVersionData {
     #[serde(alias = "mod_id")]
     pub project_id: Option<ProjectId>,
-    #[validate(length(min = 1, max = 256))]
+    #[validate(length(min = 0, max = 256))]
     pub file_parts: Vec<String>,
     #[validate(
         length(min = 1, max = 32),
@@ -89,6 +89,14 @@ pub struct InitialVersionData {
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
     pub fields: HashMap<String, serde_json::Value>,
+
+    pub disk_only: bool,
+    #[validate(
+        custom(function = "crate::util::validate::validate_url"),
+        length(max = 2048)
+    )]
+    pub disk_url: Option<String>,
+
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -306,6 +314,10 @@ async fn version_create_inner(
                     })
                     .collect::<Vec<_>>();
 
+                let mut disk_url = None;
+                if version_create_data.disk_only && version_create_data.disk_url.is_some(){
+                    disk_url = version_create_data.disk_url.clone();
+                }
                 version_builder = Some(VersionBuilder {
                     version_id: version_id.into(),
                     project_id,
@@ -322,6 +334,7 @@ async fn version_create_inner(
                     status: version_create_data.status,
                     requested_status: None,
                     ordering: version_create_data.ordering,
+                    disk_url
                 });
 
                 return Ok(());
@@ -343,6 +356,16 @@ async fn version_create_inner(
                 .ok_or_else(|| CreateError::InvalidInput("`data` field is required".to_string()))?;
 
             let existing_file_names = version.files.iter().map(|x| x.filename.clone()).collect();
+
+            if version_data.disk_only {
+                return Ok(())
+            }
+
+            if !version_data.disk_only && version_data.file_parts.is_empty() {
+                return Err(CreateError::InvalidInput(
+                    "未上传文件".to_string(),
+                ));
+            }
 
             upload_file(
                 &mut field,
@@ -386,12 +409,17 @@ async fn version_create_inner(
         CreateError::InvalidInput("`data` field is required".to_string())
     })?;
 
-    if builder.files.is_empty() {
+    if builder.files.is_empty() && !version_data.disk_only {
         return Err(CreateError::InvalidInput(
-            "Versions must have at least one file uploaded to them".to_string(),
+            "必须上传一个文件！".to_string(),
         ));
     }
 
+    if version_data.disk_only && version_data.disk_url.is_none(){
+        return Err(CreateError::InvalidInput(
+            "未填写网盘地址".to_string(),
+        ));
+    }
     use futures::stream::TryStreamExt;
 
     let users = sqlx::query!(
@@ -425,7 +453,45 @@ async fn version_create_inner(
             acc.1.extend(x.supported_games.clone());
             acc
         });
-
+    let mut files =  builder
+        .files
+        .iter()
+        .map(|file| VersionFile {
+            hashes: file
+                .hashes
+                .iter()
+                .map(|hash| {
+                    (
+                        hash.algorithm.clone(),
+                        // This is a hack since the hashes are currently stored as ASCII
+                        // in the database, but represented here as a Vec<u8>.  At some
+                        // point we need to change the hash to be the real bytes  in the
+                        // database and add more processing here.
+                        String::from_utf8(hash.hash.clone()).unwrap(),
+                    )
+                })
+                .collect(),
+            url: file.url.clone(),
+            filename: file.filename.clone(),
+            primary: file.primary,
+            size: file.size,
+            file_type: file.file_type,
+        })
+        .collect::<Vec<_>>();
+    let mut disk_url = None;
+    if version_data.disk_only && version_data.disk_url.is_some(){
+        disk_url = version_data.disk_url.clone();
+    }
+    if version_data.disk_only{
+        files.push(VersionFile {
+            hashes: HashMap::new(),
+            url: disk_url.clone().unwrap(),
+            filename: "".to_string(),
+            primary: false,
+            size: 0,
+            file_type: None,
+        });
+    }
     let response = Version {
         id: builder.version_id.into(),
         project_id: builder.project_id.into(),
@@ -442,34 +508,12 @@ async fn version_create_inner(
         status: builder.status,
         requested_status: builder.requested_status,
         ordering: builder.ordering,
-        files: builder
-            .files
-            .iter()
-            .map(|file| VersionFile {
-                hashes: file
-                    .hashes
-                    .iter()
-                    .map(|hash| {
-                        (
-                            hash.algorithm.clone(),
-                            // This is a hack since the hashes are currently stored as ASCII
-                            // in the database, but represented here as a Vec<u8>.  At some
-                            // point we need to change the hash to be the real bytes  in the
-                            // database and add more processing here.
-                            String::from_utf8(hash.hash.clone()).unwrap(),
-                        )
-                    })
-                    .collect(),
-                url: file.url.clone(),
-                filename: file.filename.clone(),
-                primary: file.primary,
-                size: file.size,
-                file_type: file.file_type,
-            })
-            .collect::<Vec<_>>(),
+        files,
         dependencies: version_data.dependencies,
         loaders: version_data.loaders,
         fields: version_data.fields,
+        disk_url,
+        disk_only: version_data.disk_only,
     };
 
     let project_id = builder.project_id;

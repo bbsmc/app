@@ -12,7 +12,10 @@
       </p>
     </div>
     <ButtonStyled color="brand">
-      <a :href="downloadUrl" class="min-w-0" @click="emit('onDownload')">
+      <a :href="downloadUrl" class="min-w-0" @click="emit('onDownload')" v-if="downloadUrl.includes('cdn.bbsmc.net')">
+        <DownloadIcon aria-hidden="true" />
+      </a>
+      <a :href="downloadUrl" target="_blank" class="min-w-0" v-else>
         <DownloadIcon aria-hidden="true" />
       </a>
     </ButtonStyled>

@@ -688,6 +688,9 @@ pub struct Version {
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
     pub fields: HashMap<String, serde_json::Value>,
+
+    pub disk_url: Option<String>,
+    pub disk_only: bool,
 }
 
 pub fn skip_nulls<'de, D>(
@@ -758,6 +761,8 @@ impl From<QueryVersion> for Version {
                 .into_iter()
                 .map(|vf| (vf.field_name, vf.value.serialize_internal()))
                 .collect(),
+            disk_url: v.disk_url.clone(),
+            disk_only: v.disk_url.is_some(),
         }
     }
 }
