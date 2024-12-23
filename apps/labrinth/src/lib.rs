@@ -104,9 +104,9 @@ pub fn app_setup(
     );
     let limiter_clone = Arc::clone(&limiter);
     scheduler.run(Duration::from_secs(60), move || {
-        // info!("清理速率限制器，存储大小：{}", limiter_clone.len());
+        info!("清理速率限制器，存储大小：{}", limiter_clone.len());
         limiter_clone.retain_recent();
-        // info!("完成清理速率限制器，存储大小：{}", limiter_clone.len());
+        info!("完成清理速率限制器，存储大小：{}", limiter_clone.len());
 
         async move {}
     });
@@ -258,7 +258,7 @@ pub fn app_setup(
         let pool_ref_clone2 = pool.clone();
         let redis_ref2 = redis_pool.clone();
 
-        scheduler.run(std::time::Duration::from_secs(60), move || {
+        scheduler.run(std::time::Duration::from_secs(10), move || {
             let pool_ref_clone2 = pool_ref_clone2.clone();
             let redis_ref2 = redis_ref2.clone();
 

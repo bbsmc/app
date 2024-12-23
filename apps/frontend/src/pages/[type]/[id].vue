@@ -686,7 +686,7 @@
                   class="flex sm:hidden"
                   @click="(event) => onDownloadClick(event)"
                 >
-                  <DownloadIcon aria-hidden="true" />1
+                  <DownloadIcon aria-hidden="true" />
                 </button>
               </ButtonStyled>
             </div>
