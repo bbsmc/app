@@ -210,7 +210,6 @@ impl TeamMember {
         if team_ids.is_empty() {
             return Ok(Vec::new());
         }
-
         let val = redis.get_cached_keys(
             TEAMS_NAMESPACE,
             &team_ids.iter().map(|x| x.0).collect::<Vec<_>>(),
@@ -252,6 +251,11 @@ impl TeamMember {
                     })
                     .await?;
 
+                if teams.len() != team_ids.len() {
+                    team_ids.iter().for_each(|id| {
+                        teams.entry(*id).or_insert_with(Vec::new);
+                    });
+                }
                 Ok(teams)
             },
         ).await?;
@@ -697,9 +701,9 @@ impl TeamMember {
         }
     }
 
-// 获取检查项目操作权限所需的两个成员
-// - 项目团队成员（用户在给定项目中的成员身份）
-// - 组织团队成员（用户在拥有给定项目的组织中的成员身份）
+    // 获取检查项目操作权限所需的两个成员
+    // - 项目团队成员（用户在给定项目中的成员身份）
+    // - 组织团队成员（用户在拥有给定项目的组织中的成员身份）
     pub async fn get_for_project_permissions<'a, 'b, E>(
         project: &Project,
         user_id: UserId,
