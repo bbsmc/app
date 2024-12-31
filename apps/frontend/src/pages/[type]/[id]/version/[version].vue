@@ -89,6 +89,7 @@
       <div v-if="fieldErrors && showKnownErrors" class="known-errors">
         <ul>
           <li v-if="version.version_number === ''">您必须输入一个版本号</li>
+          <li v-if="version.disk_only && version.disk_url === ''">您选择了网盘，必须提供网盘地址</li>
           <li v-if="version.game_versions.length === 0">您必须选择支持的 Minecraft 版本</li>
           <li v-if="newFiles.length === 0 && version.files.length === 0 && !replaceFile && !version.disk_only">
             您必须要有一个上传的文件
@@ -223,8 +224,8 @@
     </div>
     <div class="version-page__disk_url universal-card" v-if="isEditing">
 
-      <div class="adjacent-input" v-if="isEditing">
-        <label for="project-wiki-open">
+      <div class="adjacent-input">
+        <label>
           <span class="label__title">夸克网盘</span>
           <span class="label__description">
           如果您有夸克的合作，需要参与夸克的拉新激励，可选择只提供夸克网盘链接，则无需选择要上传的文件，提供夸克下载方式后，点击下载按钮会直接跳转到夸克进行下载便可得到夸克的拉新激励。
@@ -242,7 +243,6 @@
 
       <div v-if="version.disk_only === true">
         <h3>夸克网盘</h3>
-        <template v-if ="isEditing">
           <input
             id="version-number"
             v-model="version.disk_url"
@@ -251,7 +251,24 @@
             style="width: 100%"
           />
 
-        </template>
+        <div class="adjacent-input">
+
+
+        <label style="margin-top: 15px">
+          <span class="label__title">整合包</span>
+          <span class="label__description">
+          请选择上传的资源是否是整合包/导入包类型，这很重要
+        </span>
+        </label>
+          <input
+            id="advanced-rendering"
+            v-model="version.is_modpack"
+            type="checkbox"
+            class="switch stylized-toggle"
+          />
+        </div>
+
+
       </div>
     </div>
 <!--    <div class="version-page__disk_url universal-card" v-if="!isEditing && version.disk_only === true">-->
@@ -890,8 +907,9 @@ export default defineNuxtComponent({
         game_versions: [],
         loaders: [],
         featured: false,
-        disk_url: null,
+        disk_url: "",
         disk_only: false,
+        is_modpack: false,
         curseforge: "",
       };
       // 用于从版本页面导航/上传文件提示
@@ -1032,6 +1050,7 @@ export default defineNuxtComponent({
     fieldErrors() {
       return (
         this.version.version_number === "" ||
+        (this.version.disk_only && this.version.disk_url === "") ||
         this.version.game_versions.length === 0 ||
         (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
         (this.newFiles.length === 0 && this.version.files.length === 0 && !this.replaceFile && this.version.disk_only === false)
@@ -1232,9 +1251,9 @@ export default defineNuxtComponent({
           loaders: this.version.loaders,
           disk_url: this.version.disk_url,
           disk_only: this.version.disk_only,
-          primary_file: ["sha1", this.primaryFile.hashes.sha1],
+          primary_file: this.version.disk_only ? [] : ["sha1", this.primaryFile.hashes.sha1],
           featured: this.version.featured,
-          file_types: this.version.disk_only ? {} :  this.oldFileTypes.map((x, i) => {
+          file_types: this.version.disk_only ? []:  this.oldFileTypes.map((x, i) => {
             return {
               algorithm: "sha1",
               hash: this.version.files[i].hashes.sha1,
@@ -1333,6 +1352,10 @@ export default defineNuxtComponent({
         if (zip.file("manifest.json")) {
           curse = true;
         }
+      }
+
+      if (!curse && version.is_modpack){
+        curse = true;
       }
 
       const newVersion = {
