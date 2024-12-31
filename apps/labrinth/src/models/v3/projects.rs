@@ -23,7 +23,6 @@ pub struct ProjectId(pub u64);
 #[serde(into = "Base62Id")]
 pub struct VersionId(pub u64);
 
-
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Debug)]
 #[serde(from = "Base62Id")]
 #[serde(into = "Base62Id")]
@@ -174,14 +173,18 @@ impl From<QueryProject> for Project {
             games.push(v.into());
         }
         if games.is_empty() {
-            m.default_game_version.iter().for_each(|v| games.push(v.clone()));
+            m.default_game_version
+                .iter()
+                .for_each(|v| games.push(v.clone()));
         }
         let mut loaders = vec![];
         for v in m.loaders {
             loaders.push(v.into());
         }
         if loaders.is_empty() {
-            m.default_game_loaders.iter().for_each(|v| loaders.push(v.clone()));
+            m.default_game_loaders
+                .iter()
+                .for_each(|v| loaders.push(v.clone()));
         }
 
         Self {

@@ -9,10 +9,10 @@
           <NavStack>
             <h3>显示</h3>
             <NavStackItem
-                link="/settings"
-                :label="formatMessage(commonSettingsMessages.appearance)"
+              link="/settings"
+              :label="formatMessage(commonSettingsMessages.appearance)"
             >
-              <PaintBrushIcon/>
+              <PaintBrushIcon />
             </NavStackItem>
             <!--            <NavStackItem-->
             <!--              v-if="isStaging"-->
@@ -24,16 +24,16 @@
             <template v-if="auth.user">
               <h3>账户</h3>
               <NavStackItem
-                  link="/settings/profile"
-                  :label="formatMessage(commonSettingsMessages.profile)"
+                link="/settings/profile"
+                :label="formatMessage(commonSettingsMessages.profile)"
               >
-                <UserIcon/>
+                <UserIcon />
               </NavStackItem>
               <NavStackItem
-                  link="/settings/account"
-                  :label="formatMessage(commonSettingsMessages.account)"
+                link="/settings/account"
+                :label="formatMessage(commonSettingsMessages.account)"
               >
-                <ShieldIcon/>
+                <ShieldIcon />
               </NavStackItem>
               <!--              <NavStackItem-->
               <!--                link="/settings/authorizations"-->
@@ -42,10 +42,10 @@
               <!--                <GridIcon />-->
               <!--              </NavStackItem>-->
               <NavStackItem
-                  link="/settings/sessions"
-                  :label="formatMessage(commonSettingsMessages.sessions)"
+                link="/settings/sessions"
+                :label="formatMessage(commonSettingsMessages.sessions)"
               >
-                <MonitorSmartphoneIcon/>
+                <MonitorSmartphoneIcon />
               </NavStackItem>
               <!--              <NavStackItem-->
               <!--                link="/settings/billing"-->
@@ -73,21 +73,21 @@
         </aside>
       </div>
       <div class="normal-page__content">
-        <NuxtPage :route="route"/>
+        <NuxtPage :route="route" />
       </div>
     </div>
   </div>
 </template>
 <script setup>
-import {PaintBrushIcon, UserIcon, ShieldIcon} from "@modrinth/assets";
+import { PaintBrushIcon, UserIcon, ShieldIcon } from "@modrinth/assets";
 
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 import MonitorSmartphoneIcon from "~/assets/images/utils/monitor-smartphone.svg?component";
 
-import {commonMessages, commonSettingsMessages} from "~/utils/common-messages.ts";
+import { commonMessages, commonSettingsMessages } from "~/utils/common-messages.ts";
 
-const {formatMessage} = useVIntl();
+const { formatMessage } = useVIntl();
 
 const route = useNativeRoute();
 const auth = await useAuth();

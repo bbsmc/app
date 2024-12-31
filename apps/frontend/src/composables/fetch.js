@@ -66,9 +66,9 @@ export const useBaseFetchFile = async (url, options = {}, skipAuth = false) => {
 
   // 判断是否为文件上传
   if (options.body instanceof FormData) {
-    const { body, onUploadProgress,onError } = options;
+    const { body, onUploadProgress, onError } = options;
     const xhr = new XMLHttpRequest();
-    xhr.open(options.method || 'POST', `${base}${url}`, true);
+    xhr.open(options.method || "POST", `${base}${url}`, true);
 
     // 设置请求头
     for (const [key, value] of Object.entries(options.headers)) {
@@ -79,13 +79,13 @@ export const useBaseFetchFile = async (url, options = {}, skipAuth = false) => {
 
     // 追踪上传进度
     if (onUploadProgress && xhr.upload) {
-      xhr.upload.onprogress = function(event) {
+      xhr.upload.onprogress = function (event) {
         if (event.lengthComputable) {
           const percentComplete = (event.loaded / event.total) * 100;
           const currentTime = Date.now();
           const timeDiff = (currentTime - lastTime) / 1000; // 秒
           const bytesDiff = event.loaded - lastLoaded;
-          const uploadSpeed = (bytesDiff / timeDiff) / (1024 * 1024); // Mbps
+          const uploadSpeed = bytesDiff / timeDiff / (1024 * 1024); // Mbps
 
           lastLoaded = event.loaded;
           lastTime = currentTime;
@@ -99,13 +99,12 @@ export const useBaseFetchFile = async (url, options = {}, skipAuth = false) => {
     return new Promise((resolve, reject) => {
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          if (xhr.responseText.length === 0){
+          if (xhr.responseText.length === 0) {
             resolve(JSON.parse("{}"));
-          }else {
-            console.log(xhr.responseText)
-            console.log(xhr.responseText.length)
+          } else {
+            console.log(xhr.responseText);
+            console.log(xhr.responseText.length);
             resolve(JSON.parse(xhr.responseText));
-
           }
         } else {
           onError(JSON.parse(xhr.responseText));

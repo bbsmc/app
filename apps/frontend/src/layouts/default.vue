@@ -1,9 +1,6 @@
 <template>
   <div ref="main_page" class="layout" :class="{ 'expanded-mobile-nav': isBrowseMenuOpen }">
-    <div
-      v-if="auth.user && !auth.user.email_verified && route.path !== '/auth/verify-email'"
-      class="email-nag"
-    >
+    <div v-if="auth.user && !auth.user.email_verified && route.path !== '/auth/verify-email'" class="email-nag">
       <template v-if="auth.user.email">
         <span>{{ formatMessage(verifyEmailBannerMessages.title) }}</span>
         <button class="btn" @click="resendVerifyEmail">
@@ -54,77 +51,56 @@
     <!--      </div>-->
     <!--    </div>-->
     <header
-      class="experimental-styles-within desktop-only relative z-[5] mx-auto grid max-w-[1280px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-4 lg:grid-cols-[auto_1fr_auto]"
-    >
+      class="experimental-styles-within desktop-only relative z-[5] mx-auto grid max-w-[1280px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-4 lg:grid-cols-[auto_1fr_auto]">
       <div>
         <NuxtLink to="/" aria-label="BBSMC home page">
           <BrandTextLogo aria-hidden="true" class="h-7 w-auto text-contrast" />
         </NuxtLink>
       </div>
 
-      <div
-        :class="`gap-2} col-span-2 row-start-2 flex flex-wrap justify-center lg:col-span-1 lg:row-start-auto`"
-      >
-        <template>
-          <ButtonStyled
-            type="transparent"
-            :highlighted="route.name === 'search-mods' || route.path.startsWith('/mod/')"
-            :highlighted-style="
-              route.name === 'search-mods' ? 'main-nav-primary' : 'main-nav-secondary'
-            "
-          >
-            <nuxt-link to="/mods"> <BoxIcon aria-hidden="true" /> 模组 </nuxt-link>
-          </ButtonStyled>
-          <ButtonStyled
-            type="transparent"
-            :highlighted="
-              route.name === 'search-resourcepacks' || route.path.startsWith('/resourcepack/')
-            "
-            :highlighted-style="
-              route.name === 'search-resourcepacks' ? 'main-nav-primary' : 'main-nav-secondary'
-            "
-          >
-            <nuxt-link to="/resourcepacks">
-              <PaintBrushIcon aria-hidden="true" /> 资源包
-            </nuxt-link>
-          </ButtonStyled>
-          <ButtonStyled
-            type="transparent"
-            :highlighted="route.name === 'search-datapacks' || route.path.startsWith('/datapack/')"
-            :highlighted-style="
-              route.name === 'search-datapacks' ? 'main-nav-primary' : 'main-nav-secondary'
-            "
-          >
-            <nuxt-link to="/datapacks"> <BracesIcon aria-hidden="true" /> 数据包 </nuxt-link>
-          </ButtonStyled>
-          <ButtonStyled
-            type="transparent"
-            :highlighted="route.name === 'search-modpacks' || route.path.startsWith('/modpack/')"
-            :highlighted-style="
-              route.name === 'search-modpacks' ? 'main-nav-primary' : 'main-nav-secondary'
-            "
-          >
-            <nuxt-link to="/modpacks"> <PackageOpenIcon aria-hidden="true" /> 整合包 </nuxt-link>
-          </ButtonStyled>
-          <ButtonStyled
-            type="transparent"
-            :highlighted="route.name === 'search-shaders' || route.path.startsWith('/shader/')"
-            :highlighted-style="
-              route.name === 'search-shaders' ? 'main-nav-primary' : 'main-nav-secondary'
-            "
-          >
-            <nuxt-link to="/shaders"> <GlassesIcon aria-hidden="true" /> 光影 </nuxt-link>
-          </ButtonStyled>
-          <ButtonStyled
-            type="transparent"
-            :highlighted="route.name === 'search-plugins' || route.path.startsWith('/plugin/')"
-            :highlighted-style="
-              route.name === 'search-plugins' ? 'main-nav-primary' : 'main-nav-secondary'
-            "
-          >
-            <nuxt-link to="/plugins"> <PlugIcon aria-hidden="true" /> 插件 </nuxt-link>
-          </ButtonStyled>
-        </template>
+      <div :class="`gap-2} col-span-2 row-start-2 flex flex-wrap justify-center lg:col-span-1 lg:row-start-auto`">
+        <ButtonStyled type="transparent" :highlighted="route.name === 'search-mods' || route.path.startsWith('/mod/')"
+          :highlighted-style="route.name === 'search-mods' ? 'main-nav-primary' : 'main-nav-secondary'
+            ">
+          <nuxt-link to="/mods">
+            <BoxIcon aria-hidden="true" /> 模组
+          </nuxt-link>
+        </ButtonStyled>
+        <ButtonStyled type="transparent" :highlighted="route.name === 'search-resourcepacks' || route.path.startsWith('/resourcepack/')
+          " :highlighted-style="route.name === 'search-resourcepacks' ? 'main-nav-primary' : 'main-nav-secondary'
+            ">
+          <nuxt-link to="/resourcepacks">
+            <PaintBrushIcon aria-hidden="true" /> 资源包
+          </nuxt-link>
+        </ButtonStyled>
+        <ButtonStyled type="transparent"
+          :highlighted="route.name === 'search-datapacks' || route.path.startsWith('/datapack/')" :highlighted-style="route.name === 'search-datapacks' ? 'main-nav-primary' : 'main-nav-secondary'
+            ">
+          <nuxt-link to="/datapacks">
+            <BracesIcon aria-hidden="true" /> 数据包
+          </nuxt-link>
+        </ButtonStyled>
+        <ButtonStyled type="transparent"
+          :highlighted="route.name === 'search-modpacks' || route.path.startsWith('/modpack/')" :highlighted-style="route.name === 'search-modpacks' ? 'main-nav-primary' : 'main-nav-secondary'
+            ">
+          <nuxt-link to="/modpacks">
+            <PackageOpenIcon aria-hidden="true" /> 整合包
+          </nuxt-link>
+        </ButtonStyled>
+        <ButtonStyled type="transparent"
+          :highlighted="route.name === 'search-shaders' || route.path.startsWith('/shader/')" :highlighted-style="route.name === 'search-shaders' ? 'main-nav-primary' : 'main-nav-secondary'
+            ">
+          <nuxt-link to="/shaders">
+            <GlassesIcon aria-hidden="true" /> 光影
+          </nuxt-link>
+        </ButtonStyled>
+        <ButtonStyled type="transparent"
+          :highlighted="route.name === 'search-plugins' || route.path.startsWith('/plugin/')" :highlighted-style="route.name === 'search-plugins' ? 'main-nav-primary' : 'main-nav-secondary'
+            ">
+          <nuxt-link to="/plugins">
+            <PlugIcon aria-hidden="true" /> 插件
+          </nuxt-link>
+        </ButtonStyled>
 
         <!--        -->
         <!--        -->
@@ -231,13 +207,9 @@
 
       <div class="flex items-center gap-2">
         <ButtonStyled type="transparent">
-          <OverflowMenu
-            v-if="auth.user"
-            class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
-            position="bottom"
-            direction="left"
-            aria-label="Create new..."
-            :options="[
+          <OverflowMenu v-if="auth.user"
+            class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1" position="bottom"
+            direction="left" aria-label="Create new..." :options="[
               {
                 id: 'new-project',
                 action: (event) => $refs.modal_creation.show(event),
@@ -251,46 +223,68 @@
                 id: 'new-organization',
                 action: (event) => $refs.modal_organization_creation.show(event),
               },
-            ]"
-          >
+            ]">
             <PlusIcon aria-hidden="true" />
             <DropdownIcon aria-hidden="true" class="h-5 w-5 text-secondary" />
-            <template #new-project> <BoxIcon aria-hidden="true" /> 创建资源 </template>
+            <template #new-project>
+              <BoxIcon aria-hidden="true" /> 创建资源
+            </template>
             <!-- <template #import-project> <BoxImportIcon /> Import project </template>-->
-            <template #new-collection> <CollectionIcon aria-hidden="true" /> 创建收藏夹 </template>
+            <template #new-collection>
+              <CollectionIcon aria-hidden="true" /> 创建收藏夹
+            </template>
             <template #new-organization>
               <OrganizationIcon aria-hidden="true" /> 创建团队
             </template>
           </OverflowMenu>
         </ButtonStyled>
-        <ButtonStyled
-            type="transparent"
-            v-if="unreadNotifications !== 0"
-          >
-            <nuxt-link to="/dashboard/notifications" class="notification-link" > <BellIcon aria-hidden="true" /><span class="notification-badge" v-if="unreadNotifications !== 0"></span> </nuxt-link>
-          </ButtonStyled>
-        <OverflowMenu
-          v-if="auth.user"
+        <ButtonStyled v-if="unreadNotifications !== 0" type="transparent">
+          <nuxt-link to="/dashboard/notifications" class="notification-link">
+            <BellIcon aria-hidden="true" /><span v-if="unreadNotifications !== 0" class="notification-badge"></span>
+          </nuxt-link>
+        </ButtonStyled>
+        <OverflowMenu v-if="auth.user"
           class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
-          :options="userMenuOptions"
-        >
+          :options="userMenuOptions">
           <Avatar :src="auth.user.avatar_url" aria-hidden="true" circle />
           <DropdownIcon class="h-5 w-5 text-secondary" />
-          <template #profile> <UserIcon aria-hidden="true" /> 个人资料 </template>
-          <template #notifications> <BellIcon aria-hidden="true" /> 通知 </template>
-          <template #saved> <BookmarkIcon aria-hidden="true" /> 收藏夹 </template>
+          <template #profile>
+            <UserIcon aria-hidden="true" /> 个人资料
+          </template>
+          <template #notifications>
+            <BellIcon aria-hidden="true" /> 通知
+          </template>
+          <template #saved>
+            <BookmarkIcon aria-hidden="true" /> 收藏夹
+          </template>
           <!--          <template #servers> <ServerIcon aria-hidden="true" /> My servers </template>-->
           <template #plus>
             <ArrowBigUpDashIcon aria-hidden="true" /> Upgrade to Modrinth+
           </template>
-          <template #settings> <SettingsIcon aria-hidden="true" /> 设置 </template>
-          <template #flags> <ReportIcon aria-hidden="true" /> 标签 </template>
-          <template #projects> <BoxIcon aria-hidden="true" /> 我的资源 </template>
-          <template #organizations> <OrganizationIcon aria-hidden="true" /> 团队 </template>
-          <template #revenue> <CurrencyIcon aria-hidden="true" /> 收入 </template>
-          <template #analytics> <ChartIcon aria-hidden="true" /> 统计 </template>
-          <template #moderation> <ModerationIcon aria-hidden="true" /> 管理 </template>
-          <template #sign-out> <LogOutIcon aria-hidden="true" /> 登出 </template>
+          <template #settings>
+            <SettingsIcon aria-hidden="true" /> 设置
+          </template>
+          <template #flags>
+            <ReportIcon aria-hidden="true" /> 标签
+          </template>
+          <template #projects>
+            <BoxIcon aria-hidden="true" /> 我的资源
+          </template>
+          <template #organizations>
+            <OrganizationIcon aria-hidden="true" /> 团队
+          </template>
+          <template #revenue>
+            <CurrencyIcon aria-hidden="true" /> 收入
+          </template>
+          <template #analytics>
+            <ChartIcon aria-hidden="true" /> 统计
+          </template>
+          <template #moderation>
+            <ModerationIcon aria-hidden="true" /> 管理
+          </template>
+          <template #sign-out>
+            <LogOutIcon aria-hidden="true" /> 登出
+          </template>
         </OverflowMenu>
         <ButtonStyled v-else color="green">
           <nuxt-link to="/auth/sign-in">
@@ -301,42 +295,20 @@
       </div>
     </header>
     <header class="mobile-navigation mobile-only">
-      <div
-        class="nav-menu nav-menu-browse"
-        :class="{ expanded: isBrowseMenuOpen }"
-        @focusin="isBrowseMenuOpen = true"
-        @focusout="isBrowseMenuOpen = false"
-      >
+      <div class="nav-menu nav-menu-browse" :class="{ expanded: isBrowseMenuOpen }" @focusin="isBrowseMenuOpen = true"
+        @focusout="isBrowseMenuOpen = false">
         <div class="links cascade-links">
-          <NuxtLink
-            v-for="navRoute in navRoutes"
-            :key="navRoute.href"
-            :to="navRoute.href"
-            class="iconified-button"
-          >
+          <NuxtLink v-for="navRoute in navRoutes" :key="navRoute.href" :to="navRoute.href" class="iconified-button">
             {{ navRoute.label }}
           </NuxtLink>
         </div>
       </div>
-      <div
-        class="nav-menu nav-menu-mobile"
-        :class="{ expanded: isMobileMenuOpen }"
-        @focusin="isMobileMenuOpen = true"
-        @focusout="isMobileMenuOpen = false"
-      >
+      <div class="nav-menu nav-menu-mobile" :class="{ expanded: isMobileMenuOpen }" @focusin="isMobileMenuOpen = true"
+        @focusout="isMobileMenuOpen = false">
         <div class="account-container">
-          <NuxtLink
-            v-if="auth.user"
-            :to="`/user/${auth.user.username}`"
-            class="iconified-button account-button"
-          >
-            <Avatar
-              :src="auth.user.avatar_url"
-              class="user-icon"
-              :alt="formatMessage(messages.yourAvatarAlt)"
-              aria-hidden="true"
-              circle
-            />
+          <NuxtLink v-if="auth.user" :to="`/user/${auth.user.username}`" class="iconified-button account-button">
+            <Avatar :src="auth.user.avatar_url" class="user-icon" :alt="formatMessage(messages.yourAvatarAlt)"
+              aria-hidden="true" circle />
             <div class="account-text">
               <div>@{{ auth.user.username }}</div>
               <div>{{ formatMessage(commonMessages.visitYourProfile) }}</div>
@@ -364,11 +336,8 @@
               <ServerIcon class="icon" />
               {{ formatMessage(commonMessages.serversLabel) }}
             </NuxtLink>
-            <NuxtLink
-              v-if="auth.user.role === 'moderator' || auth.user.role === 'admin'"
-              class="iconified-button"
-              to="/moderation"
-            >
+            <NuxtLink v-if="auth.user.role === 'moderator' || auth.user.role === 'admin'" class="iconified-button"
+              to="/moderation">
               <ModerationIcon aria-hidden="true" />
               {{ formatMessage(commonMessages.moderationLabel) }}
             </NuxtLink>
@@ -381,31 +350,21 @@
             <SettingsIcon aria-hidden="true" />
             {{ formatMessage(commonMessages.settingsLabel) }}
           </NuxtLink>
-          <button class="iconified-button" @click="changeTheme">
+          <!-- <button class="iconified-button" @click="changeTheme">
             <MoonIcon v-if="$theme.active === 'light'" class="icon" />
             <SunIcon v-else class="icon" />
             <span class="dropdown-item__text">
               {{ formatMessage(messages.changeTheme) }}
             </span>
-          </button>
+          </button> -->
         </div>
       </div>
       <div class="mobile-navbar" :class="{ expanded: isBrowseMenuOpen || isMobileMenuOpen }">
-        <NuxtLink
-          to="/"
-          class="tab button-animation"
-          :title="formatMessage(navMenuMessages.home)"
-          aria-label="Home"
-        >
+        <NuxtLink to="/" class="tab button-animation" :title="formatMessage(navMenuMessages.home)" aria-label="Home">
           <HomeIcon aria-hidden="true" />
         </NuxtLink>
-        <button
-          class="tab button-animation"
-          :class="{ 'router-link-exact-active': isBrowseMenuOpen }"
-          :title="formatMessage(navMenuMessages.search)"
-          aria-label="Search"
-          @click="toggleBrowseMenu()"
-        >
+        <button class="tab button-animation" :class="{ 'router-link-exact-active': isBrowseMenuOpen }"
+          :title="formatMessage(navMenuMessages.search)" aria-label="Search" @click="toggleBrowseMenu()">
           <template v-if="auth.user">
             <SearchIcon aria-hidden="true" />
           </template>
@@ -415,51 +374,29 @@
           </template>
         </button>
         <template v-if="auth.user">
-          <NuxtLink
-            to="/dashboard/notifications"
-            class="tab button-animation"
-            aria-label="Notifications"
-            :class="{
-              'no-active': isMobileMenuOpen || isBrowseMenuOpen,
-            }"
-            :title="formatMessage(commonMessages.notificationsLabel)"
-            @click="
-              () => {
-                isMobileMenuOpen = false;
-                isBrowseMenuOpen = false;
-              }
-            "
-          >
+          <NuxtLink to="/dashboard/notifications" class="tab button-animation" aria-label="Notifications" :class="{
+            'no-active': isMobileMenuOpen || isBrowseMenuOpen,
+          }" :title="formatMessage(commonMessages.notificationsLabel)" @click="() => {
+            isMobileMenuOpen = false;
+            isBrowseMenuOpen = false;
+          }
+            ">
             <NotificationIcon aria-hidden="true" />
           </NuxtLink>
-          <NuxtLink
-            to="/dashboard"
-            class="tab button-animation"
-            aria-label="Dashboard"
-            :title="formatMessage(commonMessages.dashboardLabel)"
-          >
+          <NuxtLink to="/dashboard" class="tab button-animation" aria-label="Dashboard"
+            :title="formatMessage(commonMessages.dashboardLabel)">
             <ChartIcon aria-hidden="true" />
           </NuxtLink>
         </template>
-        <button
-          class="tab button-animation"
-          :title="formatMessage(messages.toggleMenu)"
-          :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
-          @click="toggleMobileMenu()"
-        >
+        <button class="tab button-animation" :title="formatMessage(messages.toggleMenu)"
+          :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'" @click="toggleMobileMenu()">
           <template v-if="!auth.user">
             <HamburgerIcon v-if="!isMobileMenuOpen" aria-hidden="true" />
             <CrossIcon v-else aria-hidden="true" />
           </template>
           <template v-else>
-            <Avatar
-              :src="auth.user.avatar_url"
-              class="user-icon"
-              :class="{ expanded: isMobileMenuOpen }"
-              :alt="formatMessage(messages.yourAvatarAlt)"
-              aria-hidden="true"
-              circle
-            />
+            <Avatar :src="auth.user.avatar_url" class="user-icon" :class="{ expanded: isMobileMenuOpen }"
+              :alt="formatMessage(messages.yourAvatarAlt)" aria-hidden="true" circle />
           </template>
         </button>
       </div>
@@ -471,12 +408,12 @@
       <slot id="main" />
     </main>
     <footer>
-            <!-- <div class="logo-info" role="region" aria-label="Modrinth information"> -->
-              <!-- <BrandTextLogo
+      <!-- <div class="logo-info" role="region" aria-label="Modrinth information"> -->
+      <!-- <BrandTextLogo
                 aria-hidden="true"
                 class="text-logo button-base mx-auto mb-4 lg:mx-0"
               /> -->
-              <!-- <p class="mb-4">
+      <!-- <p class="mb-4">
                 <IntlFormatted :message-id="footerMessages.openSource">
                   <template #github-link="{ children }">
                     <a
@@ -490,40 +427,40 @@
                   </template>
                 </IntlFormatted>
               </p> -->
-              <!-- <p class="mb-4">BBSMC使用Modrinth程序开发,遵循LGPL许可证开源</p> -->
+      <!-- <p class="mb-4">BBSMC使用Modrinth程序开发,遵循LGPL许可证开源</p> -->
 
-            <!-- </div> -->
-<!--            <div class="links links-1" role="region" aria-label="Legal">-->
-<!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>-->
-<!--              <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>-->
-<!--              <nuxt-link to="/legal/privacy"> {{ formatMessage(footerMessages.privacy) }}</nuxt-link>-->
-<!--              <nuxt-link to="/legal/rules"> {{ formatMessage(footerMessages.rules) }}</nuxt-link>-->
+      <!-- </div> -->
+      <!--            <div class="links links-1" role="region" aria-label="Legal">-->
+      <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>-->
+      <!--              <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>-->
+      <!--              <nuxt-link to="/legal/privacy"> {{ formatMessage(footerMessages.privacy) }}</nuxt-link>-->
+      <!--              <nuxt-link to="/legal/rules"> {{ formatMessage(footerMessages.rules) }}</nuxt-link>-->
 
-<!--            </div>-->
-<!--            <div class="links links-2" role="region" aria-label="Resources">-->
-<!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.resourcesTitle) }}</h4>-->
-<!--              <a :target="$external()" href="https://support.modrinth.com">-->
-<!--                {{ formatMessage(footerMessages.support) }}-->
-<!--              </a>-->
-<!--              <a :target="$external()" href="https://blog.modrinth.com">-->
-<!--                {{ formatMessage(footerMessages.blog) }}-->
-<!--              </a>-->
-<!--              <a :target="$external()" href="https://docs.modrinth.com">-->
-<!--                {{ formatMessage(footerMessages.docs) }}-->
-<!--              </a>-->
-<!--              <a :target="$external()" href="https://status.modrinth.com">-->
-<!--                {{ formatMessage(footerMessages.status) }}-->
-<!--              </a>-->
-<!--            </div>-->
-<!--            <div class="links links-3" role="region" aria-label="Interact">-->
-<!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.interactTitle) }}</h4>-->
-<!--              <a rel="noopener" :target="$external()" href="https://discord.modrinth.com"> Discord </a>-->
-<!--              <a rel="noopener" :target="$external()" href="https://x.com/modrinth"> X (Twitter) </a>-->
-<!--              <a rel="noopener" :target="$external()" href="https://floss.social/@modrinth"> Mastodon </a>-->
-<!--              <a rel="noopener" :target="$external()" href="https://crowdin.com/project/modrinth">-->
-<!--                Crowdin-->
-<!--              </a>-->
-<!--            </div>-->
+      <!--            </div>-->
+      <!--            <div class="links links-2" role="region" aria-label="Resources">-->
+      <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.resourcesTitle) }}</h4>-->
+      <!--              <a :target="$external()" href="https://support.modrinth.com">-->
+      <!--                {{ formatMessage(footerMessages.support) }}-->
+      <!--              </a>-->
+      <!--              <a :target="$external()" href="https://blog.modrinth.com">-->
+      <!--                {{ formatMessage(footerMessages.blog) }}-->
+      <!--              </a>-->
+      <!--              <a :target="$external()" href="https://docs.modrinth.com">-->
+      <!--                {{ formatMessage(footerMessages.docs) }}-->
+      <!--              </a>-->
+      <!--              <a :target="$external()" href="https://status.modrinth.com">-->
+      <!--                {{ formatMessage(footerMessages.status) }}-->
+      <!--              </a>-->
+      <!--            </div>-->
+      <!--            <div class="links links-3" role="region" aria-label="Interact">-->
+      <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.interactTitle) }}</h4>-->
+      <!--              <a rel="noopener" :target="$external()" href="https://discord.modrinth.com"> Discord </a>-->
+      <!--              <a rel="noopener" :target="$external()" href="https://x.com/modrinth"> X (Twitter) </a>-->
+      <!--              <a rel="noopener" :target="$external()" href="https://floss.social/@modrinth"> Mastodon </a>-->
+      <!--              <a rel="noopener" :target="$external()" href="https://crowdin.com/project/modrinth">-->
+      <!--                Crowdin-->
+      <!--              </a>-->
+      <!--            </div>-->
       <!-- <div class="buttons">
         <nuxt-link class="iconified-button raised-button" to="/settings">
           <SettingsIcon aria-hidden="true" />
@@ -534,12 +471,8 @@
       <div class="not-affiliated-notice">
         "Minecraft"以及"我的世界"为美国微软公司的商标 本站与微软公司没有从属关系
         <br /><br />
-        本站与Modrinth无从属关系，网站遵循Modrinth网站程序的LGPL协议开源 <a
-                      :target="$external()"
-                      href="https://github.com/bbsmc/app"
-                      class="text-link"
-                      rel="noopener"
-                    >开源地址</a>
+        本站与Modrinth无从属关系，网站遵循Modrinth网站程序的LGPL协议开源
+        <a :target="$external()" href="https://github.com/bbsmc/app" class="text-link" rel="noopener">开源地址</a>
         <br /><br />
         版权所有 © 2019-2024 青岛柒兮网络科技有限公司 | ICP经营许可证: 鲁B2-20210590 | ICP备案:
         鲁ICP备2021009459号-12
@@ -579,6 +512,7 @@ import {
 } from "@modrinth/assets";
 import { ButtonStyled, OverflowMenu, Avatar } from "@modrinth/ui";
 
+import { provide } from "vue";
 import CrossIcon from "assets/images/utils/x.svg";
 import NotificationIcon from "assets/images/sidebar/notifications.svg";
 import ModerationIcon from "assets/images/sidebar/admin.svg";
@@ -587,11 +521,9 @@ import { getProjectTypeMessage } from "~/utils/i18n-project-type.ts";
 import { commonMessages } from "~/utils/common-messages.ts";
 import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
 import OrganizationCreateModal from "~/components/ui/OrganizationCreateModal.vue";
-import { provide } from 'vue';
 
 const { formatMessage } = useVIntl();
 
-const app = useNuxtApp();
 const auth = await useAuth();
 const unreadNotifications = ref(0);
 
@@ -652,8 +584,7 @@ const messages = defineMessages({
     defaultMessage: "Change theme",
   },
 });
-
-const footerMessages = defineMessages({
+defineMessages({
   openSource: {
     id: "layout.footer.open-source",
     defaultMessage: "BBSMC基于Modrinth的开源网站程序修改 <github-link>Github</github-link>.",
@@ -707,7 +638,6 @@ const footerMessages = defineMessages({
     defaultMessage: "非官方 MINECRAFT 服务。未获得 MOJANG 或 MICROSOFT 批准或与其相关。",
   },
 });
-
 useHead({
   link: [
     {
@@ -888,15 +818,13 @@ watch(
   },
 );
 
-provide('fetchNotifications', fetchNotifications);
+provide("fetchNotifications", fetchNotifications);
 
 async function fetchNotifications() {
-
   if (auth.value.user) {
-
     let count = 0;
     const notifications = await useBaseFetch(`user/${auth.value.user.id}/notifications`);
-    notifications.forEach(notification => {
+    notifications.forEach((notification) => {
       if (!notification.read) {
         count++;
       }
@@ -927,8 +855,8 @@ function runAnalytics() {
           Authorization: auth.value.token,
         },
       })
-        .then(() => {})
-        .catch(() => {});
+        .then(() => { })
+        .catch(() => { });
     });
   } catch (e) {
     console.error(`Sending analytics failed (CORS error? If so, ignore)`, e);
@@ -1212,6 +1140,7 @@ const { cycle: changeTheme } = useTheme();
       @media screen and (min-width: 354px) {
         grid-template-columns: repeat(2, 1fr);
       }
+
       @media screen and (min-width: 674px) {
         grid-template-columns: repeat(3, 1fr);
       }
@@ -1376,6 +1305,7 @@ const { cycle: changeTheme } = useTheme();
     padding-top: 0.75rem;
   }
 }
+
 .notification-link {
   position: relative;
 }

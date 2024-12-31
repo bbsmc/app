@@ -43,7 +43,7 @@
         @click="clearFilters"
       >
         <XCircleIcon />
-         清除所有筛选
+        清除所有筛选
       </button>
       <button
         v-for="channel in selectedChannels"

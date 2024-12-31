@@ -46,23 +46,23 @@
             role="button"
           />
         </client-only>
-<!--        <client-only>-->
-<!--          <CompactChart-->
-<!--            v-if="analytics.formattedData.value.revenue"-->
-<!--            ref="tinyRevenueChart"-->
-<!--            :title="` ${dayjs(startDate).format('YYYY-MM-D')} - ${dayjs(endDate).format('YYYY-MM-D')}`"-->
-<!--            color="var(&#45;&#45;color-purple)"-->
-<!--            :value="formatMoney(analytics.formattedData.value.revenue.sum, false)"-->
-<!--            :data="analytics.formattedData.value.revenue.chart.sumData"-->
-<!--            :labels="analytics.formattedData.value.revenue.chart.labels"-->
-<!--            is-money-->
-<!--            :class="`clickable chart-button-base button-base ${-->
-<!--              selectedChart === 'revenue' ? 'chart-button-base__selected button-base__selected' : ''-->
-<!--            }`"-->
-<!--            :onclick="() => (selectedChart = 'revenue')"-->
-<!--            role="button"-->
-<!--          />-->
-<!--        </client-only>-->
+        <!--        <client-only>-->
+        <!--          <CompactChart-->
+        <!--            v-if="analytics.formattedData.value.revenue"-->
+        <!--            ref="tinyRevenueChart"-->
+        <!--            :title="` ${dayjs(startDate).format('YYYY-MM-D')} - ${dayjs(endDate).format('YYYY-MM-D')}`"-->
+        <!--            color="var(&#45;&#45;color-purple)"-->
+        <!--            :value="formatMoney(analytics.formattedData.value.revenue.sum, false)"-->
+        <!--            :data="analytics.formattedData.value.revenue.chart.sumData"-->
+        <!--            :labels="analytics.formattedData.value.revenue.chart.labels"-->
+        <!--            is-money-->
+        <!--            :class="`clickable chart-button-base button-base ${-->
+        <!--              selectedChart === 'revenue' ? 'chart-button-base__selected button-base__selected' : ''-->
+        <!--            }`"-->
+        <!--            :onclick="() => (selectedChart = 'revenue')"-->
+        <!--            role="button"-->
+        <!--          />-->
+        <!--        </client-only>-->
       </div>
       <div class="graphs__main-graph">
         <div class="universal-card">
@@ -174,125 +174,125 @@
           </div>
         </div>
         <div class="country-data">
-<!--          <Card-->
-<!--            v-if="-->
-<!--              analytics.formattedData.value?.downloadsByCountry &&-->
-<!--              selectedChart === 'downloads' &&-->
-<!--              analytics.formattedData.value.downloadsByCountry.data.length > 0-->
-<!--            "-->
-<!--            class="country-downloads"-->
-<!--          >-->
-<!--            <label>-->
-<!--              <span class="label__title">Downloads by region</span>-->
-<!--            </label>-->
-<!--            <div class="country-values">-->
-<!--              <div-->
-<!--                v-for="[name, count] in analytics.formattedData.value.downloadsByCountry.data"-->
-<!--                :key="name"-->
-<!--                class="country-value"-->
-<!--              >-->
-<!--                <div class="country-flag-container">-->
-<!--                  <template v-if="name.toLowerCase() === 'xx' || !name">-->
-<!--                    <img-->
-<!--                      src="https://cdn.bbsmc.net/raw/placeholder-banner.svg"-->
-<!--                      alt="Placeholder flag"-->
-<!--                      class="country-flag"-->
-<!--                    />-->
-<!--                  </template>-->
-<!--                  <template v-else>-->
-<!--                    <img-->
-<!--                      :src="countryCodeToFlag(name)"-->
-<!--                      :alt="`${countryCodeToName(name)}'s flag`"-->
-<!--                      class="country-flag"-->
-<!--                    />-->
-<!--                  </template>-->
-<!--                </div>-->
-<!--                <div class="country-text">-->
-<!--                  <strong class="country-name"-->
-<!--                    ><template v-if="name.toLowerCase() === 'xx' || !name">Hidden</template>-->
-<!--                    <template v-else>{{ countryCodeToName(name) }}</template>-->
-<!--                  </strong>-->
-<!--                  <span class="data-point">{{ formatNumber(count) }}</span>-->
-<!--                </div>-->
-<!--                <div-->
-<!--                  v-tooltip="-->
-<!--                    formatPercent(count, analytics.formattedData.value.downloadsByCountry.sum)-->
-<!--                  "-->
-<!--                  class="percentage-bar"-->
-<!--                >-->
-<!--                  <span-->
-<!--                    :style="{-->
-<!--                      width: formatPercent(-->
-<!--                        count,-->
-<!--                        analytics.formattedData.value.downloadsByCountry.sum,-->
-<!--                      ),-->
-<!--                      backgroundColor: 'var(&#45;&#45;color-brand)',-->
-<!--                    }"-->
-<!--                  ></span>-->
-<!--                </div>-->
-<!--              </div>-->
-<!--            </div>-->
-<!--          </Card>-->
-<!--          <Card-->
-<!--            v-if="-->
-<!--              analytics.formattedData.value?.viewsByCountry &&-->
-<!--              selectedChart === 'views' &&-->
-<!--              analytics.formattedData.value.viewsByCountry.data.length > 0-->
-<!--            "-->
-<!--            class="country-downloads"-->
-<!--          >-->
-<!--            <label>-->
-<!--              <span class="label__title">Page views by region</span>-->
-<!--            </label>-->
-<!--            <div class="country-values">-->
-<!--              <div-->
-<!--                v-for="[name, count] in analytics.formattedData.value.viewsByCountry.data"-->
-<!--                :key="name"-->
-<!--                class="country-value"-->
-<!--              >-->
-<!--                <div class="country-flag-container">-->
-<!--                  <template v-if="name.toLowerCase() === 'xx' || !name">-->
-<!--                    <img-->
-<!--                      src="https://cdn.bbsmc.net/raw/placeholder-banner.svg"-->
-<!--                      alt="Placeholder flag"-->
-<!--                      class="country-flag"-->
-<!--                    />-->
-<!--                  </template>-->
-<!--                  <template v-else>-->
-<!--                    <img-->
-<!--                      :src="countryCodeToFlag(name)"-->
-<!--                      :alt="`${countryCodeToName(name)}'s flag`"-->
-<!--                      class="country-flag"-->
-<!--                    />-->
-<!--                  </template>-->
-<!--                </div>-->
-<!--                <div class="country-text">-->
-<!--                  <strong class="country-name">-->
-<!--                    <template v-if="name.toLowerCase() === 'xx' || !name">Hidden</template>-->
-<!--                    <template v-else>{{ countryCodeToName(name) }}</template>-->
-<!--                  </strong>-->
-<!--                  <span class="data-point">{{ formatNumber(count) }}</span>-->
-<!--                </div>-->
-<!--                <div-->
-<!--                  v-tooltip="-->
-<!--                    `${-->
-<!--                      Math.round(-->
-<!--                        (count / analytics.formattedData.value.viewsByCountry.sum) * 10000,-->
-<!--                      ) / 100-->
-<!--                    }%`-->
-<!--                  "-->
-<!--                  class="percentage-bar"-->
-<!--                >-->
-<!--                  <span-->
-<!--                    :style="{-->
-<!--                      width: `${(count / analytics.formattedData.value.viewsByCountry.sum) * 100}%`,-->
-<!--                      backgroundColor: 'var(&#45;&#45;color-blue)',-->
-<!--                    }"-->
-<!--                  ></span>-->
-<!--                </div>-->
-<!--              </div>-->
-<!--            </div>-->
-<!--          </Card>-->
+          <!--          <Card-->
+          <!--            v-if="-->
+          <!--              analytics.formattedData.value?.downloadsByCountry &&-->
+          <!--              selectedChart === 'downloads' &&-->
+          <!--              analytics.formattedData.value.downloadsByCountry.data.length > 0-->
+          <!--            "-->
+          <!--            class="country-downloads"-->
+          <!--          >-->
+          <!--            <label>-->
+          <!--              <span class="label__title">Downloads by region</span>-->
+          <!--            </label>-->
+          <!--            <div class="country-values">-->
+          <!--              <div-->
+          <!--                v-for="[name, count] in analytics.formattedData.value.downloadsByCountry.data"-->
+          <!--                :key="name"-->
+          <!--                class="country-value"-->
+          <!--              >-->
+          <!--                <div class="country-flag-container">-->
+          <!--                  <template v-if="name.toLowerCase() === 'xx' || !name">-->
+          <!--                    <img-->
+          <!--                      src="https://cdn.bbsmc.net/raw/placeholder-banner.svg"-->
+          <!--                      alt="Placeholder flag"-->
+          <!--                      class="country-flag"-->
+          <!--                    />-->
+          <!--                  </template>-->
+          <!--                  <template v-else>-->
+          <!--                    <img-->
+          <!--                      :src="countryCodeToFlag(name)"-->
+          <!--                      :alt="`${countryCodeToName(name)}'s flag`"-->
+          <!--                      class="country-flag"-->
+          <!--                    />-->
+          <!--                  </template>-->
+          <!--                </div>-->
+          <!--                <div class="country-text">-->
+          <!--                  <strong class="country-name"-->
+          <!--                    ><template v-if="name.toLowerCase() === 'xx' || !name">Hidden</template>-->
+          <!--                    <template v-else>{{ countryCodeToName(name) }}</template>-->
+          <!--                  </strong>-->
+          <!--                  <span class="data-point">{{ formatNumber(count) }}</span>-->
+          <!--                </div>-->
+          <!--                <div-->
+          <!--                  v-tooltip="-->
+          <!--                    formatPercent(count, analytics.formattedData.value.downloadsByCountry.sum)-->
+          <!--                  "-->
+          <!--                  class="percentage-bar"-->
+          <!--                >-->
+          <!--                  <span-->
+          <!--                    :style="{-->
+          <!--                      width: formatPercent(-->
+          <!--                        count,-->
+          <!--                        analytics.formattedData.value.downloadsByCountry.sum,-->
+          <!--                      ),-->
+          <!--                      backgroundColor: 'var(&#45;&#45;color-brand)',-->
+          <!--                    }"-->
+          <!--                  ></span>-->
+          <!--                </div>-->
+          <!--              </div>-->
+          <!--            </div>-->
+          <!--          </Card>-->
+          <!--          <Card-->
+          <!--            v-if="-->
+          <!--              analytics.formattedData.value?.viewsByCountry &&-->
+          <!--              selectedChart === 'views' &&-->
+          <!--              analytics.formattedData.value.viewsByCountry.data.length > 0-->
+          <!--            "-->
+          <!--            class="country-downloads"-->
+          <!--          >-->
+          <!--            <label>-->
+          <!--              <span class="label__title">Page views by region</span>-->
+          <!--            </label>-->
+          <!--            <div class="country-values">-->
+          <!--              <div-->
+          <!--                v-for="[name, count] in analytics.formattedData.value.viewsByCountry.data"-->
+          <!--                :key="name"-->
+          <!--                class="country-value"-->
+          <!--              >-->
+          <!--                <div class="country-flag-container">-->
+          <!--                  <template v-if="name.toLowerCase() === 'xx' || !name">-->
+          <!--                    <img-->
+          <!--                      src="https://cdn.bbsmc.net/raw/placeholder-banner.svg"-->
+          <!--                      alt="Placeholder flag"-->
+          <!--                      class="country-flag"-->
+          <!--                    />-->
+          <!--                  </template>-->
+          <!--                  <template v-else>-->
+          <!--                    <img-->
+          <!--                      :src="countryCodeToFlag(name)"-->
+          <!--                      :alt="`${countryCodeToName(name)}'s flag`"-->
+          <!--                      class="country-flag"-->
+          <!--                    />-->
+          <!--                  </template>-->
+          <!--                </div>-->
+          <!--                <div class="country-text">-->
+          <!--                  <strong class="country-name">-->
+          <!--                    <template v-if="name.toLowerCase() === 'xx' || !name">Hidden</template>-->
+          <!--                    <template v-else>{{ countryCodeToName(name) }}</template>-->
+          <!--                  </strong>-->
+          <!--                  <span class="data-point">{{ formatNumber(count) }}</span>-->
+          <!--                </div>-->
+          <!--                <div-->
+          <!--                  v-tooltip="-->
+          <!--                    `${-->
+          <!--                      Math.round(-->
+          <!--                        (count / analytics.formattedData.value.viewsByCountry.sum) * 10000,-->
+          <!--                      ) / 100-->
+          <!--                    }%`-->
+          <!--                  "-->
+          <!--                  class="percentage-bar"-->
+          <!--                >-->
+          <!--                  <span-->
+          <!--                    :style="{-->
+          <!--                      width: `${(count / analytics.formattedData.value.viewsByCountry.sum) * 100}%`,-->
+          <!--                      backgroundColor: 'var(&#45;&#45;color-blue)',-->
+          <!--                    }"-->
+          <!--                  ></span>-->
+          <!--                </div>-->
+          <!--              </div>-->
+          <!--            </div>-->
+          <!--          </Card>-->
         </div>
       </div>
     </div>
@@ -304,8 +304,8 @@ import { Button, Card, DropdownSelect } from "@modrinth/ui";
 import { formatMoney, formatNumber, formatCategoryHeader } from "@modrinth/utils";
 import { UpdatedIcon, DownloadIcon } from "@modrinth/assets";
 import dayjs from "dayjs";
-import 'dayjs/locale/zh-cn';
-dayjs.locale('zh-cn');
+import "dayjs/locale/zh-cn";
+dayjs.locale("zh-cn");
 
 import { computed } from "vue";
 
@@ -492,8 +492,8 @@ const defaultResoloutions: Record<string, number> = {
   "30 分钟": 30,
   "1 小时": 60,
   "12 小时": 720,
-  "一天": 1440,
-  "一周": 10080,
+  一天: 1440,
+  一周: 10080,
 };
 
 const defaultRanges: Record<number, [string, number] | string> = {

@@ -1,9 +1,7 @@
 <template>
   <div v-if="showInvitation" class="universal-card information invited">
     <h2>邀请加入资源</h2>
-    <p>
-      您已被邀请成为该项目的成员，权限为 '{{ currentMember.role }}'.
-    </p>
+    <p>您已被邀请成为该项目的成员，权限为 '{{ currentMember.role }}'.</p>
     <div class="input-group">
       <button class="iconified-button brand-button" @click="acceptInvite()">
         <CheckIcon />接收
@@ -218,8 +216,7 @@ const nags = computed(() => [
       props.project.body === "" || props.project.body.startsWith("# Placeholder description"),
     title: "介绍",
     id: "add-description",
-    description:
-      "需要清晰的介绍资源和基本功能，请尽量丰富一些.",
+    description: "需要清晰的介绍资源和基本功能，请尽量丰富一些.",
     status: "required",
     link: {
       path: "settings/description",
@@ -231,8 +228,7 @@ const nags = computed(() => [
     condition: !props.project.icon_url,
     title: "设置图标",
     id: "add-icon",
-    description:
-      "设置一个一眼就能记住的LOGO图标.",
+    description: "设置一个一眼就能记住的LOGO图标.",
     status: "suggestion",
     link: {
       path: "settings",
@@ -275,8 +271,7 @@ const nags = computed(() => [
     ),
     title: "更多URL",
     id: "add-links",
-    description:
-      "BUG反馈地址,开源地址等本网站之外的第三方网站链接",
+    description: "BUG反馈地址,开源地址等本网站之外的第三方网站链接",
     status: "suggestion",
     link: {
       path: "settings/links",
@@ -325,8 +320,7 @@ const nags = computed(() => [
     condition: props.project.status === "draft",
     title: "提交审核",
     id: "submit-for-review",
-    description:
-      "您的项目暂时仅供项目成员查看,必须经过版主审核才能发布.",
+    description: "您的项目暂时仅供项目成员查看,必须经过版主审核才能发布.",
     status: "review",
     link: null,
     action: {

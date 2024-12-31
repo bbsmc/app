@@ -345,7 +345,7 @@ pub async fn wiki_create(
     })?;
 
     let string = info.into_inner().0;
-    let result =
+    let result: Option<database::models::project_item::QueryProject> =
         database::models::Project::get(&string, &**pool, &redis).await?;
     let user_option = get_user_from_headers(
         &req,

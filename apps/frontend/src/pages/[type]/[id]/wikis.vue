@@ -1,6 +1,6 @@
 <template>
   <ConfirmModal2
-    ref="modal_confirm_create"
+    ref="modalConfirmCreate"
     title="您正在申请 创建/修改 百科页面"
     description="请认真预览的内容:<br/><br/>1. 请确保您的内容符合社区规范<br/>2. 请确保您的内容不违反任何法律法规<br/>3. 请确保您的内容不侵犯他人的知识产权<br/>4. 请确保您的内容不包含任何敏感信息
     <br/><br/>
@@ -23,7 +23,7 @@
     title="放弃提交"
     description="放弃提交后，您将被禁止编辑12小时，累计放弃和超时提交3次后将被禁止编辑3天"
     proceed-label="确认"
-    @proceed="given_up()"
+    @proceed="givenUp()"
   />
 
   <ConfirmModal2
@@ -35,52 +35,60 @@
   />
 
   <NewModal ref="rejectWikiCache">
-
-    <template #title >
+    <template #title>
       <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" />
       <div class="truncate text-lg font-extrabold text-contrast">百科审核</div>
     </template>
 
     <div class="flex flex-col gap-2">
       <label for="name">
-        <span class="text-lg font-semibold text-contrast">
-          拒绝理由:
-        </span>
+        <span class="text-lg font-semibold text-contrast"> 拒绝理由: </span>
       </label>
       <textarea v-model="rejectWikiCacheMsg" type="text" placeholder="请输入拒绝该提交的理由" />
     </div>
 
-    <div class="flex gap-2 mt-5" style="justify-content: flex-end;">
-      <ButtonStyled color="red" >
+    <div class="mt-5 flex gap-2" style="justify-content: flex-end">
+      <ButtonStyled color="red">
         <button @click="confirmRejectWiki">
           <CheckIcon aria-hidden="true" />
           确认
         </button>
       </ButtonStyled>
     </div>
-
   </NewModal>
 
-  <NewModal ref="viewBodyWikiView" >
+  <NewModal ref="viewBodyWikiView">
     <template #title>
-      <button-styled @click="viewBodyWikiView.hide();preReviewWiki.show()">
+      <button-styled
+        @click="
+          viewBodyWikiView.hide();
+          preReviewWiki.show();
+        "
+      >
         <button>返回预览</button>
       </button-styled>
     </template>
 
-
-   <div v-if="viewBodyWikiIsChange" style="width: 1600px; display: flex; justify-content: space-between;max-width: 100%!important;">
-  <div
-    style="width: 49%;"
-    class="markdown-body"
-    v-html="renderHighlightedString(viewBodyWiki.old_body)"
-  />
-  <div
-    style="width: 49%;"
-    class="markdown-body"
-    v-html="renderHighlightedString(viewBodyWiki.new_body)"
-  />
-</div>
+    <div
+      v-if="viewBodyWikiIsChange"
+      style="
+        width: 1600px;
+        display: flex;
+        justify-content: space-between;
+        max-width: 100% !important;
+      "
+    >
+      <div
+        style="width: 49%"
+        class="markdown-body"
+        v-html="renderHighlightedString(viewBodyWiki.old_body)"
+      />
+      <div
+        style="width: 49%"
+        class="markdown-body"
+        v-html="renderHighlightedString(viewBodyWiki.new_body)"
+      />
+    </div>
     <div v-else>
       <div
         style="width: 800px"
@@ -88,170 +96,160 @@
         v-html="renderHighlightedString(viewBodyWiki)"
       />
     </div>
-
   </NewModal>
 
   <NewModal ref="preReviewWiki">
-    <template #title >
+    <template #title>
       <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" />
       <div class="truncate text-lg font-extrabold text-contrast">审核预览</div>
     </template>
-    <ScrollablePanel :class="((preIndexSetReview.length + preBodyReview.length + preADDReview.length + preSortReview.length + preREMOVEReview.length) > 3) ? 'h-[30rem]' : ''">
+    <ScrollablePanel
+      :class="
+        preIndexSetReview.length +
+          preBodyReview.length +
+          preADDReview.length +
+          preSortReview.length +
+          preREMOVEReview.length >
+        3
+          ? 'h-[30rem]'
+          : ''
+      "
+    >
       <div class="flex flex-col gap-3" style="width: 800px">
-
-        <div class="flex flex-col gap-2"  v-if="preIndexSetReview.length > 0">
+        <div v-if="preIndexSetReview.length > 0" class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            设置主页:
-          </span>
+              <span class="text-lg font-semibold text-contrast"> 设置主页: </span>
             </label>
             <div class="member">
-              <div class="member-header" v-for="wiki in preIndexSetReview">
-                <div class="info" >
+              <div v-for="wiki_1 in preIndexSetReview" :key="wiki_1.id" class="member-header">
+                <div class="info">
                   <div class="text">
-                    <p>{{ wiki.title }}</p>
+                    <p>{{ wiki_1.title }}</p>
                   </div>
                 </div>
                 <div class="side-buttons">
                   <button-styled size="standard">
-                    <button @click="viewBody(wiki.body)">
-                      查看新主页
-                    </button>
+                    <button @click="viewBody(wiki_1.body)">查看新主页</button>
                   </button-styled>
-
                 </div>
               </div>
             </div>
-
           </div>
-
         </div>
 
-
-        <div class="flex flex-col gap-2"  v-if="preBodyReview.length > 0">
+        <div v-if="preBodyReview.length > 0" class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            修改正文:
-          </span>
+              <span class="text-lg font-semibold text-contrast"> 修改正文: </span>
             </label>
             <div class="member">
-              <div class="member-header" v-for="wiki in preBodyReview">
-                <div class="info" >
+              <div v-for="wiki_2 in preBodyReview" :key="wiki_2.id" class="member-header">
+                <div class="info">
                   <div class="text">
-                    <p>{{ wiki.title }}</p>
+                    <p>{{ wiki_2.title }}</p>
                   </div>
                 </div>
                 <div class="side-buttons">
                   <button-styled size="standard">
-                    <button @click="viewBodyChange(wiki)">
-                      查看修改
-                    </button>
+                    <button @click="viewBodyChange(wiki_2)">查看修改</button>
                   </button-styled>
-
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-
-
-
-        <div class="flex flex-col gap-2" v-if="preSortReview.length > 0">
+        <div v-if="preSortReview.length > 0" class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            修改权重:
-          </span>
+              <span class="text-lg font-semibold text-contrast"> 修改权重: </span>
             </label>
             <div class="member">
-              <div class="member-header" v-for="wiki in preSortReview">
-                <div class="info" >
+              <div v-for="wiki_3 in preSortReview" :key="wiki_3.id" class="member-header">
+                <div class="info">
                   <div class="text">
-                    <p>{{ wiki.title }}</p>
+                    <p>{{ wiki_3.title }}</p>
                   </div>
                 </div>
-                 {{wiki.old_sort_order}} -> {{wiki.new_sort_order}}
+                {{ wiki_3.old_sort_order }} -> {{ wiki_3.new_sort_order }}
               </div>
             </div>
           </div>
         </div>
 
-        <div class="flex flex-col gap-2" v-if="preADDReview.length > 0">
+        <div v-if="preADDReview.length > 0" class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            新增页面:
-          </span>
+              <span class="text-lg font-semibold text-contrast"> 新增页面: </span>
             </label>
             <div class="member">
-              <div class="member-header" v-for="wiki in preADDReview" style="margin-top: 3px">
-                <div class="info" >
+              <div
+                v-for="wiki_new in preADDReview"
+                :key="wiki_new.id"
+                class="member-header"
+                style="margin-top: 3px"
+              >
+                <div class="info">
                   <div class="text">
-                    <p>{{ wiki.title }}</p>
+                    <p>{{ wiki_new.title }}</p>
                   </div>
                 </div>
                 <div class="side-buttons">
                   <button-styled size="standard">
-                    <button @click="viewBody(wiki.body)">
-                      预览
-                    </button>
+                    <button @click="viewBody(wiki_new.body)">预览</button>
                   </button-styled>
-
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="flex flex-col gap-2" v-if="preREMOVEReview.length > 0">
+        <div v-if="preREMOVEReview.length > 0" class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            移除页面:
-          </span>
+              <span class="text-lg font-semibold text-contrast"> 移除页面: </span>
             </label>
             <div class="member">
-              <div class="member-header" v-for="wiki in preREMOVEReview" style="margin-top: 3px">
-                <div class="info" >
+              <div
+                v-for="wiki_remove_pre in preREMOVEReview"
+                :key="wiki_remove_pre.id"
+                class="member-header"
+                style="margin-top: 3px"
+              >
+                <div class="info">
                   <div class="text">
-                    <p>{{ wiki.title }}</p>
+                    <p>{{ wiki_remove_pre.title }}</p>
                   </div>
                 </div>
                 <div class="side-buttons">
                   <button-styled size="standard">
-                    <button @click="viewBody(wiki.body)">
-                      预览
-                    </button>
+                    <button @click="viewBody(wiki_remove_pre.body)">预览</button>
                   </button-styled>
-
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-
-
       </div>
 
       <span style="margin-top: 20px"></span>
-
     </ScrollablePanel>
-    <div class="flex gap-2 mt-5">
+    <div class="mt-5 flex gap-2">
       <ButtonStyled color="green">
-        <button @click="() => {
-
-          $refs.preReviewWiki.hide()
-          $refs.modal_confirm_pass.show()
-        }">
+        <button
+          @click="
+            () => {
+              $refs.preReviewWiki.hide();
+              $refs.modal_confirm_pass.show();
+            }
+          "
+        >
           <CheckIcon aria-hidden="true" />
           通过
         </button>
       </ButtonStyled>
       <ButtonStyled color="red">
-        <button @click="preRejectWikiCache"  style="margin-left: auto">
+        <button style="margin-left: auto" @click="preRejectWikiCache">
           <XIcon aria-hidden="true" />
           拒绝
         </button>
@@ -261,17 +259,25 @@
   <!--  <span style="margin-left: 10px"></span>-->
 
   <section class="normal-page__content">
-
-<!--    页面编辑者-->
-    <div v-if="props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache.status === 'review'">
+    <!--    页面编辑者-->
+    <div
+      v-if="
+        props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache.status === 'review'
+      "
+    >
       <div class="markdown-body card">
         <h2>百科页面正在审核中</h2>
         <br />
 
         <div class="member">
-          <div class=" member-header">
-            <div class="info" >
-              <Avatar :src="props.wikis.editor_user.avatar_url" :alt="props.wikis.editor_user.username" size="sm" circle />
+          <div class="member-header">
+            <div class="info">
+              <Avatar
+                :src="props.wikis.editor_user.avatar_url"
+                :alt="props.wikis.editor_user.username"
+                size="sm"
+                circle
+              />
               <div class="text">
                 <nuxt-link :to="'/user/' + props.wikis.editor_user.username" class="name">
                   <p>{{ props.wikis.editor_user.username }}</p>
@@ -280,39 +286,48 @@
               </div>
             </div>
 
-
             <div class="side-buttons">
-              <button-styled color="red" >
-                <button @click="$refs.modal_confirm_given_up.show()" >
+              <button-styled color="red">
+                <button @click="$refs.modal_confirm_given_up.show()">
                   <XIcon aria-hidden="true" />
                   放弃编辑
                 </button>
               </button-styled>
 
               <button-styled color="green">
-                <button @click="$refs.modal_confirm_again.show()" style="margin-left: 5px">
+                <button style="margin-left: 5px" @click="$refs.modal_confirm_again.show()">
                   <CogIcon aria-hidden="true" />
                   重新编辑
                 </button>
               </button-styled>
-
-
             </div>
           </div>
         </div>
-
       </div>
     </div>
-<!--    审核 -->
-    <div v-if="props.wikis.is_editor && !props.wikis.is_visitors && !props.wikis.is_editor_user && props.wikis.cache && props.wikis.cache.status === 'review'">
-      <div class="markdown-body card ">
+    <!--    审核 -->
+    <div
+      v-if="
+        props.wikis.is_editor &&
+        !props.wikis.is_visitors &&
+        !props.wikis.is_editor_user &&
+        props.wikis.cache &&
+        props.wikis.cache.status === 'review'
+      "
+    >
+      <div class="markdown-body card">
         <h2>审核公开编辑百科</h2>
-        <br>
+        <br />
 
         <div class="member">
-          <div class=" member-header">
-            <div class="info" >
-              <Avatar :src="props.wikis.editor_user.avatar_url" :alt="props.wikis.editor_user.username" size="sm" circle />
+          <div class="member-header">
+            <div class="info">
+              <Avatar
+                :src="props.wikis.editor_user.avatar_url"
+                :alt="props.wikis.editor_user.username"
+                size="sm"
+                circle
+              />
               <div class="text">
                 <nuxt-link :to="'/user/' + props.wikis.editor_user.username" class="name">
                   <p>{{ props.wikis.editor_user.username }}</p>
@@ -321,7 +336,6 @@
               </div>
             </div>
 
-
             <div class="side-buttons">
               <button-styled color="green">
                 <button @click="preReview">
@@ -329,15 +343,14 @@
                   开始审核
                 </button>
               </button-styled>
-
-          </div>
+            </div>
           </div>
         </div>
-        <div class="thread-summary" v-if="props.wikis.cache.message.length > 0">
+        <div v-if="props.wikis.cache.message.length > 0" class="thread-summary">
           <div class="thread-title-row">
-            <span  class="thread-title">会话</span>
+            <span class="thread-title">会话</span>
           </div>
-          <div v-for="msg in props.wikis.cache.message">
+          <div v-for="msg in props.wikis.cache.message" :key="msg.time">
             <div class="message has-body">
               <ConditionalNuxtLink
                 class="message__icon"
@@ -346,51 +359,52 @@
                 tabindex="-1"
                 aria-hidden="true"
               >
-                <Avatar
-                  class="message__icon"
-                  :src="msg.avatar_url"
-                  circle
-                />
-
+                <Avatar class="message__icon" :src="msg.avatar_url" circle />
               </ConditionalNuxtLink>
 
               <span class="message__author">
-                <ConditionalNuxtLink :is-link="true" :to="`/user/${msg.username}`">{{ msg.username }}</ConditionalNuxtLink>
+                <ConditionalNuxtLink :is-link="true" :to="`/user/${msg.username}`">{{
+                  msg.username
+                }}</ConditionalNuxtLink>
               </span>
               <div
                 class="message__body markdown-body"
-                v-html="msg.message.replace('\n','</br>')"
+                v-html="msg.message.replace('\n', '</br>')"
               />
               <span
-                v-tooltip="
-                $dayjs(msg.time).format('YYYY-MM-DD hh:mm:ss')
-              "
+                v-tooltip="$dayjs(msg.time).format('YYYY-MM-DD hh:mm:ss')"
                 class="date"
                 style="font-size: 13px"
               >
-              {{ fromNow(msg.time) }}
-            </span>
+                {{ fromNow(msg.time) }}
+              </span>
             </div>
           </div>
         </div>
-
-
-
-
-
-
       </div>
     </div>
 
-    <div v-if="props.wikis.is_editor && !props.wikis.is_visitors && !props.wikis.is_editor_user && !props.wikis.cache">
-      <div class="markdown-body card ">
+    <div
+      v-if="
+        props.wikis.is_editor &&
+        !props.wikis.is_visitors &&
+        !props.wikis.is_editor_user &&
+        !props.wikis.cache
+      "
+    >
+      <div class="markdown-body card">
         <h2>公开编辑百科</h2>
-        <br>
+        <br />
 
         <div class="member">
-          <div class=" member-header">
-            <div class="info" >
-              <Avatar :src="props.wikis.editor_user.avatar_url" :alt="props.wikis.editor_user.username" size="sm" circle />
+          <div class="member-header">
+            <div class="info">
+              <Avatar
+                :src="props.wikis.editor_user.avatar_url"
+                :alt="props.wikis.editor_user.username"
+                size="sm"
+                circle
+              />
               <div class="text">
                 <nuxt-link :to="'/user/' + props.wikis.editor_user.username" class="name">
                   <p>{{ props.wikis.editor_user.username }}</p>
@@ -399,31 +413,40 @@
               </div>
             </div>
 
-
             <div class="side-buttons">
               <button-styled color="green">
-                <button @click="preReview" disabled>
+                <button disabled @click="preReview">
                   <CogIcon aria-hidden="true" />
                   用户提交后可审核
                 </button>
               </button-styled>
-
-          </div>
+            </div>
           </div>
         </div>
-
       </div>
     </div>
 
-    <div v-if="props.wikis.is_editor && !props.wikis.is_visitors && props.wikis.is_editor_user && props.wikis.cache.status === 'draft'">
-      <div class="markdown-body card ">
+    <div
+      v-if="
+        props.wikis.is_editor &&
+        !props.wikis.is_visitors &&
+        props.wikis.is_editor_user &&
+        props.wikis.cache.status === 'draft'
+      "
+    >
+      <div class="markdown-body card">
         <h2>编辑百科</h2>
-        <br>
+        <br />
 
         <div class="member">
-          <div class=" member-header">
-            <div class="info" >
-              <Avatar :src="props.wikis.editor_user.avatar_url" :alt="props.wikis.editor_user.username" size="sm" circle />
+          <div class="member-header">
+            <div class="info">
+              <Avatar
+                :src="props.wikis.editor_user.avatar_url"
+                :alt="props.wikis.editor_user.username"
+                size="sm"
+                circle
+              />
               <div class="text">
                 <nuxt-link :to="'/user/' + props.wikis.editor_user.username" class="name">
                   <p>{{ props.wikis.editor_user.username }}</p>
@@ -432,19 +455,18 @@
               </div>
             </div>
 
-
             <div class="side-buttons">
-
-              剩余编辑时间: {{ $dayjs(props.wikis.cache.again_time).add(5, 'hour').diff($dayjs(), 'minute') }} 分钟
-
-          </div>
+              剩余编辑时间:
+              {{ $dayjs(props.wikis.cache.again_time).add(5, "hour").diff($dayjs(), "minute") }}
+              分钟
+            </div>
           </div>
         </div>
-        <div class="thread-summary" v-if="props.wikis.cache.message.length > 0">
+        <div v-if="props.wikis.cache.message.length > 0" class="thread-summary">
           <div class="thread-title-row">
-            <span  class="thread-title">会话</span>
+            <span class="thread-title">会话</span>
           </div>
-          <div v-for="msg in props.wikis.cache.message">
+          <div v-for="msg in props.wikis.cache.message" :key="msg.time">
             <div class="message has-body">
               <ConditionalNuxtLink
                 class="message__icon"
@@ -453,30 +475,25 @@
                 tabindex="-1"
                 aria-hidden="true"
               >
-                <Avatar
-                  class="message__icon"
-                  :src="msg.avatar_url"
-                  circle
-                />
-
+                <Avatar class="message__icon" :src="msg.avatar_url" circle />
               </ConditionalNuxtLink>
 
               <span class="message__author">
-                <ConditionalNuxtLink :is-link="true" :to="`/user/${msg.username}`">{{ msg.username }}</ConditionalNuxtLink>
+                <ConditionalNuxtLink :is-link="true" :to="`/user/${msg.username}`">{{
+                  msg.username
+                }}</ConditionalNuxtLink>
               </span>
               <div
                 class="message__body markdown-body"
-                v-html="msg.message.replace('\n','</br>')"
+                v-html="msg.message.replace('\n', '</br>')"
               />
               <span
-                v-tooltip="
-                $dayjs(msg.time).format('YYYY-MM-DD HH:mm:ss')
-              "
+                v-tooltip="$dayjs(msg.time).format('YYYY-MM-DD HH:mm:ss')"
                 class="date"
                 style="font-size: 13px"
               >
-              {{ fromNow(msg.time) }}
-            </span>
+                {{ fromNow(msg.time) }}
+              </span>
             </div>
           </div>
         </div>
@@ -484,14 +501,19 @@
     </div>
 
     <div v-if="props.wikis.is_editor && props.wikis.is_visitors">
-      <div class="markdown-body card ">
+      <div class="markdown-body card">
         <h2>公开编辑百科</h2>
-        <br>
+        <br />
 
         <div class="member">
-          <div class=" member-header">
-            <div class="info" >
-              <Avatar :src="props.wikis.editor_user.avatar_url" :alt="props.wikis.editor_user.username" size="sm" circle />
+          <div class="member-header">
+            <div class="info">
+              <Avatar
+                :src="props.wikis.editor_user.avatar_url"
+                :alt="props.wikis.editor_user.username"
+                size="sm"
+                circle
+              />
               <div class="text">
                 <nuxt-link :to="'/user/' + props.wikis.editor_user.username" class="name">
                   <p>{{ props.wikis.editor_user.username }}</p>
@@ -499,486 +521,478 @@
                 <p>正在编辑中</p>
               </div>
             </div>
-
           </div>
         </div>
       </div>
     </div>
 
-
-
     <div
-
       class="markdown-body card"
       v-html="renderHighlightedString(wiki ? wiki.body : '未设置任何页面未主页')"
     />
 
-    <div class="markdown-body card" v-if="(props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache && props.wikis.cache.status === 'draft') && !wiki">
-        <h2>百科未设置任何页面为主页</h2>
-        <br />
-        <span class="label__description">
-          请在左边的目录中创建一个页面，并且将其设置为主页后，该页面将显示为你设置的页面的内容
-        </span>
+    <div
+      v-if="
+        props.wikis.is_editor &&
+        props.wikis.is_editor_user &&
+        props.wikis.cache &&
+        props.wikis.cache.status === 'draft' &&
+        !wiki
+      "
+      class="markdown-body card"
+    >
+      <h2>百科未设置任何页面为主页</h2>
+      <br />
+      <span class="label__description">
+        请在左边的目录中创建一个页面，并且将其设置为主页后，该页面将显示为你设置的页面的内容
+      </span>
     </div>
 
-<!--    其他用户，百科正在编辑中，告知谁正在编辑   -->
-    <div v-if="props.wikis.is_visitors && props.wikis.is_editor && project.wiki_open" class="markdown-body card">
+    <!--    其他用户，百科正在编辑中，告知谁正在编辑   -->
+    <div
+      v-if="props.wikis.is_visitors && props.wikis.is_editor && project.wiki_open"
+      class="markdown-body card"
+    >
       <h2>公开编辑百科</h2>
       <span class="label__description">
-          该资源的作者开启了公开编辑百科的功能，您可以在此处创建/修改百科页面
-        </span>
+        该资源的作者开启了公开编辑百科的功能，您可以在此处创建/修改百科页面
+      </span>
       <br />
       <br />
       <span class="label__description">
-          用户 <router-link  :to="'/user/' + props.wikis.editor_user.username" style="font-weight: bold">{{ props.wikis.editor_user.username }}</router-link> 正在编辑该资源的百科页面，暂时无法申请编辑
-        </span>
+        用户
+        <router-link :to="'/user/' + props.wikis.editor_user.username" style="font-weight: bold">{{
+          props.wikis.editor_user.username
+        }}</router-link>
+        正在编辑该资源的百科页面，暂时无法申请编辑
+      </span>
       <br />
       <br />
       <button-styled color="green">
-        <button @click="$refs.modal_confirm_create.show()" disabled>
+        <button disabled @click="$refs.modalConfirmCreate.show()">
           <PlusIcon aria-hidden="true" />
           申请编辑权限
         </button>
       </button-styled>
-
     </div>
-    <div class="markdown-body card" v-if="!props.wikis.is_editor">
+    <div v-if="!props.wikis.is_editor" class="markdown-body card">
       <h2 v-if="currentMember">编辑百科</h2>
       <h2 v-else-if="project.wiki_open">公开编辑百科</h2>
       <h2 v-else>百科</h2>
       <br />
 
-        <div v-if="currentMember">
-        <span class="label__description">
-          您有权限编辑该资源的百科，您可以在此处创建百科页面
-          </span>
-          <br />
-          <br />
-          <button-styled color="green">
-            <button @click="$refs.modal_confirm_create.show()">
-              <PlusIcon aria-hidden="true" />
-              开始编辑
-            </button>
-          </button-styled>
-        </div>
-        <div v-else-if="project.wiki_open">
+      <div v-if="currentMember">
+        <span class="label__description"> 您有权限编辑该资源的百科，您可以在此处创建百科页面 </span>
+        <br />
+        <br />
+        <button-styled color="green">
+          <button @click="$refs.modalConfirmCreate.show()">
+            <PlusIcon aria-hidden="true" />
+            开始编辑
+          </button>
+        </button-styled>
+      </div>
+      <div v-else-if="project.wiki_open">
         <span class="label__description">
           该资源的作者开启了公开编辑百科的功能，您可以在此处创建/修改百科页面
         </span>
-          <br />
-          <br />
-          <button-styled color="green">
-            <button @click="$refs.modal_confirm_create.show()">
-              <PlusIcon aria-hidden="true" />
-              申请编辑权限
-            </button>
-          </button-styled>
-        </div>
-      <div v-else>
-        该资源没有开启公开编辑百科的功能，您可以向作者申请编辑权限
+        <br />
+        <br />
+        <button-styled color="green">
+          <button @click="$refs.modalConfirmCreate.show()">
+            <PlusIcon aria-hidden="true" />
+            申请编辑权限
+          </button>
+        </button-styled>
       </div>
+      <div v-else>该资源没有开启公开编辑百科的功能，您可以向作者申请编辑权限</div>
     </div>
-
-
-
-
-
   </section>
 </template>
 
 <script setup>
-import { renderHighlightedString } from '~/helpers/highlight.js'
-import { Avatar, ButtonStyled, ConditionalNuxtLink, ConfirmModal, NewModal, ScrollablePanel } from '@modrinth/ui'
 import {
-  PlusIcon,
-  CogIcon,
-  XIcon,
-  CheckIcon,
-  ModrinthIcon,
-  ScaleIcon,
-  MicrophoneIcon,
-  LockIcon
-} from '@modrinth/assets'
-import ConfirmModal2 from '@modrinth/ui/src/components/modal/ConfirmModal2.vue'
-import ChevronRightIcon from 'assets/images/utils/chevron-right.svg'
-const auth = await useAuth()
+  Avatar,
+  ButtonStyled,
+  ConditionalNuxtLink,
+  ConfirmModal,
+  NewModal,
+  ScrollablePanel,
+} from "@modrinth/ui";
+import { PlusIcon, CogIcon, XIcon, CheckIcon } from "@modrinth/assets";
+import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
+import { renderHighlightedString } from "~/helpers/highlight.js";
+const auth = await useAuth();
 
 const props = defineProps({
   project: {
     type: Object,
     default() {
-      return {}
-    }
+      return {};
+    },
   },
   currentMember: {
     type: Object,
     default() {
-      return null
-    }
+      return null;
+    },
   },
   wikis: {
     type: Object,
     default() {
-      return {}
-    }
-  }
-})
-const title = `${props.project.title} - WIKI`
-const description = `浏览 ${props.project.title} 个图片的WIKI页面`
-let wiki = ref(null)
-let modal_confirm_create = ref()
-const router = useNativeRouter()
-const route = useNativeRoute()
+      return {};
+    },
+  },
+});
+const title = `${props.project.title} - WIKI`;
+const description = `浏览 ${props.project.title} 个图片的WIKI页面`;
+let wiki = ref(null);
+const router = useNativeRouter();
+const route = useNativeRoute();
 
-const data = useNuxtApp()
+const data = useNuxtApp();
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
-  ogDescription: description
-})
+  ogDescription: description,
+});
 
-if (!props.wikis.is_visitors && props.wikis.is_editor && props.wikis.cache && props.wikis.cache.status === 'draft') {
+if (
+  !props.wikis.is_visitors &&
+  props.wikis.is_editor &&
+  props.wikis.cache &&
+  props.wikis.cache.status === "draft"
+) {
   props.wikis.cache.cache.forEach((wiki_) => {
     if (wiki_.featured) {
-      wiki = wiki_
+      wiki = wiki_;
     }
     if (wiki_.child && wiki_.child.length > 0) {
       wiki_.child.forEach((wiki__) => {
         if (wiki__.featured) {
-          wiki = wiki__
+          wiki = wiki__;
         }
-      })
+      });
     }
-  })
+  });
 } else {
   props.wikis.wikis.forEach((wiki_) => {
     if (wiki_.featured) {
-      wiki = wiki_
+      wiki = wiki_;
     }
     if (wiki_.child && wiki_.child.length > 0) {
       wiki_.child.forEach((wiki__) => {
         if (wiki__.featured) {
-          wiki = wiki__
+          wiki = wiki__;
         }
-      })
+      });
     }
-  })
+  });
 }
-
 
 async function submitCreateWiki() {
   if (auth.value.user) {
     try {
-      await useBaseFetch(`project/${route.params.id}/wiki_edit_start`, { apiVersion: 3, method: 'POST' })
+      await useBaseFetch(`project/${route.params.id}/wiki_edit_start`, {
+        apiVersion: 3,
+        method: "POST",
+      });
       data.$notify({
-        group: 'main',
-        title: '成功',
-        text: '</br>您已成功申请创建百科页面,请在五小时内提交审核',
-        type: 'success'
-      })
-      router.push(`/project/${route.params.id}/wikis`)
-      modal_confirm_create.value.hide()
-
+        group: "main",
+        title: "成功",
+        text: "</br>您已成功申请创建百科页面,请在五小时内提交审核",
+        type: "success",
+      });
+      router.push(`/project/${route.params.id}/wikis`);
+      modalConfirmCreate.value.hide();
     } catch (err) {
-      console.log(err)
+      console.log(err);
       data.$notify({
-        group: 'main',
-        title: '发生错误',
+        group: "main",
+        title: "发生错误",
         text: err.data.description,
-        type: 'error'
-      })
+        type: "error",
+      });
     }
   } else {
     // auth.login()
     data.$notify({
-      group: 'main',
-      title: '未登录',
-      text: '</br>请先登录或创建账号',
-      type: 'error'
-    })
-    router.push(`/auth/sign-in`)
+      group: "main",
+      title: "未登录",
+      text: "</br>请先登录或创建账号",
+      type: "error",
+    });
+    router.push(`/auth/sign-in`);
   }
   // console.log('submitCreateWiki')
 }
 
-const preSortReview = ref([])
-const preBodyReview = ref([])
-const preADDReview = ref([])
-const preREMOVEReview = ref([])
-const preIndexSetReview = ref([])
-const preReviewWiki = ref()
-const viewBodyWikiView = ref()
-const viewBodyWiki = ref()
-const viewBodyWikiIsChange = ref(false)
-const rejectWikiCache = ref()
-const rejectWikiCacheMsg = ref("")
+const preSortReview = ref([]);
+const preBodyReview = ref([]);
+const preADDReview = ref([]);
+const preREMOVEReview = ref([]);
+const preIndexSetReview = ref([]);
+const preReviewWiki = ref();
+const viewBodyWikiView = ref();
+const viewBodyWiki = ref();
+const viewBodyWikiIsChange = ref(false);
+const rejectWikiCache = ref();
+const modalConfirmCreate = ref();
 
+const rejectWikiCacheMsg = ref("");
 
-async function viewBody(body) {
-  viewBodyWikiIsChange.value = false
-  viewBodyWiki.value = body
-  preReviewWiki.value.hide()
-  viewBodyWikiView.value.show()
+function viewBody(body) {
+  viewBodyWikiIsChange.value = false;
+  viewBodyWiki.value = body;
+  preReviewWiki.value.hide();
+  viewBodyWikiView.value.show();
 }
 
-async function viewBodyChange(wiki) {
-  viewBodyWikiIsChange.value = true
-  viewBodyWiki.value = wiki
-  preReviewWiki.value.hide()
-  viewBodyWikiView.value.show()
+function viewBodyChange(wiki) {
+  viewBodyWikiIsChange.value = true;
+  viewBodyWiki.value = wiki;
+  preReviewWiki.value.hide();
+  viewBodyWikiView.value.show();
 }
-async function preReview() {
+function preReview() {
+  // 第一步，获取到所有的新增的和被移除的WIKI
+  const wikiNew = props.wikis.cache.cache;
+  const wikiOld = props.wikis.wikis;
 
-  //第一步，获取到所有的新增的和被移除的WIKI
-  const wikiNew = props.wikis.cache.cache
-  const wikiOld = props.wikis.wikis
-
-  wikiNew.forEach(wiki => {
-    if (!wiki.child){
-      wiki.child = []
+  wikiNew.forEach((wiki) => {
+    if (!wiki.child) {
+      wiki.child = [];
     }
-  })
-  wikiOld.forEach(wiki => {
-    if (!wiki.child){
-      wiki.child = []
+  });
+  wikiOld.forEach((wiki) => {
+    if (!wiki.child) {
+      wiki.child = [];
     }
-  })
+  });
 
+  const wikiNews = wikiNew.flatMap((x) => [x, ...x.child.map((child) => child)]);
+  const wikiOlds = wikiOld.flatMap((x) => [x, ...x.child.map((child) => child)]);
+  const wikiNewId = wikiNew.flatMap((x) => [x.id, ...x.child.map((child) => child.id)]);
+  const wikiOldId = wikiOld.flatMap((x) => [x.id, ...x.child.map((child) => child.id)]);
 
-  const wikiNews = wikiNew.flatMap(x => [x, ...x.child.map(child => child)])
-  const wikiOlds = wikiOld.flatMap(x => [x, ...x.child.map(child => child)])
-  const wikiNewId = wikiNew.flatMap(x => [x.id, ...x.child.map(child => child.id)])
-  const wikiOldId = wikiOld.flatMap(x => [x.id, ...x.child.map(child => child.id)])
+  const commonIds = wikiNewId.filter((id) => wikiOldId.includes(id)); // 交集
+  const addWiki = [...wikiNews].filter((wiki) => !wikiOldId.includes(wiki.id));
+  const removedWiki = [...wikiOlds].filter((wiki) => !wikiNewId.includes(wiki.id));
 
+  const commonObjects = new Map(
+    wikiNews.map((wiki) => [wiki.id, [wikiOlds.find((oldWiki) => oldWiki.id === wiki.id), wiki]]),
+  );
 
-  const commonIds = wikiNewId.filter(id => wikiOldId.includes(id)) // 交集
-  const addWiki = [...wikiNews].filter(wiki => !wikiOldId.includes(wiki.id))
-  const removedWiki = [...wikiOlds].filter(wiki => !wikiNewId.includes(wiki.id))
-
-
-  const commonObjects = new Map(wikiNews.map(wiki => [wiki.id, [wikiOlds.find(oldWiki => oldWiki.id === wiki.id), wiki]]))
-
-  preSortReview.value = []
-  preBodyReview.value = []
-  preADDReview.value = []
-  preREMOVEReview.value = []
-  preIndexSetReview.value = []
-  let featured = null
-  wikiOlds.forEach(wiki => {
-    if (wiki.featured){
-      featured = wiki
-    }else if (wiki.child && wiki.child.length > 0) {
+  preSortReview.value = [];
+  preBodyReview.value = [];
+  preADDReview.value = [];
+  preREMOVEReview.value = [];
+  preIndexSetReview.value = [];
+  let featured = null;
+  wikiOlds.forEach((wiki) => {
+    if (wiki.featured) {
+      featured = wiki;
+    } else if (wiki.child && wiki.child.length > 0) {
       wiki.child.forEach((wiki__) => {
         if (wiki__.featured) {
-          featured = wiki__
+          featured = wiki__;
         }
-      })
+      });
     }
-  })
-  wikiNews.forEach(wiki => {
-    if (wiki.featured){
-      if (!featured){
+  });
+  wikiNews.forEach((wiki) => {
+    if (wiki.featured) {
+      if (!featured) {
         preIndexSetReview.value.push({
           wiki_id: wiki.id,
           title: wiki.title,
           body: wiki.body,
-        })
-      }else if (featured && featured.id !== wiki.id){
+        });
+      } else if (featured && featured.id !== wiki.id) {
         preIndexSetReview.value.push({
           wiki_id: wiki.id,
           title: wiki.title,
           body: wiki.body,
-        })
+        });
       }
-    }else if (wiki.child && wiki.child.length > 0) {
+    } else if (wiki.child && wiki.child.length > 0) {
       wiki.child.forEach((wiki__) => {
         if (wiki__.featured) {
-          if (!featured){
+          if (!featured) {
             preIndexSetReview.value.push({
               wiki_id: wiki__.id,
               title: wiki__.title,
               body: wiki__.body,
-            })
-          }else if (featured && featured.id !== wiki__.id){
+            });
+          } else if (featured && featured.id !== wiki__.id) {
             preIndexSetReview.value.push({
               wiki_id: wiki__.id,
               title: wiki__.title,
               body: wiki__.body,
-            })
+            });
           }
         }
-      })
+      });
     }
-  })
-
-
+  });
 
   commonObjects.forEach(([oldWiki, newWiki]) => {
-
     if (oldWiki && commonIds.includes(oldWiki.id)) {
       if (oldWiki.sort_order !== newWiki.sort_order) {
         preSortReview.value.push({
           wiki_id: oldWiki.id,
           title: newWiki.title,
           old_sort_order: oldWiki.sort_order,
-          new_sort_order: newWiki.sort_order
-        })
+          new_sort_order: newWiki.sort_order,
+        });
       }
       if (oldWiki.body !== newWiki.body) {
         preBodyReview.value.push({
           wiki_id: oldWiki.id,
           title: newWiki.title,
           old_body: oldWiki.body,
-          new_body: newWiki.body
-        })
+          new_body: newWiki.body,
+        });
       }
     }
-  })
-  addWiki.forEach(wiki => {
+  });
+  addWiki.forEach((wiki) => {
     preADDReview.value.push({
       wiki_id: wiki.id,
       title: wiki.title,
       sort_order: wiki.sort_order,
-      body: wiki.body
-    })
-  })
+      body: wiki.body,
+    });
+  });
 
-  removedWiki.forEach(wiki => {
+  removedWiki.forEach((wiki) => {
     preREMOVEReview.value.push({
       wiki_id: wiki.id,
       title: wiki.title,
       sort_order: wiki.sort_order,
-      body: wiki.body
-    })
-  })
+      body: wiki.body,
+    });
+  });
 
-  preReviewWiki.value.show()
-
-
-
-
-
+  preReviewWiki.value.show();
 }
 
-async function preRejectWikiCache() {
-  preReviewWiki.value.hide()
-  rejectWikiCacheMsg.value = ""
-  rejectWikiCache.value.show()
+function preRejectWikiCache() {
+  preReviewWiki.value.hide();
+  rejectWikiCacheMsg.value = "";
+  rejectWikiCache.value.show();
 }
 
 async function again() {
-
   try {
-    await useBaseFetch(`project/${route.params.id}/wiki_submit_again/${props.wikis.cache.id}`, { apiVersion: 3, method: 'POST' })
+    await useBaseFetch(`project/${route.params.id}/wiki_submit_again/${props.wikis.cache.id}`, {
+      apiVersion: 3,
+      method: "POST",
+    });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '重新编辑百科',
-      type: 'success'
-    })
+      group: "main",
+      title: "成功",
+      text: "重新编辑百科",
+      type: "success",
+    });
     // await read();
-    router.push(`/project/${route.params.id}/wikis`)
+    router.push(`/project/${route.params.id}/wikis`);
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
-
+      type: "error",
+    });
   }
 }
 
 async function accept() {
-
   try {
-    await useBaseFetch(`project/${route.params.id}/wiki_accept`, { apiVersion: 3, method: 'POST' })
+    await useBaseFetch(`project/${route.params.id}/wiki_accept`, { apiVersion: 3, method: "POST" });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '已审核通过',
-      type: 'success'
-    })
+      group: "main",
+      title: "成功",
+      text: "已审核通过",
+      type: "success",
+    });
     // await read();
-    router.push(`/project/${route.params.id}/wikis`)
+    router.push(`/project/${route.params.id}/wikis`);
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
-
+      type: "error",
+    });
   }
 }
-async function given_up() {
-
+async function givenUp() {
   try {
-    await useBaseFetch(`project/${route.params.id}/wiki_given_up/${props.wikis.cache.id}`, { apiVersion: 3, method: 'POST' })
+    await useBaseFetch(`project/${route.params.id}/wiki_given_up/${props.wikis.cache.id}`, {
+      apiVersion: 3,
+      method: "POST",
+    });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '已放弃本次提交',
-      type: 'success'
-    })
-    router.push(`/project/${route.params.id}/wikis`)
+      group: "main",
+      title: "成功",
+      text: "已放弃本次提交",
+      type: "success",
+    });
+    router.push(`/project/${route.params.id}/wikis`);
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
-
+      type: "error",
+    });
   }
-
-
 }
 
 async function confirmRejectWiki() {
-
-  if (rejectWikiCacheMsg.value === ""){
+  if (rejectWikiCacheMsg.value === "") {
     data.$notify({
-      group: 'main',
-      title: '错误',
-      text: '请填写拒绝理由',
-      type: 'error'
-    })
-    return
+      group: "main",
+      title: "错误",
+      text: "请填写拒绝理由",
+      type: "error",
+    });
+    return;
   }
 
-
-  rejectWikiCache.value.hide()
+  rejectWikiCache.value.hide();
   try {
-    await useBaseFetch(`project/${route.params.id}/wiki_reject`, { apiVersion: 3, method: 'POST', body: { msg: rejectWikiCacheMsg.value } })
+    await useBaseFetch(`project/${route.params.id}/wiki_reject`, {
+      apiVersion: 3,
+      method: "POST",
+      body: { msg: rejectWikiCacheMsg.value },
+    });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '您已成功拒绝该提交',
-      type: 'success'
-    })
-    router.push(`/project/${route.params.id}/wikis`)
+      group: "main",
+      title: "成功",
+      text: "您已成功拒绝该提交",
+      type: "success",
+    });
+    router.push(`/project/${route.params.id}/wikis`);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
+      type: "error",
+    });
   }
-
 }
-
 </script>
-
 
 <style lang="scss" scoped>
 .member {
   .member-header {
-    display: flex ;
+    display: flex;
     justify-content: space-between;
     .info {
       display: flex;
@@ -1194,5 +1208,4 @@ async function confirmRejectWiki() {
     }
   }
 }
-
 </style>

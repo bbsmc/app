@@ -6,18 +6,13 @@
     >
       <div class="modal-submit universal-body">
         <span>
-         您正在提交资源 <span class="project-title">{{ project.title }}</span> 给版主审核
+          您正在提交资源 <span class="project-title">{{ project.title }}</span> 给版主审核
         </span>
         <span>
           请确保您已经解决了版主反馈给你的消息
-          <span class="known-errors">
-            重复提交而不解决版主的反馈可能会导致帐户被封禁。
-          </span>
+          <span class="known-errors"> 重复提交而不解决版主的反馈可能会导致帐户被封禁。 </span>
         </span>
-        <Checkbox
-          v-model="submissionConfirmation"
-          description="确认我已解决版主的消息"
-        >
+        <Checkbox v-model="submissionConfirmation" description="确认我已解决版主的消息">
           我确认我已经正确处理了版主的评论。
         </Checkbox>
         <div class="input-group push-right">
@@ -179,9 +174,7 @@
                   "
                 >
                   <DropdownIcon style="rotate: 180deg" aria-hidden="true" />
-                  <template #withhold-reply>
-                    <EyeOffIcon aria-hidden="true" /> 保留回复
-                  </template>
+                  <template #withhold-reply> <EyeOffIcon aria-hidden="true" /> 保留回复 </template>
                   <template #withhold> <EyeOffIcon aria-hidden="true" /> 扣押 </template>
                 </OverflowMenu>
               </div>

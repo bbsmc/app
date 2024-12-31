@@ -57,14 +57,17 @@
       </button>
     </div>
     <p v-if="projectType !== 'all'" class="project-count">
-      一共 {{ projects.length }} 待审核资源，{{ projectTypePlural }} 有{{ projectsFiltered.length }} 个
+      一共 {{ projects.length }} 待审核资源，{{ projectTypePlural }} 有{{ projectsFiltered.length }}
+      个
     </p>
     <p v-else class="project-count">一共有 {{ projects.length }} 个资源未审核</p>
     <p v-if="projectsOver24Hours.length > 0" class="warning project-count">
-      <WarningIcon /> {{ projectsOver24Hours.length }} 个 {{ projectTypePlural }} 已经超过 24 小时未审核
+      <WarningIcon /> {{ projectsOver24Hours.length }} 个 {{ projectTypePlural }} 已经超过 24
+      小时未审核
     </p>
     <p v-if="projectsOver48Hours.length > 0" class="danger project-count">
-      <WarningIcon /> {{ projectsOver48Hours.length }} {{ projectTypePlural }} 已经超过 48 小时未审核
+      <WarningIcon /> {{ projectsOver48Hours.length }} {{ projectTypePlural }} 已经超过 48
+      小时未审核
     </p>
     <div
       v-for="project in projectsFiltered.sort((a, b) => {
@@ -124,7 +127,7 @@
       </div>
       <span v-if="project.queued" :class="`submitter-info ${project.age_warning}`">
         <WarningIcon v-if="project.age_warning" />
-          提交于
+        提交于
         <span v-tooltip="$dayjs(project.queued).format('YYYY-MM-DD hh:mm:ss')">{{
           fromNow(project.queued)
         }}</span>
@@ -179,9 +182,7 @@ const projectsOver48Hours = computed(() =>
   projectsFiltered.value.filter((project) => project.age >= TIME_48H),
 );
 const projectTypePlural = computed(() =>
-  projectType.value === "all"
-    ? "资源"
-    : (formatProjectType(projectType.value)).toLowerCase(),
+  projectType.value === "all" ? "资源" : formatProjectType(projectType.value).toLowerCase(),
 );
 
 const projectTypes = computed(() => {

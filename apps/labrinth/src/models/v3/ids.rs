@@ -17,6 +17,7 @@ pub use crate::models::billing::{
     ChargeId, ProductId, ProductPriceId, UserSubscriptionId,
 };
 use thiserror::Error;
+use crate::models::forum::{DiscussionId, PostId};
 
 /// Generates a random 64 bit integer that is exactly `n` characters
 /// long when encoded as base62.
@@ -126,6 +127,8 @@ base62_id_impl!(ProjectId, ProjectId);
 base62_id_impl!(UserId, UserId);
 base62_id_impl!(VersionId, VersionId);
 base62_id_impl!(WikiId, WikiId);
+base62_id_impl!(PostId, PostId);
+base62_id_impl!(DiscussionId, DiscussionId);
 base62_id_impl!(CollectionId, CollectionId);
 base62_id_impl!(TeamId, TeamId);
 base62_id_impl!(OrganizationId, OrganizationId);

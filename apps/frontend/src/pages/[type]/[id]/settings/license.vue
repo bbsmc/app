@@ -5,26 +5,29 @@
         <label for="license-multiselect">
           <span class="label__title size-card-header">许可证</span>
           <span class="label__description">
-            为您的项目选择合适的许可证非常重要。您可以从我们的列表中选择一个许可证，也可以提供自定义许可证。您还可以为所选许可证提供自定义 URL；否则，将显示许可证文本。
+            为您的项目选择合适的许可证非常重要。您可以从我们的列表中选择一个许可证，也可以提供自定义许可证。您还可以为所选许可证提供自定义
+            为您的项目选择合适的许可证非常重要。您可以从我们的列表中选择一个许可证，也可以提供自定义许可证。您还可以为所选许可证提供自定义
+            URL；否则，将显示许可证文本。
             <span v-if="license && license.friendly === 'Custom'" class="label__subdescription">
               请输入有效的
               <a href="https://spdx.org/licenses/" target="_blank" rel="noopener" class="text-link">
                 SPDX 许可证</a
               >
-              如果您的许可证没有 SPDX 标识符（例如，如果您自己创建了许可证，或者许可证是 Minecraft 专用的），只需选中该框并输入许可证的名称即可。
+              如果您的许可证没有 SPDX 标识符（例如，如果您自己创建了许可证，或者许可证是 Minecraft
+              专用的），只需选中该框并输入许可证的名称即可。
             </span>
-<!--            <span class="label__subdescription">-->
-<!--              Confused? See our-->
-<!--              <a-->
-<!--                href="https://blog.modrinth.com/licensing-guide/"-->
-<!--                target="_blank"-->
-<!--                rel="noopener"-->
-<!--                class="text-link"-->
-<!--              >-->
-<!--                licensing guide</a-->
-<!--              >-->
-<!--              for more information.-->
-<!--            </span>-->
+            <!--            <span class="label__subdescription">-->
+            <!--              Confused? See our-->
+            <!--              <a-->
+            <!--                href="https://blog.modrinth.com/licensing-guide/"-->
+            <!--                target="_blank"-->
+            <!--                rel="noopener"-->
+            <!--                class="text-link"-->
+            <!--              >-->
+            <!--                licensing guide</a-->
+            <!--              >-->
+            <!--              for more information.-->
+            <!--            </span>-->
           </span>
         </label>
         <div class="input-stack">

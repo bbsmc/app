@@ -74,7 +74,19 @@
         <DropdownSelect
           v-model="donationLink.id"
           name="Donation platform selector"
-          :options="['bilibili','pd-qq','afdian','site','kook','modrinth','spigotmc','curseforge','quark','baidu','other']"
+          :options="[
+            'bilibili',
+            'pd-qq',
+            'afdian',
+            'site',
+            'kook',
+            'modrinth',
+            'spigotmc',
+            'curseforge',
+            'quark',
+            'baidu',
+            'other',
+          ]"
           :display-name="webDisplayLabel"
           placeholder="选择平台"
           render-up
@@ -98,107 +110,106 @@
 </template>
 
 <script setup>
-import { DropdownSelect } from '@modrinth/ui'
-import SaveIcon from '~/assets/images/utils/save.svg?component'
+import { DropdownSelect } from "@modrinth/ui";
+import SaveIcon from "~/assets/images/utils/save.svg?component";
 
-const tags = useTags()
+const tags = useTags();
 
 const props = defineProps({
   project: {
     type: Object,
     default() {
-      return {}
-    }
+      return {};
+    },
   },
   currentMember: {
     type: Object,
     default() {
-      return null
-    }
+      return null;
+    },
   },
   patchProject: {
     type: Function,
     default() {
-      return () => {
-      }
-    }
-  }
-})
+      return () => {};
+    },
+  },
+});
 
 const webDisplayLabel = (x) => {
   switch (x) {
-    case 'other':
-      return '其他';
-    case 'site':
-      return '发布地址';
+    case "other":
+      return "其他";
+    case "site":
+      return "发布地址";
 
-    case 'modrinth':
-      return 'Modrinth地址';
+    case "modrinth":
+      return "Modrinth地址";
 
-    case 'bilibili':
-      return '哔哩哔哩';
+    case "bilibili":
+      return "哔哩哔哩";
 
-    case 'pd-qq':
-      return 'QQ频道';
+    case "pd-qq":
+      return "QQ频道";
 
-    case 'oopz':
-      return 'Oopz频道';
+    case "oopz":
+      return "Oopz频道";
 
-    case 'kook':
-      return 'KOOK频道';
+    case "kook":
+      return "KOOK频道";
 
-    case 'afdian':
-      return '爱发电';
+    case "afdian":
+      return "爱发电";
 
-    case 'spigotmc':
-      return '水龙头';
+    case "spigotmc":
+      return "水龙头";
 
-    case 'curseforge':
-      return 'CurseForge地址';
-    case 'quark':
-      return '夸克网盘';
-    case 'baidu':
-      return '百度网盘';
+    case "curseforge":
+      return "CurseForge地址";
+    case "quark":
+      return "夸克网盘";
+    case "baidu":
+      return "百度网盘";
     default:
       return x;
   }
-}
+};
 
-const issuesUrl = ref(props.project.issues_url)
-const sourceUrl = ref(props.project.source_url)
-const wikiUrl = ref(props.project.wiki_url)
-const discordUrl = ref(props.project.discord_url)
+const issuesUrl = ref(props.project.issues_url);
+const sourceUrl = ref(props.project.source_url);
+const wikiUrl = ref(props.project.wiki_url);
+const discordUrl = ref(props.project.discord_url);
 
-const rawDonationLinks = JSON.parse(JSON.stringify(props.project.donation_urls))
+const rawDonationLinks = JSON.parse(JSON.stringify(props.project.donation_urls));
 rawDonationLinks.push({
   id: null,
   platform: null,
-  url: null
-})
-const donationLinks = ref(rawDonationLinks)
+  url: null,
+});
+const donationLinks = ref(rawDonationLinks);
 
 const hasPermission = computed(() => {
-  const EDIT_DETAILS = 1 << 2
-  return (props.currentMember.permissions & EDIT_DETAILS) === EDIT_DETAILS
-})
+  const EDIT_DETAILS = 1 << 2;
+  return (props.currentMember.permissions & EDIT_DETAILS) === EDIT_DETAILS;
+});
 
 const patchData = computed(() => {
-  const data = {}
+  const data = {};
 
   if (checkDifference(issuesUrl.value, props.project.issues_url)) {
-    data.issues_url = issuesUrl.value === '' ? null : issuesUrl.value.trim()
+    data.issues_url = issuesUrl.value === "" ? null : issuesUrl.value.trim();
   }
   if (checkDifference(sourceUrl.value, props.project.source_url)) {
-    data.source_url = sourceUrl.value === '' ? null : sourceUrl.value.trim()
+    data.source_url = sourceUrl.value === "" ? null : sourceUrl.value.trim();
   }
   if (checkDifference(wikiUrl.value, props.project.wiki_url)) {
-    data.wiki_url = wikiUrl.value === '' ? null : wikiUrl.value.trim()
+    data.wiki_url = wikiUrl.value === "" ? null : wikiUrl.value.trim();
   }
   if (checkDifference(discordUrl.value, props.project.discord_url)) {
-    data.discord_url = discordUrl.value === '' ? null : discordUrl.value.trim()
+    data.discord_url = discordUrl.value === "" ? null : discordUrl.value.trim();
   }
 
-  const validDonationLinks = donationLinks.value.filter((link) => link.url && link.id)
+  const validDonationLinks = donationLinks.value.filter((link) => link.url && link.id);
 
   if (
     validDonationLinks !== props.project.donation_urls &&
@@ -208,62 +219,62 @@ const patchData = computed(() => {
       validDonationLinks.length === 0
     )
   ) {
-    data.donation_urls = validDonationLinks
+    data.donation_urls = validDonationLinks;
   }
 
   if (data.donation_urls) {
     data.donation_urls.forEach((link) => {
-      const platform = tags.value.donationPlatforms.find((platform) => platform.short === link.id)
-      link.platform = platform.name
-    })
+      const platform = tags.value.donationPlatforms.find((platform) => platform.short === link.id);
+      link.platform = platform.name;
+    });
   }
 
-  return data
-})
+  return data;
+});
 
 const hasChanges = computed(() => {
-  return Object.keys(patchData.value).length > 0
-})
+  return Object.keys(patchData.value).length > 0;
+});
 
 async function saveChanges() {
   if (patchData.value && (await props.patchProject(patchData.value))) {
-    donationLinks.value = JSON.parse(JSON.stringify(props.project.donation_urls))
+    donationLinks.value = JSON.parse(JSON.stringify(props.project.donation_urls));
     donationLinks.value.push({
       id: null,
       platform: null,
-      url: null
-    })
+      url: null,
+    });
   }
 }
 
 function updateDonationLinks() {
-  const links = donationLinks.value
+  const links = donationLinks.value;
   links.forEach((link) => {
     if (link.url) {
-      const url = link.url.toLowerCase()
-      if (url.includes('afdian.com')) {
-        link.id = 'afdian'
+      const url = link.url.toLowerCase();
+      if (url.includes("afdian.com")) {
+        link.id = "afdian";
       }
     }
-  })
+  });
   if (!links.find((link) => !(link.url && link.id))) {
     links.push({
       id: null,
       platform: null,
-      url: null
-    })
+      url: null,
+    });
   }
-  donationLinks.value = links
+  donationLinks.value = links;
 }
 
 function checkDifference(newLink, existingLink) {
-  if (newLink === '' && existingLink !== null) {
-    return true
+  if (newLink === "" && existingLink !== null) {
+    return true;
   }
   if (!newLink && !existingLink) {
-    return false
+    return false;
   }
-  return newLink !== existingLink
+  return newLink !== existingLink;
 }
 </script>
 <style lang="scss" scoped>

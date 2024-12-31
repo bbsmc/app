@@ -154,7 +154,7 @@
       <template #title>
         <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" no-shadow />
         <span class="text-lg font-extrabold text-contrast">
-          {{ project.license.name ? project.license.name : '许可证' }}
+          {{ project.license.name ? project.license.name : "许可证" }}
         </span>
       </template>
       <div
@@ -176,7 +176,6 @@
         <div
           class="animation-ring-1 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight"
         >
-
           <DownloadIcon class="h-20 w-20 text-contrast" />
         </div>
       </div>
@@ -187,94 +186,94 @@
         <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" />
         <div class="truncate text-lg font-extrabold text-contrast">预览提交</div>
       </template>
-      <ScrollablePanel :class="((preIndexSetReview.length + preBodyReview.length + preADDReview.length + preSortReview.length + preREMOVEReview.length) > 4) ? 'h-[30rem]' : ''">
+      <ScrollablePanel
+        :class="
+          preIndexSetReview.length +
+            preBodyReview.length +
+            preADDReview.length +
+            preSortReview.length +
+            preREMOVEReview.length >
+          4
+            ? 'h-[30rem]'
+            : ''
+        "
+      >
         <div class="flex flex-col gap-3" style="width: 500px">
-
-          <div class="flex flex-col gap-2"  v-if="preIndexSetReview.length > 0">
+          <div v-if="preIndexSetReview.length > 0" class="flex flex-col gap-2">
             <div class="flex flex-col gap-2">
               <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            设置主页:
-          </span>
+                <span class="text-lg font-semibold text-contrast"> 设置主页: </span>
               </label>
-              <span v-for="wiki in preIndexSetReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+              <span v-for="wiki in preIndexSetReview" :key="wiki.id" style="margin-left: 15px">{{
+                wiki.title
+              }}</span>
             </div>
           </div>
 
-
-           <div class="flex flex-col gap-2"  v-if="preBodyReview.length > 0">
+          <div v-if="preBodyReview.length > 0" class="flex flex-col gap-2">
             <div class="flex flex-col gap-2">
               <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            修改正文:
-          </span>
+                <span class="text-lg font-semibold text-contrast"> 修改正文: </span>
               </label>
-              <span v-for="wiki in preBodyReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+              <span v-for="wiki in preBodyReview" :key="wiki.id" style="margin-left: 15px">{{
+                wiki.title
+              }}</span>
             </div>
           </div>
 
-
-
-
-          <div class="flex flex-col gap-2" v-if="preSortReview.length > 0">
+          <div v-if="preSortReview.length > 0" class="flex flex-col gap-2">
             <div class="flex flex-col gap-2">
               <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            修改权重:
-          </span>
+                <span class="text-lg font-semibold text-contrast"> 修改权重: </span>
               </label>
-              <span v-for="wiki in preSortReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+              <span v-for="wiki in preSortReview" :key="wiki.id" style="margin-left: 15px">{{
+                wiki.title
+              }}</span>
             </div>
           </div>
 
-          <div class="flex flex-col gap-2" v-if="preADDReview.length > 0">
+          <div v-if="preADDReview.length > 0" class="flex flex-col gap-2">
             <div class="flex flex-col gap-2">
               <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            新增页面:
-          </span>
+                <span class="text-lg font-semibold text-contrast"> 新增页面: </span>
               </label>
-              <span v-for="wiki in preADDReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+              <span v-for="wiki in preADDReview" :key="wiki.id" style="margin-left: 15px">{{
+                wiki.title
+              }}</span>
             </div>
           </div>
-        <div class="flex flex-col gap-2" v-if="preREMOVEReview.length > 0">
+          <div v-if="preREMOVEReview.length > 0" class="flex flex-col gap-2">
             <div class="flex flex-col gap-2">
               <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            移除页面:
-          </span>
+                <span class="text-lg font-semibold text-contrast"> 移除页面: </span>
               </label>
-              <span v-for="wiki in preREMOVEReview" :key="wiki.id" style="margin-left: 15px">{{wiki.title}}</span>
+              <span v-for="wiki in preREMOVEReview" :key="wiki.id" style="margin-left: 15px">{{
+                wiki.title
+              }}</span>
             </div>
           </div>
-
-
-
         </div>
 
         <span style="margin-top: 20px"></span>
-
       </ScrollablePanel>
 
-
-<!--      理由-->
+      <!--      理由-->
 
       <div class="flex flex-col gap-2">
         <label for="name">
-        <span class="text-lg font-semibold text-contrast">
-          备注:
-        </span>
+          <span class="text-lg font-semibold text-contrast"> 备注: </span>
         </label>
         <textarea v-model="submitWikiCacheMsg" type="text" placeholder="请输入提交的原因" />
       </div>
-      <div class="flex gap-2 mt-5" v-if="wikis.cache.again_count > 0" style="font-size: 14px">
-        已重复编辑了 {{wikis.cache.again_count}} 次，超过5次后将无法再次发起重复编辑或被拒绝后再次发起编辑
-        <br/>
-        <br/>
+      <div v-if="wikis.cache.again_count > 0" class="mt-5 flex gap-2" style="font-size: 14px">
+        已重复编辑了
+        {{ wikis.cache.again_count }} 次，超过5次后将无法再次发起重复编辑或被拒绝后再次发起编辑
+        <br />
+        <br />
         第5次重复编辑后将被禁止发起新的编辑申请3小时
       </div>
 
-      <div class="flex gap-2 mt-5">
+      <div class="mt-5 flex gap-2">
         <ButtonStyled color="green">
           <button @click="submitConfirmForReview">
             <PlusIcon aria-hidden="true" />
@@ -282,7 +281,7 @@
           </button>
         </ButtonStyled>
         <ButtonStyled>
-          <button @click="preReviewWiki.hide()"  style="margin-left: auto">
+          <button style="margin-left: auto" @click="preReviewWiki.hide()">
             <XIcon aria-hidden="true" />
             取消
           </button>
@@ -299,10 +298,10 @@
         <div class="flex flex-col gap-2">
           <div class="flex flex-col gap-2">
             <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            页面标题
-            <span class="text-brand-red">*</span>
-          </span>
+              <span class="text-lg font-semibold text-contrast">
+                页面标题
+                <span class="text-brand-red">*</span>
+              </span>
             </label>
             <input
               id="name"
@@ -317,10 +316,10 @@
 
         <div class="flex flex-col gap-2">
           <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            页面SLUG
-            <span class="text-brand-red">*</span>
-          </span>
+            <span class="text-lg font-semibold text-contrast">
+              页面SLUG
+              <span class="text-brand-red">*</span>
+            </span>
           </label>
           <input
             id="name"
@@ -334,14 +333,12 @@
 
         <div class="flex flex-col gap-2">
           <label for="name">
-          <span class="text-lg font-semibold text-contrast">
-            上级目录(若新建的是子页面可选择上级)
-            <!--            <span class="text-brand-red">*</span>-->
-          </span>
+            <span class="text-lg font-semibold text-contrast">
+              上级目录(若新建的是子页面可选择上级)
+              <!--            <span class="text-brand-red">*</span>-->
+            </span>
           </label>
-          <ButtonStyled
-            v-if="wikis.cache.cache.length < 1"
-          >
+          <ButtonStyled v-if="wikis.cache.cache.length < 1">
             <div class="disabled button-like">
               <WrenchIcon aria-hidden="true" />
               未创建任何主目录
@@ -352,30 +349,26 @@
             ref="WikiFatherAccordion"
             class="accordion-with-bg"
             @on-open="
-                () => {
-                  if (gameVersionAccordion) {
-                    gameVersionAccordion.close();
-                  }
+              () => {
+                if (gameVersionAccordion) {
+                  gameVersionAccordion.close();
                 }
-              "
+              }
+            "
           >
             <template #title>
               <WikiIcon aria-hidden="true" />
-              {{ createWikiFather ? `上级目录: ${createWikiFather.title}` : '选择上级目录' }}
+              {{ createWikiFather ? `上级目录: ${createWikiFather.title}` : "选择上级目录" }}
             </template>
             <ScrollablePanel :class="project.loaders.length > 4 ? 'h-[15rem]' : ''">
-              <ButtonStyled
-                v-for="wiki in wikis.cache.cache"
-                :key="wiki"
-                color="brand"
-              >
+              <ButtonStyled v-for="wiki in wikis.cache.cache" :key="wiki" color="brand">
                 <button
                   @click="
-                      () => {
-                        createWikiFather = wiki;
-                        WikiFatherAccordion.close();
-                      }
-                    "
+                    () => {
+                      createWikiFather = wiki;
+                      WikiFatherAccordion.close();
+                    }
+                  "
                 >
                   {{ wiki.title }}
                   <CheckIcon v-if="createWikiFather === wiki" />
@@ -385,8 +378,7 @@
           </Accordion>
         </div>
 
-
-        <div class="flex gap-2 mt-5">
+        <div class="mt-5 flex gap-2">
           <ButtonStyled color="brand">
             <button @click="createWiki">
               <PlusIcon aria-hidden="true" />
@@ -400,11 +392,7 @@
             </button>
           </ButtonStyled>
         </div>
-
-
       </div>
-
-
     </NewModal>
 
     <NewModal ref="downloadModal">
@@ -420,8 +408,7 @@
               project.loaders.some((x) => !tags.loaderData.allPluginLoaders.includes(x))
             "
             class="modrinth-app-section contents"
-          >
-          </div>
+          ></div>
           <div class="mx-auto flex w-fit flex-col gap-2">
             <ButtonStyled v-if="project.game_versions.length === 1">
               <div class="disabled button-like">
@@ -429,7 +416,7 @@
                 {{
                   currentGameVersion
                     ? `游戏版本: ${currentGameVersion}`
-                    : '错误: 未找到任何游戏版本'
+                    : "错误: 未找到任何游戏版本"
                 }}
                 <InfoIcon
                   v-tooltip="`${project.title} 仅可在 ${currentGameVersion} 运行`"
@@ -451,7 +438,7 @@
             >
               <template #title>
                 <GameIcon aria-hidden="true" />
-                {{ currentGameVersion ? `游戏版本: ${currentGameVersion}` : '选择游戏版本' }}
+                {{ currentGameVersion ? `游戏版本: ${currentGameVersion}` : "选择游戏版本" }}
               </template>
               <div class="iconified-input mb-2 flex w-full">
                 <label for="game-versions-filtering" hidden>搜索版本...</label>
@@ -518,7 +505,7 @@
                 {{
                   currentPlatform
                     ? `平台: ${formatCategory(currentPlatform)}`
-                    : '错误: 未找到任何平台'
+                    : "错误: 未找到任何平台"
                 }}
                 <InfoIcon
                   v-tooltip="`${project.title} 仅可在 ${formatCategory(currentPlatform)} 运行`"
@@ -540,7 +527,7 @@
             >
               <template #title>
                 <WrenchIcon aria-hidden="true" />
-                {{ currentPlatform ? `平台: ${formatCategory(currentPlatform)}` : '选择运行平台' }}
+                {{ currentPlatform ? `平台: ${formatCategory(currentPlatform)}` : "选择运行平台" }}
               </template>
               <ScrollablePanel :class="project.loaders.length > 4 ? 'h-[15rem]' : ''">
                 <ButtonStyled
@@ -614,10 +601,9 @@
     <div
       class="new-page sidebar"
       :class="{
-        'alt-layout': route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')
+        'alt-layout': route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/'),
       }"
     >
-
       <div class="normal-page__header relative my-4">
         <ContentPageHeader>
           <template #icon>
@@ -662,14 +648,15 @@
           </template>
           <template #actions>
             <div class="hidden sm:contents">
-              <ButtonStyled
-                size="large"
-                color="green"
-                :color="route.name === 'type-id-version-version' ? `green` : `brand`"
-              >
-                <button @click="(event) => {
-                    onDownloadClick(event)
-                }">
+              <ButtonStyled size="large" color="green">
+                <!--                :color="route.name === 'type-id-version-version' ? `green` : `brand`"-->
+                <button
+                  @click="
+                    (event) => {
+                      onDownloadClick(event);
+                    }
+                  "
+                >
                   <DownloadIcon aria-hidden="true" />
                   下载
                 </button>
@@ -846,32 +833,27 @@
       </div>
       <!--      百科导航栏    -->
       <div
-        v-if="(route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')) && (wikis.wikis.length > 0 || wikis.is_editor)"
-        class="normal-page__sidebar">
-
+        v-if="
+          (route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/')) &&
+          (wikis.wikis.length > 0 || wikis.is_editor)
+        "
+        class="normal-page__sidebar"
+      >
         <aside class="universal-card">
           <div v-if="wikis.is_editor && wikis.is_editor_user && wikis.cache.status === 'draft'">
-            <ButtonStyled type="standard"
-                          @click="(event) => createWikiModal.show(event)">
-              <nuxt-link>
-                新建页面
-              </nuxt-link>
-
+            <ButtonStyled type="standard" @click="(event) => createWikiModal.show(event)">
+              <nuxt-link> 新建页面 </nuxt-link>
             </ButtonStyled>
-            <ButtonStyled type="standard"
-                          @click="submitForReview">
-              <nuxt-link style="margin-top: 10px">
-                提交草稿审核
-              </nuxt-link>
-
+            <ButtonStyled type="standard" @click="submitForReview">
+              <nuxt-link style="margin-top: 10px"> 提交草稿审核 </nuxt-link>
             </ButtonStyled>
             <hr />
-            <NavStack >
-
+            <NavStack>
               <div v-for="wiki in wikis.cache.cache" :key="wiki.id" class="my-1">
-
-                <NuxtLink class="nav-link button-base"
-                          :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
+                <NuxtLink
+                  class="nav-link button-base"
+                  :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`"
+                >
                   <div class="nav-content">
                     <slot />
                     <h3>{{ wiki.title }}</h3>
@@ -879,21 +861,20 @@
                 </NuxtLink>
                 <NavStackItem
                   v-for="w in wiki.child"
+                  :key="w.id"
                   :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${w.slug}`"
                   :label="w.title"
                 />
-
               </div>
             </NavStack>
           </div>
 
-
           <NavStack v-else>
-
             <div v-for="wiki in wikis.wikis" :key="wiki.id" class="my-1">
-
-              <NuxtLink class="nav-link button-base"
-                        :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`">
+              <NuxtLink
+                class="nav-link button-base"
+                :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${wiki.slug}`"
+              >
                 <div class="nav-content">
                   <slot />
                   <h3>{{ wiki.title }}</h3>
@@ -901,20 +882,17 @@
               </NuxtLink>
               <NavStackItem
                 v-for="w in wiki.child"
+                :key="w.id"
                 :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/wiki/${w.slug}`"
                 :label="w.title"
               />
-
             </div>
           </NavStack>
-
-
         </aside>
       </div>
       <!--      侧边栏-->
       <div v-else class="normal-page__sidebar">
         <div class="card flex-card experimental-styles-within">
-
           <h2>{{ formatMessage(compatibilityMessages.title) }}</h2>
           <section>
             <h3>{{ formatMessage(compatibilityMessages.minecraftJava) }}</h3>
@@ -1067,7 +1045,8 @@
               <PayPalIcon v-else-if="donation.id === 'paypal'" aria-hidden="true" />
               <OpenCollectiveIcon
                 v-else-if="donation.id === 'open-collective'"
-                aria-hidden="true" />
+                aria-hidden="true"
+              />
               <HeartIcon v-else-if="donation.id === 'github'" />
               <CurrencyIcon v-else />
 
@@ -1077,7 +1056,11 @@
           </div>
         </div>
         <div class="card flex-card experimental-styles-within">
-          <h2>{{organization ? (organization.slug ==='bbsmc' ?'搬运团队':'创作团队') : '创作者'}}</h2>
+          <h2>
+            {{
+              organization ? (organization.slug === "bbsmc" ? "搬运团队" : "创作团队") : "创作者"
+            }}
+          </h2>
           <div class="details-list">
             <template v-if="organization">
               <nuxt-link
@@ -1153,9 +1136,7 @@
               class="details-list__item"
             >
               <CalendarIcon aria-hidden="true" />
-              <div>
-                发布于 {{ fromNow(project.approved) }}
-              </div>
+              <div>发布于 {{ fromNow(project.approved) }}</div>
             </div>
 
             <!--            提交-->
@@ -1165,9 +1146,7 @@
               class="details-list__item"
             >
               <CalendarIcon aria-hidden="true" />
-              <div>
-                提交于 {{ fromNow(project.published) }}
-              </div>
+              <div>提交于 {{ fromNow(project.published) }}</div>
             </div>
 
             <!--            发布-->
@@ -1177,9 +1156,7 @@
               class="details-list__item"
             >
               <ScaleIcon aria-hidden="true" />
-              <div>
-                发布于 {{ fromNow(project.queued) }}
-              </div>
+              <div>发布于 {{ fromNow(project.queued) }}</div>
             </div>
 
             <!--            更新-->
@@ -1189,9 +1166,7 @@
               class="details-list__item"
             >
               <VersionIcon aria-hidden="true" />
-              <div>
-                更新于 {{ fromNow(project.updated) }}
-              </div>
+              <div>更新于 {{ fromNow(project.updated) }}</div>
             </div>
           </div>
         </div>
@@ -1237,7 +1212,6 @@ import {
   CopyrightIcon,
   DownloadIcon,
   ExternalIcon,
-  EditIcon,
   GameIcon,
   HeartIcon,
   ImageIcon as GalleryIcon,
@@ -1276,8 +1250,9 @@ import {
   CrownIcon,
   OpenCollectiveIcon,
   CodeIcon,
-  CurrencyIcon, XIcon
-} from '@modrinth/assets'
+  CurrencyIcon,
+  XIcon,
+} from "@modrinth/assets";
 import {
   Avatar,
   ButtonStyled,
@@ -1286,262 +1261,260 @@ import {
   OverflowMenu,
   PopoutMenu,
   ScrollablePanel,
-  ContentPageHeader
-} from '@modrinth/ui'
-import { formatCategory, isRejected, isStaff, isUnderReview, renderString } from '@modrinth/utils'
-import Badge from '~/components/ui/Badge.vue'
-import NavTabs from '~/components/ui/NavTabs.vue'
-import NavStack from '~/components/ui/NavStack.vue'
-import NavStackItem from '~/components/ui/NavStackItem.vue'
-import ProjectMemberHeader from '~/components/ui/ProjectMemberHeader.vue'
-import MessageBanner from '~/components/ui/MessageBanner.vue'
-import { reportProject } from '~/utils/report-helpers.ts'
-import Breadcrumbs from '~/components/ui/Breadcrumbs.vue'
-import { userCollectProject } from '~/composables/user.js'
-import CollectionCreateModal from '~/components/ui/CollectionCreateModal.vue'
-import ModerationChecklist from '~/components/ui/ModerationChecklist.vue'
-import Accordion from '~/components/ui/Accordion.vue'
-import VersionSummary from '~/components/ui/VersionSummary.vue'
-import AutomaticAccordion from '~/components/ui/AutomaticAccordion.vue'
-import { getVersionsToDisplay } from '~/helpers/projects.js'
-import dayjs from 'dayjs'
-import 'dayjs/locale/zh-cn'
-import ChevronRightIcon from 'assets/images/utils/chevron-right.svg'
+  ContentPageHeader,
+} from "@modrinth/ui";
+import { formatCategory, isRejected, isStaff, isUnderReview, renderString } from "@modrinth/utils";
+import dayjs from "dayjs";
+import Badge from "~/components/ui/Badge.vue";
+import NavTabs from "~/components/ui/NavTabs.vue";
+import NavStack from "~/components/ui/NavStack.vue";
+import NavStackItem from "~/components/ui/NavStackItem.vue";
+import ProjectMemberHeader from "~/components/ui/ProjectMemberHeader.vue";
+import MessageBanner from "~/components/ui/MessageBanner.vue";
+import { reportProject } from "~/utils/report-helpers.ts";
+import Breadcrumbs from "~/components/ui/Breadcrumbs.vue";
+import { userCollectProject } from "~/composables/user.js";
+import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
+import ModerationChecklist from "~/components/ui/ModerationChecklist.vue";
+import Accordion from "~/components/ui/Accordion.vue";
+import VersionSummary from "~/components/ui/VersionSummary.vue";
+import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
+import { getVersionsToDisplay } from "~/helpers/projects.js";
+import "dayjs/locale/zh-cn";
 
-dayjs.locale('zh-cn')
+const { locale } = dayjs;
 
-const data = useNuxtApp()
-const route = useNativeRoute()
+locale("zh-cn");
 
-const auth = await useAuth()
-const user = await useUser()
+const data = useNuxtApp();
+const route = useNativeRoute();
 
-const tags = useTags()
-const cosmetics = useCosmetics()
+const auth = await useAuth();
+const user = await useUser();
 
-const { formatMessage } = useVIntl()
+const tags = useTags();
 
-const settingsModal = ref()
-const downloadModal = ref()
-const createWikiModal = ref()
-const preReviewWiki = ref()
-const overTheTopDownloadAnimation = ref()
+const { formatMessage } = useVIntl();
 
-const userSelectedGameVersion = ref(null)
-const userSelectedPlatform = ref(null)
-const showAllVersions = ref(false)
+const settingsModal = ref();
+const downloadModal = ref();
+const createWikiModal = ref();
+const preReviewWiki = ref();
+const overTheTopDownloadAnimation = ref();
 
-const gameVersionFilterInput = ref()
+const userSelectedGameVersion = ref(null);
+const userSelectedPlatform = ref(null);
+const showAllVersions = ref(false);
 
-const versionFilter = ref('')
+const gameVersionFilterInput = ref();
 
-const createWikiTitle = ref('')
-const createWikiSlug = ref('')
-const createWikiSort = ref(0)
-const createWikiFather = ref(null)
+const versionFilter = ref("");
 
+const createWikiTitle = ref("");
+const createWikiSlug = ref("");
+const createWikiSort = ref(0);
+const createWikiFather = ref(null);
 
 const currentGameVersion = computed(() => {
   return (
     userSelectedGameVersion.value ||
     (project.value.game_versions.length === 1 && project.value.game_versions[0])
-  )
-})
+  );
+});
 
 const possibleGameVersions = computed(() => {
   return versions.value
     .filter((x) => !currentPlatform.value || x.loaders.includes(currentPlatform.value))
-    .flatMap((x) => x.game_versions)
-})
+    .flatMap((x) => x.game_versions);
+});
 
 const possiblePlatforms = computed(() => {
   return versions.value
     .filter((x) => !currentGameVersion.value || x.game_versions.includes(currentGameVersion.value))
-    .flatMap((x) => x.loaders)
-})
+    .flatMap((x) => x.loaders);
+});
 
 const currentPlatform = computed(() => {
   return (
     userSelectedPlatform.value || (project.value.loaders.length === 1 && project.value.loaders[0])
-  )
-})
-const gameVersionAccordion = ref()
-const platformAccordion = ref()
-const WikiFatherAccordion = ref()
-
+  );
+});
+const gameVersionAccordion = ref();
+const platformAccordion = ref();
+const WikiFatherAccordion = ref();
 
 const compatibilityMessages = defineMessages({
   title: {
-    id: 'project.about.compatibility.title',
-    defaultMessage: '基本信息'
+    id: "project.about.compatibility.title",
+    defaultMessage: "基本信息",
   },
   minecraftJava: {
-    id: 'project.about.compatibility.game.minecraftJava',
-    defaultMessage: '我的世界Java版本'
+    id: "project.about.compatibility.game.minecraftJava",
+    defaultMessage: "我的世界Java版本",
   },
   platforms: {
-    id: 'project.about.compatibility.platforms',
-    defaultMessage: '平台'
+    id: "project.about.compatibility.platforms",
+    defaultMessage: "平台",
   },
   environments: {
-    id: 'project.about.compatibility.environments',
-    defaultMessage: '运行环境'
-  }
-})
-const linksMessages = defineMessages({
+    id: "project.about.compatibility.environments",
+    defaultMessage: "运行环境",
+  },
+});
+defineMessages({
   title: {
-    id: 'project.about.links.title',
-    defaultMessage: '链接'
+    id: "project.about.links.title",
+    defaultMessage: "链接",
   },
   issues: {
-    id: 'project.about.links.issues',
-    defaultMessage: '反馈问题'
+    id: "project.about.links.issues",
+    defaultMessage: "反馈问题",
   },
   source: {
-    id: 'project.about.links.source',
-    defaultMessage: '查看源码'
+    id: "project.about.links.source",
+    defaultMessage: "查看源码",
   },
   wiki: {
-    id: 'project.about.links.wiki',
-    defaultMessage: '访问 wiki'
+    id: "project.about.links.wiki",
+    defaultMessage: "访问 wiki",
   },
   discord: {
-    id: 'project.about.links.discord',
-    defaultMessage: '加入discord服务器'
+    id: "project.about.links.discord",
+    defaultMessage: "加入discord服务器",
   },
   donateGeneric: {
-    id: 'project.about.links.donate.generic',
-    defaultMessage: '捐赠'
+    id: "project.about.links.donate.generic",
+    defaultMessage: "捐赠",
   },
   donateGitHub: {
-    id: 'project.about.links.donate.github',
-    defaultMessage: 'Github赞助商'
+    id: "project.about.links.donate.github",
+    defaultMessage: "Github赞助商",
   },
   donateBmac: {
-    id: 'project.about.links.donate.bmac',
-    defaultMessage: '为我买一杯咖啡'
+    id: "project.about.links.donate.bmac",
+    defaultMessage: "为我买一杯咖啡",
   },
   donatePatreon: {
-    id: 'project.about.links.donate.patreon',
-    defaultMessage: '在 Patreon 上捐赠'
+    id: "project.about.links.donate.patreon",
+    defaultMessage: "在 Patreon 上捐赠",
   },
   donatePayPal: {
-    id: 'project.about.links.donate.paypal',
-    defaultMessage: '在 PayPal 上捐赠'
+    id: "project.about.links.donate.paypal",
+    defaultMessage: "在 PayPal 上捐赠",
   },
   donateKoFi: {
-    id: 'project.about.links.donate.kofi',
-    defaultMessage: '在 Ko-fi 上捐赠'
+    id: "project.about.links.donate.kofi",
+    defaultMessage: "在 Ko-fi 上捐赠",
   },
   donateGithub: {
-    id: 'project.about.links.donate.github',
-    defaultMessage: '在 Github 上捐赠'
-  }
-})
+    id: "project.about.links.donate.github",
+    defaultMessage: "在 Github 上捐赠",
+  },
+});
 const creatorsMessages = defineMessages({
   title: {
-    id: 'project.about.creators.title',
-    defaultMessage: '创作者'
+    id: "project.about.creators.title",
+    defaultMessage: "创作者",
   },
   owner: {
-    id: 'project.about.creators.owner',
-    defaultMessage: '负责人'
-  }
-})
+    id: "project.about.creators.owner",
+    defaultMessage: "负责人",
+  },
+});
 const detailsMessages = defineMessages({
   title: {
-    id: 'project.about.details.title',
-    defaultMessage: '详情信息'
+    id: "project.about.details.title",
+    defaultMessage: "详情信息",
   },
   licensed: {
-    id: 'project.about.details.licensed',
-    defaultMessage: '许可证 {license}'
+    id: "project.about.details.licensed",
+    defaultMessage: "许可证 {license}",
   },
   created: {
-    id: 'project.about.details.created',
-    defaultMessage: '创建于 {date}'
+    id: "project.about.details.created",
+    defaultMessage: "创建于 {date}",
   },
   submitted: {
-    id: 'project.about.details.submitted',
-    defaultMessage: '提交于 {date}'
+    id: "project.about.details.submitted",
+    defaultMessage: "提交于 {date}",
   },
   published: {
-    id: 'project.about.details.published',
-    defaultMessage: '发布于 {date}'
+    id: "project.about.details.published",
+    defaultMessage: "发布于 {date}",
   },
   updated: {
-    id: 'project.about.details.updated',
-    defaultMessage: '更新于 {date}'
-  }
-})
+    id: "project.about.details.updated",
+    defaultMessage: "更新于 {date}",
+  },
+});
 
-const modalLicense = ref(null)
-const licenseText = ref('')
+const modalLicense = ref(null);
+const licenseText = ref("");
 
 const webDisplayLabel = (x) => {
   switch (x) {
-    case 'other':
-      return '其他'
-    case 'site':
-      return '发布地址'
+    case "other":
+      return "其他";
+    case "site":
+      return "发布地址";
 
-    case 'modrinth':
-      return 'Modrinth地址'
+    case "modrinth":
+      return "Modrinth地址";
 
-    case 'bilibili':
-      return '哔哩哔哩'
+    case "bilibili":
+      return "哔哩哔哩";
 
-    case 'pd-qq':
-      return 'QQ频道'
+    case "pd-qq":
+      return "QQ频道";
 
-    case 'oopz':
-      return 'Oopz频道'
+    case "oopz":
+      return "Oopz频道";
 
-    case 'kook':
-      return 'KOOK频道'
+    case "kook":
+      return "KOOK频道";
 
-    case 'afdian':
-      return '爱发电'
+    case "afdian":
+      return "爱发电";
 
-    case 'spigotmc':
-      return '水龙头'
+    case "spigotmc":
+      return "水龙头";
 
-    case 'curseforge':
-      return 'CurseForge地址'
-    case 'quark':
-      return '夸克网盘'
-    case 'baidu':
-      return '百度网盘'
+    case "curseforge":
+      return "CurseForge地址";
+    case "quark":
+      return "夸克网盘";
+    case "baidu":
+      return "百度网盘";
     default:
-      return x
+      return x;
   }
-}
+};
 
 const fromNow = (date) => {
-  const currentDate = useCurrentDate()
-  return dayjs(date).from(currentDate.value)
-}
+  const currentDate = useCurrentDate();
+  return dayjs(date).from(currentDate.value);
+};
 
 const licenseIdDisplay = computed(() => {
-  const id = project.value.license.id
+  const id = project.value.license.id;
 
-  if (id === 'LicenseRef-All-Rights-Reserved') {
-    return '保留所有权益/无许可证'
-  } else if (id.includes('LicenseRef')) {
-    return id.replaceAll('LicenseRef-', '').replaceAll('-', ' ')
+  if (id === "LicenseRef-All-Rights-Reserved") {
+    return "保留所有权益/无许可证";
+  } else if (id.includes("LicenseRef")) {
+    return id.replaceAll("LicenseRef-", "").replaceAll("-", " ");
   } else {
-    return id
+    return id;
   }
-})
+});
 
 async function getLicenseData(event) {
-  modalLicense.value.show(event)
+  modalLicense.value.show(event);
 
   try {
-    const text = await useBaseFetch(`tag/license/${project.value.license.id}`)
-    licenseText.value = text.body || '无法检索许可证文本.'
+    const text = await useBaseFetch(`tag/license/${project.value.license.id}`);
+    licenseText.value = text.body || "无法检索许可证文本.";
   } catch {
-    licenseText.value = '无法检索许可证文本.'
+    licenseText.value = "无法检索许可证文本.";
   }
 }
 
@@ -1549,82 +1522,82 @@ const filteredVersions = computed(() => {
   return versions.value.filter(
     (x) =>
       x.game_versions.includes(currentGameVersion.value) &&
-      x.loaders.includes(currentPlatform.value)
-  )
-})
+      x.loaders.includes(currentPlatform.value),
+  );
+});
 
 const filteredRelease = computed(() => {
-  return filteredVersions.value.find((x) => x.version_type === 'release')
-})
+  return filteredVersions.value.find((x) => x.version_type === "release");
+});
 
 const filteredBeta = computed(() => {
   return filteredVersions.value.find(
     (x) =>
-      x.version_type === 'beta' &&
+      x.version_type === "beta" &&
       (!filteredRelease.value ||
-        dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published)))
-  )
-})
+        dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published))),
+  );
+});
 
 const filteredAlpha = computed(() => {
   return filteredVersions.value.find(
     (x) =>
-      x.version_type === 'alpha' &&
+      x.version_type === "alpha" &&
       (!filteredRelease.value ||
         dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published))) &&
       (!filteredBeta.value ||
-        dayjs(x.date_published).isAfter(dayjs(filteredBeta.value.date_published)))
-  )
-})
+        dayjs(x.date_published).isAfter(dayjs(filteredBeta.value.date_published))),
+  );
+});
 
 const messages = defineMessages({
   downloadsStat: {
-    id: 'project.stats.downloads-label',
-    defaultMessage: '下载{count, plural, one {} other {s}}'
+    id: "project.stats.downloads-label",
+    defaultMessage: "下载{count, plural, one {} other {s}}",
   },
   followersStat: {
-    id: 'project.stats.followers-label',
-    defaultMessage: '关注者{count, plural, one {} other {s}}'
+    id: "project.stats.followers-label",
+    defaultMessage: "关注者{count, plural, one {} other {s}}",
   },
   descriptionTab: {
-    id: 'project.description.title',
-    defaultMessage: '简介'
+    id: "project.description.title",
+    defaultMessage: "简介",
   },
   galleryTab: {
-    id: 'project.gallery.title',
-    defaultMessage: '渲染图'
+    id: "project.gallery.title",
+    defaultMessage: "渲染图",
   },
   versionsTab: {
-    id: 'project.versions.title',
-    defaultMessage: '版本'
+    id: "project.versions.title",
+    defaultMessage: "版本",
   },
   moderationTab: {
-    id: 'project.moderation.title',
-    defaultMessage: '管理'
-  }
-})
+    id: "project.moderation.title",
+    defaultMessage: "管理",
+  },
+});
 
-const displayCollectionsSearch = ref('')
+const displayCollectionsSearch = ref("");
 const collections = computed(() =>
   user.value && user.value.collections
     ? user.value.collections.filter((x) =>
-      x.name.toLowerCase().includes(displayCollectionsSearch.value.toLowerCase())
-    )
-    : []
-)
+        x.name.toLowerCase().includes(displayCollectionsSearch.value.toLowerCase()),
+      )
+    : [],
+);
 
 if (
   !route.params.id ||
   !(
     tags.value.projectTypes.find((x) => x.id === route.params.type) ||
-    route.params.type === 'project'
+    route.params.type === "project"
   )
 ) {
   throw createError({
     fatal: true,
     statusCode: 404,
-    message: '找不到该页面'
-  })
+    message: "找不到该页面",
+  });
 }
 
 let project,
@@ -1636,7 +1609,7 @@ let project,
   versions,
   wikis,
   organization,
-  resetOrganization
+  resetOrganization;
 try {
   [
     { data: project, refresh: resetProject },
@@ -1645,21 +1618,21 @@ try {
     { data: featuredVersions },
     { data: versions },
     { data: wikis },
-    { data: organization, refresh: resetOrganization }
+    { data: organization, refresh: resetOrganization },
   ] = await Promise.all([
     useAsyncData(`project/${route.params.id}`, () => useBaseFetch(`project/${route.params.id}`), {
       transform: (project) => {
         if (project) {
-          project.actualProjectType = JSON.parse(JSON.stringify(project.project_type))
+          project.actualProjectType = JSON.parse(JSON.stringify(project.project_type));
           project.project_type = data.$getProjectTypeForUrl(
             project.project_type,
             project.loaders,
-            tags.value
-          )
+            tags.value,
+          );
         }
 
-        return project
-      }
+        return project;
+      },
     }),
     useAsyncData(
       `project/${route.params.id}/members`,
@@ -1667,101 +1640,99 @@ try {
       {
         transform: (members) => {
           members.forEach((it, index) => {
-            members[index].avatar_url = it.user.avatar_url
-            members[index].name = it.user.username
-          })
+            members[index].avatar_url = it.user.avatar_url;
+            members[index].name = it.user.username;
+          });
 
-          return members
-        }
-      }
+          return members;
+        },
+      },
     ),
     useAsyncData(`project/${route.params.id}/dependencies`, () =>
-      useBaseFetch(`project/${route.params.id}/dependencies`, {})
+      useBaseFetch(`project/${route.params.id}/dependencies`, {}),
     ),
     useAsyncData(`project/${route.params.id}/version?featured=true`, () =>
-      useBaseFetch(`project/${route.params.id}/version?featured=true`)
+      useBaseFetch(`project/${route.params.id}/version?featured=true`),
     ),
     useAsyncData(`project/${route.params.id}/version`, () =>
-      useBaseFetch(`project/${route.params.id}/version`)
+      useBaseFetch(`project/${route.params.id}/version`),
     ),
     useAsyncData(`project/${route.params.id}/wiki`, () => {
-        return useBaseFetch(`project/${route.params.id}/wiki`, { apiVersion: 3 })
-      }
-    ),
+      return useBaseFetch(`project/${route.params.id}/wiki`, { apiVersion: 3 });
+    }),
     useAsyncData(`project/${route.params.id}/organization`, () =>
-      useBaseFetch(`project/${route.params.id}/organization`, { apiVersion: 3 })
-    )
-  ])
+      useBaseFetch(`project/${route.params.id}/organization`, { apiVersion: 3 }),
+    ),
+  ]);
 
-  versions = shallowRef(toRaw(versions))
-  featuredVersions = shallowRef(toRaw(featuredVersions))
+  versions = shallowRef(toRaw(versions));
+  featuredVersions = shallowRef(toRaw(featuredVersions));
 } catch {
   throw createError({
     fatal: true,
     statusCode: 404,
-    message: '资源不存在'
-  })
+    message: "资源不存在",
+  });
 }
 
 if (wikis.value && wikis.value.wikis) {
-  wikis.value.wikis.sort((a, b) => a.sort_order - b.sort_order)
+  wikis.value.wikis.sort((a, b) => a.sort_order - b.sort_order);
   wikis.value.wikis.forEach((wiki) => {
-    wiki.child.sort((a, b) => a.sort_order - b.sort_order)
-  })
+    wiki.child.sort((a, b) => a.sort_order - b.sort_order);
+  });
 }
 
 if (!project.value) {
   throw createError({
     fatal: true,
     statusCode: 404,
-    message: '资源不存在'
-  })
-
+    message: "资源不存在",
+  });
 }
 
 if (project.value.project_type !== route.params.type || route.params.id !== project.value.slug) {
-  let path = route.fullPath.split('/')
-  path.splice(0, 3)
-  path = path.filter((x) => x)
+  let path = route.fullPath.split("/");
+  path.splice(0, 3);
+  path = path.filter((x) => x);
 
   await navigateTo(
     `/${project.value.project_type}/${project.value.slug}${
-      path.length > 0 ? `/${path.join('/')}` : ''
+      path.length > 0 ? `/${path.join("/")}` : ""
     }`,
-    { redirectCode: 301, replace: true }
-  )
+    { redirectCode: 301, replace: true },
+  );
 }
 
 // 成员应为所有成员的数组，不包括已接受的成员，并以具有所有者角色的用户开头
 // 其余成员应按角色排序，然后按姓名排序
 const members = computed(() => {
-  const acceptedMembers = allMembers.value.filter((x) => x.accepted)
+  const acceptedMembers = allMembers.value.filter((x) => x.accepted);
   const owner = acceptedMembers.find((x) =>
     organization.value
       ? organization.value.members.some(
-        (orgMember) => orgMember.user.id === x.user.id && orgMember.is_owner
-      )
-      : x.is_owner
-  )
+          (orgMember) => orgMember.user.id === x.user.id && orgMember.is_owner,
+        )
+      : x.is_owner,
+  );
 
-  const rest = acceptedMembers.filter((x) => !owner || x.user.id !== owner.user.id) || []
+  const rest = acceptedMembers.filter((x) => !owner || x.user.id !== owner.user.id) || [];
 
   rest.sort((a, b) => {
     if (a.role === b.role) {
-      return a.user.username.localeCompare(b.user.username)
+      return a.user.username.localeCompare(b.user.username);
     } else {
-      return a.role.localeCompare(b.role)
+      return a.role.localeCompare(b.role);
     }
-  })
+  });
 
-  return owner ? [owner, ...rest] : rest
-})
+  return owner ? [owner, ...rest] : rest;
+});
 
 const currentMember = computed(() => {
-  let val = auth.value.user ? allMembers.value.find((x) => x.user.id === auth.value.user.id) : null
+  let val = auth.value.user ? allMembers.value.find((x) => x.user.id === auth.value.user.id) : null;
 
   if (!val && auth.value.user && organization.value && organization.value.members) {
-    val = organization.value.members.find((x) => x.user.id === auth.value.user.id)
+    val = organization.value.members.find((x) => x.user.id === auth.value.user.id);
   }
 
   if (!val && auth.value.user && tags.value.staffRoles.includes(auth.value.user.role)) {
@@ -1769,172 +1740,172 @@ const currentMember = computed(() => {
       team_id: project.team_id,
       user: auth.value.user,
       role: auth.value.role,
-      permissions: auth.value.user.role === 'admin' ? 2047 : 12,
+      permissions: auth.value.user.role === "admin" ? 2047 : 12,
       accepted: true,
       payouts_split: 0,
       avatar_url: auth.value.user.avatar_url,
-      name: auth.value.user.username
-    }
+      name: auth.value.user.username,
+    };
   }
 
-  return val
-})
+  return val;
+});
 
-versions.value = data.$computeVersions(versions.value, allMembers.value)
+versions.value = data.$computeVersions(versions.value, allMembers.value);
 
 // 问：为什么要这样做，而不是计算 featuredVersions 的版本？
 // 答：它会错误地生成版本 slug，因为它没有所有版本的完整上下文。例如，如果 Forge 的版本 1.1.0 是特色版本，
 // 但 Fabric 的版本 1.1.0 不是，但 Fabric 版本先上传，则 Forge 版本将链接到 Fabric 版本
-const featuredIds = featuredVersions.value.map((x) => x.id)
-featuredVersions.value = versions.value.filter((version) => featuredIds.includes(version.id))
+const featuredIds = featuredVersions.value.map((x) => x.id);
+featuredVersions.value = versions.value.filter((version) => featuredIds.includes(version.id));
 
 featuredVersions.value.sort((a, b) => {
-  const aLatest = a.game_versions[a.game_versions.length - 1]
-  const bLatest = b.game_versions[b.game_versions.length - 1]
-  const gameVersions = tags.value.gameVersions.map((e) => e.version)
-  return gameVersions.indexOf(aLatest) - gameVersions.indexOf(bLatest)
-})
+  const aLatest = a.game_versions[a.game_versions.length - 1];
+  const bLatest = b.game_versions[b.game_versions.length - 1];
+  const gameVersions = tags.value.gameVersions.map((e) => e.version);
+  return gameVersions.indexOf(aLatest) - gameVersions.indexOf(bLatest);
+});
 
 const projectTypeDisplay = computed(() =>
   data.$formatProjectType(
-    data.$getProjectTypeForDisplay(project.value.project_type, project.value.loaders)
-  )
-)
+    data.$getProjectTypeForDisplay(project.value.project_type, project.value.loaders),
+  ),
+);
 
 const following = computed(
   () =>
-    user.value && user.value.follows && user.value.follows.find((x) => x.id === project.value.id)
-)
+    user.value && user.value.follows && user.value.follows.find((x) => x.id === project.value.id),
+);
 
-const title = computed(() => `${project.value.title} - 我的世界 ${projectTypeDisplay.value}`)
+const title = computed(() => `${project.value.title} - 我的世界 ${projectTypeDisplay.value}`);
 const description = computed(
   () =>
     `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value} ${
       project.value.title
-    } by ${members.value.find((x) => x.is_owner)?.user?.username || '创作者'} 在 BBSMC`
-)
+    } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`,
+);
 
-if (!route.name.startsWith('type-id-settings')) {
+if (!route.name.startsWith("type-id-settings")) {
   useSeoMeta({
     title: () => title.value,
     description: () => description.value,
     ogTitle: () => title.value,
     ogDescription: () => project.value.description,
-    ogImage: () => project.value.icon_url ?? 'https://cdn.bbsmc.net/raw/placeholder.png',
+    ogImage: () => project.value.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
     robots: () =>
-      project.value.status === 'approved' || project.value.status === 'archived'
-        ? 'all'
-        : 'noindex'
-  })
+      project.value.status === "approved" || project.value.status === "archived"
+        ? "all"
+        : "noindex",
+  });
 }
 
-const onUserCollectProject = useClientTry(userCollectProject)
+const onUserCollectProject = useClientTry(userCollectProject);
 
 async function setProcessing() {
-  startLoading()
+  startLoading();
 
   try {
     await useBaseFetch(`project/${project.value.id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: {
-        status: 'processing'
-      }
-    })
+        status: "processing",
+      },
+    });
 
-    project.value.status = 'processing'
+    project.value.status = "processing";
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
+      type: "error",
+    });
   }
 
-  stopLoading()
+  stopLoading();
 }
 
 async function patchProject(resData, quiet = false) {
-  let result = false
-  startLoading()
+  let result = false;
+  startLoading();
 
   try {
     await useBaseFetch(`project/${project.value.id}`, {
-      method: 'PATCH',
-      body: resData
-    })
+      method: "PATCH",
+      body: resData,
+    });
 
     for (const key in resData) {
-      project.value[key] = resData[key]
+      project.value[key] = resData[key];
     }
 
     if (resData.license_id) {
-      project.value.license.id = resData.license_id
+      project.value.license.id = resData.license_id;
     }
     if (resData.license_url) {
-      project.value.license.url = resData.license_url
+      project.value.license.url = resData.license_url;
     }
 
-    result = true
+    result = true;
     if (!quiet) {
       data.$notify({
-        group: 'main',
-        title: '资源已更新',
-        text: '您的资源已更新',
-        type: 'success'
-      })
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+        group: "main",
+        title: "资源已更新",
+        text: "您的资源已更新",
+        type: "success",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+      type: "error",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  stopLoading()
+  stopLoading();
 
-  return result
+  return result;
 }
 
 async function patchIcon(icon) {
-  let result = false
-  startLoading()
+  let result = false;
+  startLoading();
 
   try {
     await useBaseFetch(
       `project/${project.value.id}/icon?ext=${
-        icon.type.split('/')[icon.type.split('/').length - 1]
+        icon.type.split("/")[icon.type.split("/").length - 1]
       }`,
       {
-        method: 'PATCH',
-        body: icon
-      }
-    )
-    await resetProject()
-    result = true
+        method: "PATCH",
+        body: icon,
+      },
+    );
+    await resetProject();
+    result = true;
     data.$notify({
-      group: 'main',
-      title: '资源图标更新',
-      text: '您的资源图标已更新',
-      type: 'success'
-    })
+      group: "main",
+      title: "资源图标更新",
+      text: "您的资源图标已更新",
+      type: "success",
+    });
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
+      type: "error",
+    });
 
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  stopLoading()
-  return result
+  stopLoading();
+  return result;
 }
 
 async function updateMembers() {
@@ -1944,359 +1915,360 @@ async function updateMembers() {
     {
       transform: (members) => {
         members.forEach((it, index) => {
-          members[index].avatar_url = it.user.avatar_url
-          members[index].name = it.user.username
-        })
+          members[index].avatar_url = it.user.avatar_url;
+          members[index].name = it.user.username;
+        });
 
-        return members
-      }
-    }
-  )
+        return members;
+      },
+    },
+  );
 }
 
 async function createWiki() {
-
-  if (createWikiTitle.value === '' || createWikiSlug.value === '') {
-
+  if (createWikiTitle.value === "" || createWikiSlug.value === "") {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
-      text: '</br>请填写完整数据',
-      type: 'error'
-    })
-    return
+      group: "main",
+      title: "发生错误",
+      text: "</br>请填写完整数据",
+      type: "error",
+    });
+    return;
   }
 
   const resData = {
     title: createWikiTitle.value,
     slug: createWikiSlug.value,
-    sort_order: createWikiSort.value
-  }
+    sort_order: createWikiSort.value,
+  };
 
   if (createWikiFather.value) {
-    resData.father_id = createWikiFather.value.id
+    resData.father_id = createWikiFather.value.id;
   }
 
-
   // console.log(wikis.value.cache.cache.value)
-  for (const wiki of wikis.value['cache']['cache']) {
-    console.log(wiki)
+  for (const wiki of wikis.value.cache.cache) {
+    console.log(wiki);
     if (wiki.slug === resData.slug) {
       data.$notify({
-        group: 'main',
-        title: '发生错误',
-        text: '</br>已存在相同slug',
-        type: 'error'
-      })
+        group: "main",
+        title: "发生错误",
+        text: "</br>已存在相同slug",
+        type: "error",
+      });
     }
     if (wiki.title === resData.title) {
       data.$notify({
-        group: 'main',
-        title: '发生错误',
-        text: '</br>已存在相同标题',
-        type: 'error'
-      })
+        group: "main",
+        title: "发生错误",
+        text: "</br>已存在相同标题",
+        type: "error",
+      });
     }
   }
 
-  const { data: newWiki } = await useAsyncData(
-    `project/${route.params.id}/wiki_create`,
-    () => useBaseFetch(`project/${route.params.id}/wiki_create`, { apiVersion: 3, method: 'POST', body: resData })
-  )
-  wikis.value.cache.cache.push(newWiki)
-  wikis.value = newWiki.value
+  const { data: newWiki } = await useAsyncData(`project/${route.params.id}/wiki_create`, () =>
+    useBaseFetch(`project/${route.params.id}/wiki_create`, {
+      apiVersion: 3,
+      method: "POST",
+      body: resData,
+    }),
+  );
+  wikis.value.cache.cache.push(newWiki);
+  wikis.value = newWiki.value;
   // console.log('接收')
   // console.log(wikis.value)
-  createWikiModal.value.hide()
-  createWikiFather.value = null
-  createWikiTitle.value = ''
-  createWikiSort.value = 0
-  createWikiSlug.value = ''
+  createWikiModal.value.hide();
+  createWikiFather.value = null;
+  createWikiTitle.value = "";
+  createWikiSort.value = 0;
+  createWikiSlug.value = "";
 
   // console.log(wikis.value)
-
 }
 
-const preSortReview = ref([])
-const preBodyReview = ref([])
-const preADDReview = ref([])
-const preREMOVEReview = ref([])
-const preIndexSetReview = ref([])
-async function submitForReview() {
-
+const preSortReview = ref([]);
+const preBodyReview = ref([]);
+const preADDReview = ref([]);
+const preREMOVEReview = ref([]);
+const preIndexSetReview = ref([]);
+function submitForReview() {
   // console.log('提交审核')
   // 开始计算和之前有哪些变动
 
-  submitWikiCacheMsg.value = ''
-  //第一步，获取到所有的新增的和被移除的WIKI
-  const wikiNew = wikis.value.cache.cache
-  const wikiOld = wikis.value.wikis
+  submitWikiCacheMsg.value = "";
+  // 第一步，获取到所有的新增的和被移除的WIKI
+  const wikiNew = wikis.value.cache.cache;
+  const wikiOld = wikis.value.wikis;
 
-  wikiNew.forEach(wiki => {
-    if (!wiki.child){
-      wiki.child = []
+  wikiNew.forEach((wiki) => {
+    if (!wiki.child) {
+      wiki.child = [];
     }
-  })
-  wikiOld.forEach(wiki => {
-    if (!wiki.child){
-      wiki.child = []
+  });
+  wikiOld.forEach((wiki) => {
+    if (!wiki.child) {
+      wiki.child = [];
     }
-  })
+  });
 
+  const wikiNews = wikiNew.flatMap((x) => [x, ...x.child.map((child) => child)]);
+  const wikiOlds = wikiOld.flatMap((x) => [x, ...x.child.map((child) => child)]);
+  const wikiNewId = wikiNew.flatMap((x) => [x.id, ...x.child.map((child) => child.id)]);
+  const wikiOldId = wikiOld.flatMap((x) => [x.id, ...x.child.map((child) => child.id)]);
 
-  const wikiNews = wikiNew.flatMap(x => [x, ...x.child.map(child => child)])
-  const wikiOlds = wikiOld.flatMap(x => [x, ...x.child.map(child => child)])
-  const wikiNewId = wikiNew.flatMap(x => [x.id, ...x.child.map(child => child.id)])
-  const wikiOldId = wikiOld.flatMap(x => [x.id, ...x.child.map(child => child.id)])
+  const commonIds = wikiNewId.filter((id) => wikiOldId.includes(id)); // 交集
+  const addWiki = [...wikiNews].filter((wiki) => !wikiOldId.includes(wiki.id));
+  const removedWiki = [...wikiOlds].filter((wiki) => !wikiNewId.includes(wiki.id));
 
+  const commonObjects = new Map(
+    wikiNews.map((wiki) => [wiki.id, [wikiOlds.find((oldWiki) => oldWiki.id === wiki.id), wiki]]),
+  );
 
-  const commonIds = wikiNewId.filter(id => wikiOldId.includes(id)) // 交集
-  const addWiki = [...wikiNews].filter(wiki => !wikiOldId.includes(wiki.id))
-  const removedWiki = [...wikiOlds].filter(wiki => !wikiNewId.includes(wiki.id))
-
-
-  const commonObjects = new Map(wikiNews.map(wiki => [wiki.id, [wikiOlds.find(oldWiki => oldWiki.id === wiki.id), wiki]]))
-
-  preSortReview.value = []
-  preBodyReview.value = []
-  preADDReview.value = []
-  preREMOVEReview.value = []
-  preIndexSetReview.value = []
-  let featured = null
-  wikiOlds.forEach(wiki => {
-    if (wiki.featured){
-      featured = wiki
-    }else if (wiki.child && wiki.child.length > 0) {
+  preSortReview.value = [];
+  preBodyReview.value = [];
+  preADDReview.value = [];
+  preREMOVEReview.value = [];
+  preIndexSetReview.value = [];
+  let featured = null;
+  wikiOlds.forEach((wiki) => {
+    if (wiki.featured) {
+      featured = wiki;
+    } else if (wiki.child && wiki.child.length > 0) {
       wiki.child.forEach((wiki__) => {
         if (wiki__.featured) {
-          featured = wiki__
+          featured = wiki__;
         }
-      })
+      });
     }
-  })
-  wikiNews.forEach(wiki => {
-    if (wiki.featured){
-      if (!featured){
+  });
+  wikiNews.forEach((wiki) => {
+    if (wiki.featured) {
+      if (!featured) {
         preIndexSetReview.value.push({
           wiki_id: wiki.id,
           title: wiki.title,
-        })
-      }else if (featured && featured.id !== wiki.id){
+        });
+      } else if (featured && featured.id !== wiki.id) {
         preIndexSetReview.value.push({
           wiki_id: wiki.id,
           title: wiki.title,
-        })
+        });
       }
-    }else if (wiki.child && wiki.child.length > 0) {
+    } else if (wiki.child && wiki.child.length > 0) {
       wiki.child.forEach((wiki__) => {
         if (wiki__.featured) {
-          if (!featured){
+          if (!featured) {
             preIndexSetReview.value.push({
               wiki_id: wiki__.id,
               title: wiki__.title,
-            })
-          }else if (featured && featured.id !== wiki__.id){
+            });
+          } else if (featured && featured.id !== wiki__.id) {
             preIndexSetReview.value.push({
               wiki_id: wiki__.id,
               title: wiki__.title,
-            })
+            });
           }
         }
-      })
+      });
     }
-  })
-
-
+  });
 
   commonObjects.forEach(([oldWiki, newWiki]) => {
-
     if (oldWiki && commonIds.includes(oldWiki.id)) {
       if (oldWiki.sort_order !== newWiki.sort_order) {
         preSortReview.value.push({
           wiki_id: oldWiki.id,
           title: newWiki.title,
           old_sort_order: oldWiki.sort_order,
-          new_sort_order: newWiki.sort_order
-        })
+          new_sort_order: newWiki.sort_order,
+        });
       }
       if (oldWiki.body !== newWiki.body) {
         preBodyReview.value.push({
           wiki_id: oldWiki.id,
           title: newWiki.title,
           old_body: oldWiki.body,
-          new_body: newWiki.body
-        })
+          new_body: newWiki.body,
+        });
       }
     }
-  })
-  addWiki.forEach(wiki => {
+  });
+  addWiki.forEach((wiki) => {
     preADDReview.value.push({
       wiki_id: wiki.id,
       title: wiki.title,
       sort_order: wiki.sort_order,
-      body: wiki.body
-    })
-  })
+      body: wiki.body,
+    });
+  });
 
-  removedWiki.forEach(wiki => {
+  removedWiki.forEach((wiki) => {
     preREMOVEReview.value.push({
       wiki_id: wiki.id,
       title: wiki.title,
       sort_order: wiki.sort_order,
-      body: wiki.body
-    })
-  })
+      body: wiki.body,
+    });
+  });
 
-  if ((preIndexSetReview.value.length + preBodyReview.value.length + preSortReview.value.length + preREMOVEReview.value.length + preADDReview.value.length) === 0) {
+  if (
+    preIndexSetReview.value.length +
+      preBodyReview.value.length +
+      preSortReview.value.length +
+      preREMOVEReview.value.length +
+      preADDReview.value.length ===
+    0
+  ) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
-      text: '</br>没有任何修改',
-      type: 'error'
-    })
-    return
+      group: "main",
+      title: "发生错误",
+      text: "</br>没有任何修改",
+      type: "error",
+    });
+    return;
   }
-  preReviewWiki.value.show()
-
+  preReviewWiki.value.show();
 
   // console.log('wikiNew ' + wikiNewId)
   // console.log('wikiOld ' + wikiOldId)
 
-
   // 第二部，获取所有被修改过的WIKI
 
   // 第三步， 获取所有修改了权重的WIKI
-
-
 }
-const router = useNativeRouter()
-const submitWikiCacheMsg = ref("")
+const router = useNativeRouter();
+const submitWikiCacheMsg = ref("");
 
 async function submitConfirmForReview() {
-  if (submitWikiCacheMsg.value === '') {
+  if (submitWikiCacheMsg.value === "") {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
-      text: '</br>请填写提交原因',
-      type: 'error'
-    })
-    return
+      group: "main",
+      title: "发生错误",
+      text: "</br>请填写提交原因",
+      type: "error",
+    });
+    return;
   }
   try {
-    await useBaseFetch(`project/${route.params.id}/wiki_submit`, { apiVersion: 3, method: 'POST', body: {msg: submitWikiCacheMsg.value,} })
+    await useBaseFetch(`project/${route.params.id}/wiki_submit`, {
+      apiVersion: 3,
+      method: "POST",
+      body: { msg: submitWikiCacheMsg.value },
+    });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '</br>提交成功',
-      type: 'success'
-    })
-    preReviewWiki.value.hide()
+      group: "main",
+      title: "成功",
+      text: "</br>提交成功",
+      type: "success",
+    });
+    preReviewWiki.value.hide();
 
-    router.push(`/project/${route.params.id}/wikis`)
-
+    router.push(`/project/${route.params.id}/wikis`);
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error'
-    })
+      type: "error",
+    });
   }
-
 }
 
 async function copyId() {
-  await navigator.clipboard.writeText(project.value.id)
+  await navigator.clipboard.writeText(project.value.id);
 }
 
-const collapsedChecklist = ref(false)
+const collapsedChecklist = ref(false);
 
-const showModerationChecklist = ref(false)
-const futureProjects = ref([])
+const showModerationChecklist = ref(false);
+const futureProjects = ref([]);
 if (import.meta.client && history && history.state && history.state.showChecklist) {
-  showModerationChecklist.value = true
-  futureProjects.value = history.state.projects
+  showModerationChecklist.value = true;
+  futureProjects.value = history.state.projects;
 }
 
 function closeDownloadModal(event) {
-  downloadModal.value.hide(event)
-  userSelectedPlatform.value = null
-  userSelectedGameVersion.value = null
-  showAllVersions.value = false
+  downloadModal.value.hide(event);
+  userSelectedPlatform.value = null;
+  userSelectedGameVersion.value = null;
+  showAllVersions.value = false;
 }
 
 function triggerDownloadAnimation() {
-  overTheTopDownloadAnimation.value = true
-  setTimeout(() => (overTheTopDownloadAnimation.value = false), 500)
+  overTheTopDownloadAnimation.value = true;
+  setTimeout(() => (overTheTopDownloadAnimation.value = false), 500);
 }
 
 function onDownload(event) {
-  triggerDownloadAnimation()
+  triggerDownloadAnimation();
   setTimeout(() => {
-    closeDownloadModal(event)
-  }, 400)
+    closeDownloadModal(event);
+  }, 400);
 }
 
 function onDownloadClick(event) {
   if (project.value.versions.length === 0) {
     for (const url of project.value.donation_urls) {
-      if (url.id === 'site') {
-        window.open(url.url, '_blank')
-        return
+      if (url.id === "site") {
+        window.open(url.url, "_blank");
+        return;
       }
     }
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: "该资源没有可用下载源",
-      type: 'error'
-    })
-    return
+      type: "error",
+    });
+    return;
   }
-  downloadModal.value.show(event)
+  downloadModal.value.show(event);
 }
 
-
 const navLinks = computed(() => {
-  const projectUrl = `/${project.value.project_type}/${project.value.slug ? project.value.slug : project.value.id}`
+  const projectUrl = `/${project.value.project_type}/${project.value.slug ? project.value.slug : project.value.id}`;
 
   return [
     {
       label: formatMessage(messages.descriptionTab),
-      href: projectUrl
+      href: projectUrl,
     },
     {
       label: formatMessage(messages.galleryTab),
       href: `${projectUrl}/gallery`,
-      shown: project.value.gallery.length > 0 || !!currentMember.value
+      shown: project.value.gallery.length > 0 || !!currentMember.value,
     },
     {
-      label: '更新日志',
+      label: "更新日志",
       href: `${projectUrl}/changelog`,
-      shown: versions.value.length > 0
+      shown: versions.value.length > 0,
     },
     {
       label: formatMessage(messages.versionsTab),
       href: `${projectUrl}/versions`,
       shown: versions.value.length > 0 || !!currentMember.value,
-      subpages: [`${projectUrl}/version/`]
+      subpages: [`${projectUrl}/version/`],
     },
     {
-      label: '百科',
+      label: "百科",
       href: `${projectUrl}/wikis`,
-      subpages: [`${projectUrl}/wiki/`]
+      subpages: [`${projectUrl}/wiki/`],
+    },
+    {
+      label: "讨论",
+      href: `${projectUrl}/forum`,
+      subpages: [`${projectUrl}/forum/`],
     },
     {
       label: formatMessage(messages.moderationTab),
       href: `${projectUrl}/moderation`,
       shown:
         !!currentMember.value &&
-        (isRejected(project.value) || isUnderReview(project.value) || isStaff(auth.value.user))
-    }
-  ]
-})
-
-
+        (isRejected(project.value) || isUnderReview(project.value) || isStaff(auth.value.user)),
+    },
+  ];
+});
 </script>
 <style lang="scss" scoped>
 .settings-header {

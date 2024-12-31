@@ -58,10 +58,7 @@
               <BoxIcon />
               <span>{{
                 $formatProjectType(
-                  $getProjectTypeForDisplay(
-                    project.project_types?.[0] ?? "资源",
-                    project.loaders,
-                  ),
+                  $getProjectTypeForDisplay(project.project_types?.[0] ?? "资源", project.loaders),
                 )
               }}</span>
             </div>

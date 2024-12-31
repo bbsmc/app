@@ -27,6 +27,7 @@ pub mod version_item;
 pub mod wiki_item;
 
 pub mod wiki_cache_item;
+pub(crate) mod forum;
 
 pub use collection_item::Collection;
 pub use ids::*;

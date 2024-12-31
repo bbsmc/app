@@ -1,5 +1,5 @@
 <script>
-import VueTurnstile from 'vue-turnstile';
+import VueTurnstile from "vue-turnstile";
 
 export default {
   components: { VueTurnstile },
@@ -21,9 +21,9 @@ export default {
   },
   methods: {
     onTokenUpdate(token) {
-      console.log('Token:', token);
+      console.log("Token:", token);
       this.internalToken = token;
-      this.$emit('update:modelValue', token);
+      this.$emit("update:modelValue", token);
     },
   },
 };

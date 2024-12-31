@@ -12,8 +12,16 @@
     <UploadModal
       ref="uploading_modal"
       title="文件上传中"
-      :description="parseFloat(uploading).toFixed(0) === '100' ? '文件处理中,请稍等' :`当前进度 ${parseFloat(uploading).toFixed(2)}%`"
-      :speed="parseFloat(uploading).toFixed(0) === '100' ? '' :`上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`"
+      :description="
+        parseFloat(uploading).toFixed(0) === '100'
+          ? '文件处理中,请稍等'
+          : `当前进度 ${parseFloat(uploading).toFixed(2)}%`
+      "
+      :speed="
+        parseFloat(uploading).toFixed(0) === '100'
+          ? ''
+          : `上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`
+      "
     />
     <Modal v-if="auth.user && currentMember" ref="modal_package_mod" header="Package data pack">
       <div class="modal-package-mod universal-labels">
@@ -90,7 +98,14 @@
         <ul>
           <li v-if="version.version_number === ''">您必须输入一个版本号</li>
           <li v-if="version.game_versions.length === 0">您必须选择支持的 Minecraft 版本</li>
-          <li v-if="newFiles.length === 0 && version.files.length === 0 && !replaceFile && !version.disk_only">
+          <li
+            v-if="
+              newFiles.length === 0 &&
+              version.files.length === 0 &&
+              !replaceFile &&
+              !version.disk_only
+            "
+          >
             您必须要有一个上传的文件
           </li>
           <li v-if="version.loaders.length === 0 && project.project_type !== 'resourcepack'">
@@ -100,7 +115,7 @@
       </div>
       <div v-if="isCreating" class="input-group">
         <ButtonStyled color="brand">
-          <button :disabled="shouldPreventActions" @click="createVersion" >
+          <button :disabled="shouldPreventActions" @click="createVersion">
             <PlusIcon aria-hidden="true" />
             创建
           </button>
@@ -145,20 +160,15 @@
       <div v-else class="input-group">
         <ButtonStyled v-if="primaryFile" color="green">
           <a
-
+            v-if="primaryFile.url.includes('cdn.bbsmc.net')"
             v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'"
             :href="primaryFile.url"
             @click="emit('onDownload')"
-            v-if="primaryFile.url.includes('cdn.bbsmc.net')"
           >
             <DownloadIcon aria-hidden="true" />
             下载
           </a>
-          <a
-            :href="primaryFile.url"
-            target="_blank"
-            v-else
-          >
+          <a v-else :href="primaryFile.url" target="_blank">
             <DownloadIcon aria-hidden="true" />
             下载
           </a>
@@ -221,15 +231,14 @@
         v-html="version.changelog ? renderHighlightedString(version.changelog) : '无'"
       />
     </div>
-    <div class="version-page__disk_url universal-card" v-if="isEditing">
-
-      <div class="adjacent-input" v-if="isEditing">
+    <div v-if="isEditing" class="version-page__disk_url universal-card">
+      <div v-if="isEditing" class="adjacent-input">
         <label for="project-wiki-open">
           <span class="label__title">夸克网盘</span>
           <span class="label__description">
-          如果您有夸克的合作，需要参与夸克的拉新激励，可选择只提供夸克网盘链接，则无需选择要上传的文件，提供夸克下载方式后，点击下载按钮会直接跳转到夸克进行下载便可得到夸克的拉新激励。
+            如果您有夸克的合作，需要参与夸克的拉新激励，可选择只提供夸克网盘链接，则无需选择要上传的文件，提供夸克下载方式后，点击下载按钮会直接跳转到夸克进行下载便可得到夸克的拉新激励。
             如果您启用夸克网盘，本网站将不提供直接下载文件的功能，且不会记录下载次数
-        </span>
+          </span>
         </label>
         <input
           id="advanced-rendering"
@@ -239,10 +248,9 @@
         />
       </div>
 
-
       <div v-if="version.disk_only === true">
         <h3>夸克网盘</h3>
-        <template v-if ="isEditing">
+        <template v-if="isEditing">
           <input
             id="version-number"
             v-model="version.disk_url"
@@ -250,22 +258,21 @@
             autocomplete="off"
             style="width: 100%"
           />
-
         </template>
       </div>
     </div>
-<!--    <div class="version-page__disk_url universal-card" v-if="!isEditing && version.disk_only === true">-->
-<!--      <h3>夸克网盘</h3>-->
-<!--      <h4>网盘链接</h4>-->
-<!--      <input-->
-<!--        id="version-number"-->
-<!--        v-model="version.disk_url"-->
-<!--        type="text"-->
-<!--        autocomplete="off"-->
-<!--        disabled-->
-<!--        style="width: 100%"-->
-<!--      />-->
-<!--    </div>-->
+    <!--    <div class="version-page__disk_url universal-card" v-if="!isEditing && version.disk_only === true">-->
+    <!--      <h3>夸克网盘</h3>-->
+    <!--      <h4>网盘链接</h4>-->
+    <!--      <input-->
+    <!--        id="version-number"-->
+    <!--        v-model="version.disk_url"-->
+    <!--        type="text"-->
+    <!--        autocomplete="off"-->
+    <!--        disabled-->
+    <!--        style="width: 100%"-->
+    <!--      />-->
+    <!--    </div>-->
 
     <div
       v-if="deps.length > 0 || (isEditing && project.project_type !== 'modpack')"
@@ -396,7 +403,7 @@
         </div>
       </div>
     </div>
-    <div class="version-page__files universal-card" v-if="version.disk_only === false">
+    <div v-if="version.disk_only === false" class="version-page__files universal-card">
       <h3>文件</h3>
       <div v-if="isEditing && replaceFile" class="file primary">
         <FileIcon aria-hidden="true" />
@@ -476,22 +483,22 @@
         </ButtonStyled>
         <ButtonStyled v-else>
           <a
+            v-if="file.url.includes('cdn.bbsmc.net')"
             :href="file.url"
             class="raised-button"
             :title="`Download ${file.filename}`"
             tabindex="0"
-            v-if="file.url.includes('cdn.bbsmc.net')"
           >
             <DownloadIcon aria-hidden="true" />
           </a>
 
           <a
+            v-else
             :href="file.url"
             class="raised-button"
             :title="`Download ${file.filename}`"
             target="_blank"
             tabindex="0"
-            v-else
           >
             <DownloadIcon aria-hidden="true" />
             下载
@@ -721,6 +728,7 @@ import { formatProjectRelease } from "@modrinth/utils";
 import { ButtonStyled, ConfirmModal, MarkdownEditor } from "@modrinth/ui";
 import { Multiselect } from "vue-multiselect";
 import JSZip from "jszip";
+import UploadModal from "@modrinth/ui/src/components/modal/UploadModal.vue";
 import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";
 import { inferVersionInfo } from "~/helpers/infer.js";
 import { createDataPackVersion } from "~/helpers/package.js";
@@ -754,8 +762,7 @@ import BoxIcon from "~/assets/images/utils/box.svg?component";
 import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
-import { useBaseFetchFile } from '~/composables/fetch.js'
-import UploadModal from '@modrinth/ui/src/components/modal/UploadModal.vue'
+import { useBaseFetchFile } from "~/composables/fetch.js";
 
 export default defineNuxtComponent({
   components: {
@@ -857,8 +864,8 @@ export default defineNuxtComponent({
     let oldFileTypes = [];
 
     let isCreating = false;
-    let uploading = "";
-    let uploadSpeed = "";
+    const uploading = "";
+    const uploadSpeed = "";
     let isEditing = false;
 
     let version = {};
@@ -983,7 +990,6 @@ export default defineNuxtComponent({
           .format("MMM D, YYYY")}. ${version.downloads} downloads.`,
     );
 
-
     useSeoMeta({
       title,
       description,
@@ -1034,7 +1040,10 @@ export default defineNuxtComponent({
         this.version.version_number === "" ||
         this.version.game_versions.length === 0 ||
         (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
-        (this.newFiles.length === 0 && this.version.files.length === 0 && !this.replaceFile && this.version.disk_only === false)
+        (this.newFiles.length === 0 &&
+          this.version.files.length === 0 &&
+          !this.replaceFile &&
+          this.version.disk_only === false)
       );
     },
     deps() {
@@ -1190,9 +1199,7 @@ export default defineNuxtComponent({
           //   },
           // });
 
-
-
-          this.$refs.uploading_modal.show()
+          this.$refs.uploading_modal.show();
 
           await useBaseFetchFile(`version/${this.version.id}/file`, {
             method: "POST",
@@ -1201,25 +1208,22 @@ export default defineNuxtComponent({
               "Content-Disposition": formData,
             },
 
-            onUploadProgress: (progress,uploadSpeed) => {
-
+            onUploadProgress: (progress, uploadSpeed) => {
               this.uploading = progress;
               this.uploadSpeed = uploadSpeed;
             },
 
             onError: (error) => {
-              this.$refs.uploading_modal.proceed()
+              this.$refs.uploading_modal.proceed();
               this.$notify({
                 group: "main",
                 title: `${error.error}`,
                 text: `${error.description}`,
                 type: "error",
               });
-            }
+            },
           });
           // this.$refs.uploading_modal.proceed()
-
-
         }
 
         const body = {
@@ -1234,13 +1238,15 @@ export default defineNuxtComponent({
           disk_only: this.version.disk_only,
           primary_file: ["sha1", this.primaryFile.hashes.sha1],
           featured: this.version.featured,
-          file_types: this.version.disk_only ? {} :  this.oldFileTypes.map((x, i) => {
-            return {
-              algorithm: "sha1",
-              hash: this.version.files[i].hashes.sha1,
-              file_type: x ? x.value : null,
-            };
-          }),
+          file_types: this.version.disk_only
+            ? {}
+            : this.oldFileTypes.map((x, i) => {
+                return {
+                  algorithm: "sha1",
+                  hash: this.version.files[i].hashes.sha1,
+                  file_type: x ? x.value : null,
+                };
+              }),
         };
 
         if (this.project.project_type === "modpack") {
@@ -1290,7 +1296,6 @@ export default defineNuxtComponent({
       }
 
       try {
-
         await this.createVersionRaw(this.version);
       } catch (err) {
         this.$notify({
@@ -1349,13 +1354,15 @@ export default defineNuxtComponent({
         featured: version.featured,
         disk_only: version.disk_only,
         disk_url: version.disk_url,
-        file_types: version.disk_only ? {} : this.newFileTypes.reduce(
-          (acc, x, i) => ({
-            ...acc,
-            [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
-          }),
-          {},
-        ),
+        file_types: version.disk_only
+          ? {}
+          : this.newFileTypes.reduce(
+              (acc, x, i) => ({
+                ...acc,
+                [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
+              }),
+              {},
+            ),
       };
 
       formData.append("data", JSON.stringify(newVersion));
@@ -1382,7 +1389,7 @@ export default defineNuxtComponent({
           console.log(manifest);
         }
       }
-      this.$refs.uploading_modal.show()
+      this.$refs.uploading_modal.show();
 
       const data = await useBaseFetchFile("version", {
         method: "POST",
@@ -1391,21 +1398,20 @@ export default defineNuxtComponent({
           "Content-Disposition": formData,
         },
 
-        onUploadProgress: (progress,uploadSpeed) => {
-
+        onUploadProgress: (progress, uploadSpeed) => {
           this.uploading = progress;
           this.uploadSpeed = uploadSpeed;
         },
 
         onError: (error) => {
-          this.$refs.uploading_modal.proceed()
+          this.$refs.uploading_modal.proceed();
           this.$notify({
             group: "main",
             title: `${error.error}`,
             text: `${error.description}`,
             type: "error",
           });
-        }
+        },
       });
       await this.resetProjectVersions();
 

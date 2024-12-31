@@ -23,11 +23,7 @@
         />
       </ConditionalNuxtLink>
       <span :class="`message__author role-${members[message.author_id].role}`">
-        <LockIcon
-          v-if="message.body.private"
-          v-tooltip="'仅版主可见'"
-          class="private-icon"
-        />
+        <LockIcon v-if="message.body.private" v-tooltip="'仅版主可见'" class="private-icon" />
         <ConditionalNuxtLink
           :is-link="!noLinks"
           :to="`/user/${members[message.author_id].username}`"
@@ -63,9 +59,7 @@
     <div v-else class="message__body status-message">
       <span v-if="message.body.type === 'deleted'"> posted a message that has been deleted. </span>
       <template v-else-if="message.body.type === 'status_change'">
-        <span v-if="message.body.new_status === 'processing'">
-          提交资源审核。
-        </span>
+        <span v-if="message.body.new_status === 'processing'"> 提交资源审核。 </span>
         <span v-else>
           更改了资源的状态从 <Badge :type="message.body.old_status" /> 到
           <Badge :type="message.body.new_status" />.

@@ -9,7 +9,6 @@
           <nuxt-link to="/" class="iconified-button raised-button brand-button">
             前往主页
           </nuxt-link>
-        
         </div>
       </div>
     </div>
@@ -17,8 +16,6 @@
 </template>
 
 <script setup>
-import Logo404 from "~/assets/images/404.svg";
-
 defineProps({
   error: {
     type: Object,

@@ -258,7 +258,7 @@ pub fn app_setup(
         let pool_ref_clone2 = pool.clone();
         let redis_ref2 = redis_pool.clone();
 
-        scheduler.run(std::time::Duration::from_secs(10), move || {
+        scheduler.run(std::time::Duration::from_secs(60), move || {
             let pool_ref_clone2 = pool_ref_clone2.clone();
             let redis_ref2 = redis_ref2.clone();
 

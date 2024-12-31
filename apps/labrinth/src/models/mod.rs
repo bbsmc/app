@@ -13,6 +13,7 @@ pub use v3::organizations;
 pub use v3::pack;
 pub use v3::pats;
 pub use v3::payouts;
+pub use v3::forum;
 pub use v3::projects;
 pub use v3::reports;
 pub use v3::sessions;

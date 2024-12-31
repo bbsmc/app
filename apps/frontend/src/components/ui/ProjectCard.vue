@@ -100,8 +100,8 @@ import DownloadIcon from "~/assets/images/utils/download.svg?component";
 import HeartIcon from "~/assets/images/utils/heart.svg?component";
 import Avatar from "~/components/ui/Avatar.vue";
 import dayjs from "dayjs";
-import 'dayjs/locale/zh-cn';
-dayjs.locale('zh-cn');
+import "dayjs/locale/zh-cn";
+dayjs.locale("zh-cn");
 
 export default {
   components: {
