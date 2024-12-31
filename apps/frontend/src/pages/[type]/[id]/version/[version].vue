@@ -1251,9 +1251,9 @@ export default defineNuxtComponent({
           loaders: this.version.loaders,
           disk_url: this.version.disk_url,
           disk_only: this.version.disk_only,
-          primary_file: ["sha1", this.primaryFile.hashes.sha1],
+          primary_file: this.version.disk_only ? [] : ["sha1", this.primaryFile.hashes.sha1],
           featured: this.version.featured,
-          file_types: this.version.disk_only ? {} :  this.oldFileTypes.map((x, i) => {
+          file_types: this.version.disk_only ? []:  this.oldFileTypes.map((x, i) => {
             return {
               algorithm: "sha1",
               hash: this.version.files[i].hashes.sha1,
