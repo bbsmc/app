@@ -69,19 +69,11 @@
       <div class="buttons">
         <slot />
       </div>
-      <div
-        v-if="showUpdatedDate"
-        v-tooltip="$dayjs(updatedAt).format('YYYY-MM-DD hh:mm:ss')"
-        class="stat date"
-      >
+      <div v-if="showUpdatedDate" v-tooltip="formatDateTime(updatedAt)" class="stat date">
         <EditIcon aria-hidden="true" />
         <span class="date-label">更新于 </span>{{ fromNow(updatedAt) }}
       </div>
-      <div
-        v-else-if="showCreatedDate"
-        v-tooltip="$dayjs(createdAt).format('YYYY-MM-DD hh:mm:ss')"
-        class="stat date"
-      >
+      <div v-else-if="showCreatedDate" v-tooltip="formatDateTime(createdAt)" class="stat date">
         <CalendarIcon aria-hidden="true" />
         <span class="date-label">发布于 </span>{{ fromNow(createdAt) }}
       </div>
@@ -100,7 +92,20 @@ import DownloadIcon from "~/assets/images/utils/download.svg?component";
 import HeartIcon from "~/assets/images/utils/heart.svg?component";
 import Avatar from "~/components/ui/Avatar.vue";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc"; // UTC 插件必须在 timezone 之前加载
+import timezone from "dayjs/plugin/timezone";
+import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/zh-cn";
+
+// 按照正确的顺序扩展插件
+dayjs.extend(utc); // 首先扩展 UTC
+dayjs.extend(timezone); // 然后扩展 timezone
+dayjs.extend(relativeTime);
+
+// 设置时区
+dayjs.tz.setDefault("Asia/Shanghai");
+
+// 设置语言环境
 dayjs.locale("zh-cn");
 
 export default {
@@ -221,7 +226,18 @@ export default {
   setup() {
     const tags = useTags();
 
-    return { tags };
+    const fromNow = (date) => {
+      return dayjs(date).tz("Asia/Shanghai").fromNow() + "";
+    };
+    const formatDateTime = (date) => {
+      return dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm:ss");
+    };
+
+    return {
+      tags,
+      fromNow,
+      formatDateTime,
+    };
   },
   computed: {
     projectTypeDisplay() {

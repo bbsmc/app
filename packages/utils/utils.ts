@@ -3,6 +3,23 @@
 // @ts-nocheck
 
 import dayjs from 'dayjs'
+import utc from "dayjs/plugin/utc"; // UTC 插件必须在 timezone 之前加载
+import timezone from "dayjs/plugin/timezone";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/zh-cn";
+
+// 按照正确的顺序扩展插件
+dayjs.extend(utc);  // 首先扩展 UTC
+dayjs.extend(timezone);  // 然后扩展 timezone
+dayjs.extend(relativeTime);
+
+// 设置时区
+dayjs.tz.setDefault("Asia/Shanghai");
+
+// 设置语言环境
+dayjs.locale("zh-cn");
+
+export default dayjs;
 
 export const external = (cosmetics) => (cosmetics.externalLinksNewTab ? '_blank' : '')
 
@@ -203,6 +220,12 @@ export const formatCategoryHeader = (name) => {
   if (name === 'license'){
     return '许可证';
   }
+  if (name === 'views'){
+    return '浏览量';
+  }
+  if (name === 'downloads'){
+    return '下载量';
+  }
   return name;
 }
 
@@ -369,4 +392,8 @@ export const acceptFileFromProjectType = (projectType) => {
     default:
       return '*'
   }
+}
+
+export const formatDateTime = (date: string | number | Date, format: string = 'YYYY-MM-DD HH:mm:ss') => {
+  return dayjs(date).tz('Asia/Shanghai').format(format)
 }

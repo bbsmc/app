@@ -179,7 +179,7 @@
               editPatIndex = index;
               name = pat.name;
               scopesVal = pat.scopes;
-              expires = $dayjs(pat.expires).format('YYYY-MM-DD');
+              expires = formatDateTime(pat.expires, 'YYYY-MM-DD');
               $refs.patModal.show();
             }
           "
@@ -205,6 +205,7 @@
 import { PlusIcon, XIcon, TrashIcon, EditIcon, SaveIcon } from "@modrinth/assets";
 import { Checkbox, ConfirmModal } from "@modrinth/ui";
 
+import { formatDateTime } from "@modrinth/utils";
 import { commonSettingsMessages } from "~/utils/common-messages.ts";
 import {
   hasScope,
@@ -213,7 +214,6 @@ import {
   useScopes,
   getScopeValue,
 } from "~/composables/auth/scopes.ts";
-
 import CopyCode from "~/components/ui/CopyCode.vue";
 import Modal from "~/components/ui/Modal.vue";
 

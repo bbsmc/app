@@ -61,15 +61,15 @@
       <template v-else-if="message.body.type === 'status_change'">
         <span v-if="message.body.new_status === 'processing'"> 提交资源审核。 </span>
         <span v-else>
-          更改了资源的状态从 <Badge :type="message.body.old_status" /> 到
-          <Badge :type="message.body.new_status" />.
+          更改了资源的状态从
+          <Badge :type="message.body.old_status" /> 到 <Badge :type="message.body.new_status" />.
         </span>
       </template>
       <span v-else-if="message.body.type === 'thread_closure'">关闭了该会话</span>
       <span v-else-if="message.body.type === 'thread_reopen'">重新打开该会话</span>
     </div>
     <span class="message__date">
-      <span v-tooltip="$dayjs(message.created).format('YYYY-MM-DD hh:mm:ss')">
+      <span v-tooltip="formatDateTime(message.created)">
         {{ timeSincePosted }}
       </span>
     </span>
@@ -102,7 +102,7 @@ import {
   ScaleIcon,
 } from "@modrinth/assets";
 import { OverflowMenu, ConditionalNuxtLink } from "@modrinth/ui";
-import { renderString } from "@modrinth/utils";
+import { renderString, formatDateTime } from "@modrinth/utils";
 import Avatar from "~/components/ui/Avatar.vue";
 import Badge from "~/components/ui/Badge.vue";
 import { isStaff } from "~/helpers/users.js";
@@ -261,6 +261,7 @@ async function deleteMessage() {
   gap: var(--spacing-card-xs);
   flex-wrap: wrap;
 }
+
 a {
   display: flex;
   align-items: center;

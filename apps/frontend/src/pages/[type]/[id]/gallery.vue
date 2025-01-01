@@ -236,7 +236,7 @@
         <div class="gallery-bottom">
           <div class="gallery-created">
             <CalendarIcon aria-hidden="true" aria-label="Date created" />
-            {{ $dayjs(item.created).format("MMMM D, YYYY") }}
+            {{ $dayjs(item.created).format("YYYY-MM-DD") }}
           </div>
           <div v-if="currentMember" class="gallery-buttons input-group">
             <button
@@ -295,15 +295,11 @@ import {
   TransferIcon,
 } from "@modrinth/assets";
 import { ConfirmModal } from "@modrinth/ui";
-import dayjs from "dayjs";
 import FileInput from "~/components/ui/FileInput.vue";
 import DropArea from "~/components/ui/DropArea.vue";
 import Modal from "~/components/ui/Modal.vue";
-import "dayjs/locale/zh-cn";
 import { isPermission } from "~/utils/permissions.ts";
 
-const { locale } = dayjs;
-locale("zh-cn");
 const props = defineProps({
   project: {
     type: Object,

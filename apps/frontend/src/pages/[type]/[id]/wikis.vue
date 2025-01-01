@@ -371,11 +371,7 @@
                 class="message__body markdown-body"
                 v-html="msg.message.replace('\n', '</br>')"
               />
-              <span
-                v-tooltip="$dayjs(msg.time).format('YYYY-MM-DD hh:mm:ss')"
-                class="date"
-                style="font-size: 13px"
-              >
+              <span v-tooltip="formatDateTime(msg.time)" class="date" style="font-size: 13px">
                 {{ fromNow(msg.time) }}
               </span>
             </div>
@@ -487,11 +483,7 @@
                 class="message__body markdown-body"
                 v-html="msg.message.replace('\n', '</br>')"
               />
-              <span
-                v-tooltip="$dayjs(msg.time).format('YYYY-MM-DD HH:mm:ss')"
-                class="date"
-                style="font-size: 13px"
-              >
+              <span v-tooltip="formatDateTime(msg.time)" class="date" style="font-size: 13px">
                 {{ fromNow(msg.time) }}
               </span>
             </div>
@@ -621,6 +613,7 @@ import {
 } from "@modrinth/ui";
 import { PlusIcon, CogIcon, XIcon, CheckIcon } from "@modrinth/assets";
 import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
+import { formatDateTime } from "@modrinth/utils";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 const auth = await useAuth();
 
@@ -994,8 +987,10 @@ async function confirmRejectWiki() {
   .member-header {
     display: flex;
     justify-content: space-between;
+
     .info {
       display: flex;
+
       .text {
         margin: auto 0 auto 0.5rem;
         font-size: var(--font-size-sm);
@@ -1017,24 +1012,30 @@ async function confirmRejectWiki() {
         }
       }
     }
+
     .side-buttons {
       display: flex;
       align-items: center;
+
       .dropdown-icon {
         margin-left: 1rem;
+
         svg {
           transition: 150ms ease transform;
         }
       }
     }
   }
+
   .content {
     display: none;
     flex-direction: column;
     padding-top: var(--gap-md);
+
     .main-info {
       margin-bottom: var(--gap-lg);
     }
+
     .permissions {
       margin-bottom: var(--gap-md);
       max-width: 45rem;
@@ -1043,17 +1044,20 @@ async function confirmRejectWiki() {
       grid-gap: 0.5rem;
     }
   }
+
   &.open {
     .member-header {
       .dropdown-icon svg {
         transform: rotate(180deg);
       }
     }
+
     .content {
       display: flex;
     }
   }
 }
+
 :deep(.checkbox-outer) {
   button.checkbox {
     border: none;
@@ -1122,6 +1126,7 @@ async function confirmRejectWiki() {
     filter: var(--active-filter);
   }
 }
+
 .message {
   --gap-size: var(--spacing-card-xs);
   display: flex;

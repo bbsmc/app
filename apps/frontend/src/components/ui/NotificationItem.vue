@@ -103,7 +103,8 @@
           {{ project.title }}
         </nuxt-link>
         <template v-if="tags.rejectedStatuses.includes(notification.body.new_status)">
-          版主已将 <Badge :type="notification.body.new_status" />
+          版主已将
+          <Badge :type="notification.body.new_status" />
         </template>
         <template v-else>
           从
@@ -213,12 +214,7 @@
               class="categories"
             />
             {{ $formatVersion(notif.extra_data.version.game_versions) }}
-            <span
-              v-tooltip="
-                $dayjs(notif.extra_data.version.date_published).format('YYYY-MM-DD hh:mm:ss')
-              "
-              class="date"
-            >
+            <span v-tooltip="formatDateTime(notif.extra_data.version.date_published)" class="date">
               {{ fromNow(notif.extra_data.version.date_published) }}
             </span>
           </span>
@@ -231,10 +227,7 @@
 
     <span class="notification__date">
       <span v-if="notification.read" class="read-badge inline-flex"> <ReadIcon /> 已读 </span>
-      <span
-        v-tooltip="$dayjs(notification.created).format('YYYY-MM-DD hh:mm:ss')"
-        class="inline-flex"
-      >
+      <span v-tooltip="formatDateTime(notification.created)" class="inline-flex">
         <CalendarIcon class="mr-1" /> 通知时间 {{ fromNow(notification.created) }}
       </span>
     </span>
@@ -375,6 +368,7 @@
 
 <script setup>
 import { renderString } from "@modrinth/utils";
+import { formatDateTime } from "@modrinth/utils";
 import InvitationIcon from "~/assets/images/utils/user-plus.svg?component";
 import ModerationIcon from "~/assets/images/sidebar/admin.svg?component";
 import NotificationIcon from "~/assets/images/sidebar/notifications.svg?component";
@@ -605,6 +599,7 @@ function getMessages() {
       }
     }
   }
+
   .notification__body {
     grid-area: body;
 
@@ -675,6 +670,7 @@ function getMessages() {
     &:not(:hover) {
       text-decoration: none;
     }
+
     font-weight: bold;
   }
 

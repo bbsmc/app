@@ -1132,7 +1132,7 @@
             <!--            发布-->
             <div
               v-if="project.approved"
-              v-tooltip="$dayjs(project.approved).format('YYYY-MM-DD hh:mm:ss')"
+              v-tooltip="formatDateTime(project.approved)"
               class="details-list__item"
             >
               <CalendarIcon aria-hidden="true" />
@@ -1140,11 +1140,7 @@
             </div>
 
             <!--            提交-->
-            <div
-              v-else
-              v-tooltip="$dayjs(project.published).format('YYYY-MM-DD hh:mm:ss')"
-              class="details-list__item"
-            >
+            <div v-else v-tooltip="formatDateTime(project.published)" class="details-list__item">
               <CalendarIcon aria-hidden="true" />
               <div>提交于 {{ fromNow(project.published) }}</div>
             </div>
@@ -1152,7 +1148,7 @@
             <!--            发布-->
             <div
               v-if="project.status === 'processing' && project.queued"
-              v-tooltip="$dayjs(project.queued).format('YYYY-MM-DD hh:mm:ss')"
+              v-tooltip="formatDateTime(project.queued)"
               class="details-list__item"
             >
               <ScaleIcon aria-hidden="true" />
@@ -1162,7 +1158,7 @@
             <!--            更新-->
             <div
               v-if="versions.length > 0 && project.updated"
-              v-tooltip="$dayjs(project.updated).format('YYYY-MM-DD hh:mm:ss')"
+              v-tooltip="formatDateTime(project.updated)"
               class="details-list__item"
             >
               <VersionIcon aria-hidden="true" />
@@ -1263,7 +1259,14 @@ import {
   ScrollablePanel,
   ContentPageHeader,
 } from "@modrinth/ui";
-import { formatCategory, isRejected, isStaff, isUnderReview, renderString } from "@modrinth/utils";
+import {
+  formatCategory,
+  isRejected,
+  isStaff,
+  isUnderReview,
+  renderString,
+  formatDateTime,
+} from "@modrinth/utils";
 import dayjs from "dayjs";
 import Badge from "~/components/ui/Badge.vue";
 import NavTabs from "~/components/ui/NavTabs.vue";
@@ -1280,12 +1283,6 @@ import Accordion from "~/components/ui/Accordion.vue";
 import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
-import "dayjs/locale/zh-cn";
-
-const { locale } = dayjs;
-
-locale("zh-cn");
-
 const data = useNuxtApp();
 const route = useNativeRoute();
 

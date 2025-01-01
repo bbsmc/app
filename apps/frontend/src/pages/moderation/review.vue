@@ -122,21 +122,21 @@
           :to="`/${project.inferred_project_type}/${project.slug}`"
           target="_blank"
           class="iconified-button raised-button"
-          ><EyeIcon /> 查看该资源</nuxt-link
         >
+          <EyeIcon /> 查看该资源
+        </nuxt-link>
       </div>
       <span v-if="project.queued" :class="`submitter-info ${project.age_warning}`">
         <WarningIcon v-if="project.age_warning" />
         提交于
-        <span v-tooltip="$dayjs(project.queued).format('YYYY-MM-DD hh:mm:ss')">{{
-          fromNow(project.queued)
-        }}</span>
+        <span v-tooltip="formatDateTime(project.queued)">{{ fromNow(project.queued) }}</span>
       </span>
-      <span v-else class="submitter-info"><UnknownIcon /> Unknown queue date</span>
+      <span v-else class="submitter-info"> <UnknownIcon /> Unknown queue date </span>
     </div>
   </section>
 </template>
 <script setup>
+import { formatProjectType, formatDateTime } from "@modrinth/utils";
 import Chips from "~/components/ui/Chips.vue";
 import Avatar from "~/components/ui/Avatar.vue";
 import UnknownIcon from "~/assets/images/utils/unknown.svg?component";
@@ -146,7 +146,6 @@ import SortDescIcon from "~/assets/images/utils/sort-desc.svg?component";
 import WarningIcon from "~/assets/images/utils/issues.svg?component";
 import ModerationIcon from "~/assets/images/sidebar/admin.svg?component";
 import Badge from "~/components/ui/Badge.vue";
-import { formatProjectType } from "~/plugins/shorthands.js";
 
 useHead({
   title: "审核资源 - BBSMC",
@@ -250,6 +249,7 @@ async function goToProjects() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-card-sm);
+
   @media screen and (min-width: 650px) {
     display: grid;
     grid-template: "title action" "date action";

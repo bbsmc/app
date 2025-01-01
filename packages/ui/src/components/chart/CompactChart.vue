@@ -1,8 +1,7 @@
 <!-- eslint-disable eslint-comments/require-description -->
 <script setup>
-import { formatNumber } from '@modrinth/utils'
+import { formatNumber, formatDateTime } from '@modrinth/utils'
 import { defineAsyncComponent, ref } from 'vue'
-import dayjs from 'dayjs'
 import Card from '../base/Card.vue'
 
 const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
@@ -116,7 +115,7 @@ const chartOptions = ref({
             ? `<div class="list-entry">
                 <div class="label">
                   <span class="circle" style="background-color: ${w.globals.colors[0]}"> </span>
-                  ${dayjs(w.globals.lastXAxis.categories[dataPointIndex]).format('MMM D')}
+                  ${formatDateTime(w.globals.lastXAxis.categories[dataPointIndex], 'MMM DDD')}
                 </div>
                 <div class="divider">
                   |
@@ -144,14 +143,7 @@ const chartOptions = ref({
     <div class="subtitle">
       {{ title }}
     </div>
-    <VueApexCharts
-      ref="chart"
-      type="area"
-      height="120"
-      :options="chartOptions"
-      :series="data"
-      class="chart"
-    />
+    <VueApexCharts ref="chart" type="area" height="120" :options="chartOptions" :series="data" class="chart" />
   </Card>
 </template>
 

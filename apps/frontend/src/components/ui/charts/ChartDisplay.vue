@@ -14,7 +14,7 @@
           <CompactChart
             v-if="analytics.formattedData.value.downloads"
             ref="tinyDownloadChart"
-            :title="` ${dayjs(startDate).format('YYYY-MM-D')} - ${dayjs(endDate).format('YYYY-MM-D')}`"
+            :title="` ${formatDateTime(startDate, 'YYYY-MM-DD')} - ${formatDateTime(endDate, 'YYYY-MM-DD')}`"
             color="var(--color-brand)"
             :value="formatNumber(analytics.formattedData.value.downloads.sum, false)"
             :data="analytics.formattedData.value.downloads.chart.sumData"
@@ -33,7 +33,7 @@
           <CompactChart
             v-if="analytics.formattedData.value.views"
             ref="tinyViewChart"
-            :title="` ${dayjs(startDate).format('YYYY-MM-D')} - ${dayjs(endDate).format('YYYY-MM-D')}`"
+            :title="` ${formatDateTime(startDate, 'YYYY-MM-DD')} - ${formatDateTime(endDate, 'YYYY-MM-DD')}`"
             color="var(--color-blue)"
             :value="formatNumber(analytics.formattedData.value.views.sum, false)"
             :data="analytics.formattedData.value.views.chart.sumData"
@@ -50,7 +50,7 @@
         <!--          <CompactChart-->
         <!--            v-if="analytics.formattedData.value.revenue"-->
         <!--            ref="tinyRevenueChart"-->
-        <!--            :title="` ${dayjs(startDate).format('YYYY-MM-D')} - ${dayjs(endDate).format('YYYY-MM-D')}`"-->
+        <!--            :title="` ${formatDateTime(startDate, 'YYYY-MM-DD')} - ${formatDateTime(endDate, 'YYYY-MM-DD')}`"-->
         <!--            color="var(&#45;&#45;color-purple)"-->
         <!--            :value="formatMoney(analytics.formattedData.value.revenue.sum, false)"-->
         <!--            :data="analytics.formattedData.value.revenue.chart.sumData"-->
@@ -301,7 +301,7 @@
 
 <script setup lang="ts">
 import { Button, Card, DropdownSelect } from "@modrinth/ui";
-import { formatMoney, formatNumber, formatCategoryHeader } from "@modrinth/utils";
+import { formatMoney, formatNumber, formatCategoryHeader, formatDateTime } from "@modrinth/utils";
 import { UpdatedIcon, DownloadIcon } from "@modrinth/assets";
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
@@ -691,6 +691,7 @@ const defaultRanges: Record<number, [string, number] | string> = {
     flex-direction: column;
     gap: var(--gap-xs);
   }
+
   .percentage-bar {
     grid-area: bar;
     width: 100%;
@@ -699,6 +700,7 @@ const defaultRanges: Record<number, [string, number] | string> = {
     border: 1px solid var(--color-button-bg);
     border-radius: var(--radius-sm);
     overflow: hidden;
+
     span {
       display: block;
       height: 100%;

@@ -3,13 +3,8 @@
     <router-link class="icon" tabindex="-1" :to="`/${projectTypeUrl}/${id}`">
       <Avatar :src="iconUrl" :alt="name" size="md" no-shadow loading="lazy" />
     </router-link>
-    <router-link
-      class="gallery"
-      :class="{ 'no-image': !featuredImage }"
-      tabindex="-1"
-      :to="`/${projectTypeUrl}/${id}`"
-      :style="color ? `background-color: ${toColor};` : ''"
-    >
+    <router-link class="gallery" :class="{ 'no-image': !featuredImage }" tabindex="-1" :to="`/${projectTypeUrl}/${id}`"
+      :style="color ? `background-color: ${toColor};` : ''">
       <img v-if="featuredImage" :src="featuredImage" alt="gallery image" loading="lazy" />
     </router-link>
     <div class="title">
@@ -28,28 +23,22 @@
       {{ description }}
     </p>
     <Categories :categories="categories" :type="type" class="tags">
-      <EnvironmentIndicator
-        :type-only="moderation"
-        :client-side="clientSide"
-        :server-side="serverSide"
-        :type="projectTypeDisplay"
-        :search="search"
-        :categories="categories"
-      />
+      <EnvironmentIndicator :type-only="moderation" :client-side="clientSide" :server-side="serverSide"
+        :type="projectTypeDisplay" :search="search" :categories="categories" />
     </Categories>
     <div class="stats">
       <div v-if="downloads" class="stat">
         <DownloadIcon aria-hidden="true" />
         <p>
-          <strong>{{ formatNumber(downloads) }}</strong
-          ><span class="stat-label"> download<span v-if="downloads !== '1'">s</span></span>
+          <strong>{{ formatNumber(downloads) }}</strong><span class="stat-label"> download<span
+              v-if="downloads !== '1'">s</span></span>
         </p>
       </div>
       <div v-if="follows" class="stat">
         <HeartIcon aria-hidden="true" />
         <p>
-          <strong>{{ formatNumber(follows) }}</strong
-          ><span class="stat-label"> follower<span v-if="follows !== '1'">s</span></span>
+          <strong>{{ formatNumber(follows) }}</strong><span class="stat-label"> follower<span
+              v-if="follows !== '1'">s</span></span>
         </p>
       </div>
       <div class="buttons">
@@ -69,7 +58,7 @@
 
 <script setup>
 import { HeartIcon, DownloadIcon, EditIcon, CalendarIcon } from '@modrinth/assets'
-import { formatNumber } from '@modrinth/utils'
+import { formatNumber, formatDateTime } from '@modrinth/utils'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime.js'
 import { defineComponent } from 'vue'
@@ -202,13 +191,13 @@ export default defineComponent({
       return `rgba(${[r, g, b, 1].join(',')})`
     },
     createdDate() {
-      return dayjs(this.createdAt).format('MMMM D, YYYY [at] h:mm:ss A')
+      return formatDateTime(this.createdAt)
     },
     sinceCreation() {
       return dayjs(this.createdAt).fromNow()
     },
     updatedDate() {
-      return dayjs(this.updatedAt).format('MMMM D, YYYY [at] h:mm:ss A')
+      return formatDateTime(this.updatedAt)
     },
     sinceUpdated() {
       return dayjs(this.updatedAt).fromNow()
@@ -346,12 +335,12 @@ export default defineComponent({
         margin-left: auto;
       }
 
-      &:first-child > :last-child {
+      &:first-child> :last-child {
         margin-right: auto;
       }
     }
 
-    .buttons:not(:empty) + .date {
+    .buttons:not(:empty)+.date {
       flex-basis: 100%;
     }
   }

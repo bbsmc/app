@@ -2,9 +2,14 @@
   <div class="forum-container">
     <!-- 帖子列表 -->
     <div class="posts-wrapper">
-      <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
-        :data-floor-number="post.floor_number" class="card markdown-body">
-
+      <div
+        v-for="post in forum"
+        :id="`post-${post.floor_number}`"
+        :key="post.floor_number"
+        ref="postRefs"
+        :data-floor-number="post.floor_number"
+        class="card markdown-body"
+      >
         <div class="post-header">
           <!-- 用户信息区 -->
           <div class="user-info">
@@ -22,15 +27,26 @@
         </div>
 
         <!-- 如果是回复帖子，显示回复引用 -->
-        <div v-if="post.reply_content" class="reply-reference" @click="scrollToPost(post.replied_to)">
+        <div
+          v-if="post.reply_content"
+          class="reply-reference"
+          @click="scrollToPost(post.replied_to)"
+        >
           <div class="reply-info">
-            <img :src="post.reply_content.user_avatar" :alt="post.reply_content.user_name" class="reply-avatar" />
+            <img
+              :src="post.reply_content.user_avatar"
+              :alt="post.reply_content.user_name"
+              class="reply-avatar"
+            />
             <div class="reply-user-info">
               <span class="reply-username">{{ post.reply_content.user_name }}</span>
               <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
-          <div class="reply-quote" v-html="renderHighlightedString(post.reply_content.content)"></div>
+          <div
+            class="reply-quote"
+            v-html="renderHighlightedString(post.reply_content.content)"
+          ></div>
         </div>
 
         <!-- 帖子内容 -->
@@ -43,8 +59,14 @@
 
         <!-- 如果有回复，显示回复链接 -->
         <div v-if="post.replies.length > 0" class="replies-info">
-          <span v-for="reply in post.replies" :key="reply" class="reply-link" @click="scrollToPost(reply.floor_number)"
-            @mouseenter="showReplyPreview(reply)" @mouseleave="hideReplyPreview">
+          <span
+            v-for="reply in post.replies"
+            :key="reply"
+            class="reply-link"
+            @click="scrollToPost(reply.floor_number)"
+            @mouseenter="showReplyPreview(reply)"
+            @mouseleave="hideReplyPreview"
+          >
             #{{ reply.floor_number }}
           </span>
         </div>
@@ -52,7 +74,7 @@
     </div>
 
     <!-- 时间线 -->
-    <div class="timeline-indicator" v-if="!isMobile">
+    <div v-if="!isMobile" class="timeline-indicator">
       <button class="timeline-reply-button" @click="showNewReply">
         <span>发表回复</span>
       </button>
@@ -62,8 +84,13 @@
       <div class="timeline-content">
         <div class="timeline-line">
           <div class="timeline-sections">
-            <div v-for="(section, index) in timelineSections" :key="index" class="timeline-section"
-              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`" @click="jumpToSection(index)"></div>
+            <div
+              v-for="(section, index) in timelineSections"
+              :key="index"
+              class="timeline-section"
+              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`"
+              @click="jumpToSection(index)"
+            ></div>
           </div>
         </div>
         <div class="timeline-position" :style="{ top: timelinePosition + '%' }">
@@ -99,11 +126,15 @@
         <div class="reply-form-header">
           <span>{{
             replyingTo.id === "new" ? "发表新帖" : `回复 #${replyingTo.floor_number}`
-            }}</span>
+          }}</span>
           <button class="close-button" @click="cancelReply">×</button>
         </div>
         <div class="reply-form-content">
-          <MarkdownEditor v-model="replyContent" :on-image-upload="onUploadHandler" placeholder="输入回复内容..." />
+          <MarkdownEditor
+            v-model="replyContent"
+            :on-image-upload="onUploadHandler"
+            placeholder="输入回复内容..."
+          />
         </div>
         <div class="reply-form-actions">
           <button class="submit-button" :disabled="!replyContent.trim()" @click="submitReply">
@@ -120,15 +151,8 @@ import { debounce } from "lodash-es";
 import { onMounted, ref, onUnmounted, computed, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import dayjs from "dayjs";
-import "dayjs/locale/zh-cn"; // 导入中文语言包
-import relativeTime from "dayjs/plugin/relativeTime"; // 导入相对时间插件
 import { MarkdownEditor } from "@modrinth/ui";
 import { renderHighlightedString } from "~/helpers/highlight.js";
-
-const { locale, extend } = dayjs;
-// 配置 dayjs
-extend(relativeTime);
-locale("zh-cn");
 
 const data = useNuxtApp();
 const route = useRoute();
@@ -690,9 +714,9 @@ const submitReply = () => {
       replyingTo.value.id === "new"
         ? null
         : {
-          user: replyingTo.value.user,
-          content: replyingTo.value.content,
-        },
+            user: replyingTo.value.user,
+            content: replyingTo.value.content,
+          },
   };
 
   // 如果是回复帖子，更新被回复帖子的 replies 数组

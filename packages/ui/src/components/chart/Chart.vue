@@ -1,7 +1,6 @@
 <!-- eslint-disable no-console -->
 <script setup>
-import dayjs from 'dayjs'
-import { formatNumber } from '@modrinth/utils'
+import { formatNumber, formatDateTime } from '@modrinth/utils'
 import { defineAsyncComponent, ref } from 'vue'
 import Button from '../base/Button.vue'
 import Checkbox from '../base/Checkbox.vue'
@@ -23,7 +22,7 @@ const props = defineProps({
   },
   formatLabels: {
     type: Function,
-    default: (label) => dayjs(label).format('MMM D'),
+    default: (label) => formatDateTime(label, 'MMM DDD'),
   },
   colors: {
     type: Array,
@@ -144,14 +143,13 @@ const chartOptions = ref({
         `<div class="seperated-entry title">` +
         `<div class="label">${props.formatLabels(
           w.globals.lastXAxis.categories[dataPointIndex],
-        )}</div>${
-          !props.hideTotal
-            ? `<div class="value">
+        )}</div>${!props.hideTotal
+          ? `<div class="value">
         ${props.prefix}
         ${formatNumber(series.reduce((a, b) => a + b[dataPointIndex], 0).toString(), false)}
         ${props.suffix}
         </div>`
-            : ``
+          : ``
         }</div><hr class="card-divider" />${series
           .map((value, index) =>
             value[dataPointIndex] > 0
@@ -232,14 +230,9 @@ defineExpose({
     </div>
     <VueApexCharts ref="chart" :type="type" :options="chartOptions" :series="data" class="chart" />
     <div v-if="!hideLegend" class="legend">
-      <Checkbox
-        v-for="legend in legendValues"
-        :key="legend.name"
-        class="legend-checkbox"
-        :style="`--color: ${legend.color};`"
-        :model-value="legend.visible"
-        @update:model-value="(newVal) => flipLegend(legend, newVal)"
-      >
+      <Checkbox v-for="legend in legendValues" :key="legend.name" class="legend-checkbox"
+        :style="`--color: ${legend.color};`" :model-value="legend.visible"
+        @update:model-value="(newVal) => flipLegend(legend, newVal)">
         {{ legend.name }}
       </Checkbox>
     </div>
