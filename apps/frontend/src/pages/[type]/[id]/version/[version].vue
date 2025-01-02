@@ -1252,7 +1252,7 @@ export default defineNuxtComponent({
           dependencies: this.version.dependencies,
           game_versions: this.version.game_versions,
           loaders: this.version.loaders,
-          disk_url: this.version.disk_url,
+          disk_url: version.disk_only ? version.disk_url : null,
           disk_only: this.version.disk_only,
           primary_file: this.version.disk_only ? [] : ["sha1", this.primaryFile.hashes.sha1],
           featured: this.version.featured,
@@ -1375,7 +1375,7 @@ export default defineNuxtComponent({
         release_channel: version.version_type,
         featured: version.featured,
         disk_only: version.disk_only,
-        disk_url: version.disk_url,
+        disk_url: version.disk_only ? version.disk_url : null,
         file_types: version.disk_only
           ? {}
           : this.newFileTypes.reduce(
@@ -1486,7 +1486,7 @@ export default defineNuxtComponent({
           loaders: this.packageLoaders,
           featured: this.version.featured,
           disk_only: this.version.disk_only,
-          disk_url: this.version.disk_url,
+          disk_url: version.disk_only ? version.disk_url : null,
         });
 
         this.$refs.modal_package_mod.hide();
