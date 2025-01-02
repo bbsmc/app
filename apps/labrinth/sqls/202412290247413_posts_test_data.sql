@@ -17,11 +17,15 @@ DECLARE
     total_posts INTEGER := 200;
     base_time TIMESTAMP;
     current_timestamp_millis BIGINT;
+    random_id BIGINT;  -- 新增变量用于存储随机ID
 BEGIN
     -- 初始化基础时间为当前时间减去200天
     base_time := CURRENT_TIMESTAMP - INTERVAL '200 days';
 
     FOR i IN 1..total_posts LOOP
+        -- 生成6-11位随机ID
+        random_id := floor(random() * (999999999999 - 100000)) + 100000;
+
         -- 生成基于时间戳的ID
         current_timestamp_millis := EXTRACT(EPOCH FROM (base_time + (i || ' minutes')::INTERVAL)) * 1000;
         
@@ -51,7 +55,7 @@ BEGIN
             user_id,
             replied_to
         ) VALUES (
-            current_timestamp_millis,
+            random_id,  -- 使用随机ID
             1,
             i,
             CASE 

@@ -7,6 +7,7 @@ pub use super::organizations::OrganizationId;
 pub use super::pats::PatId;
 pub use super::payouts::PayoutId;
 pub use super::projects::{ProjectId, VersionId,WikiId};
+pub use super::forum::{DiscussionId, PostId};
 pub use super::reports::ReportId;
 pub use super::sessions::SessionId;
 pub use super::teams::TeamId;
@@ -17,7 +18,6 @@ pub use crate::models::billing::{
     ChargeId, ProductId, ProductPriceId, UserSubscriptionId,
 };
 use thiserror::Error;
-use crate::models::forum::{DiscussionId, PostId};
 
 /// Generates a random 64 bit integer that is exactly `n` characters
 /// long when encoded as base62.

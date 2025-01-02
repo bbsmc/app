@@ -614,14 +614,24 @@ impl From<WikiId> for ids::WikiId {
         ids::WikiId(id.0 as u64)
     }
 }
-impl From<ids::PostId> for WikiId {
-    fn from(id: ids::WikiId) -> Self {
-        WikiId(id.0 as i64)
+impl From<ids::PostId> for PostId {
+    fn from(id: ids::PostId) -> Self {
+        PostId(id.0 as i64)
     }
 }
-impl From<WikiId> for ids::WikiId {
-    fn from(id: WikiId) -> Self {
-        ids::WikiId(id.0 as u64)
+impl From<PostId> for ids::PostId {
+    fn from(id: PostId) -> Self {
+        ids::PostId(id.0 as u64)
+    }
+}
+impl From<ids::DiscussionId> for DiscussionId {
+    fn from(id: ids::DiscussionId) -> Self {
+        DiscussionId(id.0 as i64)
+    }
+}
+impl From<DiscussionId> for ids::DiscussionId {
+    fn from(id: DiscussionId) -> Self {
+        ids::DiscussionId(id.0 as u64)
     }
 }
 
