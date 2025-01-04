@@ -1,5 +1,4 @@
 <template>
-
   <template v-if="project.forum">
     <ForumModal :discussion-id="project.forum" />
   </template>
@@ -10,7 +9,7 @@
       <br />
       该资源作者没有开启讨论区
       <br />
-      <div class="mt-5 flex gap-2" style="justify-content: flex-end" v-if="currentMember">
+      <div v-if="currentMember" class="mt-5 flex gap-2" style="justify-content: flex-end">
         <ButtonStyled color="green">
           <button @click="openForumModal">
             <CheckIcon aria-hidden="true" />
@@ -19,16 +18,12 @@
         </ButtonStyled>
       </div>
     </div>
-
   </template>
 </template>
 
-
 <script setup>
+import { ButtonStyled } from "@modrinth/ui";
 import ForumModal from "~/components/ui/ForumModal.vue";
-import {
-  ButtonStyled
-} from "@modrinth/ui";
 const data = useNuxtApp();
 const router = useNativeRouter();
 const route = useNativeRoute();
@@ -48,7 +43,7 @@ const props = defineProps({
 
 async function openForumModal() {
   try {
-    let res = await useBaseFetch(`project/${route.params.id}/forum`, {
+    const res = await useBaseFetch(`project/${route.params.id}/forum`, {
       apiVersion: 3,
       method: "POST",
     });
