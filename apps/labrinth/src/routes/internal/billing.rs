@@ -17,6 +17,7 @@ use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use actix_web::{delete, get, patch, post, web, HttpRequest, HttpResponse};
 use chrono::Utc;
+use log::{info, warn};
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -24,7 +25,6 @@ use serde_with::serde_derive::Deserialize;
 use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
-use log::{info, warn};
 use stripe::{
     CreateCustomer, CreatePaymentIntent, CreateSetupIntent,
     CreateSetupIntentAutomaticPaymentMethods,

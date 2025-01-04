@@ -1,10 +1,10 @@
 use flate2::read::GzDecoder;
+use log::{info, warn};
 use maxminddb::geoip2::Country;
+use reqwest::Client;
 use std::io::{Cursor, Read};
 use std::net::Ipv6Addr;
 use std::time::Duration;
-use log::{info, warn};
-use reqwest::Client;
 use tar::Archive;
 use tokio::sync::RwLock;
 
@@ -57,9 +57,8 @@ impl MaxMindIndexer {
             response = reqwest::get(&url).await?;
             if !response.status().is_success() {
                 info!("maxmind备用下载失败 {}", response.status());
-            }else {
+            } else {
                 info!("maxmind已使用备用下载源 {}", response.status());
-
             }
         }
         if !response.status().is_success() {
@@ -68,7 +67,9 @@ impl MaxMindIndexer {
             return Ok(None);
         }
         info!("Downloaded maxmind database.");
-        let tarfile = GzDecoder::new(Cursor::new(response.bytes().await?.as_ref().to_vec()));
+        let tarfile = GzDecoder::new(Cursor::new(
+            response.bytes().await?.as_ref().to_vec(),
+        ));
         let mut archive = Archive::new(tarfile);
 
         if let Ok(entries) = archive.entries() {

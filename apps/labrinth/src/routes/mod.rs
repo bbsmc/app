@@ -44,11 +44,11 @@ pub fn root_config(cfg: &mut web::ServiceConfig) {
 
                         allowed_origins.contains(&"*".to_string())
                             || allowed_origins.contains(
-                            &origin
-                                .to_str()
-                                .unwrap_or_default()
-                                .to_string(),
-                        )
+                                &origin
+                                    .to_str()
+                                    .unwrap_or_default()
+                                    .to_string(),
+                            )
                     })
                     .allowed_methods(vec!["GET", "POST"])
                     .allowed_headers(vec![

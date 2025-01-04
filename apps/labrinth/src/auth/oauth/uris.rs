@@ -76,8 +76,7 @@ mod tests {
             "https://bbsmc.net/a/b/c?q1=p1&q2=p2",
         ];
         let to_validate =
-            "https://bbsmc.net/a/b/c?query0=param0&query1=param1"
-                .to_string();
+            "https://bbsmc.net/a/b/c?query0=param0&query1=param1".to_string();
 
         let validated = ValidatedRedirectUri::validate(
             &Some(to_validate.clone()),

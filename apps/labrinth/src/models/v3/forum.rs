@@ -1,7 +1,7 @@
 use super::ids::Base62Id;
+use crate::database::models::forum::PostQuery;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use crate::database::models::forum::PostQuery;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Debug)]
 #[serde(from = "Base62Id")]
@@ -26,7 +26,7 @@ pub struct PostResponse {
     pub floor_number: i64,
     pub content: String,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub user_name: String,
     pub user_avatar: String,
     pub replied_to: Option<i64>,
@@ -34,7 +34,7 @@ pub struct PostResponse {
     pub replies: Vec<Replay>,
 }
 
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReplayContent {
     pub content: String,
     pub user_name: String,
@@ -45,13 +45,12 @@ pub struct PostIndex {
     pub id: i64,
     pub floor_number: i64,
 }
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Replay {
     pub floor_number: i64,
     pub content: String,
     pub user_name: String,
     pub user_avatar: String,
-    pub replied_to: Option<i64>,
 }
 
 impl From<PostQuery> for PostResponse {

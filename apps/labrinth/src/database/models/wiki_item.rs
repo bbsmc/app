@@ -1,11 +1,11 @@
 use super::ids::*;
 use crate::database::models::{DatabaseError, WikiCache};
 use crate::database::redis::RedisPool;
+use crate::models::users::User;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
-use crate::models::users::User;
 
 pub const WIKI_NAMESPACE: &str = "wikis";
 
@@ -22,8 +22,6 @@ pub struct Wiki {
     pub updated: DateTime<Utc>,
     pub slug: String,
 }
-
-
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct WikiDisplays {
@@ -203,9 +201,7 @@ impl Wiki {
         let mut redis = redis.connect().await?;
 
         redis
-            .delete_many([
-                (WIKI_NAMESPACE, Some(self.id.0.to_string()))
-            ])
+            .delete_many([(WIKI_NAMESPACE, Some(self.id.0.to_string()))])
             .await?;
         Ok(())
     }

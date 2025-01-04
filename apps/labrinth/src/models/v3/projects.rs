@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::ids::{Base62Id, OrganizationId};
+use super::ids::{Base62Id, DiscussionId, OrganizationId};
 use super::teams::TeamId;
 use super::users::UserId;
 use crate::database::models::loader_fields::VersionField;
@@ -116,6 +116,8 @@ pub struct Project {
     pub default_type: String,
     pub default_game_version: Vec<String>,
     pub default_game_loaders: Vec<String>,
+
+    pub forum: Option<DiscussionId>,
 }
 
 fn remove_duplicates(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
@@ -170,7 +172,7 @@ impl From<QueryProject> for Project {
 
         let mut games = vec![];
         for v in data.games {
-            games.push(v.into());
+            games.push(v);
         }
         if games.is_empty() {
             m.default_game_version
@@ -179,7 +181,7 @@ impl From<QueryProject> for Project {
         }
         let mut loaders = vec![];
         for v in m.loaders {
-            loaders.push(v.into());
+            loaders.push(v);
         }
         if loaders.is_empty() {
             m.default_game_loaders
@@ -265,6 +267,7 @@ impl From<QueryProject> for Project {
             default_game_version: m.default_game_version,
             default_game_loaders: m.default_game_loaders,
             fields,
+            forum: m.forum.map(|x| x.into()),
         }
     }
 }

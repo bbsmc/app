@@ -1,4 +1,5 @@
 pub use super::collections::CollectionId;
+pub use super::forum::{DiscussionId, PostId};
 pub use super::images::ImageId;
 pub use super::notifications::NotificationId;
 pub use super::oauth_clients::OAuthClientAuthorizationId;
@@ -6,8 +7,7 @@ pub use super::oauth_clients::{OAuthClientId, OAuthRedirectUriId};
 pub use super::organizations::OrganizationId;
 pub use super::pats::PatId;
 pub use super::payouts::PayoutId;
-pub use super::projects::{ProjectId, VersionId,WikiId};
-pub use super::forum::{DiscussionId, PostId};
+pub use super::projects::{ProjectId, VersionId, WikiId};
 pub use super::reports::ReportId;
 pub use super::sessions::SessionId;
 pub use super::teams::TeamId;

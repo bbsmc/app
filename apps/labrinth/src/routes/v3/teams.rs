@@ -593,15 +593,14 @@ pub async fn add_team_member(
             && new_member.permissions != ProjectPermissions::all()
         {
             return Err(ApiError::InvalidInput(
-                "您不能覆盖项目团队中组织所有者的权限"
-                    .to_string(),
+                "您不能覆盖项目团队中组织所有者的权限".to_string(),
             ));
         }
 
         // 如果将一个组织中的用户添加到该组织拥有的项目中，
-// 该用户会自动被接受到该项目中。
-// 因为该用户是组织的一部分，项目团队成员资格也可以用来减少权限
-// （这不应该是用户可以拒绝的操作）
+        // 该用户会自动被接受到该项目中。
+        // 因为该用户是组织的一部分，项目团队成员资格也可以用来减少权限
+        // （这不应该是用户可以拒绝的操作）
         if new_user_organization_team_member.is_some() {
             force_accepted = true;
         }
@@ -750,7 +749,7 @@ pub async fn edit_team_member(
                         user_id,
                         &**pool,
                     )
-                        .await?
+                    .await?
                 } else {
                     None
                 };
@@ -760,9 +759,9 @@ pub async fn edit_team_member(
                 .map(|x| x.is_owner)
                 .unwrap_or(false)
                 && edit_member
-                .permissions
-                .map(|x| x != ProjectPermissions::all())
-                .unwrap_or(false)
+                    .permissions
+                    .map(|x| x != ProjectPermissions::all())
+                    .unwrap_or(false)
             {
                 return Err(ApiError::CustomAuthentication(
                     "You cannot override the project permissions of the organization owner!"
@@ -778,8 +777,7 @@ pub async fn edit_team_member(
             .unwrap_or_default();
             if !permissions.contains(ProjectPermissions::EDIT_MEMBER) {
                 return Err(ApiError::CustomAuthentication(
-                    "你没有权限编辑成员的权限"
-                        .to_string(),
+                    "你没有权限编辑成员的权限".to_string(),
                 ));
             }
 
@@ -793,8 +791,7 @@ pub async fn edit_team_member(
 
             if edit_member.organization_permissions.is_some() {
                 return Err(ApiError::InvalidInput(
-                    "项目团队成员的组织权限无法编辑"
-                        .to_string(),
+                    "项目团队成员的组织权限无法编辑".to_string(),
                 ));
             }
         }

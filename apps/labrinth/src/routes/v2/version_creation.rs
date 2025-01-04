@@ -77,8 +77,6 @@ pub struct InitialVersionData {
         length(max = 2048)
     )]
     pub disk_url: Option<String>,
-
-
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -227,8 +225,8 @@ pub async fn version_create(
                         break;
                     }
                 }
-                
-                if legacy_create.curse == true {
+
+                if legacy_create.curse {
                     project_type = Some("modpack");
                 }
 
@@ -270,9 +268,6 @@ pub async fn version_create(
         },
     )
     .await?;
-
-
-
 
     // 调用 V3 项目创建
     let response = v3::version_creation::version_create(

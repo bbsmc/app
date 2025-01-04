@@ -1,6 +1,8 @@
-use crate::database::models::ids::DiscussionId;
+use crate::database::models::forum::PostBuilder;
+use crate::database::models::forum::{Discussion, PostIndex};
+use crate::database::models::ids::{DiscussionId, PostId};
+use crate::database::models::UserId;
 use crate::database::redis::RedisPool;
-use crate::models::forum::PostIndex;
 use crate::models::ids::base62_impl::parse_base62;
 use crate::util::validate::validation_errors_to_string;
 use crate::{
@@ -8,13 +10,10 @@ use crate::{
     routes::ApiError,
 };
 use actix_web::{web, HttpRequest, HttpResponse};
-use futures_util::TryStreamExt;
-use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
 use validator::Validate;
-use crate::database::models::forum::QueryDiscussion;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -28,7 +27,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
 pub struct PostRequest {
     #[validate(length(max = 65536))]
     pub content: String,
-    pub replied_to: Option<i64>,
+    pub replied_to: Option<String>,
 }
 
 pub async fn posts_get(
@@ -46,33 +45,16 @@ pub async fn posts_get(
     let exec_ref = &mut *exec;
     let discussion_id =
         DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
-    let mut _forum_floor_numbers = redis
-        .get_cached_key(
-            &"forum_posts".to_string(),
-            discussion_id.clone().0,
-            || async move {
-                // 从数据库查询指定讨论下的所有楼层号
-                let floor_numbers = sqlx::query!(
-                    "SELECT id,floor_number FROM posts
-                WHERE discussion_id = $1 ORDER BY floor_number ASC",
-                    discussion_id.0 as i64
-                )
-                .fetch(exec_ref)
-                .map_ok(|row| PostIndex {
-                    id: row.id,
-                    floor_number: row.floor_number,
-                })
-                .try_collect::<Vec<PostIndex>>()
-                .await?;
-
-                Ok(floor_numbers)
-            },
-        )
-        .await;
-    if _forum_floor_numbers.is_err() {
+    let discussion = crate::database::models::forum::Discussion::get_id(
+        discussion_id.0,
+        exec_ref,
+        &redis,
+    )
+    .await?;
+    if discussion.is_none() {
         return Err(ApiError::NotFound);
     }
-    let mut forum_floor_numbers: Vec<PostIndex> = _forum_floor_numbers.unwrap();
+    let mut forum_floor_numbers: Vec<PostIndex> = discussion.unwrap().posts;
 
     // 对forum_floor_numbers进行排序
     forum_floor_numbers.sort_by(|a, b| a.floor_number.cmp(&b.floor_number));
@@ -81,7 +63,7 @@ pub async fn posts_get(
     let forum_floor_numbers_clone: Vec<PostIndex> = forum_floor_numbers.clone();
 
     // 获取需要查询的楼层号
-    let offset = ((page - 1) * page_size as i64) as usize;
+    let offset = ((page - 1) * page_size) as usize;
     let floor_numbers: Vec<PostIndex> = forum_floor_numbers
         .clone()
         .into_iter()
@@ -89,9 +71,12 @@ pub async fn posts_get(
         .take(page_size as usize)
         .collect();
     // 使用获取到的 floor_numbers 从 redis 查询完整的帖子信息
-    let ids = &floor_numbers.iter().map(|x| x.id).collect::<Vec<i64>>();
+    let ids = &floor_numbers
+        .iter()
+        .map(|x| x.post_id.0)
+        .collect::<Vec<i64>>();
     // 修改输出所有查询到的 floor_number
-    let posts: Vec<PostResponse> =
+    let mut posts: Vec<PostResponse> =
         crate::database::models::forum::PostQuery::get_many(
             ids,
             &discussion_id,
@@ -102,12 +87,9 @@ pub async fn posts_get(
         .into_iter()
         .map(|x| x.into())
         .collect::<Vec<PostResponse>>();
-    // 筛查 posts，删除不存在于 floor_numbers 的元素
-    // let posts = posts.into_iter().filter(|x| floor_numbers.contains(&x.floor_number)).collect::<Vec<PostResponse>>();
 
-    let mut floor_numbers1 =
-        posts.iter().map(|x| x.floor_number).collect::<Vec<i64>>();
-    floor_numbers1.sort();
+    // 对 posts 进行排序
+    posts.sort_by(|a, b| a.floor_number.cmp(&b.floor_number));
 
     Ok(HttpResponse::Ok().json(json!({
         "posts": posts,
@@ -129,9 +111,54 @@ pub async fn posts_post(
     })?;
     let string = info.into_inner().0;
     let discussion_id = DiscussionId(parse_base62(&string)? as i64);
-    info!("id: {:?}", discussion_id);
-    let d = crate::database::models::forum::Discussion::get_many(&[discussion_id.0], &**pool, &redis)
-        .await?;
-    // info!("d: {:?}", d);
-    Ok(HttpResponse::Ok().json(json!(d)))
+    let discussion =
+        Discussion::get_id(discussion_id.0, &**pool, &redis).await?;
+
+    if discussion.is_none() {
+        return Err(ApiError::NotFound);
+    }
+
+    let mut transaction = pool.begin().await?;
+
+    let post_id: PostId =
+        crate::database::models::ids::generate_post_id(&mut transaction)
+            .await?;
+
+    let post = PostBuilder {
+        id: post_id,
+        discussion_id,
+        content: body.content.clone(),
+        created_at: chrono::Utc::now(),
+        user_id: UserId(187799526438262),
+        replied_to: body
+            .replied_to
+            .clone()
+            .map(|x| parse_base62(&x).unwrap() as i64),
+    };
+
+    post.insert(&mut transaction).await?;
+    transaction.commit().await?;
+
+    crate::database::models::forum::Discussion::clear_cache(
+        &[discussion_id],
+        &redis,
+    )
+    .await?;
+
+    let posts: Vec<PostResponse> =
+        crate::database::models::forum::PostQuery::get_many(
+            &[post_id.0],
+            &discussion_id,
+            &**pool,
+            &redis,
+        )
+        .await?
+        .into_iter()
+        .map(|x| x.into())
+        .collect::<Vec<PostResponse>>();
+
+    // info!("d: {:?}", discussion);
+    Ok(HttpResponse::Ok().json(json!({
+        "post": posts.first().unwrap()
+    })))
 }

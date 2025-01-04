@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::auth::checks::{filter_visible_versions, is_visible_project};
-use crate::auth::{filter_visible_projects, get_user_from_headers};
+use crate::auth::{
+    filter_visible_projects, get_user_from_headers, AuthenticationError,
+};
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::project_item::{GalleryItem, ModCategory};
 use crate::database::models::thread_item::ThreadMessageBuilder;
@@ -15,7 +17,9 @@ use crate::models::ids::base62_impl::parse_base62;
 use crate::models::images::ImageContext;
 use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
-use crate::models::projects::{MonetizationStatus, Project, ProjectId, ProjectStatus, SearchRequest};
+use crate::models::projects::{
+    MonetizationStatus, Project, ProjectId, ProjectStatus, SearchRequest,
+};
 use crate::models::teams::ProjectPermissions;
 use crate::models::threads::MessageBody;
 use crate::queue::moderation::AutomatedModerationQueue;
@@ -57,16 +61,44 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("{id}/follow", web::delete().to(project_unfollow))
             .route("{id}/organization", web::get().to(project_get_organization))
             .route("{id}/wiki", web::get().to(super::wikis::wiki_list))
-            .route("{id}/wiki_submit", web::post().to(super::wikis::wiki_submit))
-            .route("{id}/wiki_submit_again/{id2}", web::post().to(super::wikis::wiki_submit_again))
-            .route("{id}/wiki_given_up/{id2}", web::post().to(super::wikis::wiki_given_up))
-            .route("{id}/wiki_reject", web::post().to(super::wikis::wiki_reject))
-            .route("{id}/wiki_accept", web::post().to(super::wikis::wiki_accept))
-            .route("{id}/wiki_edit_start", web::post().to(super::wikis::wiki_edit_start))
-            .route("{id}/wiki_create", web::post().to(super::wikis::wiki_create))
+            .route(
+                "{id}/wiki_submit",
+                web::post().to(super::wikis::wiki_submit),
+            )
+            .route(
+                "{id}/wiki_submit_again/{id2}",
+                web::post().to(super::wikis::wiki_submit_again),
+            )
+            .route(
+                "{id}/wiki_given_up/{id2}",
+                web::post().to(super::wikis::wiki_given_up),
+            )
+            .route(
+                "{id}/wiki_reject",
+                web::post().to(super::wikis::wiki_reject),
+            )
+            .route(
+                "{id}/wiki_accept",
+                web::post().to(super::wikis::wiki_accept),
+            )
+            .route(
+                "{id}/wiki_edit_start",
+                web::post().to(super::wikis::wiki_edit_start),
+            )
+            .route(
+                "{id}/wiki_create",
+                web::post().to(super::wikis::wiki_create),
+            )
             .route("{id}/wiki_edit", web::post().to(super::wikis::wiki_edit))
-            .route("{id}/wiki_edit_star", web::post().to(super::wikis::wiki_star))
-            .route("{id}/wiki_delete", web::delete().to(super::wikis::wiki_delete))
+            .route(
+                "{id}/wiki_edit_star",
+                web::post().to(super::wikis::wiki_star),
+            )
+            .route(
+                "{id}/wiki_delete",
+                web::delete().to(super::wikis::wiki_delete),
+            )
+            .route("{id}/forum", web::post().to(project_forum_create))
             .service(
                 web::scope("{project_id}")
                     .route(
@@ -314,8 +346,7 @@ pub async fn project_edit(
             if let Some(name) = &new_project.name {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的名称！"
-                            .to_string(),
+                        "您没有权限编辑此项目的名称！".to_string(),
                     ));
                 }
 
@@ -335,8 +366,7 @@ pub async fn project_edit(
             if let Some(wiki_open) = &new_project.wiki_open {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!"
-                            .to_string(),
+                        "您没有权限编辑此项目的该分类!".to_string(),
                     ));
                 }
 
@@ -355,12 +385,13 @@ pub async fn project_edit(
             if let Some(default_type) = &new_project.default_type {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!"
-                            .to_string(),
+                        "您没有权限编辑此项目的该分类!".to_string(),
                     ));
                 }
 
-                let default_types = vec!["project", "modpack", "mod", "datapack", "shader", "plugin"];
+                let default_types = [
+                    "project", "modpack", "mod", "datapack", "shader", "plugin",
+                ];
 
                 if !default_types.contains(&default_type.as_str()) {
                     return Err(ApiError::CustomAuthentication(
@@ -380,11 +411,12 @@ pub async fn project_edit(
                 .execute(&mut *transaction)
                 .await?;
             }
-            if let Some(default_game_version) = &new_project.default_game_version {
+            if let Some(default_game_version) =
+                &new_project.default_game_version
+            {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!"
-                            .to_string(),
+                        "您没有权限编辑此项目的该分类!".to_string(),
                     ));
                 }
 
@@ -393,7 +425,7 @@ pub async fn project_edit(
                 for (i, v) in default_game_version.iter().enumerate() {
                     v_str.push_str(v);
                     if i < default_game_version.len() - 1 {
-                        v_str.push_str(" ");
+                        v_str.push(' ');
                     }
                 }
                 sqlx::query!(
@@ -408,18 +440,19 @@ pub async fn project_edit(
                 .execute(&mut *transaction)
                 .await?;
             }
-            if let Some(default_game_loaders) = &new_project.default_game_loaders {
+            if let Some(default_game_loaders) =
+                &new_project.default_game_loaders
+            {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!"
-                            .to_string(),
+                        "您没有权限编辑此项目的该分类!".to_string(),
                     ));
                 }
                 let mut v_str = "".to_string();
                 for (i, v) in default_game_loaders.iter().enumerate() {
                     v_str.push_str(v.as_str());
                     if i < default_game_loaders.len() - 1 {
-                        v_str.push_str(" ");
+                        v_str.push(' ');
                     }
                 }
                 sqlx::query!(
@@ -1818,22 +1851,20 @@ pub async fn add_gallery_item(
     }
 
     let bytes = if user.username == "BBSMC" || user.username == "Laotou" {
-         read_from_payload(
+        read_from_payload(
             &mut payload,
             10 * (1 << 20),
             "Gallery image exceeds the maximum of 2MiB.",
         )
-            .await?
+        .await?
     } else {
-         read_from_payload(
+        read_from_payload(
             &mut payload,
             3 * (1 << 20),
             "Gallery image exceeds the maximum of 2MiB.",
         )
-            .await?
+        .await?
     };
-
-
 
     let id: ProjectId = project_item.inner.id.into();
     let upload_result = upload_image_optimized(
@@ -2545,4 +2576,121 @@ pub async fn project_get_organization(
     } else {
         Err(ApiError::NotFound)
     }
+}
+
+pub async fn project_forum_create(
+    req: HttpRequest,
+    info: web::Path<(String,)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let string = info.into_inner().0;
+    let result =
+        database::models::Project::get(&string, &**pool, &redis).await?;
+
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+
+    if user_option.is_none() {
+        return Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ));
+    }
+
+    if let Some(project) = result {
+        if !&user_option.is_some() {
+            return Err(ApiError::Authentication(
+                AuthenticationError::InvalidCredentials,
+            ));
+        }
+        if !is_visible_project(&project.inner, &user_option, &pool, false)
+            .await?
+        {
+            return Err(ApiError::NotFound);
+        }
+
+        let (team_member, organization_team_member) =
+            crate::database::models::TeamMember::get_for_project_permissions(
+                &project.inner,
+                database::models::ids::UserId::from(
+                    user_option.as_ref().unwrap().id,
+                ),
+                &**pool,
+            )
+            .await?;
+
+        let permissions = ProjectPermissions::get_permissions_by_role(
+            &user_option.as_ref().unwrap().role,
+            &team_member,
+            &organization_team_member,
+        );
+        if permissions.is_none()
+            || !permissions
+                .unwrap()
+                .contains(ProjectPermissions::EDIT_MEMBER)
+        {
+            return Err(ApiError::Validation(
+                "你没有权限创建讨论区".to_string(),
+            ));
+        }
+
+        if project.inner.forum.is_some() {
+            return Err(ApiError::InvalidInput(
+                "该资源已开启过讨论区".to_string(),
+            ));
+        }
+        let mut transaction = pool.begin().await?;
+        let discussion_id =
+            crate::database::models::ids::generate_discussion_id(
+                &mut transaction,
+            )
+            .await?;
+
+        let discussion = database::models::forum::Discussion {
+            id: discussion_id,
+            title: project.inner.name.clone(),
+            content: "".to_string(),
+            category: "project".to_string(),
+            created_at: Utc::now(),
+            updated_at: None,
+            user_id: database::models::UserId::from(
+                user_option.as_ref().unwrap().id,
+            ),
+            state: "open".to_string(),
+            pinned: false,
+            deleted: false,
+            deleted_at: None,
+            user_name: "".to_string(),
+            user_avatar: None,
+        };
+        discussion.insert(&mut transaction).await?;
+        discussion
+            .update_project_discussion(project.inner.id, &mut transaction)
+            .await?;
+        transaction.commit().await?;
+        db_models::Project::clear_cache(
+            project.inner.id,
+            project.inner.slug,
+            None,
+            &redis,
+        )
+        .await?;
+        let id_: models::forum::DiscussionId = discussion_id.into();
+        Ok(HttpResponse::Ok().json(json!({
+            "id": id_
+        })))
+    } else {
+        Err(ApiError::NotFound)
+    }
+
+    // Ok(HttpResponse::NoContent().body(""))
 }

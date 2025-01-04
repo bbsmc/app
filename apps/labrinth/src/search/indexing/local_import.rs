@@ -290,7 +290,6 @@ pub async fn index_local(
             };
 
         if let Some(versions) = versions.remove(&project.id) {
-
             // Aggregated project loader fields
             let project_version_fields = versions
                 .iter()
@@ -330,9 +329,6 @@ pub async fn index_local(
                 if project_types.is_empty() {
                     project_types.push(project.default_type.clone());
                 }
-
-
-
 
                 let mut version_loaders = version.loaders;
 
@@ -420,20 +416,22 @@ pub async fn index_local(
 
                 uploads.push(usp);
             }
-        }else {
-
+        } else {
             let mut default_game_loaders = vec![];
-            project.default_game_loaders.clone().split(" ").for_each(|x| {
-                if !x.is_empty() {
-                    default_game_loaders.push(x.to_string());
-                }
-            });
+            project
+                .default_game_loaders
+                .clone()
+                .split(" ")
+                .for_each(|x| {
+                    if !x.is_empty() {
+                        default_game_loaders.push(x.to_string());
+                    }
+                });
             for x in &default_game_loaders {
-                if !categories.contains(&x) {
+                if !categories.contains(x) {
                     categories.push(x.clone());
                 }
             }
-
 
             let project_types = vec![project.default_type.clone()];
             let usp = UploadSearchProject {

@@ -1,7 +1,20 @@
 <template>
+
+
+
   <div class="forum-container">
+
+    <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px;">
+      还没有任何回复，快来回复吧！
+    </div>
+
     <!-- 帖子列表 -->
     <div class="posts-wrapper">
+      <div v-if="isMobile" style="margin: 10px; text-align: center;">
+        <button-styled color="green" @click="showNewReply">
+          发表新帖
+        </button-styled>
+      </div>
       <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
         :data-floor-number="post.floor_number" class="card markdown-body">
         <div class="post-header">
@@ -127,6 +140,8 @@ const route = useRoute();
 const router = useRouter();
 const postRefs = ref([]);
 const currentPostId = ref(null);
+const auth = await useAuth();
+
 
 // 添加一个标志来控制观者是否应该更新 URL
 const shouldUpdateUrl = ref(true);
@@ -660,31 +675,44 @@ const showNewReply = () => {
 };
 
 // 修改提交回复函数，处理新帖子和回复两种情况
-const submitReply = () => {
+const submitReply = async () => {
   if (!replyContent.value.trim()) return;
+  if (!auth.value.user) {
+    data.$notify({
+      group: "main",
+      title: "未登录",
+      text: "</br>请先登录或创建账号",
+      type: "error",
+    });
+    router.push(`/auth/sign-in`);
+    return;
+  }
 
   // 创建新帖子
-  const newPost = {
-    id: (totalPosts.value + 1).toString(),
-    content: replyContent.value,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    user: {
-      id: "1",
-      name: "ModMaster",
-      avatar:
-        "https://cdn.bbsmc.net/bbsmc/data/rKJacHzy/79f0bf4c2173b64ddfeb0c1ce77682ca64a14ac3_96.webp",
-    },
-    replies: [],
-    replied_to: replyingTo.value.id === "new" ? null : replyingTo.value.id,
-    reply_content:
-      replyingTo.value.id === "new"
-        ? null
-        : {
-          user: replyingTo.value.user,
-          content: replyingTo.value.content,
-        },
-  };
+  let newPost = null;
+  try {
+    const res = await useBaseFetch(`forum/${props.discussionId}/post`, {
+      apiVersion: 3,
+      method: "POST",
+      body: {
+        content: replyContent.value,
+        replied_to: replyingTo.value.id === "new" ? null : replyingTo.value.post_id,
+      },
+    });
+    newPost = res.post;
+  } catch (err) {
+    console.log(err);
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: err.data.description,
+      type: "error",
+    });
+  }
+  cancelReply();
+  scrollToPost(newPost.floor_number);
+  return;
+
 
   // 如果是回复帖子，更新被回复帖子的 replies 数组
   if (replyingTo.value.id !== "new") {

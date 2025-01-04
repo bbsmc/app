@@ -43,18 +43,34 @@ pub fn validation_errors_to_string(
                 ValidationErrorsKind::Field(errors) => {
                     if let Some(error) = errors.first() {
                         if let Some(adder) = adder {
-                            output.push_str(&format!(
-                                "字段 {} {} 未通过要求原因: {}",
-                                field, adder, error.code
-                            ).replace("username","用户名").replace("name","名称").replace("slug","标识ID").replace("summary","简介").replace("range","取值范围").replace("length","最大长度"));
+                            output.push_str(
+                                &format!(
+                                    "字段 {} {} 未通过要求原因: {}",
+                                    field, adder, error.code
+                                )
+                                .replace("username", "用户名")
+                                .replace("name", "名称")
+                                .replace("slug", "标识ID")
+                                .replace("summary", "简介")
+                                .replace("range", "取值范围")
+                                .replace("length", "最大长度"),
+                            );
                         } else {
                             if field == "username" {
-                                output.push_str(&"用户名请不要使用中文或符号,建议使用您的Minecraft正版ID,支持使用英文和下划线".to_string());
+                                output.push_str("用户名请不要使用中文或符号,建议使用您的Minecraft正版ID,支持使用英文和下划线");
                             }
-                            output.push_str(&format!(
-                                "字段 {} 未通过要求原因: {}",
-                                field, error.code
-                            ).replace("username","用户名").replace("name","名称").replace("slug","标识ID").replace("summary","简介").replace("range","取值范围").replace("length","最大长度"));
+                            output.push_str(
+                                &format!(
+                                    "字段 {} 未通过要求原因: {}",
+                                    field, error.code
+                                )
+                                .replace("username", "用户名")
+                                .replace("name", "名称")
+                                .replace("slug", "标识ID")
+                                .replace("summary", "简介")
+                                .replace("range", "取值范围")
+                                .replace("length", "最大长度"),
+                            );
                         }
                     }
 

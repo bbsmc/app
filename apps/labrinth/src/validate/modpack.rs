@@ -69,22 +69,20 @@ impl super::Validator for ModpackValidator {
         }
 
         let pack: PackFormat = {
-            let mut file = if let Ok(file) =
-                archive.by_name("modrinth.index.json")
-            {
-                file
-            } else {
-                return Ok(ValidationResult::Warning("文件中缺少 modrinth.index.json 文件！"));
-            };
+            let mut file =
+                if let Ok(file) = archive.by_name("modrinth.index.json") {
+                    file
+                } else {
+                    return Ok(ValidationResult::Warning(
+                        "文件中缺少 modrinth.index.json 文件！",
+                    ));
+                };
 
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
 
             serde_json::from_str(&contents)?
-
         };
-
-
 
         pack.validate().map_err(|err| {
             ValidationError::InvalidInput(

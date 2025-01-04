@@ -4,7 +4,9 @@ use super::threads::is_authorized_thread;
 use crate::auth::checks::{is_team_member_project, is_team_member_version};
 use crate::auth::get_user_from_headers;
 use crate::database;
-use crate::database::models::{project_item, report_item, thread_item, version_item};
+use crate::database::models::{
+    project_item, report_item, thread_item, version_item,
+};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::ids::{ThreadMessageId, VersionId};
@@ -32,7 +34,7 @@ pub struct ImageUpload {
 
     // Optional context id to associate with
     pub project_id: Option<String>, // allow slug or id
-    pub wiki_id: Option<i64>, // allow slug or id
+    pub wiki_id: Option<i64>,       // allow slug or id
     pub version_id: Option<VersionId>,
     pub thread_message_id: Option<ThreadMessageId>,
     pub report_id: Option<ReportId>,
@@ -122,18 +124,16 @@ pub async fn images_add(
                     thread_item::ThreadMessage::get(id.into(), &**pool)
                         .await?
                         .ok_or_else(|| {
+                            ApiError::InvalidInput("未找到该消息。".to_string())
+                        })?;
+                let thread =
+                    thread_item::Thread::get(thread_message.thread_id, &**pool)
+                        .await?
+                        .ok_or_else(|| {
                             ApiError::InvalidInput(
-                                "未找到该消息。"
-                                    .to_string(),
+                                "未找到与该消息关联的线程".to_string(),
                             )
                         })?;
-                let thread = thread_item::Thread::get(thread_message.thread_id, &**pool)
-                    .await?
-                    .ok_or_else(|| {
-                        ApiError::InvalidInput(
-                            "未找到与该消息关联的线程".to_string(),
-                        )
-                    })?;
                 if is_authorized_thread(&thread, &user, &pool).await? {
                     *thread_message_id = Some(thread_message.id.into());
                 } else {
@@ -148,17 +148,16 @@ pub async fn images_add(
                 let report = report_item::Report::get(id.into(), &**pool)
                     .await?
                     .ok_or_else(|| {
-                        ApiError::InvalidInput(
-                            "未找到该举报。".to_string(),
-                        )
+                        ApiError::InvalidInput("未找到该举报。".to_string())
                     })?;
-                let thread = thread_item::Thread::get(report.thread_id, &**pool)
-                    .await?
-                    .ok_or_else(|| {
-                        ApiError::InvalidInput(
-                            "未找到与该举报关联的线程。".to_string(),
-                        )
-                    })?;
+                let thread =
+                    thread_item::Thread::get(report.thread_id, &**pool)
+                        .await?
+                        .ok_or_else(|| {
+                            ApiError::InvalidInput(
+                                "未找到与该举报关联的线程。".to_string(),
+                            )
+                        })?;
                 if is_authorized_thread(&thread, &user, &pool).await? {
                     *report_id = Some(report.id.into());
                 } else {
@@ -176,12 +175,9 @@ pub async fn images_add(
     }
 
     // Upload the image to the file host
-    let bytes = read_from_payload(
-        &mut payload,
-        4_194_304,
-        "图片大小必须小于4MB",
-    )
-    .await?;
+    let bytes =
+        read_from_payload(&mut payload, 4_194_304, "图片大小必须小于4MB")
+            .await?;
 
     let content_length = bytes.len();
     let upload_result = upload_image_optimized(

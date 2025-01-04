@@ -223,9 +223,7 @@ pub async fn license_text(
         }));
     }
 
-    Err(ApiError::InvalidInput(
-        "指定的 SPDX 标识符无效".to_string(),
-    ))
+    Err(ApiError::InvalidInput("指定的 SPDX 标识符无效".to_string()))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

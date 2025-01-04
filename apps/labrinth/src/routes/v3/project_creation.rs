@@ -283,7 +283,7 @@ pub async fn project_create(
         &redis,
         &session_queue,
     )
-        .await;
+    .await;
 
     if result.is_err() {
         let undo_result = undo_uploads(&***file_host, &uploaded_files).await;
@@ -351,8 +351,8 @@ async fn project_create_inner(
         session_queue,
         Some(&[Scopes::PROJECT_CREATE]),
     )
-        .await?
-        .1;
+    .await?
+    .1;
 
     let project_id: ProjectId =
         models::generate_project_id(transaction).await?.into();
@@ -412,9 +412,9 @@ async fn project_create_inner(
                 ",
                 slug_project_id as models::ids::ProjectId
             )
-                .fetch_one(&mut **transaction)
-                .await
-                .map_err(|e| CreateError::DatabaseError(e.into()))?;
+            .fetch_one(&mut **transaction)
+            .await
+            .map_err(|e| CreateError::DatabaseError(e.into()))?;
 
             if results.exists.unwrap_or(false) {
                 return Err(CreateError::SlugCollision);
@@ -428,9 +428,9 @@ async fn project_create_inner(
                 ",
                 create_data.slug
             )
-                .fetch_one(&mut **transaction)
-                .await
-                .map_err(|e| CreateError::DatabaseError(e.into()))?;
+            .fetch_one(&mut **transaction)
+            .await
+            .map_err(|e| CreateError::DatabaseError(e.into()))?;
 
             if results.exists.unwrap_or(false) {
                 return Err(CreateError::SlugCollision);
@@ -458,7 +458,7 @@ async fn project_create_inner(
                     transaction,
                     redis,
                 )
-                    .await?,
+                .await?,
             );
         }
 
@@ -479,7 +479,9 @@ async fn project_create_inner(
             let content_disposition = field.content_disposition().clone();
 
             let name = content_disposition.get_name().ok_or_else(|| {
-                CreateError::MissingValueError("Missing content name".to_string())
+                CreateError::MissingValueError(
+                    "Missing content name".to_string(),
+                )
             })?;
 
             let (file_name, file_extension) =
@@ -500,7 +502,7 @@ async fn project_create_inner(
                         file_host,
                         field,
                     )
-                        .await?,
+                    .await?,
                 );
                 return Ok(());
             }
@@ -510,16 +512,20 @@ async fn project_create_inner(
                         "只能设置一个渲染图为主要渲染图.",
                     )));
                 }
-                if let Some(item) = gallery_items.iter().find(|x| x.item == name) {
+                if let Some(item) =
+                    gallery_items.iter().find(|x| x.item == name)
+                {
                     let data = read_from_field(
                         &mut field,
                         2 * (1 << 20),
                         "渲染图文件请不要超过2MB",
                     )
-                        .await?;
+                    .await?;
 
                     let (_, file_extension) =
-                        super::version_creation::get_name_ext(&content_disposition)?;
+                        super::version_creation::get_name_ext(
+                            &content_disposition,
+                        )?;
 
                     let url = format!("data/{project_id}/images");
                     let upload_result = upload_image_optimized(
@@ -530,8 +536,10 @@ async fn project_create_inner(
                         Some(1.0),
                         file_host,
                     )
-                        .await
-                        .map_err(|e| CreateError::InvalidIconFormat(e.to_string()))?;
+                    .await
+                    .map_err(|e| {
+                        CreateError::InvalidIconFormat(e.to_string())
+                    })?;
 
                     uploaded_files.push(UploadedFile {
                         file_id: upload_result.raw_url_path.clone(),
@@ -559,7 +567,8 @@ async fn project_create_inner(
             };
             // `index` is always valid for these lists
             let created_version = versions.get_mut(index).unwrap();
-            let version_data = project_create_data.initial_versions.get(index).unwrap();
+            let version_data =
+                project_create_data.initial_versions.get(index).unwrap();
             // TODO: maybe redundant is this calculation done elsewhere?
 
             let existing_file_names = created_version
@@ -588,11 +597,11 @@ async fn project_create_inner(
                 transaction,
                 redis,
             )
-                .await?;
+            .await?;
 
             Ok(())
         }
-            .await;
+        .await;
 
         if result.is_err() {
             error = result.err();
@@ -625,7 +634,7 @@ async fn project_create_inner(
                 category,
                 &mut **transaction,
             )
-                .await?;
+            .await?;
             if ids.is_empty() {
                 return Err(CreateError::InvalidCategory(category.clone()));
             }
@@ -642,7 +651,7 @@ async fn project_create_inner(
                 category,
                 &mut **transaction,
             )
-                .await?;
+            .await?;
             if ids.is_empty() {
                 return Err(CreateError::InvalidCategory(category.clone()));
             }
@@ -659,19 +668,17 @@ async fn project_create_inner(
                 pool,
                 redis,
             )
-                .await?
-                .ok_or_else(|| {
-                    CreateError::InvalidInput(
-                        "团队ID无效".to_string(),
-                    )
-                })?;
+            .await?
+            .ok_or_else(|| {
+                CreateError::InvalidInput("团队ID无效".to_string())
+            })?;
 
             let team_member = models::TeamMember::get_from_user_id(
                 org.team_id,
                 current_user.id.into(),
                 pool,
             )
-                .await?;
+            .await?;
 
             let perms = OrganizationPermissions::get_permissions_by_role(
                 &current_user.role,
@@ -683,8 +690,7 @@ async fn project_create_inner(
                 .unwrap_or(false)
             {
                 return Err(CreateError::CustomAuthenticationError(
-                    "您没有权限在此团队中创建项目！"
-                        .to_string(),
+                    "您没有权限在此团队中创建项目！".to_string(),
                 ));
             }
         } else {
@@ -718,11 +724,11 @@ async fn project_create_inner(
         let license_id = spdx::Expression::parse(
             &project_create_data.license_id,
         )
-            .map_err(|err| {
-                CreateError::InvalidInput(format!(
-                    "填写的URL内SPDX 许可证标识符无效 {err}"
-                ))
-            })?;
+        .map_err(|err| {
+            CreateError::InvalidInput(format!(
+                "填写的URL内SPDX 许可证标识符无效 {err}"
+            ))
+        })?;
 
         let mut link_urls = vec![];
 
@@ -734,13 +740,13 @@ async fn project_create_inner(
                 platform,
                 &mut **transaction,
             )
-                .await?
-                .ok_or_else(|| {
-                    CreateError::InvalidInput(format!(
-                        "链接平台{}不存在.",
-                        platform.clone()
-                    ))
-                })?;
+            .await?
+            .ok_or_else(|| {
+                CreateError::InvalidInput(format!(
+                    "链接平台{}不存在.",
+                    platform.clone()
+                ))
+            })?;
             let link_platform = link_platforms
                 .iter()
                 .find(|x| x.id == platform_id)
@@ -802,8 +808,12 @@ async fn project_create_inner(
         User::clear_project_cache(&[current_user.id.into()], redis).await?;
 
         for image_id in project_create_data.uploaded_images {
-            if let Some(db_image) =
-                image_item::Image::get(image_id.into(), &mut **transaction, redis).await?
+            if let Some(db_image) = image_item::Image::get(
+                image_id.into(),
+                &mut **transaction,
+                redis,
+            )
+            .await?
             {
                 let image: Image = db_image.into();
                 if !matches!(image.context, ImageContext::Project { .. })
@@ -824,8 +834,8 @@ async fn project_create_inner(
                     id as models::ids::ProjectId,
                     image_id.0 as i64
                 )
-                    .execute(&mut **transaction)
-                    .await?;
+                .execute(&mut **transaction)
+                .await?;
 
                 image_item::Image::clear_cache(image.id.into(), redis).await?;
             } else {
@@ -842,8 +852,8 @@ async fn project_create_inner(
             project_id: Some(id),
             report_id: None,
         }
-            .insert(&mut *transaction)
-            .await?;
+        .insert(&mut *transaction)
+        .await?;
 
         let loaders = project_builder
             .initial_versions
@@ -913,6 +923,7 @@ async fn project_create_inner(
             default_type: "project".to_string(),
             default_game_loaders: vec![],
             default_game_version: vec![],
+            forum: None,
         };
 
         Ok(HttpResponse::Ok().json(response))
@@ -928,9 +939,7 @@ async fn create_initial_version(
     redis: &RedisPool,
 ) -> Result<models::version_item::VersionBuilder, CreateError> {
     if version_data.project_id.is_some() {
-        return Err(CreateError::InvalidInput(String::from(
-            "该版本已经存在",
-        )));
+        return Err(CreateError::InvalidInput(String::from("该版本已经存在")));
     }
 
     version_data.validate().map_err(|err| {
@@ -961,7 +970,7 @@ async fn create_initial_version(
             &mut **transaction,
             redis,
         )
-            .await?;
+        .await?;
 
     let version_fields = try_create_version_fields(
         version_id,
@@ -997,7 +1006,7 @@ async fn create_initial_version(
         version_type: version_data.release_channel.to_string(),
         requested_status: None,
         ordering: version_data.ordering,
-        disk_url: version_data.disk_url.clone()
+        disk_url: version_data.disk_url.clone(),
     };
 
     Ok(version)
@@ -1010,12 +1019,8 @@ async fn process_icon_upload(
     file_host: &dyn FileHost,
     mut field: Field,
 ) -> Result<(String, String, Option<u32>), CreateError> {
-    let data = read_from_field(
-        &mut field,
-        262144,
-        "图标必须小于 256KB",
-    )
-        .await?;
+    let data =
+        read_from_field(&mut field, 262144, "图标必须小于 256KB").await?;
     let upload_result = crate::util::img::upload_image_optimized(
         &format!("data/{}", to_base62(id)),
         data.freeze(),
@@ -1024,8 +1029,8 @@ async fn process_icon_upload(
         Some(1.0),
         file_host,
     )
-        .await
-        .map_err(|e| CreateError::InvalidIconFormat(e.to_string()))?;
+    .await
+    .map_err(|e| CreateError::InvalidIconFormat(e.to_string()))?;
 
     uploaded_files.push(UploadedFile {
         file_id: upload_result.raw_url_path.clone(),

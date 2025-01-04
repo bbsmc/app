@@ -36,7 +36,6 @@ impl Drop for Scheduler {
     }
 }
 
-
 pub fn schedule_versions(
     scheduler: &mut Scheduler,
     pool: sqlx::Pool<sqlx::Postgres>,
@@ -102,9 +101,9 @@ async fn update_versions(
     let input = reqwest::get(
         "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
     )
-        .await?
-        .json::<InputFormat>()
-        .await?;
+    .await?
+    .json::<InputFormat>()
+    .await?;
 
     let mut skipped_versions_count = 0u32;
 

@@ -3,13 +3,13 @@ use super::ids::OrganizationId;
 use super::users::UserId;
 use crate::database::models::notification_item::Notification as DBNotification;
 use crate::database::models::notification_item::NotificationAction as DBNotificationAction;
+use crate::database::models::WikiCacheId;
 use crate::models::ids::{
     ProjectId, ReportId, TeamId, ThreadId, ThreadMessageId, VersionId,
 };
 use crate::models::projects::ProjectStatus;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use crate::database::models::WikiCacheId;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "Base62Id")]
@@ -97,14 +97,15 @@ impl From<DBNotification> for Notification {
                     project_title,
                     type_,
                     ..
-                } => {
-                    (
-                        "百科修改状态变更".to_string(),
-                        format!("您提交的项目 {} 的百科页面修改状态变更为 {}", project_title,type_),
-                        format!("/project/{}/wikis", project_id),
-                        vec![],
-                    )
-                },
+                } => (
+                    "百科修改状态变更".to_string(),
+                    format!(
+                        "您提交的项目 {} 的百科页面修改状态变更为 {}",
+                        project_title, type_
+                    ),
+                    format!("/project/{}/wikis", project_id),
+                    vec![],
+                ),
                 NotificationBody::TeamInvite {
                     project_id,
                     role,

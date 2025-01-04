@@ -73,7 +73,6 @@ pub async fn page_view_ingest(
     let allowed_origins =
         parse_strings_from_var("CORS_ALLOWED_ORIGINS").unwrap_or_default();
 
-
     if !(domain.ends_with(".bbsmc.net")
         || domain.ends_with("localhost")
         || domain == "bbsmc.net"
@@ -103,7 +102,7 @@ pub async fn page_view_ingest(
             conn_info.as_deref().unwrap_or_default()
         },
     )
-        .unwrap_or_else(|_| Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped());
+    .unwrap_or_else(|_| Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped());
 
     let mut view = PageView {
         recorded: get_current_tenths_of_ms(),
@@ -140,7 +139,7 @@ pub async fn page_view_ingest(
                     &**pool,
                     &redis,
                 )
-                    .await?;
+                .await?;
 
                 if let Some(project) = project {
                     view.project_id = project.inner.id.0 as u64;
@@ -184,7 +183,7 @@ pub async fn playtime_ingest(
         &session_queue,
         Some(&[Scopes::PERFORM_ANALYTICS]),
     )
-        .await?;
+    .await?;
 
     let playtimes = playtime_input.0;
 
@@ -199,7 +198,7 @@ pub async fn playtime_ingest(
         &**pool,
         &redis,
     )
-        .await?;
+    .await?;
 
     for (id, playtime) in playtimes {
         if playtime.seconds > 300 {

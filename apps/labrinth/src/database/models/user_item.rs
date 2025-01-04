@@ -46,7 +46,6 @@ pub struct User {
     pub badges: Badges,
     pub wiki_ban_time: DateTime<Utc>,
     pub wiki_overtake_count: i64,
-
 }
 
 impl User {
