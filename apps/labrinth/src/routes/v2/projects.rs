@@ -2,7 +2,9 @@ use crate::database::models::categories::LinkPlatform;
 use crate::database::models::{project_item, version_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
-use crate::models::projects::{Link, MonetizationStatus, Project, ProjectStatus, SearchRequest, Version};
+use crate::models::projects::{
+    Link, MonetizationStatus, Project, ProjectStatus, SearchRequest, Version,
+};
 use crate::models::v2::projects::{
     DonationLink, LegacyProject, LegacySideType, LegacyVersion,
 };
@@ -408,7 +410,6 @@ pub struct EditProject {
     pub monetization_status: Option<MonetizationStatus>,
 
     pub wiki_open: Option<bool>,
-
 
     pub default_game_loaders: Option<Vec<String>>,
     pub default_game_version: Option<Vec<String>>,

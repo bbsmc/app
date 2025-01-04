@@ -18,7 +18,9 @@ pub async fn check_hcaptcha(
     //     conn_info.peer_addr()
     // };
 
-    let ip_addr =  req.headers().get("CF-Connecting-IP")
+    let ip_addr = req
+        .headers()
+        .get("CF-Connecting-IP")
         .and_then(|x| x.to_str().ok())
         .or_else(|| conn_info.peer_addr());
 

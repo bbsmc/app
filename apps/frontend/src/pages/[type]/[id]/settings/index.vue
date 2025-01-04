@@ -94,30 +94,30 @@
         <label for="project-wiki-open">
           <span class="label__title">百科</span>
           <span class="label__description">
-          选择是否开启百科的公共编辑，开启后任何人都可以编辑百科页面，并且创建和修改的页面需要经过你审核后才能展示出来
-        </span>
+            选择是否开启百科的公共编辑，开启后任何人都可以编辑百科页面，并且创建和修改的页面需要经过你审核后才能展示出来
+          </span>
         </label>
         <input
           id="advanced-rendering"
-          v-model="wiki_open"
+          v-model="wikiOpen"
           :disabled="!hasPermission"
           class="switch stylized-toggle"
           type="checkbox"
         />
       </div>
-      <div class="adjacent-input" v-if="project.versions.length === 0">
+      <div v-if="project.versions.length === 0" class="adjacent-input">
         <label for="project-wiki-open">
           <span class="label__title">资源类型</span>
           <span class="label__description">
-          搬运资源,并且没有任何版本上传请在这里设置，设置后前端将同步为该类型的URL,非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
-        </span>
+            搬运资源,并且没有任何版本上传请在这里设置，设置后前端将同步为该类型的URL,非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
+          </span>
         </label>
         <Multiselect
           id="project-default_type"
-          v-model="default_type"
+          v-model="defaultType"
           class="small-multiselect"
           placeholder="选择"
-          :options="['mod','project','plugin','datapack','resourcepack','shader','modpack']"
+          :options="['mod', 'project', 'plugin', 'datapack', 'resourcepack', 'shader', 'modpack']"
           :searchable="false"
           :close-on-select="true"
           :show-labels="false"
@@ -125,21 +125,19 @@
           :disabled="!hasPermission"
         />
       </div>
-      <div class="adjacent-input" v-if="project.versions.length === 0">
+      <div v-if="project.versions.length === 0" class="adjacent-input">
         <label for="project-wiki-open">
           <span class="label__title">游戏版本</span>
           <span class="label__description">
-          搬运资源,并且没有任何版本上传请在这里设置，设置后前端将同步为该类型的URL,非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
-        </span>
+            搬运资源,并且没有任何版本上传请在这里设置，设置后前端将同步为该类型的URL,非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
+          </span>
         </label>
         <multiselect
-          v-model="default_game_version"
+          v-model="defaultGameVersion"
           class="small-multiselect"
           :options="
-                tags.gameVersions
-                      .filter((it) => it.version_type === 'release')
-                      .map((x) => x.version)
-              "
+            tags.gameVersions.filter((it) => it.version_type === 'release').map((x) => x.version)
+          "
           :loading="tags.gameVersions.length === 0"
           :disabled="!hasPermission"
           :multiple="true"
@@ -152,20 +150,21 @@
           placeholder="选择支持的MC版本"
         />
       </div>
-      <div class="adjacent-input" v-if="project.versions.length === 0 && project.project_type !== 'resourcepack'">
+      <div
+        v-if="project.versions.length === 0 && project.project_type !== 'resourcepack'"
+        class="adjacent-input"
+      >
         <label for="project-wiki-open">
           <span class="label__title">运行平台</span>
           <span class="label__description">
-          搬运资源,并且没有任何版本上传请在这里设置，非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
-        </span>
+            搬运资源,并且没有任何版本上传请在这里设置，非搬运资源无需设置，因为上传版本以后会自动识别为对应类型
+          </span>
         </label>
 
         <multiselect
-          v-model="default_game_loaders"
+          v-model="defaultGameLoaders"
           class="small-multiselect"
-          :options="
-                tags.loaderData.allLoaders
-              "
+          :options="tags.loaderData.allLoaders"
           :disabled="!hasPermission"
           :multiple="true"
           :searchable="true"
@@ -267,7 +266,7 @@
                   class="good"
                 />
                 <ExitIcon v-else class="bad" />
-                {{ hasModifiedVisibility() ? '未' : '' }}允许被搜索
+                {{ hasModifiedVisibility() ? "未" : "" }}允许被搜索
               </li>
               <li>
                 <ExitIcon
@@ -275,7 +274,7 @@
                   class="bad"
                 />
                 <CheckIcon v-else class="good" />
-                {{ hasModifiedVisibility() ? '未' : '' }}允许显示在个人资料
+                {{ hasModifiedVisibility() ? "未" : "" }}允许显示在个人资料
               </li>
               <li>
                 <CheckIcon v-if="visibility !== 'private'" class="good" />
@@ -286,7 +285,7 @@
                   }"
                   class="warn"
                 />
-                {{ hasModifiedVisibility() ? '未' : '' }}被允许使用URL访问
+                {{ hasModifiedVisibility() ? "未" : "" }}被允许使用URL访问
               </li>
             </ul>
           </div>
@@ -339,196 +338,193 @@
 </template>
 
 <script setup>
-import { Multiselect } from 'vue-multiselect'
+import { Multiselect } from "vue-multiselect";
 
-import { formatProjectStatus } from '@modrinth/utils'
-import Avatar from '~/components/ui/Avatar.vue'
-import ModalConfirm from '~/components/ui/ModalConfirm.vue'
-import FileInput from '~/components/ui/FileInput.vue'
+import { formatProjectStatus } from "@modrinth/utils";
+import Avatar from "~/components/ui/Avatar.vue";
+import ModalConfirm from "~/components/ui/ModalConfirm.vue";
+import FileInput from "~/components/ui/FileInput.vue";
 
-import UploadIcon from '~/assets/images/utils/upload.svg?component'
-import SaveIcon from '~/assets/images/utils/save.svg?component'
-import TrashIcon from '~/assets/images/utils/trash.svg?component'
-import ExitIcon from '~/assets/images/utils/x.svg?component'
-import IssuesIcon from '~/assets/images/utils/issues.svg?component'
-import CheckIcon from '~/assets/images/utils/check.svg?component'
+import UploadIcon from "~/assets/images/utils/upload.svg?component";
+import SaveIcon from "~/assets/images/utils/save.svg?component";
+import TrashIcon from "~/assets/images/utils/trash.svg?component";
+import ExitIcon from "~/assets/images/utils/x.svg?component";
+import IssuesIcon from "~/assets/images/utils/issues.svg?component";
+import CheckIcon from "~/assets/images/utils/check.svg?component";
 
 const props = defineProps({
   project: {
     type: Object,
     required: true,
-    default: () => ({})
+    default: () => ({}),
   },
   currentMember: {
     type: Object,
     required: true,
-    default: () => ({})
+    default: () => ({}),
   },
   patchProject: {
     type: Function,
     required: true,
-    default: () => {
-    }
+    default: () => {},
   },
   patchIcon: {
     type: Function,
     required: true,
-    default: () => {
-    }
+    default: () => {},
   },
   resetProject: {
     type: Function,
     required: true,
-    default: () => {
-    }
-  }
-})
+    default: () => {},
+  },
+});
 
-const tags = useTags()
-const router = useNativeRouter()
+const tags = useTags();
+const router = useNativeRouter();
 
-const name = ref(props.project.title)
-const slug = ref(props.project.slug)
-const wiki_open = ref(props.project.wiki_open)
-const default_type = ref(props.project.default_type)
-const default_game_version = ref(props.project.default_game_version)
-const default_game_loaders = ref(props.project.default_game_loaders)
-if (default_game_loaders.value === null) {
-  default_game_loaders.value = []
+const name = ref(props.project.title);
+const slug = ref(props.project.slug);
+const wikiOpen = ref(props.project.wiki_open);
+const defaultType = ref(props.project.default_type);
+const defaultGameVersion = ref(props.project.default_game_version);
+const defaultGameLoaders = ref(props.project.default_game_loaders);
+if (defaultGameLoaders.value === null) {
+  defaultGameLoaders.value = [];
 }
-const summary = ref(props.project.description)
-const icon = ref(null)
-const previewImage = ref(null)
-const clientSide = ref(props.project.client_side)
-const serverSide = ref(props.project.server_side)
-const deletedIcon = ref(false)
+const summary = ref(props.project.description);
+const icon = ref(null);
+const previewImage = ref(null);
+const clientSide = ref(props.project.client_side);
+const serverSide = ref(props.project.server_side);
+const deletedIcon = ref(false);
 const visibility = ref(
   tags.value.approvedStatuses.includes(props.project.status)
     ? props.project.status
-    : props.project.requested_status
-)
+    : props.project.requested_status,
+);
 
 const hasPermission = computed(() => {
-  const EDIT_DETAILS = 1 << 2
-  return (props.currentMember.permissions & EDIT_DETAILS) === EDIT_DETAILS
-})
+  const EDIT_DETAILS = 1 << 2;
+  return (props.currentMember.permissions & EDIT_DETAILS) === EDIT_DETAILS;
+});
 
 const hasDeletePermission = computed(() => {
-  const DELETE_PROJECT = 1 << 7
-  return (props.currentMember.permissions & DELETE_PROJECT) === DELETE_PROJECT
-})
+  const DELETE_PROJECT = 1 << 7;
+  return (props.currentMember.permissions & DELETE_PROJECT) === DELETE_PROJECT;
+});
 
-const sideTypes = ['required', 'optional', 'unsupported']
+const sideTypes = ["required", "optional", "unsupported"];
 
 const patchData = computed(() => {
-  const data = {}
+  const data = {};
 
   if (name.value !== props.project.title) {
-    data.title = name.value.trim()
+    data.title = name.value.trim();
   }
   if (slug.value !== props.project.slug) {
-    data.slug = slug.value.trim()
+    data.slug = slug.value.trim();
   }
   if (summary.value !== props.project.description) {
-    data.description = summary.value.trim()
+    data.description = summary.value.trim();
   }
-  if (wiki_open.value !== props.project.wiki_open) {
-    data.wiki_open = wiki_open.value
+  if (wikiOpen.value !== props.project.wiki_open) {
+    data.wiki_open = wikiOpen.value;
   }
-  if (default_type.value !== props.project.default_type) {
-    data.default_type = default_type.value
+  if (defaultType.value !== props.project.default_type) {
+    data.default_type = defaultType.value;
   }
-  if (default_game_version.value !== props.project.default_game_version) {
-    data.default_game_version = default_game_version.value
+  if (defaultGameVersion.value !== props.project.default_game_version) {
+    data.default_game_version = defaultGameVersion.value;
   }
-  if (default_game_loaders.value !== props.project.default_game_loaders) {
-    data.default_game_loaders = default_game_loaders.value
+  if (defaultGameLoaders.value !== props.project.default_game_loaders) {
+    data.default_game_loaders = defaultGameLoaders.value;
   }
   if (clientSide.value !== props.project.client_side) {
-    data.client_side = clientSide.value
+    data.client_side = clientSide.value;
   }
   if (serverSide.value !== props.project.server_side) {
-    data.server_side = serverSide.value
+    data.server_side = serverSide.value;
   }
   if (tags.value.approvedStatuses.includes(props.project.status)) {
     if (visibility.value !== props.project.status) {
-      data.status = visibility.value
+      data.status = visibility.value;
     }
   } else if (visibility.value !== props.project.requested_status) {
-    data.requested_status = visibility.value
+    data.requested_status = visibility.value;
   }
 
-  return data
-})
+  return data;
+});
 
 const hasChanges = computed(() => {
-  return Object.keys(patchData.value).length > 0 || deletedIcon.value || icon.value
-})
+  return Object.keys(patchData.value).length > 0 || deletedIcon.value || icon.value;
+});
 
 const hasModifiedVisibility = () => {
   const originalVisibility = tags.value.approvedStatuses.includes(props.project.status)
     ? props.project.status
-    : props.project.requested_status
+    : props.project.requested_status;
 
-  return originalVisibility !== visibility.value
-}
+  return originalVisibility !== visibility.value;
+};
 
 const saveChanges = async () => {
   if (hasChanges.value) {
-    await props.patchProject(patchData.value)
+    await props.patchProject(patchData.value);
   }
 
   if (deletedIcon.value) {
-    await deleteIcon()
-    deletedIcon.value = false
+    await deleteIcon();
+    deletedIcon.value = false;
   } else if (icon.value) {
-    await props.patchIcon(icon.value)
-    icon.value = null
+    await props.patchIcon(icon.value);
+    icon.value = null;
   }
-}
+};
 
 const showPreviewImage = (files) => {
-  const reader = new FileReader()
-  icon.value = files[0]
-  deletedIcon.value = false
-  reader.readAsDataURL(icon.value)
+  const reader = new FileReader();
+  icon.value = files[0];
+  deletedIcon.value = false;
+  reader.readAsDataURL(icon.value);
   reader.onload = (event) => {
-    previewImage.value = event.target.result
-  }
-}
+    previewImage.value = event.target.result;
+  };
+};
 
 const deleteProject = async () => {
   await useBaseFetch(`project/${props.project.id}`, {
-    method: 'DELETE'
-  })
-  await initUserProjects()
-  await router.push('/dashboard/projects')
+    method: "DELETE",
+  });
+  await initUserProjects();
+  await router.push("/dashboard/projects");
   addNotification({
-    group: 'main',
-    title: '资源已删除',
-    text: '您的资源已删除.',
-    type: 'success'
-  })
-}
+    group: "main",
+    title: "资源已删除",
+    text: "您的资源已删除.",
+    type: "success",
+  });
+};
 
 const markIconForDeletion = () => {
-  deletedIcon.value = true
-  icon.value = null
-  previewImage.value = null
-}
+  deletedIcon.value = true;
+  icon.value = null;
+  previewImage.value = null;
+};
 
 const deleteIcon = async () => {
   await useBaseFetch(`project/${props.project.id}/icon`, {
-    method: 'DELETE'
-  })
-  await props.resetProject()
+    method: "DELETE",
+  });
+  await props.resetProject();
   addNotification({
-    group: 'main',
-    title: '图片已移除',
-    text: '您的资源图标已被移除',
-    type: 'success'
-  })
-}
+    group: "main",
+    title: "图片已移除",
+    text: "您的资源图标已被移除",
+    type: "success",
+  });
+};
 </script>
 <style lang="scss" scoped>
 .visibility-info {

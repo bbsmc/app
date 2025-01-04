@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 格式化工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ccc;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>JSON 格式化工具</h1>
+    <textarea id="jsonInput" placeholder="在这里输入 JSON 数据..."></textarea>
+    <button onclick="formatJSON()">格式化 JSON</button>
+    <h2>格式化结果</h2>
+    <pre id="jsonOutput"></pre>
+
+    <script>
+        function formatJSON() {
+            const input = document.getElementById('jsonInput').value;
+            let output;
+
+            try {
+                // 尝试解析 JSON
+                output = JSON.stringify(JSON.parse(input), null, 4);
+            } catch (e) {
+                // 尝试修复不标准的 JSON
+                output = attemptToFixJSON(input);
+            }
+
+            document.getElementById('jsonOutput').textContent = output;
+        }
+
+        function attemptToFixJSON(input) {
+            // 尝试简单的修复方法
+            let fixedInput = input
+                .replace(/'/g, '"') // 替换单引号为双引号
+                .replace(/,\s*}/g, '}') // 去掉对象末尾的逗号
+                .replace(/,\s*]/g, ']') // 去掉数组末尾的逗号
+                .replace(/:\s*([,\}])/g, ': null$1') // 处理缺失值的情况
+                .replace(/,\s*\"/g, ',"') // 确保逗号后有空格
+                .replace(/,\s*\"/g, ',"'); // 确保逗号后有空格
+
+            try {
+                return JSON.stringify(JSON.parse(fixedInput), null, 4);
+            } catch (e) {
+                return "格式化失败，请检查 JSON 格式。";
+            }
+        }
+    </script>
+</body>
+</html>

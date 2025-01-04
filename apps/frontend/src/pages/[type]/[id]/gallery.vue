@@ -236,7 +236,7 @@
         <div class="gallery-bottom">
           <div class="gallery-created">
             <CalendarIcon aria-hidden="true" aria-label="Date created" />
-            {{ $dayjs(item.created).format("MMMM D, YYYY") }}
+            {{ $dayjs(item.created).format("YYYY-MM-DD") }}
           </div>
           <div v-if="currentMember" class="gallery-buttons input-group">
             <button
@@ -298,11 +298,8 @@ import { ConfirmModal } from "@modrinth/ui";
 import FileInput from "~/components/ui/FileInput.vue";
 import DropArea from "~/components/ui/DropArea.vue";
 import Modal from "~/components/ui/Modal.vue";
-
 import { isPermission } from "~/utils/permissions.ts";
-import dayjs from "dayjs";
-import 'dayjs/locale/zh-cn';
-dayjs.locale('zh-cn');
+
 const props = defineProps({
   project: {
     type: Object,
@@ -612,6 +609,7 @@ export default defineNuxtComponent({
         max-width: calc(100vw - 2 * var(--spacing-card-lg));
       }
     }
+
     .floating {
       position: absolute;
       left: 50%;
@@ -627,10 +625,12 @@ export default defineNuxtComponent({
 
       &:not(&:hover) {
         opacity: 0.4;
+
         .text {
           transform: translateY(2.5rem) scale(0.8);
           opacity: 0;
         }
+
         .controls {
           transform: translateY(0.25rem) scale(0.9);
         }
@@ -659,6 +659,7 @@ export default defineNuxtComponent({
           margin: 0;
         }
       }
+
       .controls {
         background-color: var(--color-raised-bg);
         padding: var(--spacing-card-md);
@@ -778,6 +779,7 @@ export default defineNuxtComponent({
       svg {
         min-width: 1rem;
       }
+
       strong {
         word-wrap: anywhere;
       }

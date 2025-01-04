@@ -258,7 +258,7 @@ pub fn app_setup(
         let pool_ref_clone2 = pool.clone();
         let redis_ref2 = redis_pool.clone();
 
-        scheduler.run(std::time::Duration::from_secs(10), move || {
+        scheduler.run(std::time::Duration::from_secs(60), move || {
             let pool_ref_clone2 = pool_ref_clone2.clone();
             let redis_ref2 = redis_ref2.clone();
 
@@ -294,7 +294,7 @@ pub fn app_setup(
                                 ).fetch_all(&pool_ref_clone2).await;
                                 match projects {
                                     Ok(projects) => {
-                                        let m = projects.get(0).unwrap();
+                                        let m = projects.first().unwrap();
                                         let id = m.id;
                                         let inner = Project {
                                             id: ProjectId(id),
@@ -330,6 +330,7 @@ pub fn app_setup(
                                             default_type: m.default_type.clone(),
                                             default_game_version: vec![],
                                             default_game_loaders: vec![],
+                                            forum: None
                                         };
                                         // println!("{:?}", inner);
 
@@ -348,9 +349,9 @@ pub fn app_setup(
                                         ).fetch_all(&pool_ref_clone2).await;
                                         match users {
                                             Ok(users) => {
-                                                let u = users.get(0).unwrap();
+                                                let u = users.first().unwrap();
                                                 let user = User {
-                                                    id: UserId(u.id.clone()),
+                                                    id: UserId(u.id),
                                                     github_id: None,
                                                     discord_id: None,
                                                     gitlab_id: None,
@@ -377,7 +378,7 @@ pub fn app_setup(
                                                     wiki_ban_time: u.wiki_ban_time,
                                                 };
 
-                                                let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id.clone(), &pool_ref_clone2).await {
+                                                let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id, &pool_ref_clone2).await {
                                                     Ok(result) => result,
                                                     Err(e) => {
                                                         warn!("Failed to get team member: {:?}", e);
@@ -391,7 +392,7 @@ pub fn app_setup(
                                                     &team_member,
                                                     &organization_team_member,
                                                 );
-                                                if !permissions.is_none() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) {
+                                                if permissions.is_some() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) {
                                                     println!("有权限超时");
                                                     let mut transaction = match pool_ref_clone2.begin().await{
                                                         Ok(transaction) => transaction,
@@ -401,7 +402,7 @@ pub fn app_setup(
                                                         }
                                                     };
 
-                                                    let _ = match sqlx::query!(
+                                                    match sqlx::query!(
                                                        "UPDATE wiki_cache SET status = $1, message = $2 WHERE id = $3",
                                                         "reject",
                                                         item.message,
@@ -417,19 +418,19 @@ pub fn app_setup(
                                                         body: NotificationBody::WikiCache {
                                                             project_id: crate::models::ids::ProjectId::from(inner.id),
                                                             project_title: inner.name.clone(),
-                                                            wiki_cache_id: item.id.clone(),
+                                                            wiki_cache_id: item.id,
                                                             type_: "reject".to_string(),
                                                             msg: "资源编辑超时，您是该资源的管理员可重新发起编辑".to_string(),
                                                         },
                                                     };
-                                                    let _ = match n.insert(user.id, &mut transaction, &redis_ref2).await{
+                                                    match n.insert(user.id, &mut transaction, &redis_ref2).await{
                                                         Ok(_) => {},
                                                         Err(e) => {
                                                             println!("Failed to insert notification: {:?}", e);
                                                             continue
                                                         }
                                                     };
-                                                    let _ = match transaction.commit().await{
+                                                    match transaction.commit().await{
                                                         Ok(_) => {},
                                                         Err(e) => {
                                                             println!("Failed to commit transaction: {:?}", e);
@@ -447,7 +448,7 @@ pub fn app_setup(
                                                             continue
                                                         }
                                                     };
-                                                    let _ = match sqlx::query!(
+                                                    match sqlx::query!(
                                                        "UPDATE wiki_cache SET status = $1, message = $2 WHERE id = $3",
                                                         "timeout",
                                                         item.message,
@@ -461,7 +462,7 @@ pub fn app_setup(
                                                     };
 
                                                     if user.wiki_overtake_count+1 >= 3 {
-                                                        let _ = match sqlx::query!(
+                                                        match sqlx::query!(
                                                            "UPDATE users SET wiki_ban_time = now() + interval '1 hour' * $1,wiki_overtake_count=0 WHERE id = $2",
                                                             72 as i64,
                                                             user.id.0
@@ -477,12 +478,12 @@ pub fn app_setup(
                                                             body: NotificationBody::WikiCache {
                                                                 project_id: crate::models::ids::ProjectId::from(inner.id),
                                                                 project_title: inner.name.clone(),
-                                                                wiki_cache_id: item.id.clone(),
+                                                                wiki_cache_id: item.id,
                                                                 type_: "time_out".to_string(),
                                                                 msg: "资源编辑超时，并且累计3次超时/取消编辑 您已经被禁止编辑72小时".to_string(),
                                                             },
                                                         };
-                                                        let _ = match n.insert(user.id, &mut transaction, &redis_ref2).await{
+                                                        match n.insert(user.id, &mut transaction, &redis_ref2).await{
                                                             Ok(_) => {},
                                                             Err(e) => {
                                                                 println!("Failed to insert notification: {:?}", e);
@@ -491,7 +492,7 @@ pub fn app_setup(
                                                         };
 
                                                     }else {
-                                                        let _ = match sqlx::query!(
+                                                        match sqlx::query!(
                                                            "UPDATE users SET wiki_ban_time = now() + interval '1 hour' * $1,wiki_overtake_count=wiki_overtake_count+1 WHERE id = $2",
                                                             24 as i64,
                                                             user.id.0
@@ -507,12 +508,12 @@ pub fn app_setup(
                                                             body: NotificationBody::WikiCache {
                                                                 project_id: crate::models::ids::ProjectId::from(inner.id),
                                                                 project_title: inner.name.clone(),
-                                                                wiki_cache_id: item.id.clone(),
+                                                                wiki_cache_id: item.id,
                                                                 type_: "time_out".to_string(),
                                                                 msg: "资源编辑超时，您已被禁止编辑24小时".to_string(),
                                                             },
                                                         };
-                                                        let _ = match n.insert(user.id, &mut transaction, &redis_ref2)
+                                                        match n.insert(user.id, &mut transaction, &redis_ref2)
                                                             .await{
 
                                                             Ok(_) => {},
@@ -524,14 +525,14 @@ pub fn app_setup(
                                                     }
 
 
-                                                    let _ = match transaction.commit().await{
+                                                    match transaction.commit().await{
                                                         Ok(_) => {},
                                                         Err(e) => {
                                                             println!("Failed to commit transaction: {:?}", e);
                                                             continue
                                                         }
                                                     };
-                                                    let _ = match User::clear_caches(&[(UserId::from(user.id.clone()), Some(user.username.clone()))], &redis_ref2)
+                                                    match User::clear_caches(&[(user.id, Some(user.username.clone()))], &redis_ref2)
                                                         .await{
                                                         Ok(_) => {},
                                                         Err(e) => {

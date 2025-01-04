@@ -3,7 +3,10 @@ use crate::auth::{get_user_from_headers, AuthenticationError};
 use crate::database;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::wiki_item::{WikiDisplays, Wikis};
-use crate::database::models::{generate_wiki_cache_id, generate_wiki_id, user_item, User, UserId, Wiki, WikiCache, WikiCacheId, WikiId};
+use crate::database::models::{
+    generate_wiki_cache_id, generate_wiki_id, user_item, User, UserId, Wiki,
+    WikiCache, WikiCacheId, WikiId,
+};
 use crate::database::redis::RedisPool;
 use crate::models::ids::ProjectId;
 use crate::models::notifications::NotificationBody;
@@ -41,9 +44,7 @@ pub struct CreateWiki {
 
 #[derive(Deserialize, Serialize, Validate)]
 pub struct MsgWiki {
-    #[validate(
-        length(min = 1, max = 500),
-    )]
+    #[validate(length(min = 1, max = 500))]
     pub msg: String,
 }
 
@@ -51,8 +52,6 @@ pub struct MsgWiki {
 pub struct WikiSubmitAgain {
     pub id: WikiCacheId,
 }
-
-
 
 #[derive(Deserialize, Serialize, Debug, Validate)]
 pub struct EditWiki {
@@ -79,8 +78,7 @@ pub async fn wiki_delete(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.map_err(|_| {
@@ -119,7 +117,7 @@ pub async fn wiki_delete(
             &**pool,
         )
         .await?;
-        if !wiki_cache.is_some() {
+        if wiki_cache.is_none() {
             return Err(ApiError::NotFound);
         }
         let mut cache = wiki_cache.unwrap();
@@ -130,15 +128,13 @@ pub async fn wiki_delete(
             if cache_json[i]["id"] == wiki_delete.id {
                 cache_json.remove(i);
                 break;
-            } else {
-                if !cache_json[i]["child"].is_null() {
-                    let child_array =
-                        cache_json[i]["child"].as_array_mut().unwrap();
-                    for j in 0..child_array.len() {
-                        if child_array[j]["id"] == wiki_delete.id {
-                            child_array.remove(j);
-                            break;
-                        }
+            } else if !cache_json[i]["child"].is_null() {
+                let child_array =
+                    cache_json[i]["child"].as_array_mut().unwrap();
+                for j in 0..child_array.len() {
+                    if child_array[j]["id"] == wiki_delete.id {
+                        child_array.remove(j);
+                        break;
                     }
                 }
             }
@@ -158,8 +154,7 @@ pub async fn wiki_edit(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     // let mut bytes = web::BytesMut::new();
     // while let Some(item) = body.next().await {
     //     bytes.extend_from_slice(&item.map_err(|_| {
@@ -203,31 +198,25 @@ pub async fn wiki_edit(
             &**pool,
         )
         .await?;
-        if !wiki_cache.is_some() {
+        if wiki_cache.is_none() {
             return Err(ApiError::NotFound);
         }
         let mut cache = wiki_cache.unwrap();
         let cache_json = cache.cache.as_array_mut().unwrap();
         // let new_wiki: EditWiki = serde_json::from_slice(bytes.as_ref())?;
 
-        for i in 0..cache_json.len() {
-            if cache_json[i]["id"] == new_wiki.id {
-                cache_json[i]["body"] = new_wiki.body.clone().into();
-                cache_json[i]["sort_order"] =
-                    new_wiki.sort_order.clone().into();
+        for i in cache_json {
+            if i["id"] == new_wiki.id {
+                i["body"] = new_wiki.body.clone().into();
+                i["sort_order"] = new_wiki.sort_order.into();
                 break;
-            } else {
-                if !cache_json[i]["child"].is_null() {
-                    let child_array =
-                        cache_json[i]["child"].as_array_mut().unwrap();
-                    for j in 0..child_array.len() {
-                        if child_array[j]["id"] == new_wiki.id {
-                            child_array[j]["body"] =
-                                new_wiki.body.clone().into();
-                            child_array[j]["sort_order"] =
-                                new_wiki.sort_order.clone().into();
-                            break;
-                        }
+            } else if !i["child"].is_null() {
+                let child_array = i["child"].as_array_mut().unwrap();
+                for j in child_array {
+                    if j["id"] == new_wiki.id {
+                        j["body"] = new_wiki.body.clone().into();
+                        j["sort_order"] = new_wiki.sort_order.into();
+                        break;
                     }
                 }
             }
@@ -249,8 +238,7 @@ pub async fn wiki_star(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.map_err(|_| {
@@ -290,34 +278,32 @@ pub async fn wiki_star(
             &**pool,
         )
         .await?;
-        if !wiki_cache.is_some() {
+        if wiki_cache.is_none() {
             return Err(ApiError::NotFound);
         }
         let mut cache = wiki_cache.unwrap();
         let cache_json = cache.cache.as_array_mut().unwrap();
         let new_wiki: WikiStar = serde_json::from_slice(bytes.as_ref())?;
 
-        for i in 0..cache_json.len() {
-            if cache_json[i]["id"] == new_wiki.id {
-                cache_json[i]["featured"] = Value::from(true);
+        for i in cache_json {
+            if i["id"] == new_wiki.id {
+                i["featured"] = Value::from(true);
 
-                if !cache_json[i]["child"].is_null() {
-                    let child_array =
-                        cache_json[i]["child"].as_array_mut().unwrap();
-                    for j in 0..child_array.len() {
-                        child_array[j]["featured"] = Value::from(false);
+                if !i["child"].is_null() {
+                    let child_array = i["child"].as_array_mut().unwrap();
+                    for j in child_array {
+                        j["featured"] = Value::from(false);
                     }
                 }
             } else {
-                cache_json[i]["featured"] = Value::from(false);
-                if !cache_json[i]["child"].is_null() {
-                    let child_array =
-                        cache_json[i]["child"].as_array_mut().unwrap();
-                    for j in 0..child_array.len() {
-                        if child_array[j]["id"] == new_wiki.id {
-                            child_array[j]["featured"] = Value::from(true);
+                i["featured"] = Value::from(false);
+                if !i["child"].is_null() {
+                    let child_array = i["child"].as_array_mut().unwrap();
+                    for j in child_array {
+                        if j["id"] == new_wiki.id {
+                            j["featured"] = Value::from(true);
                         } else {
-                            child_array[j]["featured"] = Value::from(false);
+                            j["featured"] = Value::from(false);
                         }
                     }
                 }
@@ -345,7 +331,7 @@ pub async fn wiki_create(
     })?;
 
     let string = info.into_inner().0;
-    let result =
+    let result: Option<database::models::project_item::QueryProject> =
         database::models::Project::get(&string, &**pool, &redis).await?;
     let user_option = get_user_from_headers(
         &req,
@@ -374,13 +360,13 @@ pub async fn wiki_create(
             &**pool,
         )
         .await?;
-        if !wiki_cache.is_some() {
+        if wiki_cache.is_none() {
             return Err(ApiError::NotFound);
         }
 
         let mut transaction = pool.begin().await?;
 
-        let wiki_id = generate_wiki_id(&mut transaction).await?.into();
+        let wiki_id = generate_wiki_id(&mut transaction).await?;
         let father_id = new_wiki.father_id;
 
         let mut wiki = Wiki {
@@ -405,12 +391,12 @@ pub async fn wiki_create(
         if wiki_.parent_wiki_id == wiki.id {
             cache_json.push(serde_json::json!(wiki_));
         } else {
-            for i in 0..cache_json.len() {
-                if cache_json[i]["id"] == wiki_.parent_wiki_id.0 {
-                    if cache_json[i]["child"].is_null() {
-                        cache_json[i]["child"] = serde_json::json!([]);
+            for i in &mut *cache_json {
+                if i["id"] == wiki_.parent_wiki_id.0 {
+                    if i["child"].is_null() {
+                        i["child"] = serde_json::json!([]);
                     }
-                    cache_json[i]["child"]
+                    i["child"]
                         .as_array_mut()
                         .unwrap()
                         .push(serde_json::json!(wiki_));
@@ -425,7 +411,7 @@ pub async fn wiki_create(
         transaction.commit().await?;
 
         let mut wikis = database::models::Wiki::get_many(
-            &*project.wikis,
+            &project.wikis,
             false,
             &**pool,
             &redis,
@@ -440,8 +426,8 @@ pub async fn wiki_create(
             is_editor: true,
             cache: Option::from(cache),
             is_editor_user: true,
-            editor_user: Option::from(user_option),
-            is_visitors: false
+            editor_user: user_option,
+            is_visitors: false,
         };
 
         Ok(HttpResponse::Ok().json(wikis))
@@ -456,8 +442,7 @@ pub async fn wiki_edit_start(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     let string = info.into_inner().0;
     let result =
         database::models::Project::get(&string, &**pool, &redis).await?;
@@ -478,7 +463,17 @@ pub async fn wiki_edit_start(
             ));
         }
         if Utc::now() < user_option.as_ref().unwrap().wiki_ban_time {
-            return Err(ApiError::WikiBan(user_option.as_ref().unwrap().wiki_ban_time.with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap()).format("%Y-%m-%d %H:%M:%S").to_string()));
+            return Err(ApiError::WikiBan(
+                user_option
+                    .as_ref()
+                    .unwrap()
+                    .wiki_ban_time
+                    .with_timezone(
+                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
+                    )
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
+            ));
         }
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?
@@ -504,8 +499,12 @@ pub async fn wiki_edit_start(
             .await?;
 
         if has_draft_or_review.is_some() {
-            let user =
-                user_item::User::get_id(has_draft_or_review.unwrap().user_id,&**pool, &redis).await?;
+            let user = user_item::User::get_id(
+                has_draft_or_review.unwrap().user_id,
+                &**pool,
+                &redis,
+            )
+            .await?;
             return Err(ApiError::ISConflict(user.unwrap().username));
         }
         let (team_member, organization_team_member) =
@@ -514,7 +513,7 @@ pub async fn wiki_edit_start(
                 UserId::from(user_option.as_ref().unwrap().id),
                 &**pool,
             )
-                .await?;
+            .await?;
 
         let permissions = ProjectPermissions::get_permissions_by_role(
             &user_option.as_ref().unwrap().role,
@@ -522,14 +521,20 @@ pub async fn wiki_edit_start(
             &organization_team_member,
         );
 
-        if permissions.is_none() && project.inner.wiki_open == false{
-            return Err(ApiError::Validation("你没有权限编辑百科页面".to_string()));
+        if permissions.is_none() && !project.inner.wiki_open {
+            return Err(ApiError::Validation(
+                "你没有权限编辑百科页面".to_string(),
+            ));
         }
 
-        if permissions.is_some()  {
+        if permissions.is_some() {
             let perms = permissions.unwrap();
-            if !perms.contains(ProjectPermissions::WIKI_EDIT) &&  project.inner.wiki_open == false{
-                return Err(ApiError::Validation("你没有权限编辑百科页面".to_string()));
+            if !perms.contains(ProjectPermissions::WIKI_EDIT)
+                && !project.inner.wiki_open
+            {
+                return Err(ApiError::Validation(
+                    "你没有权限编辑百科页面".to_string(),
+                ));
             }
         }
 
@@ -537,11 +542,10 @@ pub async fn wiki_edit_start(
 
         let id = user_option.unwrap().id;
 
-        let wiki_cache_id =
-            generate_wiki_cache_id(&mut transaction).await?.into();
+        let wiki_cache_id = generate_wiki_cache_id(&mut transaction).await?;
 
         let mut wikis = database::models::Wiki::get_many(
-            &*project.wikis,
+            &project.wikis,
             false,
             &**pool,
             &redis,
@@ -579,8 +583,7 @@ pub async fn wiki_list(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     let string = info.into_inner().0;
     let result =
         database::models::Project::get(&string, &**pool, &redis).await?;
@@ -604,7 +607,7 @@ pub async fn wiki_list(
         }
 
         let mut wikis = database::models::Wiki::get_many(
-            &*project.wikis,
+            &project.wikis,
             false,
             &**pool,
             &redis,
@@ -650,7 +653,13 @@ pub async fn wiki_list(
                 );
 
                 // 如果 有编辑权限 或者 缓存的用户id和当前用户id相同则返回所有正在编辑的wiki
-                if permissions.is_some() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) || wiki_cache_.user_id == UserId(user_option.as_ref().unwrap().id.0.clone() as i64){
+                if permissions.is_some()
+                    && permissions
+                        .unwrap()
+                        .contains(ProjectPermissions::WIKI_EDIT)
+                    || wiki_cache_.user_id
+                        == UserId(user_option.as_ref().unwrap().id.0 as i64)
+                {
                     wiki_cache_
                         .cache
                         .as_array_mut()
@@ -658,10 +667,9 @@ pub async fn wiki_list(
                         .sort_by_key(|x| x["sort_order"].as_i64().unwrap());
                     for x in wiki_cache_.cache.as_array_mut().unwrap() {
                         if !x["child"].is_null() {
-                            x["child"]
-                                .as_array_mut()
-                                .unwrap()
-                                .sort_by_key(|x| x["sort_order"].as_i64().unwrap());
+                            x["child"].as_array_mut().unwrap().sort_by_key(
+                                |x| x["sort_order"].as_i64().unwrap(),
+                            );
                         }
                     }
                     let u = user_get_(wiki_cache_.user_id, pool, redis).await?;
@@ -669,28 +677,24 @@ pub async fn wiki_list(
                     wikis.is_visitors = false;
                     wikis.is_editor = true;
                     wikis.editor_user = u;
-                    if  wiki_cache_.user_id == UserId(user_option.as_ref().unwrap().id.0.clone() as i64) {
+                    if wiki_cache_.user_id
+                        == UserId(user_option.as_ref().unwrap().id.0 as i64)
+                    {
                         wikis.is_editor_user = true;
                         wikis.cache = Option::from(wiki_cache_);
-                    }else {
+                    } else {
                         wikis.is_editor_user = false;
-                        if wiki_cache_.status == "review".to_string() {
+                        if wiki_cache_.status == *"review" {
                             wikis.cache = Option::from(wiki_cache_);
                         }
                     }
-
-
-
-                }else {
+                } else {
                     let u = user_get_(wiki_cache_.user_id, pool, redis).await?;
                     wikis.is_editor = true;
                     wikis.is_visitors = true;
                     wikis.is_editor_user = false;
                     wikis.editor_user = u;
                 }
-
-
-
             }
         }
 
@@ -705,8 +709,7 @@ pub async fn wiki_accept(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     let string = info.into_inner().0;
     let result =
         database::models::Project::get(&string, &**pool, &redis).await?;
@@ -718,9 +721,9 @@ pub async fn wiki_accept(
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
     )
-        .await
-        .map(|x| x.1)
-        .ok();
+    .await
+    .map(|x| x.1)
+    .ok();
 
     if user_option.is_none() {
         return Err(ApiError::Authentication(
@@ -736,14 +739,14 @@ pub async fn wiki_accept(
         }
 
         let mut wikis = database::models::Wiki::get_many(
-            &*project.wikis,
+            &project.wikis,
             false,
             &**pool,
             &redis,
         )
-            .await?
-            .into_iter()
-            .collect::<Vec<_>>();
+        .await?
+        .into_iter()
+        .collect::<Vec<_>>();
         wikis.sort_by_key(|x| x.sort_order);
         let wikis_array = wiki_format(wikis);
         let wikis = Wikis {
@@ -752,14 +755,14 @@ pub async fn wiki_accept(
             cache: None,
             is_editor_user: true,
             editor_user: user_option.clone(),
-            is_visitors: false
+            is_visitors: false,
         };
 
         let wiki_cache = database::models::WikiCache::get_draft_or_review(
             project.inner.id,
             &**pool,
         )
-            .await?;
+        .await?;
 
         let (team_member, organization_team_member) =
             crate::database::models::TeamMember::get_for_project_permissions(
@@ -767,20 +770,25 @@ pub async fn wiki_accept(
                 UserId::from(user_option.as_ref().unwrap().id),
                 &**pool,
             )
-                .await?;
+            .await?;
 
         let permissions = ProjectPermissions::get_permissions_by_role(
             &user_option.as_ref().unwrap().role,
             &team_member,
             &organization_team_member,
         );
-        if wiki_cache.is_some() && (permissions.is_none() || !permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT)) {
-            return Err(ApiError::Validation("你没有权限审核百科页面".to_string()));
+        if wiki_cache.is_some()
+            && (permissions.is_none()
+                || !permissions
+                    .unwrap()
+                    .contains(ProjectPermissions::WIKI_EDIT))
+        {
+            return Err(ApiError::Validation(
+                "你没有权限审核百科页面".to_string(),
+            ));
         }
 
         if wiki_cache.is_some() {
-
-
             // 只有编辑权限的用户才能跳过审核部分
 
             let mut wiki_cache_ = wiki_cache.unwrap();
@@ -913,8 +921,6 @@ pub async fn wiki_accept(
                 }
             }
 
-
-
             let mut common_wikis: HashMap<WikiId, (Wiki, Wiki)> =
                 HashMap::new();
             for (key, old_wiki) in &old_wikis {
@@ -939,42 +945,48 @@ pub async fn wiki_accept(
             }
 
             let mut transaction = pool.begin().await?;
-            for (_key, (old_wiki, new_wiki)) in &common_wikis {
-                if old_wiki.body != new_wiki.body || old_wiki.sort_order != new_wiki.sort_order || old_wiki.featured != new_wiki.featured || old_wiki.title != new_wiki.title  {
+            for (old_wiki, new_wiki) in common_wikis.values() {
+                if old_wiki.body != new_wiki.body
+                    || old_wiki.sort_order != new_wiki.sort_order
+                    || old_wiki.featured != new_wiki.featured
+                    || old_wiki.title != new_wiki.title
+                {
                     let mut wiki = new_wiki.clone();
                     wiki.updated = chrono::Utc::now();
                     wiki.update(&mut transaction).await?;
                     wiki.clear_cache(&redis).await?;
                 }
             }
-            for (_key, new_wiki) in &added_wikis {
+            for new_wiki in added_wikis.values() {
                 let wiki = new_wiki.clone();
                 wiki.update(&mut transaction).await?;
                 wiki.clear_cache(&redis).await?;
             }
-            for (_key, old_wiki) in &removed_wikis {
+            for old_wiki in removed_wikis.values() {
                 if old_wiki.id != old_wiki.parent_wiki_id {
                     old_wiki.delete(&mut transaction).await?;
                 }
             }
-            for (_key, old_wiki) in &removed_wikis {
+            for old_wiki in removed_wikis.values() {
                 if old_wiki.id == old_wiki.parent_wiki_id {
                     old_wiki.delete(&mut transaction).await?;
                 }
             }
-            wiki_cache_.message_add(&user_option.as_ref().unwrap(), &"通过".to_string()).await;
+            wiki_cache_
+                .message_add(user_option.as_ref().unwrap(), "通过")
+                .await;
             wiki_cache_.finish_cache(&mut transaction).await?;
             NotificationBuilder {
                 body: NotificationBody::WikiCache {
                     project_id: ProjectId::from(project.inner.id),
                     project_title: project.inner.name.clone(),
-                    wiki_cache_id: wiki_cache_.id.clone(),
+                    wiki_cache_id: wiki_cache_.id,
                     type_: "accept".to_string(),
                     msg: "通过".to_string(),
                 },
             }
-                .insert(wiki_cache_.user_id, &mut transaction, &redis)
-                .await?;
+            .insert(wiki_cache_.user_id, &mut transaction, &redis)
+            .await?;
 
             transaction.commit().await?;
             crate::database::models::Project::clear_cache(
@@ -982,8 +994,8 @@ pub async fn wiki_accept(
                 None,
                 None,
                 &redis,
-            ).await?;
-
+            )
+            .await?;
         } else {
             return Err(ApiError::NotFound);
         }
@@ -992,7 +1004,6 @@ pub async fn wiki_accept(
     } else {
         Err(ApiError::NotFound)
     }
-
 }
 
 pub async fn wiki_reject(
@@ -1002,8 +1013,7 @@ pub async fn wiki_reject(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
     body: web::Json<MsgWiki>,
-) -> Result<HttpResponse, ApiError>
-{
+) -> Result<HttpResponse, ApiError> {
     body.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))
     })?;
@@ -1018,9 +1028,9 @@ pub async fn wiki_reject(
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
     )
-        .await
-        .map(|x| x.1)
-        .ok();
+    .await
+    .map(|x| x.1)
+    .ok();
 
     if user_option.is_none() {
         return Err(ApiError::Authentication(
@@ -1036,21 +1046,21 @@ pub async fn wiki_reject(
         }
 
         let mut wikis = database::models::Wiki::get_many(
-            &*project.wikis,
+            &project.wikis,
             false,
             &**pool,
             &redis,
         )
-            .await?
-            .into_iter()
-            .collect::<Vec<_>>();
+        .await?
+        .into_iter()
+        .collect::<Vec<_>>();
         wikis.sort_by_key(|x| x.sort_order);
 
         let wiki_cache = database::models::WikiCache::get_draft_or_review(
             project.inner.id,
             &**pool,
         )
-            .await?;
+        .await?;
 
         let (team_member, organization_team_member) =
             crate::database::models::TeamMember::get_for_project_permissions(
@@ -1058,37 +1068,45 @@ pub async fn wiki_reject(
                 UserId::from(user_option.as_ref().unwrap().id),
                 &**pool,
             )
-                .await?;
+            .await?;
 
         let permissions = ProjectPermissions::get_permissions_by_role(
             &user_option.as_ref().unwrap().role,
             &team_member,
             &organization_team_member,
         );
-        if wiki_cache.is_some() && (permissions.is_none() || !permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT)) {
-            return Err(ApiError::Validation("你没有权限审核百科页面".to_string()));
+        if wiki_cache.is_some()
+            && (permissions.is_none()
+                || !permissions
+                    .unwrap()
+                    .contains(ProjectPermissions::WIKI_EDIT))
+        {
+            return Err(ApiError::Validation(
+                "你没有权限审核百科页面".to_string(),
+            ));
         }
 
         if wiki_cache.is_some() {
-
             // 只有编辑权限的用户才能跳过审核部分
             let mut wiki_cache_ = wiki_cache.unwrap();
 
             let mut transaction = pool.begin().await?;
 
-            wiki_cache_.message_add(&user_option.as_ref().unwrap(), &body.msg).await;
+            wiki_cache_
+                .message_add(user_option.as_ref().unwrap(), &body.msg)
+                .await;
             wiki_cache_.reject_cache(&mut transaction).await?;
             NotificationBuilder {
                 body: NotificationBody::WikiCache {
                     project_id: ProjectId::from(project.inner.id),
                     project_title: project.inner.name.clone(),
-                    wiki_cache_id: wiki_cache_.id.clone(),
+                    wiki_cache_id: wiki_cache_.id,
                     type_: "reject".to_string(),
                     msg: body.msg.clone(),
                 },
             }
-                .insert(wiki_cache_.user_id, &mut transaction, &redis)
-                .await?;
+            .insert(wiki_cache_.user_id, &mut transaction, &redis)
+            .await?;
             transaction.commit().await?;
             Ok(HttpResponse::Ok().finish())
         } else {
@@ -1137,7 +1155,7 @@ pub async fn wiki_submit(
         }
 
         let mut wikis = database::models::Wiki::get_many(
-            &*project.wikis,
+            &project.wikis,
             false,
             &**pool,
             &redis,
@@ -1153,7 +1171,7 @@ pub async fn wiki_submit(
             cache: None,
             is_editor_user: true,
             editor_user: user_option.clone(),
-            is_visitors: false
+            is_visitors: false,
         };
 
         let wiki_cache = database::models::WikiCache::get_draft(
@@ -1170,7 +1188,7 @@ pub async fn wiki_submit(
                 UserId::from(user_option.as_ref().unwrap().id),
                 &**pool,
             )
-                .await?;
+            .await?;
 
         let permissions = ProjectPermissions::get_permissions_by_role(
             &user_option.as_ref().unwrap().role,
@@ -1178,43 +1196,60 @@ pub async fn wiki_submit(
             &organization_team_member,
         );
 
-            /*
-            *
-            * 如果没有管理百科的权限则直接提交为审核中
-            *
-            * 并且发送通知给这个百科有权限的人去审核
-            *
-            */
+        /*
+         *
+         * 如果没有管理百科的权限则直接提交为审核中
+         *
+         * 并且发送通知给这个百科有权限的人去审核
+         *
+         */
 
-        if wiki_cache.is_some() && (permissions.is_none() || !permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT)) {
+        if wiki_cache.is_some()
+            && (permissions.is_none()
+                || !permissions
+                    .unwrap()
+                    .contains(ProjectPermissions::WIKI_EDIT))
+        {
             let mut transaction = pool.begin().await?;
             let mut cache = wiki_cache.unwrap();
-            cache.message_add(&user_option.as_ref().unwrap(), &body.msg).await;
+            cache
+                .message_add(user_option.as_ref().unwrap(), &body.msg)
+                .await;
             cache.review_cache(&mut transaction).await?;
 
-
-            let mut new_member = database::models::TeamMember::get_from_team_full(
-                project.inner.team_id,
-                &**pool,
-                &redis,
-            )
-            .await?
-            .into_iter()
-            .filter(|x| x.permissions.contains(ProjectPermissions::WIKI_EDIT))
-            .collect::<Vec<_>>();
+            let mut new_member =
+                database::models::TeamMember::get_from_team_full(
+                    project.inner.team_id,
+                    &**pool,
+                    &redis,
+                )
+                .await?
+                .into_iter()
+                .filter(|x| {
+                    x.permissions.contains(ProjectPermissions::WIKI_EDIT)
+                })
+                .collect::<Vec<_>>();
 
             if project.inner.organization_id.is_some() {
-
-                let _organization = database::models::Organization::get_id(project.inner.organization_id.unwrap(), &**pool, &redis).await?;
+                let _organization = database::models::Organization::get_id(
+                    project.inner.organization_id.unwrap(),
+                    &**pool,
+                    &redis,
+                )
+                .await?;
                 if _organization.is_some() {
-                    let new_member_organization = database::models::TeamMember::get_from_team_full(
-                        _organization.unwrap().team_id,
-                        &**pool,
-                        &redis,
-                    )
+                    let new_member_organization =
+                        database::models::TeamMember::get_from_team_full(
+                            _organization.unwrap().team_id,
+                            &**pool,
+                            &redis,
+                        )
                         .await?
                         .into_iter()
-                        .filter(|x| x.permissions.contains(ProjectPermissions::WIKI_EDIT))
+                        .filter(|x| {
+                            x.permissions
+                                .contains(ProjectPermissions::WIKI_EDIT)
+                        })
                         .collect::<Vec<_>>();
                     for x in new_member_organization {
                         println!("{:?}", x.user_id);
@@ -1228,16 +1263,12 @@ pub async fn wiki_submit(
                             new_member.push(x);
                         }
                     }
-                }else {
+                } else {
                     println!("organization not found");
                 }
-
-
-
             }
 
             // println!("new_member: {:?}", new_member);
-
 
             for member in new_member {
                 println!("member: {:?}", member);
@@ -1245,21 +1276,19 @@ pub async fn wiki_submit(
                     body: NotificationBody::WikiCache {
                         project_id: ProjectId::from(project.inner.id),
                         project_title: project.inner.name.clone(),
-                        wiki_cache_id: cache.id.clone(),
+                        wiki_cache_id: cache.id,
                         type_: "review".to_string(),
                         msg: body.msg.clone(),
                     },
                 }
-                    .insert(member.user_id.into(), &mut transaction, &redis)
-                    .await?;
+                .insert(member.user_id, &mut transaction, &redis)
+                .await?;
             }
             transaction.commit().await?;
             return Ok(HttpResponse::Ok().finish());
         }
 
         if wiki_cache.is_some() {
-            
-
             // 只有编辑权限的用户才能跳过审核部分
 
             let mut wiki_cache_ = wiki_cache.unwrap();
@@ -1394,16 +1423,6 @@ pub async fn wiki_submit(
                 }
             }
 
-            println!("old_wikis");
-            for x in &old_wikis {
-                println!("{:?} , {:?}", x.0, x.1);
-            }
-
-            println!("new_wikis");
-            for x in &new_wikis {
-                println!("{:?} , {:?}", x.0, x.1);
-            }
-
             let mut common_wikis: HashMap<WikiId, (Wiki, Wiki)> =
                 HashMap::new();
             for (key, old_wiki) in &old_wikis {
@@ -1412,10 +1431,7 @@ pub async fn wiki_submit(
                         .insert(*key, (old_wiki.clone(), new_wiki.clone()));
                 }
             }
-            println!("重复 common_wikis");
-            for x in &common_wikis {
-                println!("{:?} , {:?}", x.0, x.1);
-            }
+
             let mut added_wikis: HashMap<WikiId, Wiki> = HashMap::new();
             let mut removed_wikis: HashMap<WikiId, Wiki> = HashMap::new();
 
@@ -1431,41 +1447,39 @@ pub async fn wiki_submit(
                 }
             }
 
-            println!("Added wikis");
-            for x in &added_wikis {
-                println!("{:?} , {:?}", x.0, x.1);
-            }
-
-            println!("Removed wikis");
-            for x in &removed_wikis {
-                println!("{:?} , {:?}", x.0, x.1);
-            }
-
             let mut transaction = pool.begin().await?;
-            for (_key, (old_wiki, new_wiki)) in &common_wikis {
-                if old_wiki.body != new_wiki.body || old_wiki.sort_order != new_wiki.sort_order || old_wiki.featured != new_wiki.featured || old_wiki.title != new_wiki.title  {
+
+            for wiki in common_wikis.values() {
+                let (old_wiki, new_wiki) = wiki;
+                if old_wiki.body != new_wiki.body
+                    || old_wiki.sort_order != new_wiki.sort_order
+                    || old_wiki.featured != new_wiki.featured
+                    || old_wiki.title != new_wiki.title
+                {
                     let mut wiki = new_wiki.clone();
                     wiki.updated = chrono::Utc::now();
                     wiki.update(&mut transaction).await?;
                     wiki.clear_cache(&redis).await?;
                 }
             }
-            for (_key, new_wiki) in &added_wikis {
-                let wiki = new_wiki.clone();
+            for new_wiki in &added_wikis {
+                let wiki = new_wiki.1.clone();
                 wiki.update(&mut transaction).await?;
                 wiki.clear_cache(&redis).await?;
             }
-            for (_key, old_wiki) in &removed_wikis {
-                if old_wiki.id != old_wiki.parent_wiki_id {
-                    old_wiki.delete(&mut transaction).await?;
+            for old_wiki in &removed_wikis {
+                if old_wiki.1.id != old_wiki.1.parent_wiki_id {
+                    old_wiki.1.delete(&mut transaction).await?;
                 }
             }
-            for (_key, old_wiki) in &removed_wikis {
-                if old_wiki.id == old_wiki.parent_wiki_id {
-                    old_wiki.delete(&mut transaction).await?;
+            for old_wiki in &removed_wikis {
+                if old_wiki.1.id == old_wiki.1.parent_wiki_id {
+                    old_wiki.1.delete(&mut transaction).await?;
                 }
             }
-            wiki_cache_.message_add(&user_option.as_ref().unwrap(), &body.msg).await;
+            wiki_cache_
+                .message_add(user_option.as_ref().unwrap(), &body.msg)
+                .await;
             wiki_cache_.finish_cache(&mut transaction).await?;
             transaction.commit().await?;
             crate::database::models::Project::clear_cache(
@@ -1473,11 +1487,8 @@ pub async fn wiki_submit(
                 None,
                 None,
                 &redis,
-            ).await?;
-
-
-
-
+            )
+            .await?;
         } else {
             return Err(ApiError::NotFound);
         }
@@ -1489,13 +1500,11 @@ pub async fn wiki_submit(
 }
 pub async fn wiki_submit_again(
     req: HttpRequest,
-    info: web::Path<(String,String)>,
+    info: web::Path<(String, String)>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-
-
     let (string, cache_id) = info.into_inner();
     println!("{:?} , {:?}", string, cache_id);
     let result =
@@ -1527,11 +1536,14 @@ pub async fn wiki_submit_again(
         let more = database::models::WikiCache::get_draft_or_review(
             project.inner.id,
             &**pool,
-        ).await?;
-        if more.is_some() && more.unwrap().user_id != UserId::from(user_option.as_ref().unwrap().id) {
+        )
+        .await?;
+        if more.is_some()
+            && more.unwrap().user_id
+                != UserId::from(user_option.as_ref().unwrap().id)
+        {
             return Err(ApiError::Validation("其他用户正在编辑中".to_string()));
         }
-
 
         let wiki_cache = database::models::WikiCache::get_reject_or_review(
             cache_id.parse().unwrap(),
@@ -1544,19 +1556,22 @@ pub async fn wiki_submit_again(
             let mut cache = wiki_cache.unwrap();
 
             if cache.again_count >= 5 {
-                return Err(ApiError::Validation("已重复编辑过5次，本申请已无法再次编辑".to_string()));
+                return Err(ApiError::Validation(
+                    "已重复编辑过5次，本申请已无法再次编辑".to_string(),
+                ));
             }
 
             let mut transaction = pool.begin().await?;
-            cache.message_add(&user_option.as_ref().unwrap(), &"重新开始编辑".to_string()).await;
+            cache
+                .message_add(user_option.as_ref().unwrap(), "重新开始编辑")
+                .await;
             cache.again_cache(&mut transaction).await?;
 
             transaction.commit().await?;
             Ok(HttpResponse::Ok().finish())
-        }else {
+        } else {
             Err(ApiError::NotFound)
         }
-
     } else {
         Err(ApiError::NotFound)
     }
@@ -1564,13 +1579,11 @@ pub async fn wiki_submit_again(
 
 pub async fn wiki_given_up(
     req: HttpRequest,
-    info: web::Path<(String,String)>,
+    info: web::Path<(String, String)>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-
-
     let (string, cache_id) = info.into_inner();
     println!("{:?} , {:?}", string, cache_id);
     let result =
@@ -1610,23 +1623,28 @@ pub async fn wiki_given_up(
             let user = user_option.as_ref().unwrap();
             let mut cache = wiki_cache.unwrap();
             let mut transaction = pool.begin().await?;
-            cache.message_add(&user, &"放弃修改".to_string()).await;
+            cache.message_add(user, "放弃修改").await;
             cache.given_up_cache(&mut transaction).await?;
-            cache.user_ban(cache.user_id,3,&mut transaction).await?;
-            cache.user_overtake_count(cache.user_id,1,&mut transaction).await?;
-            if user.wiki_overtake_count+1 > 3 {
-                cache.user_overtake_count_set(cache.user_id,0,&mut transaction).await?;
-                cache.user_ban(cache.user_id,72,&mut transaction).await?;
+            cache.user_ban(cache.user_id, 3, &mut transaction).await?;
+            cache
+                .user_overtake_count(cache.user_id, 1, &mut transaction)
+                .await?;
+            if user.wiki_overtake_count + 1 > 3 {
+                cache
+                    .user_overtake_count_set(cache.user_id, 0, &mut transaction)
+                    .await?;
+                cache.user_ban(cache.user_id, 72, &mut transaction).await?;
             }
             transaction.commit().await?;
-            User::clear_caches(&[(UserId::from(user.id.clone()), Some(user.username.clone()))], &redis)
-                .await?;
+            User::clear_caches(
+                &[(UserId::from(user.id), Some(user.username.clone()))],
+                &redis,
+            )
+            .await?;
             Ok(HttpResponse::Ok().finish())
-
-        }else {
+        } else {
             Err(ApiError::NotFound)
         }
-
     } else {
         Err(ApiError::NotFound)
     }
@@ -1639,15 +1657,15 @@ pub fn wiki_format(wikis: Vec<Wiki>) -> Vec<WikiDisplays> {
             wikis_.insert(
                 wiki.id.0,
                 WikiDisplays {
-                    id: wiki.id.clone(),
-                    project_id: wiki.project_id.clone(),
-                    parent_wiki_id: wiki.parent_wiki_id.clone(),
+                    id: wiki.id,
+                    project_id: wiki.project_id,
+                    parent_wiki_id: wiki.parent_wiki_id,
                     title: wiki.title.clone(),
                     body: wiki.body.clone(),
-                    sort_order: wiki.sort_order.clone(),
-                    featured: wiki.featured.clone(),
-                    created: wiki.created.clone(),
-                    updated: wiki.updated.clone(),
+                    sort_order: wiki.sort_order,
+                    featured: wiki.featured,
+                    created: wiki.created,
+                    updated: wiki.updated,
                     slug: wiki.slug.clone(),
                     child: [].to_vec(),
                 },

@@ -336,9 +336,9 @@ pub async fn version_edit_helper(
 
         if let Some(perms) = permissions {
             if !perms.contains(ProjectPermissions::UPLOAD_VERSION) {
-               return Err(ApiError::CustomAuthentication(
-    "您没有权限编辑此版本！".to_string(),
-));
+                return Err(ApiError::CustomAuthentication(
+                    "您没有权限编辑此版本！".to_string(),
+                ));
             }
 
             let mut transaction = pool.begin().await?;
@@ -373,8 +373,8 @@ pub async fn version_edit_helper(
 
             if let Some(disk_only) = &new_version.disk_only {
                 if *disk_only {
-                   let url =  new_version.disk_url;
-                    if url.is_none(){
+                    let url = new_version.disk_url;
+                    if url.is_none() {
                         return Err(ApiError::InvalidInput(
                             "未填写网盘链接".to_string(),
                         ));
@@ -386,27 +386,25 @@ pub async fn version_edit_helper(
                         SET disk_url = $1, downloads = 0
                         WHERE (id = $2)
                         ",
-                        url.unwrap()
-                        ,
+                        url.unwrap(),
                         id as database::models::ids::VersionId,
                     )
-                        .execute(&mut *transaction)
-                        .await?;
-                }else {
+                    .execute(&mut *transaction)
+                    .await?;
+                } else {
                     sqlx::query!(
-                    "
+                        "
                     UPDATE versions
                     SET disk_url = $1
                     WHERE (id = $2)
                     ",
-                    Option::<String>::None,
-                    id as database::models::ids::VersionId,
-                )
-                        .execute(&mut *transaction)
-                        .await?;
+                        Option::<String>::None,
+                        id as database::models::ids::VersionId,
+                    )
+                    .execute(&mut *transaction)
+                    .await?;
                 }
             }
-
 
             if let Some(version_type) = &new_version.version_type {
                 sqlx::query!(
@@ -511,7 +509,7 @@ pub async fn version_edit_helper(
                         .iter()
                         .find(|lf| lf.field == vf_name)
                         .ok_or_else(|| {
-                           ApiError::InvalidInput(format!(
+                            ApiError::InvalidInput(format!(
     "加载器字段 '{vf_name}' 不存在于提供的任何加载器中。"
 ))
                         })?;
@@ -551,9 +549,9 @@ pub async fn version_edit_helper(
                         )
                         .await?
                         .ok_or_else(|| {
-                          ApiError::InvalidInput(
-    "没有提供的加载器的数据库条目。".to_string(),
-)
+                            ApiError::InvalidInput(
+                                "没有提供的加载器的数据库条目。".to_string(),
+                            )
                         })?;
                     loader_versions.push(LoaderVersion::new(loader_id, id));
                 }
@@ -600,8 +598,8 @@ pub async fn version_edit_helper(
             if let Some(downloads) = &new_version.downloads {
                 if !user.role.is_mod() {
                     return Err(ApiError::CustomAuthentication(
-    "您没有权限设置此模组的下载次数！".to_string(),
-));
+                        "您没有权限设置此模组的下载次数！".to_string(),
+                    ));
                 }
 
                 sqlx::query!(

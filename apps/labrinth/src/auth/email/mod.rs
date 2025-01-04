@@ -36,7 +36,10 @@ pub fn send_email_raw(
     let host = dotenvy::var("SMTP_HOST")?;
     let creds = Credentials::new(username, password);
 
-    let mailer = SmtpTransport::relay(&host)?.port(465).credentials(creds).build();
+    let mailer = SmtpTransport::relay(&host)?
+        .port(465)
+        .credentials(creds)
+        .build();
 
     mailer.send(&email)?;
 

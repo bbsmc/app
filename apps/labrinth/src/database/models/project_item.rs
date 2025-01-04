@@ -217,6 +217,7 @@ impl ProjectBuilder {
             default_type: "project".to_string(),
             default_game_version: vec![],
             default_game_loaders: vec![],
+            forum: None,
         };
         project_struct.insert(&mut *transaction).await?;
 
@@ -293,6 +294,7 @@ pub struct Project {
     pub default_type: String,
     pub default_game_version: Vec<String>,
     pub default_game_loaders: Vec<String>,
+    pub forum: Option<DiscussionId>,
 }
 
 impl Project {
@@ -344,8 +346,7 @@ impl Project {
         id: ProjectId,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         redis: &RedisPool,
-    ) -> Result<Option<()>, DatabaseError>
-    {
+    ) -> Result<Option<()>, DatabaseError> {
         let project = Self::get_id(id, &mut **transaction, redis).await?;
 
         if let Some(project) = project {
@@ -797,7 +798,7 @@ impl Project {
                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                     m.license_url license_url,
                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                    m.webhook_sent, m.color, m.wiki_open,m.default_type,m.default_game_loaders,m.default_game_version,
+                    m.webhook_sent, m.color, m.wiki_open,m.default_type,m.default_game_loaders,m.default_game_version, m.forum,
                     t.id thread_id, m.monetization_status monetization_status,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -834,7 +835,7 @@ impl Project {
                             .filter(|x| loader_loader_field_ids.contains(&x.id))
                             .collect::<Vec<_>>();
 
-                        if project_types.len() == 0 {
+                        if project_types.is_empty() {
                             project_types.push(m.default_type.clone());
                         }
                         let mut default_game_version = vec![];
@@ -884,10 +885,10 @@ impl Project {
                                     &m.monetization_status,
                                 ),
                                 default_type: m.default_type.clone(),
-                                default_game_version: default_game_version,
-                                default_game_loaders: default_game_loaders,
-
+                                default_game_version,
+                                default_game_loaders,
                                 loaders,
+                                forum: m.forum.map(DiscussionId),
                             },
                             categories: m.categories.unwrap_or_default(),
                             additional_categories: m.additional_categories.unwrap_or_default(),

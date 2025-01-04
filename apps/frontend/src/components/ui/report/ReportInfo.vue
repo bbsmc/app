@@ -32,7 +32,9 @@
         :to="`/project/${report.project.slug}/version/${report.version.id}`"
         class="iconified-link"
       >
-        <div class="backed-svg" :class="{ raised: raised }"><VersionIcon /></div>
+        <div class="backed-svg" :class="{ raised: raised }">
+          <VersionIcon />
+        </div>
         <span class="title">{{ report.version.name }}</span>
       </nuxt-link>
       of
@@ -49,7 +51,9 @@
       </nuxt-link>
     </div>
     <div v-else class="item-info">
-      <div class="backed-svg" :class="{ raised: raised }"><UnknownIcon /></div>
+      <div class="backed-svg" :class="{ raised: raised }">
+        <UnknownIcon />
+      </div>
       <span>未知的举报类型</span>
     </div>
     <div class="report-type">
@@ -79,9 +83,7 @@
         <span>{{ report.reporterUser.username }}</span>
       </nuxt-link>
       <span>&nbsp;</span>
-      <span v-tooltip="$dayjs(report.created).format('YYYY-MM-DD hh:mm:ss')">{{
-        fromNow(report.created)
-      }}</span>
+      <span v-tooltip="formatDateTime(report.created)">{{ fromNow(report.created) }}</span>
       <CopyCode v-if="flags.developerMode" :text="report.id" class="report-id" />
     </div>
   </div>
@@ -89,6 +91,7 @@
 
 <script setup>
 import { renderHighlightedString } from "~/helpers/highlight.js";
+import { formatDateTime } from "@modrinth/utils";
 import Avatar from "~/components/ui/Avatar.vue";
 import Badge from "~/components/ui/Badge.vue";
 import ReportIcon from "~/assets/images/utils/report.svg?component";

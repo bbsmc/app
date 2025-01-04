@@ -3,7 +3,10 @@ use crate::models::ids::base62_impl::{parse_base62, to_base62};
 use chrono::{TimeZone, Utc};
 use dashmap::DashMap;
 use deadpool_redis::{Config, Runtime};
-use redis::{cmd, Cmd, ConnectionInfo, ExistenceCheck, IntoConnectionInfo, SetExpiry, SetOptions};
+use redis::{
+    cmd, Cmd, ConnectionInfo, ExistenceCheck, IntoConnectionInfo, SetExpiry,
+    SetOptions,
+};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -32,27 +35,23 @@ impl RedisPool {
     // testing pool uses a hashmap to mimic redis behaviour for very small data sizes (ie: tests)
     // PANICS: production pool will panic if redis url is not set
 
-
     pub fn new(meta_namespace: Option<String>) -> Self {
-
         let redis_url = dotenvy::var("REDIS_URL").expect("Redis URL not set");
-        let connection_info: ConnectionInfo = redis_url.into_connection_info().expect("Invalid Redis URL");
+        let connection_info: ConnectionInfo =
+            redis_url.into_connection_info().expect("Invalid Redis URL");
 
-
-        let redis_pool = Config::from_connection_info(
-            connection_info
-        )
-        .builder()
-        .expect("Error building Redis pool")
-        .max_size(
-            dotenvy::var("DATABASE_MAX_CONNECTIONS")
-                .ok()
-                .and_then(|x| x.parse().ok())
-                .unwrap_or(10000),
-        )
-        .runtime(Runtime::Tokio1)
-        .build()
-        .expect("Redis connection failed");
+        let redis_pool = Config::from_connection_info(connection_info)
+            .builder()
+            .expect("Error building Redis pool")
+            .max_size(
+                dotenvy::var("DATABASE_MAX_CONNECTIONS")
+                    .ok()
+                    .and_then(|x| x.parse().ok())
+                    .unwrap_or(10000),
+            )
+            .runtime(Runtime::Tokio1)
+            .build()
+            .expect("Redis connection failed");
 
         RedisPool {
             pool: redis_pool,
@@ -493,6 +492,48 @@ impl RedisPool {
         }
 
         Ok(cached_values.into_iter().map(|x| (x.0, x.1.val)).collect())
+    }
+
+    pub async fn get_cached_key<F, Fut, T>(
+        &self,
+        namespace: &str,
+        key: impl Display,
+        closure: F,
+    ) -> Result<T, DatabaseError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<T, DatabaseError>>,
+        T: Serialize + DeserializeOwned,
+    {
+        let mut connection = self.connect().await?.connection;
+
+        let key_str = key.to_string();
+
+        // 尝试从缓存获取
+        let cached = cmd("GET")
+            .arg(format!("{}_{namespace}:{key_str}", self.meta_namespace))
+            .query_async::<Option<String>>(&mut connection)
+            .await?;
+
+        if let Some(cached) = cached {
+            if let Ok(value) = serde_json::from_str::<T>(&cached) {
+                return Ok(value);
+            }
+        }
+
+        // 如果缓存没有，调用闭包获取数据
+        let value = closure().await?;
+
+        // 存入缓存
+        cmd("SET")
+            .arg(format!("{}_{namespace}:{key_str}", self.meta_namespace))
+            .arg(serde_json::to_string(&value)?)
+            .arg("EX")
+            .arg(DEFAULT_EXPIRY.to_string())
+            .query_async::<()>(&mut connection)
+            .await?;
+
+        Ok(value)
     }
 }
 

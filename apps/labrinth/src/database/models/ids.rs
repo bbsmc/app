@@ -96,6 +96,21 @@ generate_ids!(
     "SELECT EXISTS(SELECT 1 FROM wiki_cache WHERE id=$1)",
     WikiCacheId
 );
+generate_ids!(
+    pub generate_discussion_id,
+    DiscussionId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM discussions WHERE id=$1)",
+    DiscussionId
+);
+
+generate_ids!(
+    pub generate_post_id,
+    PostId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM posts WHERE id=$1)",
+    PostId
+);
 
 generate_ids!(
     pub generate_wiki_id,
@@ -104,7 +119,6 @@ generate_ids!(
     "SELECT EXISTS(SELECT 1 FROM wikis WHERE id=$1)",
     WikiId
 );
-
 
 generate_ids!(
     pub generate_team_id,
@@ -358,8 +372,37 @@ pub struct VersionId(pub i64);
 #[sqlx(transparent)]
 pub struct WikiId(pub i64);
 
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Type,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+)]
+#[sqlx(transparent)]
+pub struct DiscussionId(pub i64);
 
-
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Type,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+)]
+#[sqlx(transparent)]
+pub struct PostId(pub i64);
 
 #[derive(
     Copy, Clone, Debug, Type, Serialize, Deserialize, PartialEq, Eq, Hash,
@@ -571,7 +614,26 @@ impl From<WikiId> for ids::WikiId {
         ids::WikiId(id.0 as u64)
     }
 }
-
+impl From<ids::PostId> for PostId {
+    fn from(id: ids::PostId) -> Self {
+        PostId(id.0 as i64)
+    }
+}
+impl From<PostId> for ids::PostId {
+    fn from(id: PostId) -> Self {
+        ids::PostId(id.0 as u64)
+    }
+}
+impl From<ids::DiscussionId> for DiscussionId {
+    fn from(id: ids::DiscussionId) -> Self {
+        DiscussionId(id.0 as i64)
+    }
+}
+impl From<DiscussionId> for ids::DiscussionId {
+    fn from(id: DiscussionId) -> Self {
+        ids::DiscussionId(id.0 as u64)
+    }
+}
 
 impl From<ids::CollectionId> for CollectionId {
     fn from(id: ids::CollectionId) -> Self {

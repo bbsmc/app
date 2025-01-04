@@ -252,7 +252,7 @@ pub async fn search_for_project(
                                     vec![serde_json::from_value::<String>(
                                         facet,
                                     )
-                                        .unwrap_or_default()]
+                                    .unwrap_or_default()]
                                 }
                             })
                             .collect_vec()

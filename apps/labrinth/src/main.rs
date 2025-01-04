@@ -40,19 +40,14 @@ async fn main() -> std::io::Result<()> {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 
-    info!(
-        "启动 Labrinth 于 {}",
-        dotenvy::var("BIND_ADDR").unwrap()
-    );
+    info!("启动 Labrinth 于 {}", dotenvy::var("BIND_ADDR").unwrap());
 
     database::check_for_migrations()
         .await
         .expect("An error occurred while running migrations.");
 
     // Database Connector
-    let pool = database::connect()
-        .await
-        .expect("数据库连接失败");
+    let pool = database::connect().await.expect("数据库连接失败");
 
     // Redis connector
     info!("初始化 Redis 连接");
@@ -70,7 +65,7 @@ async fn main() -> std::io::Result<()> {
                     &dotenvy::var("BACKBLAZE_KEY").unwrap(),
                     &dotenvy::var("BACKBLAZE_BUCKET_ID").unwrap(),
                 )
-                    .await,
+                .await,
             ),
             "s3" => Arc::new(
                 S3Host::new(
@@ -79,7 +74,7 @@ async fn main() -> std::io::Result<()> {
                     &dotenvy::var("S3_ACCESS_TOKEN").unwrap(),
                     &dotenvy::var("S3_SECRET").unwrap(),
                 )
-                    .unwrap(),
+                .unwrap(),
             ),
             "local" => Arc::new(file_hosting::MockHost::new()),
             _ => panic!("指定了无效的存储后端。启动中止！"),
@@ -118,7 +113,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(sentry_actix::Sentry::new())
             .configure(|cfg| labrinth::app_config(cfg, labrinth_config.clone()))
     })
-        .bind(dotenvy::var("BIND_ADDR").unwrap())?
-        .run()
-        .await
+    .bind(dotenvy::var("BIND_ADDR").unwrap())?
+    .run()
+    .await
 }

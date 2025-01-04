@@ -40,7 +40,7 @@ export const useTags = () =>
       },
       {
         actual: "modpack",
-          id: "modpack",
+        id: "modpack",
         display: "模组包/整合包",
       },
     ],
@@ -59,7 +59,13 @@ export const useTags = () =>
         "folia",
       ],
       allLoaders: [
-        "forge", "fabric", "quilt", "liteloader", "modloader", "rift", "neoforge",
+        "forge",
+        "fabric",
+        "quilt",
+        "liteloader",
+        "modloader",
+        "rift",
+        "neoforge",
         "bukkit",
         "spigot",
         "paper",
@@ -69,7 +75,6 @@ export const useTags = () =>
         "waterfall",
         "velocity",
         "folia",
-
       ],
       dataPackLoaders: ["datapack"],
       modLoaders: ["forge", "fabric", "quilt", "liteloader", "modloader", "rift", "neoforge"],

@@ -207,15 +207,15 @@
               @update:model-value="allTeamMembers[index].permissions ^= WIKI_EDIT"
             />
 
-<!--            <Checkbox-->
-<!--              :model-value="(member.permissions & VIEW_PAYOUTS) === VIEW_PAYOUTS"-->
-<!--              :disabled="-->
-<!--                (props.currentMember?.permissions & EDIT_MEMBER) !== EDIT_MEMBER ||-->
-<!--                (props.currentMember?.permissions & VIEW_PAYOUTS) !== VIEW_PAYOUTS-->
-<!--              "-->
-<!--              label="查看收入"-->
-<!--              @update:model-value="allTeamMembers[index].permissions ^= VIEW_PAYOUTS"-->
-<!--            />-->
+            <!--            <Checkbox-->
+            <!--              :model-value="(member.permissions & VIEW_PAYOUTS) === VIEW_PAYOUTS"-->
+            <!--              :disabled="-->
+            <!--                (props.currentMember?.permissions & EDIT_MEMBER) !== EDIT_MEMBER ||-->
+            <!--                (props.currentMember?.permissions & VIEW_PAYOUTS) !== VIEW_PAYOUTS-->
+            <!--              "-->
+            <!--              label="查看收入"-->
+            <!--              @update:model-value="allTeamMembers[index].permissions ^= VIEW_PAYOUTS"-->
+            <!--            />-->
           </div>
         </template>
         <div class="input-group">
@@ -643,7 +643,7 @@ const REMOVE_MEMBER = 1 << 5;
 const EDIT_MEMBER = 1 << 6;
 const DELETE_PROJECT = 1 << 7;
 const VIEW_ANALYTICS = 1 << 8;
-const VIEW_PAYOUTS = 1 << 9;
+// const VIEW_PAYOUTS = 1 << 9;
 const WIKI_EDIT = 1 << 10;
 
 const onAddToOrg = useClientTry(async () => {

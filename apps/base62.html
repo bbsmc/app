@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base62 编码转换工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .button-group {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #output {
+            background-color: #f8f8f8;
+        }
+        .history {
+            margin-top: 20px;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            background-color: #f0f0f0;
+        }
+        .delete-button {
+            background-color: #f44336;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .history-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .value {
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .value:hover {
+            background-color: #e0e0e0;
+        }
+        .arrow {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Base62 编码转换工具</h1>
+        <textarea id="input" placeholder="输入数字进行编码，或输入Base62字符串进行解码..."></textarea>
+        <div class="button-group">
+            <button onclick="doEncode()">编码</button>
+            <button onclick="doDecode()">解码</button>
+            <button onclick="clearHistory()">清空历史记录</button>
+        </div>
+        <textarea id="output" readonly></textarea>
+
+        <div class="history">
+            <h2>历史记录</h2>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <script>
+        const DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+        function toBase62(num) {
+            if (num === 0) return "0";
+            let value = BigInt(num);
+            let result = "";
+            while (value > 0n) {
+                const remainder = Number(value % 62n);
+                result = DIGITS[remainder] + result;
+                value = value / 62n;
+            }
+            return result;
+        }
+
+        function fromBase62(str) {
+            let result = 0n;
+            for (let i = 0; i < str.length; i++) {
+                const digit = DIGITS.indexOf(str[i]);
+                if (digit === -1) {
+                    throw new Error(`无效的Base62字符: ${str[i]}`);
+                }
+                result = result * 62n + BigInt(digit);
+            }
+            return result;
+        }
+
+        function doEncode() {
+            const input = document.getElementById('input').value.trim();
+            try {
+                const num = Number(input);
+                if (isNaN(num) || num < 0) {
+                    throw new Error('请输入有效的非负数字');
+                }
+                const result = toBase62(num);
+                document.getElementById('output').value = result;
+                saveHistory('encode', input, result);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function doDecode() {
+            const input = document.getElementById('input').value.trim();
+            try {
+                const result = fromBase62(input);
+                document.getElementById('output').value = result.toString();
+                saveHistory('decode', input, result.toString());
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function saveHistory(type, input, result) {
+            let history = JSON.parse(localStorage.getItem('base62History')) || [];
+            history.unshift({
+                type: type,
+                input: input,
+                result: result
+            });
+            localStorage.setItem('base62History', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            const history = JSON.parse(localStorage.getItem('base62History')) || [];
+            history.forEach((historyItem, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'history-item';
+                const type = historyItem.type === 'encode' ? '编码' : '解码';
+                itemDiv.innerHTML = `
+                    <div class="history-content">
+                        <span class="value" onclick="copyToClipboard('${historyItem.input}')">${historyItem.input}</span>
+                        <span class="arrow">-></span>
+                        <span class="value" onclick="copyToClipboard('${historyItem.result}')">${historyItem.result}</span>
+                    </div>
+                    <button class="delete-button" onclick="deleteHistory(${index})">删除</button>
+                `;
+                historyList.appendChild(itemDiv);
+            });
+        }
+
+        function deleteHistory(index) {
+            let history = JSON.parse(localStorage.getItem('base62History')) || [];
+            history.splice(index, 1);
+            localStorage.setItem('base62History', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('base62History');
+            renderHistory();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // alert('已复制到剪贴板: ' + text);
+            }).catch(err => {
+                console.error('复制失败: ', err);
+            });
+        }
+
+        // 页面加载完成后初始化历史记录
+        window.onload = function() {
+            renderHistory();
+        };
+    </script>
+</body>
+</html>

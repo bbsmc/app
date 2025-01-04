@@ -22,7 +22,6 @@ impl S3Host {
     ) -> Result<S3Host, FileHostingError> {
         let mut bucket = Bucket::new(
             bucket_name,
-
             Region::Custom {
                 region: "".to_owned(),
                 endpoint: url.to_string(),
@@ -34,17 +33,17 @@ impl S3Host {
                 None,
                 None,
             )
-                .map_err(|_| {
-                    FileHostingError::S3Error(
-                        "Error while creating credentials".to_string(),
-                    )
-                })?,
-        )
             .map_err(|_| {
                 FileHostingError::S3Error(
-                    "Error while creating Bucket instance".to_string(),
+                    "Error while creating credentials".to_string(),
                 )
-            })?;
+            })?,
+        )
+        .map_err(|_| {
+            FileHostingError::S3Error(
+                "Error while creating Bucket instance".to_string(),
+            )
+        })?;
         bucket.set_path_style();
         bucket.set_request_timeout(None);
 
@@ -69,8 +68,7 @@ impl FileHost for S3Host {
                 content_type,
             )
             .await
-            .map_err(|e| {
-                println!("错误上传到S3: {}", e.to_string());
+            .map_err(|_e| {
                 FileHostingError::S3Error(
                     "Error while uploading file to S3".to_string(),
                 )
@@ -98,9 +96,7 @@ impl FileHost for S3Host {
             .delete_object(format!("/{file_name}"))
             .await
             .map_err(|_| {
-                FileHostingError::S3Error(
-                    "从 S3 删除文件时出错 ".to_string(),
-                )
+                FileHostingError::S3Error("从 S3 删除文件时出错 ".to_string())
             })?;
 
         Ok(DeleteFileData {

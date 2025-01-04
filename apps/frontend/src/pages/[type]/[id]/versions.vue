@@ -14,12 +14,13 @@
       >
         <UploadIcon aria-hidden="true" />
       </FileInput>
-      <span class="flex items-center gap-2" style="flex-grow: 1;"> <!-- 添加 flex-grow 属性让其可占据剩余空间 -->
-      <InfoIcon aria-hidden="true" /> 单击选择文件或将其拖到此页面
+      <span class="flex items-center gap-2" style="flex-grow: 1">
+        <!-- 添加 flex-grow 属性让其可占据剩余空间 -->
+        <InfoIcon aria-hidden="true" /> 单击选择文件或将其拖到此页面
       </span>
       <DropArea :accept="acceptFileFromProjectType(project.project_type)" @change="handleFiles" />
 
-      <button-styled style="margin-left: auto;" @click="createDiskUrl">
+      <button-styled style="margin-left: auto" @click="createDiskUrl">
         <button class="btn btn-primary">
           上传版本(网盘下载方式)
           <UploadIcon aria-hidden="true" />
@@ -414,7 +415,7 @@ async function createDiskUrl() {
     `/${props.project.project_type}/${
       props.project.slug ? props.project.slug : props.project.id
     }/version/create`,
-  )
+  );
 }
 
 async function copyToClipboard(text) {

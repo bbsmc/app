@@ -1,5 +1,3 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use crate::database::models::WikiCacheId;
 use crate::models::{
     ids::{
@@ -9,6 +7,8 @@ use crate::models::{
     notifications::{Notification, NotificationAction, NotificationBody},
     projects::ProjectStatus,
 };
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct LegacyNotification {

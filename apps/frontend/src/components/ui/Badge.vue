@@ -15,9 +15,7 @@
     <!-- Project statuses -->
     <template v-else-if="type === 'approved'"><GlobeIcon /> 公开</template>
     <template v-else-if="type === 'approved-general'"><CheckIcon /> 已批准</template>
-    <template v-else-if="type === 'unlisted' || type === 'withheld'"
-      ><LinkIcon /> 未公开</template
-    >
+    <template v-else-if="type === 'unlisted' || type === 'withheld'"><LinkIcon /> 未公开</template>
     <template v-else-if="type === 'private'"><LockIcon /> 私有</template>
     <template v-else-if="type === 'scheduled'"> <CalendarIcon /> 已安排</template>
     <template v-else-if="type === 'draft'"><DraftIcon /> 草稿</template>

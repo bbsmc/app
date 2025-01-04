@@ -32,13 +32,11 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 #[allow(dead_code)]
 pub struct CommonProject {
-
     // 例如，对于 CommonProject，我们不包括：
     // - game_versions（仅限 v2）
     // - loader_fields（仅限 v3）
     // - 等等。
     // 对于任何需要这些字段的测试，我们会使用单独的测试和单独的 API 函数，而不是使用通用模型。
-
     pub id: ProjectId,
     pub slug: Option<String>,
     pub organization: Option<OrganizationId>,

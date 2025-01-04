@@ -1514,8 +1514,7 @@ pub async fn create_account_with_password(
             {
                 format!("密码太弱 {}", feedback)
             } else {
-                "密码强度太弱！请提高其强度。"
-                    .to_string()
+                "密码强度太弱！请提高其强度。".to_string()
             },
         ));
     }
@@ -1530,9 +1529,7 @@ pub async fn create_account_with_password(
         .await?
         .is_some()
     {
-        return Err(ApiError::InvalidInput(
-            "该邮箱已被注册过".to_string(),
-        ));
+        return Err(ApiError::InvalidInput("该邮箱已被注册过".to_string()));
     }
 
     crate::database::models::User {
@@ -2236,7 +2233,6 @@ pub async fn change_password(
             "如果不是您进行的更改，请立即通过我们的电子邮件 (support@bbsmc.net) 联系我们。",
             None,
         )?;
-
     }
 
     transaction.commit().await?;
@@ -2322,11 +2318,7 @@ pub async fn set_email(
     .insert(Duration::hours(24), &redis)
     .await?;
 
-    send_email_verify(
-        email.email.clone(),
-        flow,
-        "我们需要验证您的邮箱地址。",
-    )?;
+    send_email_verify(email.email.clone(), flow, "我们需要验证您的邮箱地址。")?;
 
     transaction.commit().await?;
     crate::database::models::User::clear_caches(
@@ -2369,17 +2361,11 @@ pub async fn resend_verify_email(
         .insert(Duration::hours(24), &redis)
         .await?;
 
-        send_email_verify(
-            email,
-            flow,
-            "我们需要验证您的邮箱地址。",
-        )?;
+        send_email_verify(email, flow, "我们需要验证您的邮箱地址。")?;
 
         Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(ApiError::InvalidInput(
-            "该账户设置电子邮箱".to_string(),
-        ))
+        Err(ApiError::InvalidInput("该账户设置电子邮箱".to_string()))
     }
 }
 
@@ -2480,5 +2466,4 @@ fn send_email_verify(
         "请点击下面的链接以验证您的邮箱。如果按钮无法使用，您可以复制链接并粘贴到浏览器中。该链接将在 24 小时后失效。",
         Some(("验证邮箱", &format!("{}/{}?flow={}", dotenvy::var("SITE_URL")?, dotenvy::var("SITE_VERIFY_EMAIL_PATH")?, flow))),
     )
-
 }

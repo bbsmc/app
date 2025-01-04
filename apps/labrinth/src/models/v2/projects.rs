@@ -7,7 +7,7 @@ use super::super::teams::TeamId;
 use super::super::users::UserId;
 use crate::database::models::{version_item, DatabaseError};
 use crate::database::redis::RedisPool;
-use crate::models::ids::{ProjectId, VersionId};
+use crate::models::ids::{DiscussionId, ProjectId, VersionId};
 use crate::models::projects::{
     Dependency, License, Link, Loader, ModeratorMessage, MonetizationStatus,
     Project, ProjectStatus, Version, VersionFile, VersionStatus, VersionType,
@@ -71,6 +71,7 @@ pub struct LegacyProject {
     pub default_type: String,
     pub default_game_loaders: Vec<String>,
     pub default_game_version: Vec<String>,
+    pub forum: Option<DiscussionId>,
 }
 
 impl LegacyProject {
@@ -123,10 +124,16 @@ impl LegacyProject {
 
         let mut loaders = data.loaders;
 
-
-        let game_versions = if data.fields.get("game_versions").unwrap_or(&Vec::new()).is_empty() {
-            let mut game_versions =vec![];
-            data.default_game_version.iter().for_each(|v| game_versions.push(v.to_string()));
+        let game_versions = if data
+            .fields
+            .get("game_versions")
+            .unwrap_or(&Vec::new())
+            .is_empty()
+        {
+            let mut game_versions = vec![];
+            data.default_game_version
+                .iter()
+                .for_each(|v| game_versions.push(v.to_string()));
             game_versions
         } else {
             data.fields
@@ -137,7 +144,6 @@ impl LegacyProject {
                 .map(|v| v.to_string())
                 .collect()
         };
-
 
         if let Some(versions_item) = versions_item {
             // Extract side types from remaining fields (singleplayer, client_only, etc)
@@ -240,6 +246,7 @@ impl LegacyProject {
             client_side,
             server_side,
             game_versions,
+            forum: data.forum,
         }
     }
 
@@ -250,7 +257,7 @@ impl LegacyProject {
         redis: &RedisPool,
     ) -> Result<Vec<Self>, DatabaseError>
     where
-        E: sqlx::Acquire<'a, Database=sqlx::Postgres>,
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
         let version_ids: Vec<_> = data
             .iter()
@@ -349,7 +356,6 @@ impl From<Version> for LegacyVersion {
                 }
             }
         }
-
 
         // - if loader is mrpack, this is a modpack
         // the v2 loaders are whatever the corresponding loader fields are

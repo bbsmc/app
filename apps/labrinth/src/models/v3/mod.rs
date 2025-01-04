@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod billing;
 pub mod collections;
+pub mod forum;
 pub mod ids;
 pub mod images;
 pub mod notifications;

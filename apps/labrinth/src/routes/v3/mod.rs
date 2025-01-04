@@ -5,6 +5,7 @@ use serde_json::json;
 
 pub mod analytics_get;
 pub mod collections;
+pub mod forum;
 pub mod images;
 pub mod notifications;
 pub mod organizations;
@@ -43,7 +44,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .configure(users::config)
             .configure(version_file::config)
             .configure(payouts::config)
-            .configure(versions::config),
+            .configure(versions::config)
+            .configure(forum::config),
     );
 }
 

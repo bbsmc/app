@@ -168,7 +168,7 @@ function updateRoute() {
   selectedType.value = "all";
   page.value = 1;
 }
-const fetchNotifications = inject('fetchNotifications');
+const fetchNotifications = inject("fetchNotifications");
 
 async function readAll() {
   const ids = notifications.value.flatMap((notification) => [
@@ -179,7 +179,6 @@ async function readAll() {
   const updateNotifs = await markAsRead(ids);
   allNotifs.value = updateNotifs(allNotifs.value);
   fetchNotifications();
-
 }
 
 function changePage(newPage) {

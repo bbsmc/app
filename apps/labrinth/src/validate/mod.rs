@@ -198,7 +198,8 @@ async fn validate_minecraft_file(
 
         if let Some(file_type) = file_type {
             match file_type {
-                FileType::RequiredResourcePack | FileType::OptionalResourcePack => {
+                FileType::RequiredResourcePack
+                | FileType::OptionalResourcePack => {
                     return PackValidator.validate(&mut zip);
                 }
                 FileType::Unknown => {}
@@ -220,7 +221,9 @@ async fn validate_minecraft_file(
                 if validator.get_file_extensions().contains(&&*file_extension) {
                     let result = validator.validate(&mut zip)?;
                     match result {
-                        ValidationResult::PassWithPackDataAndFiles { .. } => {
+                        ValidationResult::PassWithPackDataAndFiles {
+                            ..
+                        } => {
                             saved_result = Some(result);
                         }
                         ValidationResult::Pass => {
@@ -244,12 +247,11 @@ async fn validate_minecraft_file(
 
         if visited {
             if ALWAYS_ALLOWED_EXT.contains(&&*file_extension) {
-                Ok(ValidationResult::Warning(
-                    "文件扩展名对输入文件无效",
-                ))
+                Ok(ValidationResult::Warning("文件扩展名对输入文件无效"))
             } else {
                 Err(ValidationError::InvalidInput(
-                    format!("文件扩展名 {file_extension} 对输入文件无效").into(),
+                    format!("文件扩展名 {file_extension} 对输入文件无效")
+                        .into(),
                 ))
             }
         } else {
@@ -298,9 +300,6 @@ fn game_version_supported(
 pub fn filter_out_packs(
     archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
 ) -> Result<ValidationResult, ValidationError> {
-
-
-
     if (archive.by_name("modlist.html").is_ok()
         && archive.by_name("manifest.json").is_ok())
         || archive

@@ -96,7 +96,6 @@ pub struct InitialVersionData {
         length(max = 2048)
     )]
     pub disk_url: Option<String>,
-
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -415,10 +414,8 @@ async fn version_create_inner(
         ));
     }
 
-    if version_data.disk_only && version_data.disk_url.is_none(){
-        return Err(CreateError::InvalidInput(
-            "未填写网盘地址".to_string(),
-        ));
+    if version_data.disk_only && version_data.disk_url.is_none() {
+        return Err(CreateError::InvalidInput("未填写网盘地址".to_string()));
     }
     use futures::stream::TryStreamExt;
 
@@ -453,7 +450,7 @@ async fn version_create_inner(
             acc.1.extend(x.supported_games.clone());
             acc
         });
-    let mut files =  builder
+    let mut files = builder
         .files
         .iter()
         .map(|file| VersionFile {
@@ -479,10 +476,10 @@ async fn version_create_inner(
         })
         .collect::<Vec<_>>();
     let mut disk_url = None;
-    if version_data.disk_only && version_data.disk_url.is_some(){
+    if version_data.disk_only && version_data.disk_url.is_some() {
         disk_url = version_data.disk_url.clone();
     }
-    if version_data.disk_only{
+    if version_data.disk_only {
         files.push(VersionFile {
             hashes: HashMap::new(),
             url: disk_url.clone().unwrap(),
@@ -855,8 +852,7 @@ pub async fn upload_file(
 
     if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传!1"
-                .to_string(),
+            "此文件在这之前已经被上传到BBSMC过,无法重复上传!1".to_string(),
         ));
     }
 
@@ -896,8 +892,7 @@ pub async fn upload_file(
     if exists {
         println!("已存在 {}", hash);
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传2"
-                .to_string(),
+            "此文件在这之前已经被上传到BBSMC过,无法重复上传2".to_string(),
         ));
     }
 
@@ -1008,16 +1003,13 @@ pub async fn upload_file(
     let sha1_bytes = upload_data.content_sha1.into_bytes();
     let sha512_bytes = upload_data.content_sha512.into_bytes();
 
-
-
     if version_files.iter().any(|x| {
         x.hashes
             .iter()
             .any(|y| y.hash == sha1_bytes || y.hash == sha512_bytes)
     }) {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传3"
-                .to_string(),
+            "此文件在这之前已经被上传到BBSMC过,无法重复上传3".to_string(),
         ));
     }
 
@@ -1087,14 +1079,7 @@ pub fn try_create_version_fields(
         .map(|lf| lf.field.clone())
         .collect::<HashSet<_>>();
 
-    println!("{}",loader_fields.len());
-    for loader_field in loader_fields {
-        println!("{}",loader_field.field);
-    }
-
     for (key, value) in submitted_fields.iter() {
-        println!("{key}");
-        println!("{}",value.to_string());
         let loader_field = loader_fields
             .iter()
             .find(|lf| &lf.field == key)

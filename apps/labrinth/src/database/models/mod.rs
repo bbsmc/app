@@ -4,6 +4,7 @@ pub mod categories;
 pub mod charge_item;
 pub mod collection_item;
 pub mod flow_item;
+pub mod forum;
 pub mod ids;
 pub mod image_item;
 pub mod legacy_loader_fields;
@@ -29,6 +30,10 @@ pub mod wiki_item;
 pub mod wiki_cache_item;
 
 pub use collection_item::Collection;
+pub use forum::Discussion;
+pub use forum::PostBuilder;
+pub use forum::PostQuery;
+pub use forum::QueryDiscussion;
 pub use ids::*;
 pub use image_item::Image;
 pub use oauth_client_item::OAuthClient;
@@ -39,8 +44,8 @@ pub use team_item::TeamMember;
 pub use thread_item::{Thread, ThreadMessage};
 pub use user_item::User;
 pub use version_item::Version;
-pub use wiki_item::Wiki;
 pub use wiki_cache_item::WikiCache;
+pub use wiki_item::Wiki;
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {

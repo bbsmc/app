@@ -56,15 +56,15 @@ export default defineNuxtConfig({
       title: "BBSMC 我的世界资源社区",
       script: [
         {
-          src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979"
-        }
+          src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979",
+        },
       ],
       link: [
         // The type is necessary because the linter can't always compare this very nested/complex type on itself
         ...preloadedFonts.map((font): object => {
           return {
             rel: "preload",
-            href: `https://cdn.bbsmc.net/raw/fonts/${font}?v=3.19`,
+            href: `https://cdn.bbsmc.net/raw/fonts/${font}`,
             as: "font",
             type: "font/woff2",
             crossorigin: "anonymous",

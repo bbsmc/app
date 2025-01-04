@@ -34,61 +34,61 @@
     <section class="auth-form">
       <div class="iconified-input">
         <label for="email" hidden>{{ formatMessage(messages.emailLabel) }}</label>
-        <MailIcon/>
+        <MailIcon />
         <input
-            id="email"
-            v-model="email"
-            type="email"
-            autocomplete="username"
-            class="auth-form__input"
-            :placeholder="formatMessage(messages.emailLabel)"
+          id="email"
+          v-model="email"
+          type="email"
+          autocomplete="username"
+          class="auth-form__input"
+          :placeholder="formatMessage(messages.emailLabel)"
         />
       </div>
 
       <div class="iconified-input">
         <label for="username" hidden>{{ formatMessage(messages.usernameLabel) }}</label>
-        <UserIcon/>
+        <UserIcon />
         <input
-            id="username"
-            v-model="username"
-            type="text"
-            autocomplete="username"
-            class="auth-form__input"
-            :placeholder="formatMessage(messages.usernameLabel)"
+          id="username"
+          v-model="username"
+          type="text"
+          autocomplete="username"
+          class="auth-form__input"
+          :placeholder="formatMessage(messages.usernameLabel)"
         />
       </div>
 
       <div class="iconified-input">
         <label for="password" hidden>{{ formatMessage(messages.passwordLabel) }}</label>
-        <KeyIcon/>
+        <KeyIcon />
         <input
-            id="password"
-            v-model="password"
-            class="auth-form__input"
-            type="password"
-            autocomplete="new-password"
-            :placeholder="formatMessage(messages.passwordLabel)"
+          id="password"
+          v-model="password"
+          class="auth-form__input"
+          type="password"
+          autocomplete="new-password"
+          :placeholder="formatMessage(messages.passwordLabel)"
         />
       </div>
 
       <div class="iconified-input">
         <label for="confirm-password" hidden>{{ formatMessage(messages.passwordLabel) }}</label>
-        <KeyIcon/>
+        <KeyIcon />
         <input
-            id="confirm-password"
-            v-model="confirmPassword"
-            type="password"
-            autocomplete="new-password"
-            class="auth-form__input"
-            :placeholder="formatMessage(messages.confirmPasswordLabel)"
+          id="confirm-password"
+          v-model="confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          class="auth-form__input"
+          :placeholder="formatMessage(messages.confirmPasswordLabel)"
         />
       </div>
 
       <Checkbox
-          v-model="subscribe"
-          class="subscribe-btn"
-          :label="formatMessage(messages.subscribeLabel)"
-          :description="formatMessage(messages.subscribeLabel)"
+        v-model="subscribe"
+        class="subscribe-btn"
+        :label="formatMessage(messages.subscribeLabel)"
+        :description="formatMessage(messages.subscribeLabel)"
       />
 
       <!--      <p>-->
@@ -106,15 +106,15 @@
       <!--        </IntlFormatted>-->
       <!--      </p>-->
 
-      <HCaptcha ref="captcha" v-model="token"/>
+      <HCaptcha ref="captcha" v-model="token" />
 
       <button
-          class="btn btn-primary continue-btn centered-btn"
-          :disabled="!token"
-          @click="createAccount"
+        class="btn btn-primary continue-btn centered-btn"
+        :disabled="!token"
+        @click="createAccount"
       >
         {{ formatMessage(messages.createAccountButton) }}
-        <RightArrowIcon/>
+        <RightArrowIcon />
       </button>
 
       <div class="auth-form__additional-options">
@@ -129,10 +129,10 @@
 
 <script setup>
 import { RightArrowIcon, UserIcon, KeyIcon, MailIcon } from "@modrinth/assets";
-import {Checkbox} from "@modrinth/ui";
+import { Checkbox } from "@modrinth/ui";
 import HCaptcha from "@/components/ui/HCaptcha.vue";
 
-const {formatMessage} = useVIntl();
+const { formatMessage } = useVIntl();
 
 const messages = defineMessages({
   title: {
@@ -170,7 +170,7 @@ const messages = defineMessages({
   legalDisclaimer: {
     id: "auth.sign-up.legal-dislaimer",
     defaultMessage:
-        "By creating an account, you agree to BBSMC <terms-link>Terms</terms-link> and <privacy-policy-link>Privacy Policy</privacy-policy-link>.",
+      "By creating an account, you agree to BBSMC <terms-link>Terms</terms-link> and <privacy-policy-link>Privacy Policy</privacy-policy-link>.",
   },
   createAccountButton: {
     id: "auth.sign-up.action.create-account",
@@ -189,7 +189,6 @@ useHead({
 const auth = await useAuth();
 const route = useNativeRoute();
 
-
 if (auth.value.user) {
   await navigateTo("/dashboard");
 }
@@ -204,7 +203,7 @@ const token = ref("");
 const subscribe = ref(true);
 
 const signInLink = computed(
-    () => `/auth/sign-in${route.query.redirect ? `?redirect=${route.query.redirect}` : ""}`,
+  () => `/auth/sign-in${route.query.redirect ? `?redirect=${route.query.redirect}` : ""}`,
 );
 
 async function createAccount() {

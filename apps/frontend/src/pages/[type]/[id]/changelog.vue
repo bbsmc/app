@@ -39,7 +39,7 @@
               </span>
               <span>
                 on
-                {{ $dayjs(version.date_published).format("MMM D, YYYY") }}</span
+                {{ $dayjs(version.date_published).format("YYYY MMM DD") }}</span
               >
             </div>
             <a

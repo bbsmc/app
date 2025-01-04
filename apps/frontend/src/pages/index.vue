@@ -1,9 +1,9 @@
 <template>
   <div>
     <div class="landing-hero">
-<!--      <ModrinthIcon class="modrinth-icon" />-->
+      <!--      <ModrinthIcon class="modrinth-icon" />-->
 
-      <h1 class="main-header"style="margin-top: 80px">
+      <h1 class="main-header" style="margin-top: 80px">
         我的世界资源社区
         <div class="animate-strong" style="margin-top: 80px">
           <span>
@@ -14,11 +14,13 @@
             >
               {{ projectType.display }} <br />
             </strong>
-<!--            <strong class="main-header-strong">mods</strong>-->
+            <!--            <strong class="main-header-strong">mods</strong>-->
           </span>
         </div>
       </h1>
-      <h2 style="margin-top: 50px">通过我们的社区发布、托管Minecraft资源，提供快速便捷的附属资源分发下载资源站点</h2>
+      <h2 style="margin-top: 50px">
+        通过我们的社区发布、托管Minecraft资源，提供快速便捷的附属资源分发下载资源站点
+      </h2>
       <div class="button-group">
         <ButtonStyled color="green" size="large">
           <nuxt-link to="/mods"> <CompassIcon aria-hidden="true" /> 探索模组 </nuxt-link>
@@ -354,7 +356,6 @@ import { Multiselect } from "vue-multiselect";
 import { ButtonStyled } from "@modrinth/ui";
 import { CompassIcon, LogInIcon, DashboardIcon } from "@modrinth/assets";
 import SearchIcon from "~/assets/images/utils/search.svg?component";
-import ModrinthIcon from "~/assets/images/logo.svg?component";
 import Avatar from "~/components/ui/Avatar.vue";
 import ProjectCard from "~/components/ui/ProjectCard.vue";
 
@@ -377,12 +378,10 @@ const rows = ref([
   newProjects.slice(val * 2, val * 3),
 ]);
 
-
-
 const searchProjects = ref(homePageSearch.hits ?? []);
 
 async function updateSearchProjects() {
-  console.log(searchQuery)
+  console.log(searchQuery);
   const res = await useBaseFetch(
     `search?limit=3&query=${searchQuery.value}&index=${sortType.value}`,
   );

@@ -4,7 +4,6 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::{Connection, PgConnection, Postgres};
 use std::time::Duration;
 
-
 pub async fn connect() -> Result<PgPool, sqlx::Error> {
     info!("Initializing database connection");
     let database_url =
@@ -29,7 +28,8 @@ pub async fn connect() -> Result<PgPool, sqlx::Error> {
     Ok(pool)
 }
 pub async fn check_for_migrations() -> Result<(), sqlx::Error> {
-    let uri = dotenvy::var("DATABASE_URL").expect("`DATABASE_URL` 未在 .env 中设置");
+    let uri =
+        dotenvy::var("DATABASE_URL").expect("`DATABASE_URL` 未在 .env 中设置");
     let uri = uri.as_str();
     if !Postgres::database_exists(uri).await? {
         info!("正在创建数据库...");

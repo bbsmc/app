@@ -5,7 +5,7 @@ use crate::database::redis::RedisPool;
 use crate::models::ids::base62_impl::to_base62;
 use crate::search::{SearchConfig, UploadSearchProject};
 use local_import::index_local;
-use log::{info};
+use log::info;
 use meilisearch_sdk::client::Client;
 use meilisearch_sdk::indexes::Index;
 use meilisearch_sdk::settings::{PaginationSetting, Settings};
@@ -76,10 +76,10 @@ pub async fn index_projects(
         crate::database::models::loader_fields::LoaderField::get_fields_all(
             &pool, &redis,
         )
-            .await?
-            .into_iter()
-            .map(|x| x.field)
-            .collect::<Vec<_>>();
+        .await?
+        .into_iter()
+        .map(|x| x.field)
+        .collect::<Vec<_>>();
 
     let uploads = index_local(&pool).await?;
     add_projects(&indices, uploads, all_loader_fields.clone(), config).await?;
@@ -136,7 +136,7 @@ pub async fn get_indexes_for_indexing(
             "sort",
         ]),
     )
-        .await?;
+    .await?;
     let projects_filtered_index = create_or_update_index(
         &client,
         &project_filtered_name,
@@ -149,7 +149,7 @@ pub async fn get_indexes_for_indexing(
             "exactness",
         ]),
     )
-        .await?;
+    .await?;
 
     Ok(vec![projects_index, projects_filtered_index])
 }
@@ -216,10 +216,7 @@ async fn add_to_index(
     mods: &[UploadSearchProject],
 ) -> Result<(), IndexingError> {
     for chunk in mods.chunks(MEILISEARCH_CHUNK_SIZE) {
-        info!(
-            "添加以版本 ID {} 开头的块",
-            chunk[0].version_id
-        );
+        info!("添加以版本 ID {} 开头的块", chunk[0].version_id);
         index
             .add_or_replace(chunk, Some("version_id"))
             .await?

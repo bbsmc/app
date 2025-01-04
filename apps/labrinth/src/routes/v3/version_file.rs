@@ -581,7 +581,7 @@ pub async fn delete_file(
         &**pool,
         &redis,
     )
-  .await?;
+    .await?;
 
     if let Some(row) = file {
         if !user.role.is_admin() {

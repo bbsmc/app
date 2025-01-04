@@ -111,13 +111,11 @@
 </template>
 
 <script setup>
-
-import {RightArrowIcon, KeyIcon, MailIcon} from "@modrinth/assets";
+import { RightArrowIcon, KeyIcon, MailIcon } from "@modrinth/assets";
 import HCaptcha from "@/components/ui/HCaptcha.vue";
 
 const captcha = ref();
 const token = ref("");
-
 
 const { formatMessage } = useVIntl();
 
@@ -170,7 +168,6 @@ useHead({
 const auth = await useAuth();
 const route = useNativeRoute();
 
-
 if (route.query.code && !route.fullPath.includes("new_account=true")) {
   await finishSignIn();
 }
@@ -179,10 +176,8 @@ if (auth.value.user) {
   await finishSignIn();
 }
 
-
 const email = ref("");
 const password = ref("");
-
 
 const flow = ref(route.query.flow);
 

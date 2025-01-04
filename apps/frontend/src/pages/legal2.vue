@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import {InfoIcon, HeartHandshakeIcon, LockIcon, ScaleIcon, ShieldIcon} from "@modrinth/assets";
+import { InfoIcon, HeartHandshakeIcon, LockIcon, ScaleIcon, ShieldIcon } from "@modrinth/assets";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 

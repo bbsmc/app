@@ -43,10 +43,8 @@ async fn can_create_edit_get_oauth_client() {
 
         let url = Some("https://bbsmc.net".to_string());
         let description = Some("test description".to_string());
-        let edited_redirect_uris = vec![
-            redirect_uris[0].clone(),
-            "https://bbsmc.net/b".to_string(),
-        ];
+        let edited_redirect_uris =
+            vec![redirect_uris[0].clone(), "https://bbsmc.net/b".to_string()];
         let edit = OAuthClientEdit {
             name: None,
             max_scopes: None,
