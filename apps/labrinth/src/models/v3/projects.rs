@@ -5,7 +5,7 @@ use super::teams::TeamId;
 use super::users::UserId;
 use crate::database::models::loader_fields::VersionField;
 use crate::database::models::project_item::{LinkUrl, QueryProject};
-use crate::database::models::version_item::QueryVersion;
+use crate::database::models::version_item::{QueryDisk, QueryVersion};
 use crate::models::threads::ThreadId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -695,7 +695,7 @@ pub struct Version {
     #[serde(flatten)]
     pub fields: HashMap<String, serde_json::Value>,
 
-    pub disk_url: Option<String>,
+    pub disk_urls: Vec<QueryDisk>,
     pub disk_only: bool,
 }
 
@@ -767,8 +767,8 @@ impl From<QueryVersion> for Version {
                 .into_iter()
                 .map(|vf| (vf.field_name, vf.value.serialize_internal()))
                 .collect(),
-            disk_url: v.disk_url.clone(),
-            disk_only: v.disk_url.is_some(),
+            disk_urls: data.disks.clone(),
+            disk_only: !data.disks.is_empty(),
         }
     }
 }

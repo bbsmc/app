@@ -9,7 +9,9 @@ use crate::database;
 use crate::database::models::loader_fields::{
     self, LoaderField, LoaderFieldEnumValue, VersionField,
 };
-use crate::database::models::version_item::{DependencyBuilder, LoaderVersion};
+use crate::database::models::version_item::{
+    DependencyBuilder, LoaderVersion, QueryDisk,
+};
 use crate::database::models::{image_item, Organization};
 use crate::database::redis::RedisPool;
 use crate::models;
@@ -238,11 +240,8 @@ pub struct EditVersion {
     pub fields: HashMap<String, serde_json::Value>,
 
     pub disk_only: Option<bool>,
-    #[validate(
-        custom(function = "crate::util::validate::validate_url"),
-        length(max = 2048)
-    )]
-    pub disk_url: Option<String>,
+
+    pub disk_urls: Option<Vec<QueryDisk>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -373,32 +372,42 @@ pub async fn version_edit_helper(
 
             if let Some(disk_only) = &new_version.disk_only {
                 if *disk_only {
-                    let url = new_version.disk_url;
-                    if url.is_none() {
-                        return Err(ApiError::InvalidInput(
-                            "未填写网盘链接".to_string(),
-                        ));
-                    }
+                    let urls = new_version.disk_urls.unwrap();
+                    // for u in urls {
+                    //     if u.is_empty(){
+                    //         return Err(ApiError::InvalidInput(
+                    //             "未填写网盘链接".to_string(),
+                    //         ));
+                    //     }
+                    // }
 
                     sqlx::query!(
                         "
-                        UPDATE versions
-                        SET disk_url = $1, downloads = 0
-                        WHERE (id = $2)
+                        DELETE FROM disk_urls WHERE version_id = $1;
                         ",
-                        url.unwrap(),
                         id as database::models::ids::VersionId,
                     )
                     .execute(&mut *transaction)
                     .await?;
+
+                    for u in urls {
+                        sqlx::query!(
+                            "
+                            INSERT INTO disk_urls (version_id, url,platform)
+                            VALUES ($1, $2, $3)
+                            ",
+                            id as database::models::ids::VersionId,
+                            u.url,
+                            u.platform,
+                        )
+                        .execute(&mut *transaction)
+                        .await?;
+                    }
                 } else {
                     sqlx::query!(
                         "
-                    UPDATE versions
-                    SET disk_url = $1
-                    WHERE (id = $2)
-                    ",
-                        Option::<String>::None,
+                        DELETE FROM disk_urls WHERE version_id = $1;
+                        ",
                         id as database::models::ids::VersionId,
                     )
                     .execute(&mut *transaction)

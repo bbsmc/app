@@ -164,8 +164,20 @@
           <div class="flex items-start justify-end gap-1 sm:items-center">
             <ButtonStyled circular type="transparent">
               <a
-                v-tooltip="`Download`"
+                v-if="!version.disk_only"
+                v-tooltip="`下载`"
                 :href="getPrimaryFile(version).url"
+                class="z-[1] group-hover:!bg-brand group-hover:!text-brand-inverted"
+                aria-label="Download"
+                @click="emits('onDownload')"
+              >
+                <DownloadIcon aria-hidden="true" />
+              </a>
+              <a
+                v-else
+                v-tooltip="`下载`"
+                target="_blank"
+                :href="getPrimaryDiskUrl(version)"
                 class="z-[1] group-hover:!bg-brand group-hover:!text-brand-inverted"
                 aria-label="Download"
                 @click="emits('onDownload')"
@@ -368,6 +380,24 @@ function switchPage(page) {
 
 function getPrimaryFile(version) {
   return version.files.find((x) => x.primary) || version.files[0];
+}
+function getPrimaryDiskUrl(version) {
+  for (const url of version.disk_urls) {
+    if (url.platform === "quark") {
+      return url.url;
+    }
+  }
+  for (const url of version.disk_urls) {
+    if (url.platform === "xunlei") {
+      return url.url;
+    }
+  }
+  for (const url of version.disk_urls) {
+    if (url.platform === "baidu") {
+      return url.url;
+    }
+  }
+  return "https://bbsmc.net";
 }
 
 const selectedGameVersions = computed(() => {

@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::iter;
+use validator::Validate;
 
 pub const VERSIONS_NAMESPACE: &str = "versions";
 const VERSION_FILES_NAMESPACE: &str = "versions_files";
@@ -35,7 +36,7 @@ pub struct VersionBuilder {
     pub status: VersionStatus,
     pub requested_status: Option<VersionStatus>,
     pub ordering: Option<i32>,
-    pub disk_url: Option<String>,
+    pub disk_url: Option<Vec<QueryDisk>>,
 }
 
 #[derive(Clone)]
@@ -194,7 +195,6 @@ impl VersionBuilder {
             status: self.status,
             requested_status: self.requested_status,
             ordering: self.ordering,
-            disk_url: self.disk_url,
         };
 
         version.insert(transaction).await?;
@@ -221,7 +221,12 @@ impl VersionBuilder {
         for file in files {
             file.insert(version_id, transaction).await?;
         }
-
+        if self.disk_url.is_some() && !self.disk_url.clone().unwrap().is_empty()
+        {
+            for u in self.disk_url.unwrap() {
+                u.insert(self.version_id, transaction).await?
+            }
+        }
         DependencyBuilder::insert_many(
             dependencies,
             self.version_id,
@@ -247,6 +252,26 @@ pub struct LoaderVersion {
     pub version_id: VersionId,
 }
 
+impl QueryDisk {
+    pub async fn insert(
+        self,
+        version_id: VersionId,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), DatabaseError> {
+        sqlx::query!(
+            "
+            INSERT INTO disk_urls (version_id, url, platform)
+            VALUES ($1, $2, $3)
+            ",
+            version_id as VersionId,
+            self.url,
+            self.platform,
+        )
+        .execute(&mut **transaction)
+        .await?;
+        Ok(())
+    }
+}
 impl LoaderVersion {
     pub async fn insert_many(
         items: Vec<Self>,
@@ -286,7 +311,6 @@ pub struct Version {
     pub status: VersionStatus,
     pub requested_status: Option<VersionStatus>,
     pub ordering: Option<i32>,
-    pub disk_url: Option<String>,
 }
 
 impl Version {
@@ -299,12 +323,12 @@ impl Version {
             INSERT INTO versions (
                 id, mod_id, author_id, name, version_number,
                 changelog, date_published, downloads,
-                version_type, featured, status, ordering, disk_url
+                version_type, featured, status, ordering
             )
             VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7, $8,
-                $9, $10, $11, $12, $13
+                $9, $10, $11, $12
             )
             ",
             self.id as VersionId,
@@ -318,8 +342,7 @@ impl Version {
             &self.version_type,
             self.featured,
             self.status.as_str(),
-            self.ordering,
-            self.disk_url
+            self.ordering
         )
         .execute(&mut **transaction)
         .await?;
@@ -391,6 +414,16 @@ impl Version {
             "
             DELETE FROM files
             WHERE files.version_id = $1
+            ",
+            id as VersionId,
+        )
+        .execute(&mut **transaction)
+        .await?;
+
+        sqlx::query!(
+            "
+            DELETE FROM disk_urls
+            WHERE disk_urls.version_id = $1
             ",
             id as VersionId,
         )
@@ -660,6 +693,27 @@ impl Version {
                     }
                     ).await?;
 
+                let disks : DashMap<VersionId, Vec<QueryDisk>> = sqlx::query!(
+                    "
+                    SELECT DISTINCT version_id, f.url,f.platform
+                    FROM disk_urls f
+                    WHERE f.version_id = ANY($1)
+                    ",
+                    &version_ids
+                ).fetch(&mut *exec)
+                    .try_fold(DashMap::new(), |acc : DashMap<VersionId, Vec<QueryDisk>>, m| {
+                        let disk = QueryDisk {
+                            url: m.url,
+                            platform: m.platform
+                        };
+
+                        acc.entry(VersionId(m.version_id))
+                            .or_default()
+                            .push(disk);
+                        async move { Ok(acc) }
+                    }
+                    ).await?;
+
                 let hashes: DashMap<VersionId, Vec<Hash>> = sqlx::query!(
                     "
                     SELECT DISTINCT file_id, algorithm, encode(hash, 'escape') hash
@@ -684,6 +738,7 @@ impl Version {
                         async move { Ok(acc) }
                     })
                     .await?;
+
 
                 let dependencies : DashMap<VersionId, Vec<QueryDependency>> = sqlx::query!(
                     "
@@ -712,7 +767,7 @@ impl Version {
                     "
                     SELECT v.id id, v.mod_id mod_id, v.author_id author_id, v.name version_name, v.version_number version_number,
                     v.changelog changelog, v.date_published date_published, v.downloads downloads,
-                    v.version_type version_type, v.featured featured, v.status status, v.requested_status requested_status, v.ordering ordering, v.disk_url disk_url
+                    v.version_type version_type, v.featured featured, v.status status, v.requested_status requested_status, v.ordering ordering
                     FROM versions v
                     WHERE v.id = ANY($1);
                     ",
@@ -728,6 +783,7 @@ impl Version {
                             loader_loader_field_ids,
                         } = loaders_ptypes_games.remove(&version_id).map(|x|x.1).unwrap_or_default();
                         let files = files.remove(&version_id).map(|x|x.1).unwrap_or_default();
+                        let disks = disks.remove(&version_id).map(|x|x.1).unwrap_or_default();
                         let hashes = hashes.remove(&version_id).map(|x|x.1).unwrap_or_default();
                         let version_fields = version_fields.remove(&version_id).map(|x|x.1).unwrap_or_default();
                         let dependencies = dependencies.remove(&version_id).map(|x|x.1).unwrap_or_default();
@@ -751,8 +807,7 @@ impl Version {
                                 status: VersionStatus::from_string(&v.status),
                                 requested_status: v.requested_status
                                     .map(|x| VersionStatus::from_string(&x)),
-                                ordering: v.ordering,
-                                disk_url: v.disk_url.clone(),
+                                ordering: v.ordering
                             },
                             files: {
                                 let mut files = files.into_iter().map(|x| {
@@ -787,11 +842,11 @@ impl Version {
                                         a.filename.cmp(&b.filename)
                                     }
                                 });
-                                if v.disk_url.is_some(){
+                                if !disks.is_empty(){
                                     files.clear();
                                     files.push(QueryFile {
                                         id: FileId(-1),
-                                        url: v.disk_url.unwrap(),
+                                        url: disks.first().unwrap().url.clone(),
                                         filename: "".to_string(),
                                         hashes: HashMap::new(),
                                         primary: true,
@@ -804,6 +859,7 @@ impl Version {
                             },
                             version_fields: VersionField::from_query_json(version_fields, &loader_fields, &loader_field_enum_values, false),
                             loaders,
+                            disks,
                             project_types,
                             games,
                             dependencies,
@@ -950,6 +1006,7 @@ pub struct QueryVersion {
     pub project_types: Vec<String>,
     pub games: Vec<String>,
     pub dependencies: Vec<QueryDependency>,
+    pub disks: Vec<QueryDisk>,
 }
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -958,6 +1015,15 @@ pub struct QueryDependency {
     pub version_id: Option<VersionId>,
     pub file_name: Option<String>,
     pub dependency_type: String,
+}
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Validate)]
+pub struct QueryDisk {
+    pub platform: String,
+    #[validate(
+        custom(function = "crate::util::validate::validate_url"),
+        length(max = 2048)
+    )]
+    pub url: String,
 }
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -1064,7 +1130,6 @@ mod tests {
             featured: Default::default(),
             status: VersionStatus::Listed,
             requested_status: Default::default(),
-            disk_url: Default::default(),
         }
     }
 }

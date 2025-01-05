@@ -201,7 +201,7 @@ pub async fn project_create(
                         ordering: v.ordering,
                         fields,
                         disk_only: v.disk_only,
-                        disk_url: v.disk_url,
+                        disk_urls: v.disk_urls,
                     }
                 })
                 .collect();

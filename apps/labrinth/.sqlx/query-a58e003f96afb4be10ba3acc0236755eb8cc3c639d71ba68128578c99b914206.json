@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM disk_urls\n            WHERE disk_urls.version_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a58e003f96afb4be10ba3acc0236755eb8cc3c639d71ba68128578c99b914206"
+}

@@ -23,46 +23,18 @@
           : `上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`
       "
     />
-    <Modal v-if="auth.user && currentMember" ref="modal_package_mod" header="Package data pack">
-      <div class="modal-package-mod universal-labels">
-        <div class="markdown-body">
-          <p>
-            将您的数据包打包为模组,这将创建一个支持所选MOD运行环境的新版本。
-            您将被重定向到新版本并可以根据自己的喜好对其进行编辑。
-          </p>
-        </div>
-        <label for="package-mod-loaders">
-          <span class="label__title">MOD运行环境</span>
-          <span class="label__description"> 选择您数据包的MOD运行环境 </span>
-        </label>
-        <multiselect
-          id="package-mod-loaders"
-          v-model="packageLoaders"
-          :options="['fabric', 'forge', 'quilt', 'neoforge']"
-          :custom-label="(value) => value.charAt(0).toUpperCase() + value.slice(1)"
-          :multiple="true"
-          :searchable="false"
-          :show-no-results="false"
-          :show-labels="false"
-          placeholder="选择运行环境..."
-          open-direction="top"
-        />
-        <div class="button-group">
-          <ButtonStyled>
-            <button @click="$refs.modal_package_mod.hide()">
-              <CrossIcon aria-hidden="true" />
-              取消
-            </button>
-          </ButtonStyled>
-          <ButtonStyled color="brand">
-            <button @click="createDataPackVersion">
-              <RightArrowIcon aria-hidden="true" />
-              开始打包数据包
-            </button>
-          </ButtonStyled>
-        </div>
-      </div>
-    </Modal>
+
+    <NewModal ref="downloadModal">
+      <template #title>
+        <Avatar :src="project.icon_url" :alt="project.title" class="icon" size="32px" />
+        <div class="truncate text-lg font-extrabold text-contrast">下载 {{ version.name }}</div>
+      </template>
+
+      <AutomaticAccordion div class="flex flex-col gap-2" style="width: 650px">
+        <VersionSummary v-if="version" :version="version" @on-navigate="$refs.downloadModal.hide" />
+      </AutomaticAccordion>
+    </NewModal>
+
     <div class="version-page__title universal-card">
       <Breadcrumbs
         :current-title="version.name"
@@ -97,8 +69,15 @@
       <div v-if="fieldErrors && showKnownErrors" class="known-errors">
         <ul>
           <li v-if="version.version_number === ''">您必须输入一个版本号</li>
-          <li v-if="version.disk_only && version.disk_url === ''">
-            您选择了网盘，必须提供网盘地址
+          <li
+            v-if="
+              version.disk_only &&
+              (version.quark_disk === '' || version.quark_disk === undefined) &&
+              (version.baidu_disk === '' || version.baidu_disk === undefined) &&
+              (version.xunlei_disk === '' || version.xunlei_disk === undefined)
+            "
+          >
+            您选择了网盘，必须提供至少一个网盘地址
           </li>
           <li v-if="version.game_versions.length === 0">您必须选择支持的 Minecraft 版本</li>
           <li
@@ -171,10 +150,12 @@
             <DownloadIcon aria-hidden="true" />
             下载
           </a>
-          <a v-else :href="primaryFile.url" target="_blank">
-            <DownloadIcon aria-hidden="true" />
-            下载
-          </a>
+          <button-styled v-else color="green" @click="$refs.downloadModal.show()">
+            <nuxt-link>
+              <DownloadIcon aria-hidden="true" />
+              下载
+            </nuxt-link>
+          </button-styled>
         </ButtonStyled>
         <ButtonStyled v-if="!auth.user">
           <nuxt-link to="/auth/sign-in">
@@ -201,18 +182,6 @@
           </nuxt-link>
         </ButtonStyled>
         <ButtonStyled>
-          <button
-            v-if="
-              currentMember &&
-              version.loaders.some((x) => tags.loaderData.dataPackLoaders.includes(x))
-            "
-            @click="$refs.modal_package_mod.show()"
-          >
-            <BoxIcon aria-hidden="true" />
-            打包成模组
-          </button>
-        </ButtonStyled>
-        <ButtonStyled>
           <button v-if="currentMember" @click="$refs.modal_confirm.show()">
             <TrashIcon aria-hidden="true" />
             删除
@@ -237,10 +206,13 @@
     <div v-if="isEditing" class="version-page__disk_url universal-card">
       <div class="adjacent-input">
         <label>
-          <span class="label__title">夸克网盘</span>
+          <span class="label__title">第三方网盘</span>
           <span class="label__description">
-            如果您有夸克的合作，需要参与夸克的拉新激励，可选择只提供夸克网盘链接，则无需选择要上传的文件，提供夸克下载方式后，点击下载按钮会直接跳转到夸克进行下载便可得到夸克的拉新激励。
-            如果您启用夸克网盘，本网站将不提供直接下载文件的功能，且不会记录下载次数
+            如果您有夸克迅雷等网盘的合作，需要参与网盘的拉新激励，可选择只提供网盘链接，则无需选择要上传的文件，提供网盘下载方式后，点击下载按钮会直接跳转到网盘进行下载便可得到网盘的拉新激励。
+            如果您启用网盘提供下载，本网站将不提供直接下载文件的功能
+            <br />
+            <br />
+            请至少提供一种网盘
           </span>
         </label>
         <input
@@ -254,14 +226,29 @@
       <div v-if="version.disk_only === true">
         <h3>夸克网盘</h3>
         <input
-          id="version-number"
-          v-model="version.disk_url"
+          id="version-quark"
+          v-model="version.quark_disk"
           type="text"
           autocomplete="off"
           style="width: 100%"
         />
-
-        <div class="adjacent-input">
+        <h3>迅雷网盘</h3>
+        <input
+          id="version-xunlei"
+          v-model="version.xunlei_disk"
+          type="text"
+          autocomplete="off"
+          style="width: 100%"
+        />
+        <h3>百度网盘</h3>
+        <input
+          id="version-baidu"
+          v-model="version.baidu_disk"
+          type="text"
+          autocomplete="off"
+          style="width: 100%"
+        />
+        <div v-if="!project.versions || project.versions.length === 0" class="adjacent-input">
           <label style="margin-top: 15px">
             <span class="label__title">整合包</span>
             <span class="label__description">
@@ -277,19 +264,6 @@
         </div>
       </div>
     </div>
-    <!--    <div class="version-page__disk_url universal-card" v-if="!isEditing && version.disk_only === true">-->
-    <!--      <h3>夸克网盘</h3>-->
-    <!--      <h4>网盘链接</h4>-->
-    <!--      <input-->
-    <!--        id="version-number"-->
-    <!--        v-model="version.disk_url"-->
-    <!--        type="text"-->
-    <!--        autocomplete="off"-->
-    <!--        disabled-->
-    <!--        style="width: 100%"-->
-    <!--      />-->
-    <!--    </div>-->
-
     <div
       v-if="deps.length > 0 || (isEditing && project.project_type !== 'modpack')"
       class="version-page__dependencies universal-card"
@@ -741,13 +715,12 @@
 </template>
 <script>
 import { formatProjectRelease } from "@modrinth/utils";
-import { ButtonStyled, ConfirmModal, MarkdownEditor } from "@modrinth/ui";
+import { ButtonStyled, ConfirmModal, MarkdownEditor, NewModal } from "@modrinth/ui";
 import { Multiselect } from "vue-multiselect";
 import JSZip from "jszip";
 import UploadModal from "@modrinth/ui/src/components/modal/UploadModal.vue";
 import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";
 import { inferVersionInfo } from "~/helpers/infer.js";
-import { createDataPackVersion } from "~/helpers/package.js";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { reportVersion } from "~/utils/report-helpers.ts";
 import { useImageUpload } from "~/composables/image-upload.ts";
@@ -779,9 +752,14 @@ import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
 import { useBaseFetchFile } from "~/composables/fetch.js";
+import VersionSummary from "~/components/ui/VersionSummary.vue";
+import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 
 export default defineNuxtComponent({
   components: {
+    AutomaticAccordion,
+    VersionSummary,
+    NewModal,
     UploadModal,
     MarkdownEditor,
     Modal,
@@ -913,7 +891,9 @@ export default defineNuxtComponent({
         game_versions: [],
         loaders: [],
         featured: false,
-        disk_url: "",
+        quark_disk: "",
+        baidu_disk: "",
+        xunlei_disk: "",
         disk_only: false,
         is_modpack: false,
         curseforge: "",
@@ -937,6 +917,8 @@ export default defineNuxtComponent({
         } catch (err) {
           console.error("解析版本文件数据时出错", err);
         }
+      } else {
+        version.disk_only = true;
       }
     } else if (route.params.version === "latest") {
       let versionList = props.versions;
@@ -964,7 +946,19 @@ export default defineNuxtComponent({
     }
 
     version = JSON.parse(JSON.stringify(version));
+    if (version.disk_only && version.disk_urls && version.disk_urls.length > 0) {
+      version.disk_urls.forEach((url) => {
+        if (url.platform === "baidu") {
+          version.baidu_disk = url.url;
+        } else if (url.platform === "xunlei") {
+          version.xunlei_disk = url.url;
+        } else if (url.platform === "quark") {
+          version.quark_disk = url.url;
+        }
+      });
+    }
     primaryFile = version.files.find((file) => file.primary) ?? version.files[0];
+
     alternateFile = version.files.find(
       (file) => file.file_type && file.file_type.includes("resource-pack"),
     );
@@ -1026,6 +1020,7 @@ export default defineNuxtComponent({
       isEditing: ref(isEditing),
       version: ref(version),
       primaryFile: ref(primaryFile),
+
       alternateFile: ref(alternateFile),
       replaceFile: ref(replaceFile),
       uploadedImageIds: ref([]),
@@ -1055,7 +1050,10 @@ export default defineNuxtComponent({
     fieldErrors() {
       return (
         this.version.version_number === "" ||
-        (this.version.disk_only && this.version.disk_url === "") ||
+        (this.version.disk_only &&
+          (this.version.quark_disk === "" || this.version.quark_disk === undefined) &&
+          (this.version.xunlei_disk === "" || this.version.xunlei_disk === undefined) &&
+          (this.version.baidu_disk === "" || this.version.baidu_disk === undefined)) ||
         this.version.game_versions.length === 0 ||
         (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
         (this.newFiles.length === 0 &&
@@ -1244,6 +1242,25 @@ export default defineNuxtComponent({
           // this.$refs.uploading_modal.proceed()
         }
 
+        const disks = [];
+        if (this.version.quark_disk !== "" && this.version.quark_disk !== undefined) {
+          disks.push({
+            platform: "quark",
+            url: this.version.quark_disk,
+          });
+        }
+        if (this.version.baidu_disk !== "" && this.version.baidu_disk !== undefined) {
+          disks.push({
+            platform: "baidu",
+            url: this.version.baidu_disk,
+          });
+        }
+        if (this.version.xunlei_disk !== "" && this.version.xunlei_disk !== undefined) {
+          disks.push({
+            platform: "xunlei",
+            url: this.version.xunlei_disk,
+          });
+        }
         const body = {
           name: this.version.name || this.version.version_number,
           version_number: this.version.version_number,
@@ -1252,7 +1269,7 @@ export default defineNuxtComponent({
           dependencies: this.version.dependencies,
           game_versions: this.version.game_versions,
           loaders: this.version.loaders,
-          disk_url: version.disk_only ? version.disk_url : null,
+          disk_urls: this.version.disk_only ? disks : null,
           disk_only: this.version.disk_only,
           primary_file: this.version.disk_only ? [] : ["sha1", this.primaryFile.hashes.sha1],
           featured: this.version.featured,
@@ -1290,6 +1307,7 @@ export default defineNuxtComponent({
           }/version/${this.version.id}`,
         );
       } catch (err) {
+        console.log(err);
         this.$notify({
           group: "main",
           title: "发生错误",
@@ -1361,7 +1379,25 @@ export default defineNuxtComponent({
       if (!curse && version.is_modpack) {
         curse = true;
       }
-
+      const disks = [];
+      if (version.quark_disk !== "" && version.quark_disk !== undefined) {
+        disks.push({
+          platform: "quark",
+          url: version.quark_disk,
+        });
+      }
+      if (version.baidu_disk !== "" && version.baidu_disk !== undefined) {
+        disks.push({
+          platform: "baidu",
+          url: version.baidu_disk,
+        });
+      }
+      if (version.xunlei_disk !== "" && version.xunlei_disk !== undefined) {
+        disks.push({
+          platform: "xunlei",
+          url: version.xunlei_disk,
+        });
+      }
       const newVersion = {
         project_id: version.project_id,
         curse,
@@ -1375,7 +1411,7 @@ export default defineNuxtComponent({
         release_channel: version.version_type,
         featured: version.featured,
         disk_only: version.disk_only,
-        disk_url: version.disk_only ? version.disk_url : null,
+        disk_urls: version.disk_only ? disks : null,
         file_types: version.disk_only
           ? {}
           : this.newFileTypes.reduce(
@@ -1453,60 +1489,6 @@ export default defineNuxtComponent({
       await this.resetProjectVersions();
       await this.$router.replace(`/${this.project.project_type}/${this.project.id}/versions`);
       stopLoading();
-    },
-    async createDataPackVersion() {
-      this.shouldPreventActions = true;
-      startLoading();
-      try {
-        const blob = await createDataPackVersion(
-          this.project,
-          this.version,
-          this.primaryFile,
-          this.members,
-          this.tags.gameVersions,
-          this.packageLoaders,
-        );
-
-        this.newFiles = [];
-        this.newFileTypes = [];
-        this.replaceFile = new File(
-          [blob],
-          `${this.project.slug}-${this.version.version_number}.jar`,
-        );
-
-        await this.createVersionRaw({
-          project_id: this.project.id,
-          author_id: this.currentMember.user.id,
-          name: this.version.name,
-          version_number: `${this.version.version_number}+mod`,
-          changelog: this.version.changelog,
-          version_type: this.version.version_type,
-          dependencies: this.version.dependencies,
-          game_versions: this.version.game_versions,
-          loaders: this.packageLoaders,
-          featured: this.version.featured,
-          disk_only: this.version.disk_only,
-          disk_url: version.disk_only ? version.disk_url : null,
-        });
-
-        this.$refs.modal_package_mod.hide();
-
-        this.$notify({
-          group: "main",
-          title: "打包成功",
-          text: "您的数据包已成功打包为模组！请务必进行游戏测试以检查是否有错误。",
-          type: "success",
-        });
-      } catch (err) {
-        this.$notify({
-          group: "main",
-          title: "发生错误",
-          text: err.data ? err.data.description : err,
-          type: "error",
-        });
-      }
-      stopLoading();
-      this.shouldPreventActions = false;
     },
     async resetProjectVersions() {
       const [versions, featuredVersions, dependencies] = await Promise.all([

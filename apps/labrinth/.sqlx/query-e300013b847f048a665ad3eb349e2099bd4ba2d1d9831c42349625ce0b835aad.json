@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                            INSERT INTO disk_urls (version_id, url,platform)\n                            VALUES ($1, $2, $3)\n                            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e300013b847f048a665ad3eb349e2099bd4ba2d1d9831c42349625ce0b835aad"
+}
