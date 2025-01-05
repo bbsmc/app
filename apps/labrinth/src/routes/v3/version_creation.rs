@@ -5,7 +5,7 @@ use crate::database::models::loader_fields::{
 };
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::version_item::{
-    DependencyBuilder, VersionBuilder, VersionFileBuilder,
+    DependencyBuilder, QueryDisk, VersionBuilder, VersionFileBuilder,
 };
 use crate::database::models::{self, image_item, Organization};
 use crate::database::redis::RedisPool;
@@ -91,11 +91,7 @@ pub struct InitialVersionData {
     pub fields: HashMap<String, serde_json::Value>,
 
     pub disk_only: bool,
-    #[validate(
-        custom(function = "crate::util::validate::validate_url"),
-        length(max = 2048)
-    )]
-    pub disk_url: Option<String>,
+    pub disk_urls: Option<Vec<QueryDisk>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -215,6 +211,11 @@ async fn version_create_inner(
                         "Status specified cannot be requested".to_string(),
                     ));
                 }
+                if version_create_data.disk_only && version_create_data.disk_urls.is_some() && version_create_data.disk_urls.clone().unwrap().len() > 3{
+                    return Err(CreateError::InvalidInput(
+                        "最多提供三个网盘".to_string(),
+                    ));
+                }
 
                 let project_id: models::ProjectId = version_create_data.project_id.unwrap().into();
 
@@ -313,10 +314,10 @@ async fn version_create_inner(
                     })
                     .collect::<Vec<_>>();
 
-                let mut disk_url = None;
-                if version_create_data.disk_only && version_create_data.disk_url.is_some(){
-                    disk_url = version_create_data.disk_url.clone();
-                }
+                // let disk_url = None;
+                // if version_create_data.disk_only && version_create_data.disk_urls.is_some(){
+                //     disk_url = version_create_data.disk_urls.clone().unwrap();
+                // }
                 version_builder = Some(VersionBuilder {
                     version_id: version_id.into(),
                     project_id,
@@ -333,7 +334,7 @@ async fn version_create_inner(
                     status: version_create_data.status,
                     requested_status: None,
                     ordering: version_create_data.ordering,
-                    disk_url
+                    disk_url: version_create_data.disk_urls.clone(),
                 });
 
                 return Ok(());
@@ -342,6 +343,9 @@ async fn version_create_inner(
             let version = version_builder.as_mut().ok_or_else(|| {
                 CreateError::InvalidInput(String::from("`data` field must come before file fields"))
             })?;
+
+
+
             let loaders = selected_loaders.as_ref().ok_or_else(|| {
                 CreateError::InvalidInput(String::from("`data` field must come before file fields"))
             })?;
@@ -414,7 +418,7 @@ async fn version_create_inner(
         ));
     }
 
-    if version_data.disk_only && version_data.disk_url.is_none() {
+    if version_data.disk_only && version_data.disk_urls.is_none() {
         return Err(CreateError::InvalidInput("未填写网盘地址".to_string()));
     }
     use futures::stream::TryStreamExt;
@@ -476,13 +480,17 @@ async fn version_create_inner(
         })
         .collect::<Vec<_>>();
     let mut disk_url = None;
-    if version_data.disk_only && version_data.disk_url.is_some() {
-        disk_url = version_data.disk_url.clone();
+    if version_data.disk_only && version_data.disk_urls.is_some() {
+        disk_url = version_data.disk_urls.clone();
+    }
+    let mut disk_urls: Vec<QueryDisk> = vec![];
+    if version_data.disk_urls.is_some() {
+        disk_urls = version_data.disk_urls.unwrap();
     }
     if version_data.disk_only {
         files.push(VersionFile {
             hashes: HashMap::new(),
-            url: disk_url.clone().unwrap(),
+            url: disk_url.unwrap().first().unwrap().url.clone(),
             filename: "".to_string(),
             primary: false,
             size: 0,
@@ -509,7 +517,7 @@ async fn version_create_inner(
         dependencies: version_data.dependencies,
         loaders: version_data.loaders,
         fields: version_data.fields,
-        disk_url,
+        disk_urls,
         disk_only: version_data.disk_only,
     };
 

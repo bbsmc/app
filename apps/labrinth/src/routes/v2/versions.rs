@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::ApiError;
+use crate::database::models::version_item::QueryDisk;
 use crate::database::redis::RedisPool;
 use crate::models;
 use crate::models::ids::VersionId;
@@ -237,11 +238,7 @@ pub struct EditVersion {
     pub status: Option<VersionStatus>,
     pub file_types: Option<Vec<EditVersionFileType>>,
     pub disk_only: Option<bool>,
-    #[validate(
-        custom(function = "crate::util::validate::validate_url"),
-        length(max = 2048)
-    )]
-    pub disk_url: Option<String>,
+    pub disk_urls: Option<Vec<QueryDisk>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -322,7 +319,7 @@ pub async fn version_edit(
         ordering: None,
         fields,
         disk_only: new_version.disk_only,
-        disk_url: new_version.disk_url,
+        disk_urls: new_version.disk_urls,
     };
 
     let response = v3::versions::version_edit(

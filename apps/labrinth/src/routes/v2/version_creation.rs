@@ -18,6 +18,7 @@ use actix_web::http::header::ContentDisposition;
 use actix_web::web::Data;
 use actix_web::{post, web, HttpRequest, HttpResponse};
 // use futures_util::StreamExt;
+use crate::database::models::version_item::QueryDisk;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::postgres::PgPool;
@@ -72,11 +73,7 @@ pub struct InitialVersionData {
     pub ordering: Option<i32>,        // 排序
     pub curse: bool,
     pub disk_only: bool,
-    #[validate(
-        custom(function = "crate::util::validate::validate_url"),
-        length(max = 2048)
-    )]
-    pub disk_url: Option<String>,
+    pub disk_urls: Option<Vec<QueryDisk>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -262,7 +259,7 @@ pub async fn version_create(
                     ordering: legacy_create.ordering,
                     fields,
                     disk_only: legacy_create.disk_only,
-                    disk_url: legacy_create.disk_url,
+                    disk_urls: legacy_create.disk_urls,
                 })
             }
         },
