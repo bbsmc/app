@@ -12,17 +12,11 @@
             {{ formatMessage(methodChoiceMessages.emailUsernameLabel) }}
           </label>
           <MailIcon />
-          <input
-            id="email"
-            v-model="email"
-            type="text"
-            autocomplete="username"
-            class="auth-form__input"
-            :placeholder="formatMessage(methodChoiceMessages.emailUsernamePlaceholder)"
-          />
+          <input id="email" v-model="email" type="text" autocomplete="username" class="auth-form__input"
+            :placeholder="formatMessage(methodChoiceMessages.emailUsernamePlaceholder)" />
         </div>
 
-        <HCaptcha ref="captcha" v-model="token" />
+        <GeetestCaptcha ref="captcha" v-model="token" />
 
         <button class="btn btn-primary centered-btn" :disabled="!token" @click="recovery">
           <SendIcon /> {{ formatMessage(methodChoiceMessages.action) }}
@@ -34,14 +28,8 @@
         <div class="iconified-input">
           <label for="password" hidden>{{ formatMessage(commonMessages.passwordLabel) }}</label>
           <KeyIcon />
-          <input
-            id="password"
-            v-model="newPassword"
-            type="password"
-            autocomplete="new-password"
-            class="auth-form__input"
-            :placeholder="formatMessage(commonMessages.passwordLabel)"
-          />
+          <input id="password" v-model="newPassword" type="password" autocomplete="new-password"
+            class="auth-form__input" :placeholder="formatMessage(commonMessages.passwordLabel)" />
         </div>
 
         <div class="iconified-input">
@@ -49,14 +37,8 @@
             {{ formatMessage(commonMessages.passwordLabel) }}
           </label>
           <KeyIcon />
-          <input
-            id="confirm-password"
-            v-model="confirmNewPassword"
-            type="password"
-            autocomplete="new-password"
-            class="auth-form__input"
-            :placeholder="formatMessage(postChallengeMessages.confirmPasswordLabel)"
-          />
+          <input id="confirm-password" v-model="confirmNewPassword" type="password" autocomplete="new-password"
+            class="auth-form__input" :placeholder="formatMessage(postChallengeMessages.confirmPasswordLabel)" />
         </div>
 
         <button class="auth-form__input btn btn-primary continue-btn" @click="changePassword">
@@ -68,7 +50,7 @@
 </template>
 <script setup>
 import { SendIcon, MailIcon, KeyIcon } from "@modrinth/assets";
-import HCaptcha from "@/components/ui/HCaptcha.vue";
+import GeetestCaptcha from "@/components/ui/GeetestCaptcha.vue";
 
 const { formatMessage } = useVIntl();
 
