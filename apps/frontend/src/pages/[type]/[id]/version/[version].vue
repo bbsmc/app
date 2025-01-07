@@ -1,28 +1,14 @@
 <template>
   <div v-if="version" class="version-page">
-    <ConfirmModal
-      v-if="currentMember"
-      ref="modal_confirm"
-      title="您确实要删除该版本吗？"
-      description="这将永远删除该版本"
-      :has-to-type="false"
-      proceed-label="删除"
-      @proceed="deleteVersion()"
-    />
-    <UploadModal
-      ref="uploading_modal"
-      title="文件上传中"
-      :description="
-        parseFloat(uploading).toFixed(0) === '100'
-          ? '文件处理中,请稍等'
-          : `当前进度 ${parseFloat(uploading).toFixed(2)}%`
-      "
-      :speed="
-        parseFloat(uploading).toFixed(0) === '100'
-          ? ''
-          : `上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`
-      "
-    />
+    <ConfirmModal v-if="currentMember" ref="modal_confirm" title="您确实要删除该版本吗？" description="这将永远删除该版本"
+      :has-to-type="false" proceed-label="删除" @proceed="deleteVersion()" />
+    <UploadModal ref="uploading_modal" title="文件上传中" :description="parseFloat(uploading).toFixed(0) === '100'
+      ? '文件处理中,请稍等'
+      : `当前进度 ${parseFloat(uploading).toFixed(2)}%`
+      " :speed="parseFloat(uploading).toFixed(0) === '100'
+        ? ''
+        : `上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`
+        " />
 
     <NewModal ref="downloadModal">
       <template #title>
@@ -31,28 +17,21 @@
       </template>
 
       <AutomaticAccordion div class="flex flex-col gap-2" style="width: 650px">
-        <VersionSummary v-if="version" :version="version" @on-navigate="$refs.downloadModal.hide" />
+        <VersionSummary v-if="version" :version="version" @on-navigate="$refs.downloadModal.hide"
+          @on-download="onDownload(version.id)" />
       </AutomaticAccordion>
     </NewModal>
 
     <div class="version-page__title universal-card">
-      <Breadcrumbs
-        :current-title="version.name"
-        :link-stack="[
-          {
-            href: getPreviousLink(),
-            label: getPreviousLabel(),
-          },
-        ]"
-      />
+      <Breadcrumbs :current-title="version.name" :link-stack="[
+        {
+          href: getPreviousLink(),
+          label: getPreviousLabel(),
+        },
+      ]" />
       <div class="version-header">
         <template v-if="isEditing">
-          <input
-            v-model="version.name"
-            type="text"
-            placeholder="输入该版本的标题..."
-            maxlength="256"
-          />
+          <input v-model="version.name" type="text" placeholder="输入该版本的标题..." maxlength="256" />
         </template>
         <h2 :class="{ 'sr-only': isEditing }">
           {{ version.name }}
@@ -69,25 +48,21 @@
       <div v-if="fieldErrors && showKnownErrors" class="known-errors">
         <ul>
           <li v-if="version.version_number === ''">您必须输入一个版本号</li>
-          <li
-            v-if="
-              version.disk_only &&
-              (version.quark_disk === '' || version.quark_disk === undefined) &&
-              (version.baidu_disk === '' || version.baidu_disk === undefined) &&
-              (version.xunlei_disk === '' || version.xunlei_disk === undefined)
-            "
-          >
+          <li v-if="
+            version.disk_only &&
+            (version.quark_disk === '' || version.quark_disk === undefined) &&
+            (version.baidu_disk === '' || version.baidu_disk === undefined) &&
+            (version.xunlei_disk === '' || version.xunlei_disk === undefined)
+          ">
             您选择了网盘，必须提供至少一个网盘地址
           </li>
           <li v-if="version.game_versions.length === 0">您必须选择支持的 Minecraft 版本</li>
-          <li
-            v-if="
-              newFiles.length === 0 &&
-              version.files.length === 0 &&
-              !replaceFile &&
-              !version.disk_only
-            "
-          >
+          <li v-if="
+            newFiles.length === 0 &&
+            version.files.length === 0 &&
+            !replaceFile &&
+            !version.disk_only
+          ">
             您必须要有一个上传的文件
           </li>
           <li v-if="version.loaders.length === 0 && project.project_type !== 'resourcepack'">
@@ -103,10 +78,8 @@
           </button>
         </ButtonStyled>
         <ButtonStyled>
-          <nuxt-link
-            v-if="auth.user"
-            :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/versions`"
-          >
+          <nuxt-link v-if="auth.user"
+            :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/versions`">
             <CrossIcon aria-hidden="true" />
             取消
           </nuxt-link>
@@ -127,13 +100,8 @@
           </button>
         </ButtonStyled>
         <ButtonStyled>
-          <nuxt-link
-            v-if="currentMember"
-            class="action"
-            :to="`/${project.project_type}/${
-              project.slug ? project.slug : project.id
-            }/version/${encodeURI(version.displayUrlEnding)}`"
-          >
+          <nuxt-link v-if="currentMember" class="action" :to="`/${project.project_type}/${project.slug ? project.slug : project.id
+            }/version/${encodeURI(version.displayUrlEnding)}`">
             <CrossIcon aria-hidden="true" />
             放弃修改
           </nuxt-link>
@@ -141,12 +109,9 @@
       </div>
       <div v-else class="input-group">
         <ButtonStyled v-if="primaryFile" color="green">
-          <a
-            v-if="primaryFile.url.includes('cdn.bbsmc.net')"
-            v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'"
-            :href="primaryFile.url"
-            @click="emit('onDownload')"
-          >
+          <a v-if="primaryFile.url.includes('cdn.bbsmc.net')"
+            v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'" :href="primaryFile.url"
+            @click="emit('onDownload')">
             <DownloadIcon aria-hidden="true" />
             下载
           </a>
@@ -170,13 +135,8 @@
           </button>
         </ButtonStyled>
         <ButtonStyled>
-          <nuxt-link
-            v-if="currentMember"
-            class="action"
-            :to="`/${project.project_type}/${
-              project.slug ? project.slug : project.id
-            }/version/${encodeURI(version.displayUrlEnding)}/edit`"
-          >
+          <nuxt-link v-if="currentMember" class="action" :to="`/${project.project_type}/${project.slug ? project.slug : project.id
+            }/version/${encodeURI(version.displayUrlEnding)}/edit`">
             <EditIcon aria-hidden="true" />
             编辑
           </nuxt-link>
@@ -197,11 +157,7 @@
           <MarkdownEditor v-model="version.changelog" :on-image-upload="onImageUpload" />
         </div>
       </template>
-      <div
-        v-else
-        class="markdown-body"
-        v-html="version.changelog ? renderHighlightedString(version.changelog) : '无'"
-      />
+      <div v-else class="markdown-body" v-html="version.changelog ? renderHighlightedString(version.changelog) : '无'" />
     </div>
     <div v-if="isEditing" class="version-page__disk_url universal-card">
       <div class="adjacent-input">
@@ -215,39 +171,16 @@
             请至少提供一种网盘
           </span>
         </label>
-        <input
-          id="advanced-rendering"
-          v-model="version.disk_only"
-          class="switch stylized-toggle"
-          type="checkbox"
-        />
+        <input id="advanced-rendering" v-model="version.disk_only" class="switch stylized-toggle" type="checkbox" />
       </div>
 
       <div v-if="version.disk_only === true">
         <h3>夸克网盘</h3>
-        <input
-          id="version-quark"
-          v-model="version.quark_disk"
-          type="text"
-          autocomplete="off"
-          style="width: 100%"
-        />
+        <input id="version-quark" v-model="version.quark_disk" type="text" autocomplete="off" style="width: 100%" />
         <h3>迅雷网盘</h3>
-        <input
-          id="version-xunlei"
-          v-model="version.xunlei_disk"
-          type="text"
-          autocomplete="off"
-          style="width: 100%"
-        />
+        <input id="version-xunlei" v-model="version.xunlei_disk" type="text" autocomplete="off" style="width: 100%" />
         <h3>百度网盘</h3>
-        <input
-          id="version-baidu"
-          v-model="version.baidu_disk"
-          type="text"
-          autocomplete="off"
-          style="width: 100%"
-        />
+        <input id="version-baidu" v-model="version.baidu_disk" type="text" autocomplete="off" style="width: 100%" />
         <div v-if="!project.versions || project.versions.length === 0" class="adjacent-input">
           <label style="margin-top: 15px">
             <span class="label__title">整合包</span>
@@ -255,32 +188,16 @@
               请选择上传的资源是否是整合包/导入包类型，这很重要
             </span>
           </label>
-          <input
-            id="advanced-rendering"
-            v-model="version.is_modpack"
-            type="checkbox"
-            class="switch stylized-toggle"
-          />
+          <input id="advanced-rendering" v-model="version.is_modpack" type="checkbox" class="switch stylized-toggle" />
         </div>
       </div>
     </div>
-    <div
-      v-if="deps.length > 0 || (isEditing && project.project_type !== 'modpack')"
-      class="version-page__dependencies universal-card"
-    >
+    <div v-if="deps.length > 0 || (isEditing && project.project_type !== 'modpack')"
+      class="version-page__dependencies universal-card">
       <h3>依赖项目</h3>
-      <div
-        v-for="(dependency, index) in deps.filter((x) => !x.file_name)"
-        :key="index"
-        class="dependency"
-        :class="{ 'button-transparent': !isEditing }"
-        @click="!isEditing ? $router.push(dependency.link) : {}"
-      >
-        <Avatar
-          :src="dependency.project ? dependency.project.icon_url : null"
-          alt="dependency-icon"
-          size="sm"
-        />
+      <div v-for="(dependency, index) in deps.filter((x) => !x.file_name)" :key="index" class="dependency"
+        :class="{ 'button-transparent': !isEditing }" @click="!isEditing ? $router.push(dependency.link) : {}">
+        <Avatar :src="dependency.project ? dependency.project.icon_url : null" alt="dependency-icon" size="sm" />
         <nuxt-link v-if="!isEditing" :to="dependency.link" class="info">
           <span class="project-title">
             {{ dependency.project ? dependency.project.title : "Unknown Project" }}
@@ -312,11 +229,7 @@
           </button>
         </ButtonStyled>
       </div>
-      <div
-        v-for="(dependency, index) in deps.filter((x) => x.file_name)"
-        :key="index"
-        class="dependency"
-      >
+      <div v-for="(dependency, index) in deps.filter((x) => x.file_name)" :key="index" class="dependency">
         <Avatar :src="null" alt="dependency-icon" size="sm" />
         <div class="info">
           <span class="project-title">
@@ -328,60 +241,35 @@
       <div v-if="isEditing && project.project_type !== 'modpack'" class="add-dependency">
         <h4>添加在本网站发布过的资源作为依赖</h4>
         <div class="input-group">
-          <Multiselect
-            v-model="dependencyAddMode"
-            class="input"
-            :options="['project', 'version']"
-            :custom-label="
-              (value) => {
-                switch (value) {
-                  case 'project':
-                    return '资源';
-                  case 'version':
-                    return '版本';
-                  default:
-                    return value.charAt(0).toUpperCase() + value.slice(1);
-                }
+          <Multiselect v-model="dependencyAddMode" class="input" :options="['project', 'version']" :custom-label="(value) => {
+            switch (value) {
+              case 'project':
+                return '资源';
+              case 'version':
+                return '版本';
+              default:
+                return value.charAt(0).toUpperCase() + value.slice(1);
+            }
+          }
+            " :searchable="false" :close-on-select="true" :show-labels="false" :allow-empty="false" />
+          <input v-model="newDependencyId" type="text" :placeholder="`请输入 ${dependencyAddMode} ID${dependencyAddMode === 'project' ? '/slug' : ''
+            }`" @keyup.enter="addDependency(dependencyAddMode, newDependencyId, newDependencyType)" />
+          <Multiselect v-model="newDependencyType" class="input"
+            :options="['required', 'optional', 'incompatible', 'embedded']" :custom-label="(value) => {
+              switch (value) {
+                case 'required':
+                  return '必需';
+                case 'optional':
+                  return '可选';
+                case 'incompatible':
+                  return '不兼容';
+                case 'embedded':
+                  return '嵌入';
+                default:
+                  return value.charAt(0).toUpperCase() + value.slice(1);
               }
-            "
-            :searchable="false"
-            :close-on-select="true"
-            :show-labels="false"
-            :allow-empty="false"
-          />
-          <input
-            v-model="newDependencyId"
-            type="text"
-            :placeholder="`请输入 ${dependencyAddMode} ID${
-              dependencyAddMode === 'project' ? '/slug' : ''
-            }`"
-            @keyup.enter="addDependency(dependencyAddMode, newDependencyId, newDependencyType)"
-          />
-          <Multiselect
-            v-model="newDependencyType"
-            class="input"
-            :options="['required', 'optional', 'incompatible', 'embedded']"
-            :custom-label="
-              (value) => {
-                switch (value) {
-                  case 'required':
-                    return '必需';
-                  case 'optional':
-                    return '可选';
-                  case 'incompatible':
-                    return '不兼容';
-                  case 'embedded':
-                    return '嵌入';
-                  default:
-                    return value.charAt(0).toUpperCase() + value.slice(1);
-                }
-              }
-            "
-            :searchable="false"
-            :close-on-select="true"
-            :show-labels="false"
-            :allow-empty="true"
-          />
+            }
+              " :searchable="false" :close-on-select="true" :show-labels="false" :allow-empty="true" />
         </div>
         <div class="input-group">
           <ButtonStyled color="brand">
@@ -401,95 +289,54 @@
           <strong>{{ replaceFile.name }}</strong>
           <span class="file-size">({{ $formatBytes(replaceFile.size) }})</span>
         </span>
-        <FileInput
-          class="iconified-button raised-button"
-          prompt="替换"
-          aria-label="替换"
-          :accept="acceptFileFromProjectType(project.project_type)"
-          :max-size="1073741824"
-          should-always-reset
-          @change="(x) => (replaceFile = x[0])"
-        >
+        <FileInput class="iconified-button raised-button" prompt="替换" aria-label="替换"
+          :accept="acceptFileFromProjectType(project.project_type)" :max-size="1073741824" should-always-reset
+          @change="(x) => (replaceFile = x[0])">
           <TransferIcon aria-hidden="true" />
         </FileInput>
       </div>
-      <div
-        v-for="(file, index) in version.files"
-        :key="file.hashes.sha1"
-        :class="{
-          file: true,
-          primary: primaryFile.hashes.sha1 === file.hashes.sha1,
-        }"
-      >
+      <div v-for="(file, index) in version.files" :key="file.hashes.sha1" :class="{
+        file: true,
+        primary: primaryFile.hashes.sha1 === file.hashes.sha1,
+      }">
         <FileIcon aria-hidden="true" />
         <span class="filename">
           <strong>{{ file.filename }}</strong>
           <span class="file-size">({{ $formatBytes(file.size) }})</span>
           <span v-if="primaryFile.hashes.sha1 === file.hashes.sha1" class="file-type"> 主要 </span>
-          <span
-            v-else-if="file.file_type === 'required-resource-pack' && !isEditing"
-            class="file-type"
-          >
+          <span v-else-if="file.file_type === 'required-resource-pack' && !isEditing" class="file-type">
             必选资源包
           </span>
-          <span
-            v-else-if="file.file_type === 'optional-resource-pack' && !isEditing"
-            class="file-type"
-          >
+          <span v-else-if="file.file_type === 'optional-resource-pack' && !isEditing" class="file-type">
             可选资源包
           </span>
         </span>
-        <multiselect
-          v-if="
-            version.loaders.some((x) => tags.loaderData.dataPackLoaders.includes(x)) &&
-            isEditing &&
-            primaryFile.hashes.sha1 !== file.hashes.sha1
-          "
-          v-model="oldFileTypes[index]"
-          class="raised-multiselect"
-          placeholder="选择文件的类型"
-          :options="fileTypes"
-          track-by="value"
-          label="display"
-          :searchable="false"
-          :close-on-select="true"
-          :show-labels="false"
-          :allow-empty="false"
-        />
+        <multiselect v-if="
+          version.loaders.some((x) => tags.loaderData.dataPackLoaders.includes(x)) &&
+          isEditing &&
+          primaryFile.hashes.sha1 !== file.hashes.sha1
+        " v-model="oldFileTypes[index]" class="raised-multiselect" placeholder="选择文件的类型" :options="fileTypes"
+          track-by="value" label="display" :searchable="false" :close-on-select="true" :show-labels="false"
+          :allow-empty="false" />
         <ButtonStyled v-if="isEditing">
-          <button
-            :disabled="primaryFile.hashes.sha1 === file.hashes.sha1"
-            @click="
-              () => {
-                deleteFiles.push(file.hashes.sha1);
-                version.files.splice(index, 1);
-                oldFileTypes.splice(index, 1);
-              }
-            "
-          >
+          <button :disabled="primaryFile.hashes.sha1 === file.hashes.sha1" @click="() => {
+            deleteFiles.push(file.hashes.sha1);
+            version.files.splice(index, 1);
+            oldFileTypes.splice(index, 1);
+          }
+            ">
             <TrashIcon aria-hidden="true" />
             删除
           </button>
         </ButtonStyled>
         <ButtonStyled v-else>
-          <a
-            v-if="file.url.includes('cdn.bbsmc.net')"
-            :href="file.url"
-            class="raised-button"
-            :title="`Download ${file.filename}`"
-            tabindex="0"
-          >
+          <a v-if="file.url.includes('cdn.bbsmc.net')" :href="file.url" class="raised-button"
+            :title="`Download ${file.filename}`" tabindex="0">
             <DownloadIcon aria-hidden="true" />
           </a>
 
-          <a
-            v-else
-            :href="file.url"
-            class="raised-button"
-            :title="`Download ${file.filename}`"
-            target="_blank"
-            tabindex="0"
-          >
+          <a v-else :href="file.url" class="raised-button" :title="`Download ${file.filename}`" target="_blank"
+            tabindex="0">
             <DownloadIcon aria-hidden="true" />
             下载
           </a>
@@ -502,29 +349,16 @@
             <strong>{{ file.name }}</strong>
             <span class="file-size">({{ $formatBytes(file.size) }})</span>
           </span>
-          <multiselect
-            v-if="version.loaders.some((x) => tags.loaderData.dataPackLoaders.includes(x))"
-            v-model="newFileTypes[index]"
-            class="raised-multiselect"
-            placeholder="选择文件类型"
-            :options="fileTypes"
-            track-by="value"
-            label="display"
-            :searchable="false"
-            :close-on-select="true"
-            :show-labels="false"
-            :allow-empty="false"
-          />
+          <multiselect v-if="version.loaders.some((x) => tags.loaderData.dataPackLoaders.includes(x))"
+            v-model="newFileTypes[index]" class="raised-multiselect" placeholder="选择文件类型" :options="fileTypes"
+            track-by="value" label="display" :searchable="false" :close-on-select="true" :show-labels="false"
+            :allow-empty="false" />
           <ButtonStyled>
-            <button
-              class="raised-button"
-              @click="
-                () => {
-                  newFiles.splice(index, 1);
-                  newFileTypes.splice(index, 1);
-                }
-              "
-            >
+            <button class="raised-button" @click="() => {
+              newFiles.splice(index, 1);
+              newFileTypes.splice(index, 1);
+            }
+              ">
               <TrashIcon aria-hidden="true" />
               删除
             </button>
@@ -536,21 +370,13 @@
             可继续上传文档,等其他依赖文件
           </span>
           <span v-else>用于源文件或 使用文档 等文件。</span>
-          <FileInput
-            prompt="拖放即可上传或单击即可选择"
-            aria-label="上传附加文件"
-            multiple
-            long-style
-            :accept="acceptFileFromProjectType(project.project_type)"
-            :max-size="1073741824"
-            @change="
-              (x) =>
-                x.forEach((y) => {
-                  newFiles.push(y);
-                  newFileTypes.push(null);
-                })
-            "
-          >
+          <FileInput prompt="拖放即可上传或单击即可选择" aria-label="上传附加文件" multiple long-style
+            :accept="acceptFileFromProjectType(project.project_type)" :max-size="1073741824" @change="(x) =>
+              x.forEach((y) => {
+                newFiles.push(y);
+                newFileTypes.push(null);
+              })
+              ">
             <UploadIcon aria-hidden="true" />
           </FileInput>
         </div>
@@ -561,37 +387,13 @@
         <h3>更多信息</h3>
         <div>
           <h4>发布版本</h4>
-          <Multiselect
-            v-if="isEditing"
-            v-model="version.version_type"
-            class="input"
-            placeholder="选择"
-            :options="['release', 'beta', 'alpha']"
-            :custom-label="(value) => formatProjectRelease()(value)"
-            :searchable="false"
-            :close-on-select="true"
-            :show-labels="false"
-            :allow-empty="false"
-          />
+          <Multiselect v-if="isEditing" v-model="version.version_type" class="input" placeholder="选择"
+            :options="['release', 'beta', 'alpha']" :custom-label="(value) => formatProjectRelease()(value)"
+            :searchable="false" :close-on-select="true" :show-labels="false" :allow-empty="false" />
           <template v-else>
-            <Badge
-              v-if="version.version_type === 'release'"
-              class="value"
-              type="release"
-              color="green"
-            />
-            <Badge
-              v-else-if="version.version_type === 'beta'"
-              class="value"
-              type="beta"
-              color="orange"
-            />
-            <Badge
-              v-else-if="version.version_type === 'alpha'"
-              class="value"
-              type="alpha"
-              color="red"
-            />
+            <Badge v-if="version.version_type === 'release'" class="value" type="release" color="green" />
+            <Badge v-else-if="version.version_type === 'beta'" class="value" type="beta" color="orange" />
+            <Badge v-else-if="version.version_type === 'alpha'" class="value" type="alpha" color="red" />
           </template>
         </div>
         <div>
@@ -599,73 +401,35 @@
           <div v-if="isEditing" class="iconified-input">
             <label class="hidden" for="version-number">Version number</label>
             <HashIcon aria-hidden="true" />
-            <input
-              id="version-number"
-              v-model="version.version_number"
-              type="text"
-              autocomplete="off"
-              maxlength="54"
-            />
+            <input id="version-number" v-model="version.version_number" type="text" autocomplete="off" maxlength="54" />
           </div>
           <span v-else>{{ version.version_number }}</span>
         </div>
         <div v-if="project.project_type !== 'resourcepack'">
           <h4>运行环境</h4>
-          <Multiselect
-            v-if="isEditing"
-            v-model="version.loaders"
-            :options="
-              tags.loaders
-                .filter((x) =>
-                  x.supported_project_types.includes(project.actualProjectType.toLowerCase()),
-                )
-                .map((it) => it.name)
-            "
-            :custom-label="(value) => $formatCategory(value)"
-            :loading="tags.loaders.length === 0"
-            :multiple="true"
-            :searchable="true"
-            :show-no-results="false"
-            :close-on-select="false"
-            :clear-on-select="false"
-            :show-labels="false"
-            :limit="6"
-            :hide-selected="true"
-            placeholder="请选择一个运行环境..."
-          />
+          <Multiselect v-if="isEditing" v-model="version.loaders" :options="tags.loaders
+            .filter((x) =>
+              x.supported_project_types.includes(project.actualProjectType.toLowerCase()),
+            )
+            .map((it) => it.name)
+            " :custom-label="(value) => $formatCategory(value)" :loading="tags.loaders.length === 0" :multiple="true"
+            :searchable="true" :show-no-results="false" :close-on-select="false" :clear-on-select="false"
+            :show-labels="false" :limit="6" :hide-selected="true" placeholder="请选择一个运行环境..." />
           <Categories v-else :categories="version.loaders" :type="project.actualProjectType" />
         </div>
         <div>
           <h4>游戏版本</h4>
           <template v-if="isEditing">
-            <multiselect
-              v-model="version.game_versions"
-              :options="
-                showSnapshots
-                  ? tags.gameVersions.map((x) => x.version)
-                  : tags.gameVersions
-                      .filter((it) => it.version_type === 'release')
-                      .map((x) => x.version)
-              "
-              :loading="tags.gameVersions.length === 0"
-              :multiple="true"
-              :searchable="true"
-              :show-no-results="false"
-              :close-on-select="false"
-              :clear-on-select="false"
-              :show-labels="false"
-              :limit="6"
-              :hide-selected="true"
-              :custom-label="(version) => version"
-              placeholder="选择支持的MC版本"
-            />
-            <Checkbox
-              v-model="showSnapshots"
-              label="显示全部版本"
-              description="显示全部版本"
-              style="margin-top: 0.5rem"
-              :border="false"
-            />
+            <multiselect v-model="version.game_versions" :options="showSnapshots
+              ? tags.gameVersions.map((x) => x.version)
+              : tags.gameVersions
+                .filter((it) => it.version_type === 'release')
+                .map((x) => x.version)
+              " :loading="tags.gameVersions.length === 0" :multiple="true" :searchable="true" :show-no-results="false"
+              :close-on-select="false" :clear-on-select="false" :show-labels="false" :limit="6" :hide-selected="true"
+              :custom-label="(version) => version" placeholder="选择支持的MC版本" />
+            <Checkbox v-model="showSnapshots" label="显示全部版本" description="显示全部版本" style="margin-top: 0.5rem"
+              :border="false" />
           </template>
           <span v-else>{{ $formatVersion(version.game_versions) }}</span>
         </div>
@@ -681,16 +445,9 @@
         </div>
         <div v-if="!isEditing && version.author">
           <h4>创作者</h4>
-          <div
-            class="team-member columns button-transparent"
-            @click="$router.push('/user/' + version.author.user.username)"
-          >
-            <Avatar
-              :src="version.author.avatar_url"
-              :alt="version.author.user.username"
-              size="sm"
-              circle
-            />
+          <div class="team-member columns button-transparent"
+            @click="$router.push('/user/' + version.author.user.username)">
+            <Avatar :src="version.author.avatar_url" :alt="version.author.user.username" size="sm" circle />
 
             <div class="member-info">
               <nuxt-link :to="'/user/' + version.author.user.username" class="name">
@@ -831,7 +588,7 @@ export default defineNuxtComponent({
     resetProject: {
       type: Function,
       required: true,
-      default: () => {},
+      default: () => { },
     },
   },
   async setup(props) {
@@ -979,9 +736,8 @@ export default defineNuxtComponent({
       }
 
       dependency.link = dependency.project
-        ? `/${dependency.project.project_type}/${dependency.project.slug ?? dependency.project.id}${
-            dependency.version ? `/version/${encodeURI(dependency.version.version_number)}` : ""
-          }`
+        ? `/${dependency.project.project_type}/${dependency.project.slug ?? dependency.project.id}${dependency.version ? `/version/${encodeURI(dependency.version.version_number)}` : ""
+        }`
         : "";
     }
 
@@ -992,13 +748,12 @@ export default defineNuxtComponent({
     );
     const description = computed(
       () =>
-        `Download ${props.project.title} ${
-          version.version_number
+        `Download ${props.project.title} ${version.version_number
         } on Modrinth. Supports ${data.$formatVersion(version.game_versions)} ${version.loaders
           .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
           .join(" & ")}. Published on ${data
-          .$dayjs(version.date_published)
-          .format("YYYY-MM-DD")}. ${version.downloads} downloads.`,
+            .$dayjs(version.date_published)
+            .format("YYYY-MM-DD")}. ${version.downloads} downloads.`,
     );
 
     useSeoMeta({
@@ -1095,9 +850,8 @@ export default defineNuxtComponent({
           return this.$router.options.history.state.back;
         }
       }
-      return `/${this.project.project_type}/${
-        this.project.slug ? this.project.slug : this.project.id
-      }/versions`;
+      return `/${this.project.project_type}/${this.project.slug ? this.project.slug : this.project.id
+        }/versions`;
     },
     getPreviousLabel() {
       return this.$router.options.history.state.back &&
@@ -1276,12 +1030,12 @@ export default defineNuxtComponent({
           file_types: this.version.disk_only
             ? []
             : this.oldFileTypes.map((x, i) => {
-                return {
-                  algorithm: "sha1",
-                  hash: this.version.files[i].hashes.sha1,
-                  file_type: x ? x.value : null,
-                };
-              }),
+              return {
+                algorithm: "sha1",
+                hash: this.version.files[i].hashes.sha1,
+                file_type: x ? x.value : null,
+              };
+            }),
         };
 
         if (this.project.project_type === "modpack") {
@@ -1302,8 +1056,7 @@ export default defineNuxtComponent({
         await this.resetProjectVersions();
 
         await this.$router.push(
-          `/${this.project.project_type}/${
-            this.project.slug ? this.project.slug : this.project.id
+          `/${this.project.project_type}/${this.project.slug ? this.project.slug : this.project.id
           }/version/${this.version.id}`,
         );
       } catch (err) {
@@ -1415,12 +1168,12 @@ export default defineNuxtComponent({
         file_types: version.disk_only
           ? {}
           : this.newFileTypes.reduce(
-              (acc, x, i) => ({
-                ...acc,
-                [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
-              }),
-              {},
-            ),
+            (acc, x, i) => ({
+              ...acc,
+              [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
+            }),
+            {},
+          ),
       };
 
       formData.append("data", JSON.stringify(newVersion));
@@ -1474,8 +1227,7 @@ export default defineNuxtComponent({
       await this.resetProjectVersions();
 
       await this.$router.push(
-        `/${this.project.project_type}/${
-          this.project.slug ? this.project.slug : this.project.project_id
+        `/${this.project.project_type}/${this.project.slug ? this.project.slug : this.project.project_id
         }/version/${data.id}`,
       );
     },
@@ -1509,6 +1261,13 @@ export default defineNuxtComponent({
 
       return newCreatedVersions;
     },
+
+    onDownload(version) {
+      useBaseFetch(`version/${version}/download`, {
+        method: "PATCH",
+        apiVersion: 3,
+      });
+    }
   },
 });
 </script>

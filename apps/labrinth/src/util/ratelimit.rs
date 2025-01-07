@@ -76,7 +76,7 @@ where
 
         let conn_info = req.connection_info().clone();
         let ip = if parse_var("CLOUDFLARE_INTEGRATION").unwrap_or(false) {
-            if let Some(header) = req.headers().get("CF-Connecting-IP") {
+            if let Some(header) = req.headers().get("x-real-ip") {
                 header.to_str().ok()
             } else {
                 conn_info.peer_addr()
