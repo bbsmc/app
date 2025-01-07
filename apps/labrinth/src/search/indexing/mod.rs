@@ -11,6 +11,8 @@ use meilisearch_sdk::indexes::Index;
 use meilisearch_sdk::settings::{PaginationSetting, Settings};
 use meilisearch_sdk::SwapIndexes;
 use sqlx::postgres::PgPool;
+use std::collections::HashSet;
+use std::error::Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -82,7 +84,7 @@ pub async fn index_projects(
         .collect::<Vec<_>>();
 
     let uploads = index_local(&pool).await?;
-    add_projects(&indices, uploads, all_loader_fields.clone(), config).await?;
+    add_projects(&indices, &uploads, all_loader_fields.clone(), config).await?;
 
     // Swap the index
     swap_index(config, "projects").await?;
@@ -92,8 +94,66 @@ pub async fn index_projects(
     for index in indices {
         index.delete().await?;
     }
+    // let ups = uploads.clone();
+    // 初始化一个不重复数值的Set数组
+
+    // let mut urls = HashSet::new();
+
+    // uploads.iter().for_each(|upload| {
+    //     let type_ = upload.project_types.first();
+    //     let url1 = format!(
+    //         "https://bbsmc.net/{}/{}",
+    //         type_.unwrap_or(&"project".to_string()).to_string(),
+    //         &upload.project_id
+    //     );
+    //     let url2 = format!(
+    //         "https://bbsmc.net/{}/{}/changelog",
+    //         type_.unwrap_or(&"project".to_string()).to_string(),
+    //         &upload.project_id
+    //     );
+    //     let url = format!(
+    //         "https://bbsmc.net/{}/{}/version/{}",
+    //         type_.unwrap_or(&"project".to_string()).to_string(),
+    //         &upload.project_id,
+    //         &upload.version_id
+    //     );
+    //     urls.insert(url);
+    //     urls.insert(url1);
+    //     urls.insert(url2);
+    // });
+    // let url = urls.into_iter().collect::<Vec<_>>();
+
+    // for i in 0..url.len() / 2000 {
+    //     let start = i * 2000;
+    //     let end = start + 2000;
+    //     // urls.push(url[start..end].to_vec());
+    //     let _ = submit_urls(url[start..end].to_vec()).await;
+    // }
 
     info!("完成添加项目。");
+    Ok(())
+}
+
+async fn _submit_urls(urls: Vec<String>) -> Result<(), Box<dyn Error>> {
+    // let urls = vec![
+    //     "https://bbsmc.net/modpack/snk",
+    //     "https://bbsmc.net/modpack/utopia-journey",
+    // ];
+
+    let api = "http://data.zz.baidu.com/urls?site=https://bbsmc.net&token=";
+    let body = urls.join("\n");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(api)
+        .header("Content-Type", "text/plain")
+        .body(body)
+        .send()
+        .await?;
+
+    let result = response.text().await?;
+    println!("{}", result);
+
     Ok(())
 }
 
@@ -279,7 +339,7 @@ async fn update_and_add_to_index(
 
 pub async fn add_projects(
     indices: &[Index],
-    projects: Vec<UploadSearchProject>,
+    projects: &Vec<UploadSearchProject>,
     additional_fields: Vec<String>,
     config: &SearchConfig,
 ) -> Result<(), IndexingError> {
