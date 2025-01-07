@@ -803,7 +803,7 @@
               <Avatar :src="member.avatar_url" :alt="member.name" size="32px" circle />
               <div class="rows">
                 <span class="flex items-center gap-1">
-                  {{ member.name }}r
+                  {{ member.name }}
                   <CrownIcon v-if="member.is_owner" v-tooltip="formatMessage(creatorsMessages.owner)"
                     class="text-brand-orange" />
                 </span>
