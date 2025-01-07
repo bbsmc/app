@@ -1,47 +1,40 @@
+use crate::routes::internal::flows::Challenge;
 use crate::routes::ApiError;
-use actix_web::HttpRequest;
+use hex;
+use ring::hmac;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub async fn check_hcaptcha(
-    req: &HttpRequest,
-    challenge: &str,
-) -> Result<bool, ApiError> {
-    let conn_info = req.connection_info().clone();
-    // let ip_addr = if parse_var("CLOUDFLARE_INTEGRATION").unwrap_or(false) {
-    //     if let Some(header) = req.headers().get("CF-Connecting-IP") {
-    //         header.to_str().ok()
-    //     } else {
-    //         conn_info.peer_addr()
-    //     }
-    // } else {
-    //     conn_info.peer_addr()
-    // };
-
-    let ip_addr = req
-        .headers()
-        .get("x-real-ip")
-        .and_then(|x| x.to_str().ok())
-        .or_else(|| conn_info.peer_addr());
-
-    let ip_addr = ip_addr.ok_or(ApiError::Turnstile)?;
-
+pub async fn check_hcaptcha(challenge: &Challenge) -> Result<bool, ApiError> {
     let client = reqwest::Client::new();
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Debug)]
     struct Response {
-        success: bool,
+        result: String,
+        status: String,
     }
 
     let mut form = HashMap::new();
+    let secret = dotenvy::var("GEETEST_SECRET")?;
 
-    let secret = dotenvy::var("TURNSTILE_SECRET")?;
-    form.insert("response", challenge);
-    form.insert("secret", &*secret);
-    form.insert("remoteip", ip_addr);
+    // 创建 HMAC-SHA256
+    let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+    let tag = hmac::sign(&key, challenge.lot_number.as_bytes());
+    let sign_token = hex::encode(tag.as_ref());
+
+    form.insert("sign_token", &sign_token);
+    form.insert("captcha_id", &challenge.captcha_id);
+    form.insert("captcha_output", &challenge.captcha_output);
+    form.insert("gen_time", &challenge.gen_time);
+    form.insert("lot_number", &challenge.lot_number);
+    form.insert("pass_token", &challenge.pass_token);
+
+    for x in &form {
+        println!("{:?}", x);
+    }
 
     let val: Response = client
-        .post("https://challenges.cloudflare.com/turnstile/v0/siteverify")
+        .post("https://gcaptcha4.geetest.com/validate")
         .form(&form)
         .send()
         .await
@@ -50,5 +43,5 @@ pub async fn check_hcaptcha(
         .await
         .map_err(|_| ApiError::Turnstile)?;
 
-    Ok(val.success)
+    Ok(val.result == "success" && val.status == "success")
 }

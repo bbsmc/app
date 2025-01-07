@@ -1466,7 +1466,7 @@ pub struct NewAccount {
     pub password: String,
     #[validate(email)]
     pub email: String,
-    pub challenge: String,
+    pub challenge: Challenge,
     pub sign_up_newsletter: Option<bool>,
 }
 
@@ -1481,7 +1481,7 @@ pub async fn create_account_with_password(
         ApiError::InvalidInput(validation_errors_to_string(err, None))
     })?;
 
-    if !check_hcaptcha(&req, &new_account.challenge).await? {
+    if !check_hcaptcha(&new_account.challenge).await? {
         return Err(ApiError::Turnstile);
     }
 
@@ -1591,7 +1591,16 @@ pub async fn create_account_with_password(
 pub struct Login {
     pub username: String,
     pub password: String,
-    pub challenge: String,
+    pub challenge: Challenge,
+}
+
+#[derive(Deserialize, Validate)]
+pub struct Challenge {
+    pub captcha_id: String,
+    pub captcha_output: String,
+    pub gen_time: String,
+    pub lot_number: String,
+    pub pass_token: String,
 }
 
 #[post("login")]
@@ -1601,7 +1610,7 @@ pub async fn login_password(
     redis: Data<RedisPool>,
     login: web::Json<Login>,
 ) -> Result<HttpResponse, ApiError> {
-    if !check_hcaptcha(&req, &login.challenge).await? {
+    if !check_hcaptcha(&login.challenge).await? {
         return Err(ApiError::Turnstile);
     }
 
@@ -2041,17 +2050,16 @@ pub async fn remove_2fa(
 #[derive(Deserialize)]
 pub struct ResetPassword {
     pub username: String,
-    pub challenge: String,
+    pub challenge: Challenge,
 }
 
 #[post("password/reset")]
 pub async fn reset_password_begin(
-    req: HttpRequest,
     pool: Data<PgPool>,
     redis: Data<RedisPool>,
     reset_password: web::Json<ResetPassword>,
 ) -> Result<HttpResponse, ApiError> {
-    if !check_hcaptcha(&req, &reset_password.challenge).await? {
+    if !check_hcaptcha(&reset_password.challenge).await? {
         return Err(ApiError::Turnstile);
     }
 
