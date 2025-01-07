@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::ApiError;
 use crate::auth::checks::{
     filter_visible_versions, is_visible_project, is_visible_version,
@@ -15,8 +13,9 @@ use crate::database::models::version_item::{
 use crate::database::models::{image_item, Organization};
 use crate::database::redis::RedisPool;
 use crate::models;
+use crate::models::analytics::Download;
 use crate::models::ids::base62_impl::parse_base62;
-use crate::models::ids::VersionId;
+use crate::models::ids::{ProjectId, VersionId};
 use crate::models::images::ImageContext;
 use crate::models::pats::Scopes;
 use crate::models::projects::{skip_nulls, Loader};
@@ -24,15 +23,20 @@ use crate::models::projects::{
     Dependency, FileType, VersionStatus, VersionType,
 };
 use crate::models::teams::ProjectPermissions;
+use crate::queue::analytics::AnalyticsQueue;
 use crate::queue::session::AuthQueue;
 use crate::search::indexing::remove_documents;
 use crate::search::SearchConfig;
+use crate::util::date::get_current_tenths_of_ms;
 use crate::util::img;
 use crate::util::validate::validation_errors_to_string;
 use actix_web::{web, HttpRequest, HttpResponse};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::HashMap;
+use std::net::Ipv4Addr;
+use std::sync::Arc;
 use validator::Validate;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -46,6 +50,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("version")
             .route("{id}", web::get().to(version_get))
             .route("{id}", web::patch().to(version_edit))
+            .route("{id}/download", web::patch().to(version_download))
             .route("{id}", web::delete().to(version_delete))
             .route(
                 "{version_id}/file",
@@ -249,6 +254,92 @@ pub struct EditVersionFileType {
     pub algorithm: String,
     pub hash: String,
     pub file_type: Option<FileType>,
+}
+
+pub async fn version_download(
+    req: HttpRequest,
+    info: web::Path<(VersionId,)>,
+    pool: web::Data<PgPool>,
+    analytics_queue: web::Data<Arc<AnalyticsQueue>>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let version_id = info.0;
+    let id = version_id.into();
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::VERSION_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+    let user_id = if let Some(user_option) = user_option {
+        user_option.id.0 as u64
+    } else {
+        0
+    };
+    let result = database::models::Version::get(id, &**pool, &redis).await?;
+
+    if let Some(version_item) = result {
+        if !is_visible_version(&version_item.inner, &None, &pool, &redis)
+            .await?
+        {
+            return Err(ApiError::NotFound);
+        }
+        let headers = req
+            .headers()
+            .into_iter()
+            .map(|(key, val)| {
+                (
+                    key.to_string().to_lowercase(),
+                    val.to_str().unwrap_or_default().to_string(),
+                )
+            })
+            .collect::<HashMap<String, String>>();
+
+        // 如果req.peer_addr()有值则用这个的string 没有的话则 用 127.0.0.1
+        let ip = if let Some(peer_addr) = headers.get("x-real-ip") {
+            peer_addr.to_string()
+        } else {
+            "127.0.0.1".to_string()
+        };
+
+        let ip = crate::util::ip::convert_to_ip_v6(&ip)
+            .unwrap_or_else(|_| Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped());
+        let id: ProjectId = version_item.inner.project_id.into();
+
+        println!("{:?} 下载 {:?}", ip, id.to_string());
+
+        if version_item.disks.is_empty() {
+            return Err(ApiError::NotFound);
+        }
+        let url = version_item.disks.first().unwrap().url.clone();
+        let url = url::Url::parse(&url).map_err(|_| {
+            ApiError::InvalidInput(
+                "invalid download URL specified!".to_string(),
+            )
+        })?;
+
+        analytics_queue.add_download(Download {
+            recorded: get_current_tenths_of_ms(),
+            domain: url.host_str().unwrap_or_default().to_string(),
+            site_path: url.path().to_string(),
+            user_id,
+            project_id: id.0,
+            version_id: version_id.0,
+            ip,
+            country: "".to_string(),
+            user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
+            headers: Vec::new(),
+        });
+
+        Ok(HttpResponse::NoContent().body(""))
+    } else {
+        Err(ApiError::NotFound)
+    }
 }
 
 pub async fn version_edit(
@@ -518,9 +609,7 @@ pub async fn version_edit_helper(
                         .iter()
                         .find(|lf| lf.field == vf_name)
                         .ok_or_else(|| {
-                            ApiError::InvalidInput(format!(
-    "加载器字段 '{vf_name}' 不存在于提供的任何加载器中。"
-))
+                            ApiError::InvalidInput(format!("加载器字段 '{vf_name}' 不存在于提供的任何加载器中。"))
                         })?;
                     let enum_variants = loader_field_enum_values
                         .remove(&loader_field.id)

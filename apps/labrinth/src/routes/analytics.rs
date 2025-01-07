@@ -96,7 +96,7 @@ pub async fn page_view_ingest(
         .collect::<HashMap<String, String>>();
 
     let ip = crate::util::ip::convert_to_ip_v6(
-        if let Some(header) = headers.get("cf-connecting-ip") {
+        if let Some(header) = headers.get("x-real-ip") {
             header
         } else {
             conn_info.as_deref().unwrap_or_default()

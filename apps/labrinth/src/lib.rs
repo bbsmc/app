@@ -241,14 +241,14 @@ pub fn app_setup(
             let redis_ref = redis_ref.clone();
 
             async move {
-                // info!("开始索引分析服务");
+                info!("开始索引分析服务");
                 let result = analytics_queue_ref
                     .index(client_ref, &redis_ref, &pool_ref)
                     .await;
                 if let Err(e) = result {
                     warn!("分析服务索引失败: {:?}", e);
                 }
-                // info!("分析索引完成");
+                info!("分析索引完成");
             }
         });
     }
