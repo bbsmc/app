@@ -17,8 +17,13 @@
       <h2 class="text-2xl">{{ formatMessage(colorTheme.title) }}</h2>
       <p>{{ formatMessage(colorTheme.description) }}</p>
       <div class="theme-options mt-4">
-        <button v-for="option in themeOptions" :key="option" class="preview-radio button-base"
-          :class="{ selected: theme.preferred === option }" @click="() => updateColorTheme(option)">
+        <button
+          v-for="option in themeOptions"
+          :key="option"
+          class="preview-radio button-base"
+          :class="{ selected: theme.preferred === option }"
+          @click="() => updateColorTheme(option)"
+        >
           <div class="preview" :class="`${option === 'system' ? systemTheme : option}-mode`">
             <div class="example-card card card">
               <div class="example-icon"></div>
@@ -30,10 +35,16 @@
             <RadioButtonChecked v-if="theme.preferred === option" class="radio" />
             <RadioButtonIcon v-else class="radio" />
             {{ colorTheme[option] ? formatMessage(colorTheme[option]) : option }}
-            <SunIcon v-if="theme.preferences.light === option" v-tooltip="formatMessage(colorTheme.preferredLight)"
-              class="theme-icon" />
-            <MoonIcon v-else-if="theme.preferences.dark === option" v-tooltip="formatMessage(colorTheme.preferredDark)"
-              class="theme-icon" />
+            <SunIcon
+              v-if="theme.preferences.light === option"
+              v-tooltip="formatMessage(colorTheme.preferredLight)"
+              class="theme-icon"
+            />
+            <MoonIcon
+              v-else-if="theme.preferences.dark === option"
+              v-tooltip="formatMessage(colorTheme.preferredDark)"
+              class="theme-icon"
+            />
           </div>
         </button>
       </div>
@@ -53,9 +64,11 @@
             </div>
           </div>
           <div class="project-list-layouts">
-            <button class="preview-radio button-base"
+            <button
+              class="preview-radio button-base"
               :class="{ selected: cosmetics.searchDisplayMode[projectType.id] === 'list' }"
-              @click="() => (cosmetics.searchDisplayMode[projectType.id] = 'list')">
+              @click="() => (cosmetics.searchDisplayMode[projectType.id] = 'list')"
+            >
               <div class="preview">
                 <div class="layout-list-mode">
                   <div class="example-card card"></div>
@@ -65,14 +78,19 @@
                 </div>
               </div>
               <div class="label">
-                <RadioButtonChecked v-if="cosmetics.searchDisplayMode[projectType.id] === 'list'" class="radio" />
+                <RadioButtonChecked
+                  v-if="cosmetics.searchDisplayMode[projectType.id] === 'list'"
+                  class="radio"
+                />
                 <RadioButtonIcon v-else class="radio" />
                 Rows
               </div>
             </button>
-            <button class="preview-radio button-base"
+            <button
+              class="preview-radio button-base"
               :class="{ selected: cosmetics.searchDisplayMode[projectType.id] === 'grid' }"
-              @click="() => (cosmetics.searchDisplayMode[projectType.id] = 'grid')">
+              @click="() => (cosmetics.searchDisplayMode[projectType.id] = 'grid')"
+            >
               <div class="preview">
                 <div class="layout-grid-mode">
                   <div class="example-card card"></div>
@@ -84,14 +102,19 @@
                 </div>
               </div>
               <div class="label">
-                <RadioButtonChecked v-if="cosmetics.searchDisplayMode[projectType.id] === 'grid'" class="radio" />
+                <RadioButtonChecked
+                  v-if="cosmetics.searchDisplayMode[projectType.id] === 'grid'"
+                  class="radio"
+                />
                 <RadioButtonIcon v-else class="radio" />
                 Grid
               </div>
             </button>
-            <button class="preview-radio button-base"
+            <button
+              class="preview-radio button-base"
               :class="{ selected: cosmetics.searchDisplayMode[projectType.id] === 'gallery' }"
-              @click="() => (cosmetics.searchDisplayMode[projectType.id] = 'gallery')">
+              @click="() => (cosmetics.searchDisplayMode[projectType.id] = 'gallery')"
+            >
               <div class="preview">
                 <div class="layout-gallery-mode">
                   <div class="example-card card"></div>
@@ -101,7 +124,10 @@
                 </div>
               </div>
               <div class="label">
-                <RadioButtonChecked v-if="cosmetics.searchDisplayMode[projectType.id] === 'gallery'" class="radio" />
+                <RadioButtonChecked
+                  v-if="cosmetics.searchDisplayMode[projectType.id] === 'gallery'"
+                  class="radio"
+                />
                 <RadioButtonIcon v-else class="radio" />
                 Gallery
               </div>
@@ -122,8 +148,12 @@
             {{ formatMessage(toggleFeatures.advancedRenderingDescription) }}
           </span>
         </label>
-        <input id="advanced-rendering" v-model="cosmetics.advancedRendering" class="switch stylized-toggle"
-          type="checkbox" />
+        <input
+          id="advanced-rendering"
+          v-model="cosmetics.advancedRendering"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
       </div>
       <div class="adjacent-input small">
         <label for="external-links-new-tab">
@@ -134,8 +164,12 @@
             {{ formatMessage(toggleFeatures.externalLinksNewTabDescription) }}
           </span>
         </label>
-        <input id="external-links-new-tab" v-model="cosmetics.externalLinksNewTab" class="switch stylized-toggle"
-          type="checkbox" />
+        <input
+          id="external-links-new-tab"
+          v-model="cosmetics.externalLinksNewTab"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
       </div>
       <div v-if="false" class="adjacent-input small">
         <label for="modrinth-app-promos">
@@ -146,8 +180,12 @@
             {{ formatMessage(toggleFeatures.hideModrinthAppPromosDescription) }}
           </span>
         </label>
-        <input id="modrinth-app-promos" v-model="cosmetics.hideModrinthAppPromos" class="switch stylized-toggle"
-          type="checkbox" />
+        <input
+          id="modrinth-app-promos"
+          v-model="cosmetics.hideModrinthAppPromos"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
       </div>
       <div class="adjacent-input small">
         <label for="search-layout-toggle">
@@ -158,8 +196,12 @@
             {{ formatMessage(toggleFeatures.rightAlignedFiltersSidebarDescription) }}
           </span>
         </label>
-        <input id="search-layout-toggle" v-model="cosmetics.rightSearchLayout" class="switch stylized-toggle"
-          type="checkbox" />
+        <input
+          id="search-layout-toggle"
+          v-model="cosmetics.rightSearchLayout"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
       </div>
       <div class="adjacent-input small">
         <label for="project-layout-toggle">
@@ -170,8 +212,12 @@
             {{ formatMessage(toggleFeatures.leftAlignedContentSidebarDescription) }}
           </span>
         </label>
-        <input id="project-layout-toggle" v-model="cosmetics.leftContentLayout" class="switch stylized-toggle"
-          type="checkbox" />
+        <input
+          id="project-layout-toggle"
+          v-model="cosmetics.leftContentLayout"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
       </div>
     </section>
   </div>

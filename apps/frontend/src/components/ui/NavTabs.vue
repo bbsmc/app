@@ -1,36 +1,23 @@
 <template>
-  <nav
-    ref="scrollContainer"
-    class="experimental-styles-within relative flex w-fit overflow-x-auto rounded-full bg-bg-raised p-1 text-sm font-bold"
-  >
-    <NuxtLink
-      v-for="(link, index) in filteredLinks"
-      v-show="link.shown === undefined ? true : link.shown"
-      :key="index"
-      ref="tabLinkElements"
-      :to="query ? (link.href ? `?${query}=${link.href}` : '?') : link.href"
-      class="button-animation z-[1] flex flex-row items-center gap-2 px-4 py-2 focus:rounded-full"
-      :class="{
+  <nav ref="scrollContainer"
+    class="experimental-styles-within relative flex w-fit overflow-x-auto  bg-bg-raised p-1 text-sm font-bold">
+    <NuxtLink v-for="(link, index) in filteredLinks" v-show="link.shown === undefined ? true : link.shown" :key="index"
+      ref="tabLinkElements" :to="query ? (link.href ? `?${query}=${link.href}` : '?') : link.href"
+      class="button-animation z-[1] flex flex-row items-center gap-2 px-4 py-2" :class="{
         'text-brand': activeIndex === index && !subpageSelected,
         'text-contrast': activeIndex === index && subpageSelected,
-      }"
-    >
+      }">
       <component :is="link.icon" v-if="link.icon" class="size-5" />
       <span class="text-nowrap">{{ link.label }}</span>
     </NuxtLink>
-    <div
-      :class="`navtabs-transition pointer-events-none absolute h-[calc(100%-0.5rem)] overflow-hidden rounded-full p-1 ${
-        subpageSelected ? 'bg-button-bg' : 'bg-brand-highlight'
-      }`"
-      :style="{
+    <div :class="`navtabs-transition pointer-events-none absolute h-[calc(100%-0.5rem)] overflow-hidden p-1 ${subpageSelected ? 'bg-button-bg' : 'bg-brand-highlight'
+      }`" :style="{
         left: sliderLeftPx,
         top: sliderTopPx,
         right: sliderRightPx,
         bottom: sliderBottomPx,
         opacity: sliderLeft === 4 && sliderLeft === sliderRight ? 0 : activeIndex === -1 ? 0 : 1,
-      }"
-      aria-hidden="true"
-    ></div>
+      }" aria-hidden="true"></div>
   </nav>
 </template>
 

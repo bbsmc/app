@@ -129,10 +129,10 @@ export default defineNuxtPlugin((nuxtApp) => {
 });
 export const formatNumber = (number, abbreviate = true) => {
   const x = +number;
-  if (x >= 1000000 && abbreviate) {
-    return (x / 1000000).toFixed(2).toString() + "M";
+  if (x >= 100000000 && abbreviate) {
+    return `${(x / 100000000).toFixed(2).toString()}亿`;
   } else if (x >= 10000 && abbreviate) {
-    return (x / 1000).toFixed(1).toString() + "k";
+    return `${(x / 10000).toFixed(1).toString()}万`;
   } else {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }

@@ -7,9 +7,16 @@
           {{ formatMessage(messages.twoFactorCodeLabelDescription) }}
         </span>
       </label>
-      <input id="two-factor-code" v-model="twoFactorCode" maxlength="11" type="text"
-        :placeholder="formatMessage(messages.twoFactorCodeInputPlaceholder)" autocomplete="one-time-code" autofocus
-        @keyup.enter="begin2FASignIn" />
+      <input
+        id="two-factor-code"
+        v-model="twoFactorCode"
+        maxlength="11"
+        type="text"
+        :placeholder="formatMessage(messages.twoFactorCodeInputPlaceholder)"
+        autocomplete="one-time-code"
+        autofocus
+        @keyup.enter="begin2FASignIn"
+      />
 
       <button class="btn btn-primary continue-btn" @click="begin2FASignIn">
         {{ formatMessage(commonMessages.signInButton) }}
@@ -52,20 +59,36 @@
         <div class="iconified-input">
           <label for="email" hidden>请输入邮箱或用户名</label>
           <MailIcon />
-          <input id="email" v-model="email" type="text" autocomplete="username" class="auth-form__input"
-            placeholder="请输入邮箱或用户名" />
+          <input
+            id="email"
+            v-model="email"
+            type="text"
+            autocomplete="username"
+            class="auth-form__input"
+            placeholder="请输入邮箱或用户名"
+          />
         </div>
 
         <div class="iconified-input">
           <label for="password" hidden>密码</label>
           <KeyIcon />
-          <input id="password" v-model="password" type="password" autocomplete="current-password"
-            class="auth-form__input" placeholder="密码" />
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            autocomplete="current-password"
+            class="auth-form__input"
+            placeholder="密码"
+          />
         </div>
 
         <GeetestCaptcha ref="captcha" v-model="token" />
 
-        <button class="btn btn-primary continue-btn centered-btn" :disabled="!token" @click="beginPasswordSignIn()">
+        <button
+          class="btn btn-primary continue-btn centered-btn"
+          :disabled="!token"
+          @click="beginPasswordSignIn()"
+        >
           {{ formatMessage(commonMessages.signInButton) }}
           <RightArrowIcon />
         </button>

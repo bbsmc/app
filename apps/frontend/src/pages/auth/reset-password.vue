@@ -12,8 +12,14 @@
             {{ formatMessage(methodChoiceMessages.emailUsernameLabel) }}
           </label>
           <MailIcon />
-          <input id="email" v-model="email" type="text" autocomplete="username" class="auth-form__input"
-            :placeholder="formatMessage(methodChoiceMessages.emailUsernamePlaceholder)" />
+          <input
+            id="email"
+            v-model="email"
+            type="text"
+            autocomplete="username"
+            class="auth-form__input"
+            :placeholder="formatMessage(methodChoiceMessages.emailUsernamePlaceholder)"
+          />
         </div>
 
         <GeetestCaptcha ref="captcha" v-model="token" />
@@ -28,8 +34,14 @@
         <div class="iconified-input">
           <label for="password" hidden>{{ formatMessage(commonMessages.passwordLabel) }}</label>
           <KeyIcon />
-          <input id="password" v-model="newPassword" type="password" autocomplete="new-password"
-            class="auth-form__input" :placeholder="formatMessage(commonMessages.passwordLabel)" />
+          <input
+            id="password"
+            v-model="newPassword"
+            type="password"
+            autocomplete="new-password"
+            class="auth-form__input"
+            :placeholder="formatMessage(commonMessages.passwordLabel)"
+          />
         </div>
 
         <div class="iconified-input">
@@ -37,8 +49,14 @@
             {{ formatMessage(commonMessages.passwordLabel) }}
           </label>
           <KeyIcon />
-          <input id="confirm-password" v-model="confirmNewPassword" type="password" autocomplete="new-password"
-            class="auth-form__input" :placeholder="formatMessage(postChallengeMessages.confirmPasswordLabel)" />
+          <input
+            id="confirm-password"
+            v-model="confirmNewPassword"
+            type="password"
+            autocomplete="new-password"
+            class="auth-form__input"
+            :placeholder="formatMessage(postChallengeMessages.confirmPasswordLabel)"
+          />
         </div>
 
         <button class="auth-form__input btn btn-primary continue-btn" @click="changePassword">

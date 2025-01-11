@@ -15,7 +15,7 @@ html {
   --gap-16: calc(2 * var(--gap-8));
   --gap-24: calc(3 * var(--gap-8));
 
-  --radius-card: 1rem;
+  --radius-card: rem;
   --radius-max: 999999999px;
 
   --radius-btn: 0.75rem;
@@ -104,7 +104,7 @@ html {
 .dark {
   .experimental-styles-within,
   &.experimental-styles-within {
-    --color-button-bg: #33363d;
+    --color-button-bg: rgba(51,54,61,0.2); // 各种输入框的颜色
 
     --color-platform-fabric: #dbb69b;
     --color-platform-quilt: #c796f9;
@@ -124,6 +124,7 @@ html {
     --color-button-border: rgba(193, 190, 209, 0.12);
   }
 }
+
 
 .light-mode {
   --color-secondary: #6b7280;
@@ -226,8 +227,8 @@ html {
 
   --shadow-card: rgba(50, 50, 100, 0.1) 0px 2px 4px 0px;
 
-  --landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing-light.webp");
-  --landing-maze-gradient-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing-lower-light.webp");
+  // --landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing-light.webp");
+  // --landing-maze-gradient-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing-lower-light.webp");
   --landing-maze-outer-bg: linear-gradient(180deg, #f0f0f0 0%, #ffffff 100%);
 
   --landing-color-heading: #000;
@@ -292,8 +293,8 @@ html {
   --color-purple-bg: rgba(199, 138, 255, 0.2);
 
   --color-brand: var(--color-gray);
-  --color-brand-highlight: rgba(255, 255, 255, 0.25);
-  --color-brand-shadow: rgba(255, 255, 255, 0.7); //例如输入框 点击一下以后的颜色
+  --color-brand-highlight: rgba(255, 255, 255, 0.1);
+  --color-brand-shadow: rgba(255, 255, 255, 0.25); //例如输入框 点击一下以后的颜色
   --color-brand-inverted: #000;
 
   --tab-underline-hovered: #414146;
@@ -356,20 +357,20 @@ html {
 
   --shadow-card: rgba(0, 0, 0, 0.25) 0px 2px 4px 0px;
 
-  //--landing-maze-bg: url("https://cdn.modrinth.com/landing-new/landing.webp");
-  //--landing-maze-gradient-bg: linear-gradient(0deg, #31375f 0%, rgba(8, 14, 55, 0) 100%),
-  //url("https://cdn.modrinth.com/landing-new/landing-lower.webp");
-  //--landing-maze-outer-bg: linear-gradient(180deg, #06060d 0%, #000000 100%);
+  --landing-maze-bg: url("https://cdn.modrinth.com/landing-new/landing.webp");
+  --landing-maze-gradient-bg: linear-gradient(0deg, #31375f 0%, rgba(8, 14, 55, 0) 100%),
+  url("https://cdn.modrinth.com/landing-new/landing-lower.webp");
+  --landing-maze-outer-bg: linear-gradient(180deg, #06060d 0%, #000000 100%);
 
   --landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing.webp");
   --landing-maze-gradient-bg: linear-gradient(0deg, #31375f 0%, rgba(8, 14, 55, 0) 100%),
     url("https://cdn.bbsmc.net/raw/landing-new/landing-lower.webp");
   --landing-maze-outer-bg: linear-gradient(180deg, #06060d 0%, #000000 100%);
 
-  //--landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing.webp");
-  //--landing-maze-gradient-bg: linear-gradient(0deg, #31375f 0%, rgba(8, 14, 55, 0) 100%),
-  //  url("https://cdn.bbsmc.net/raw/landing-new/landing-lower.webp");
-  //--landing-maze-outer-bg: linear-gradient(180deg, #06060d 0%, #000000 100%);
+  --landing-maze-bg: url("https://cdn.bbsmc.net/raw/landing-new/landing.webp");
+  --landing-maze-gradient-bg: linear-gradient(0deg, #31375f 0%, rgba(8, 14, 55, 0) 100%),
+   url("https://cdn.bbsmc.net/raw/landing-new/landing-lower.webp");
+  --landing-maze-outer-bg: linear-gradient(180deg, #06060d 0%, #000000 100%);
 
   --landing-color-heading: #fff;
   --landing-color-subheading: #afb6be;
@@ -446,7 +447,7 @@ html {
   --color-blue: rgb(9, 159, 239);
   --color-white: rgb(255, 255, 255);
   --color-purple: rgb(139, 129, 230);
-  --color-gray: #718096;
+  --color-gray: rgb(71, 80, 96);
 
   --color-red-highlight: rgba(232, 32, 13, 0.25);
   --color-orange-highlight: rgba(232, 141, 13, 0.25);
@@ -470,14 +471,14 @@ body {
   padding: 0;
 
   // Rounding sizes
-  --size-rounded-xs: 0.5rem;
-  --size-rounded-sm: 0.75rem;
-  --size-rounded-md: 1rem;
-  --size-rounded-lg: 1.25rem;
+  --size-rounded-xs: 0.25rem;
+  --size-rounded-sm: 0.25rem;
+  --size-rounded-md: 0.25rem;
+  --size-rounded-lg: 0.25rem;
 
   --size-rounded-max: 999999999px;
-  --size-rounded-card: 1rem;
-  --size-rounded-icon: 1rem;
+  --size-rounded-card: 0.25rem;
+  --size-rounded-icon: 0.25rem;
   --size-rounded-control: 0.25rem;
   --size-rounded-tooltip: 0.25rem;
 

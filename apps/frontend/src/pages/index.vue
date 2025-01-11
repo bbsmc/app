@@ -15,18 +15,28 @@
       </div>
       <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <ul class="carousel-items">
-          <li v-for="(item, index) in carouselItems" :key="index" :class="[
-            'carousel-item',
-            {
-              'previous': currentSlide === 0 ? index === carouselItems.length - 1 : index === currentSlide - 1,
-              'current': index === currentSlide,
-              'next': currentSlide === carouselItems.length - 1 ? index === 0 : index === currentSlide + 1
-            }
-          ]">
+          <li
+            v-for="(item, index) in carouselItems"
+            :key="index"
+            :class="[
+              'carousel-item',
+              {
+                previous:
+                  currentSlide === 0
+                    ? index === carouselItems.length - 1
+                    : index === currentSlide - 1,
+                current: index === currentSlide,
+                next:
+                  currentSlide === carouselItems.length - 1
+                    ? index === 0
+                    : index === currentSlide + 1,
+              },
+            ]"
+          >
             <div class="carousel-slide">
               <div class="carousel-image-container">
                 <a :href="`/modpack/${item.slug}`" target="_blank">
-                  <img :src="item.image" :alt="item.title">
+                  <img :src="item.image" :alt="item.title" />
                 </a>
               </div>
               <div class="carousel-bottom-container">
@@ -43,8 +53,13 @@
           <button class="btn-next" @click="nextSlide">→</button>
         </div>
         <div class="carousel-dots">
-          <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
-            @click="goToSlide(index)">
+          <span
+            v-for="(_, index) in carouselItems"
+            :key="index"
+            class="dot"
+            :class="{ active: currentSlide === index }"
+            @click="goToSlide(index)"
+          >
           </span>
         </div>
       </div>
@@ -58,7 +73,6 @@
           <div v-for="modpack in modpacks" :key="modpack.project_id" class="modpack-card">
             <a :href="`/modpack/${modpack.slug}`" class="modpack-link">
               <div class="card-content">
-
                 <img :src="modpack.featured_gallery" :alt="modpack.title" class="modpack-image" />
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
@@ -69,7 +83,7 @@
                 <div class="modpack-footer">
                   <div class="modpack-stats">
                     <span class="download-count">
-                      <span class="icon">↓</span> {{ modpack.downloads }}
+                      <span class="icon">↓</span> {{ $formatNumber(modpack.downloads) }}
                     </span>
                     <span class="category">整合包</span>
                   </div>
@@ -88,7 +102,6 @@
           <div v-for="modpack in newModpacks" :key="modpack.project_id" class="modpack-card">
             <a :href="`/modpack/${modpack.slug}`" class="modpack-link">
               <div class="card-content">
-
                 <img :src="modpack.featured_gallery" :alt="modpack.title" class="modpack-image" />
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
@@ -114,25 +127,20 @@
 </template>
 
 <script setup>
+// import { homePageSearch } from "~/generated/state.json";
 
-import { homePageSearch } from "~/generated/state.json";
+// const searchQuery = ref("");
+// const sortType = ref("relevance");
 
-const searchQuery = ref("");
-const sortType = ref("relevance");
+// const searchProjects = ref(homePageSearch.hits ?? []);
 
+// async function updateSearchProjects() {
+//   const res = await useBaseFetch(
+//     `search?limit=3&query=${searchQuery.value}&index=${sortType.value}`,
+//   );
 
-
-
-
-const searchProjects = ref(homePageSearch.hits ?? []);
-
-async function updateSearchProjects() {
-  const res = await useBaseFetch(
-    `search?limit=3&query=${searchQuery.value}&index=${sortType.value}`,
-  );
-
-  searchProjects.value = res.hits ?? [];
-}
+//   searchProjects.value = res.hits ?? [];
+// }
 const modpacks = ref([]);
 const newModpacks = ref([]);
 async function getModpacks() {
@@ -140,49 +148,52 @@ async function getModpacks() {
     `search?limit=6&index=relevance&facets=[["project_type:modpack"]]`,
   );
 
-  modpacks.value = res.hits?.map(modpack => ({
-    ...modpack,
-    slug: modpack.slug || modpack.project_id,
-    featured_gallery: modpack.featured_gallery || (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
-  })) ?? [];
+  modpacks.value =
+    res.hits?.map((modpack) => ({
+      ...modpack,
+      slug: modpack.slug || modpack.project_id,
+      featured_gallery:
+        modpack.featured_gallery ||
+        (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
+    })) ?? [];
 }
 async function getNewsModpacks() {
-  const res = await useBaseFetch(
-    `search?limit=6&index=newest&facets=[["project_type:modpack"]]`,
-  );
+  const res = await useBaseFetch(`search?limit=6&index=newest&facets=[["project_type:modpack"]]`);
 
-  newModpacks.value = res.hits?.map(modpack => ({
-    ...modpack,
-    slug: modpack.slug || modpack.project_id,
-    featured_gallery: modpack.featured_gallery || (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
-  })) ?? [];
+  newModpacks.value =
+    res.hits?.map((modpack) => ({
+      ...modpack,
+      slug: modpack.slug || modpack.project_id,
+      featured_gallery:
+        modpack.featured_gallery ||
+        (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
+    })) ?? [];
 }
 await getModpacks();
 await getNewsModpacks();
 
-
-
-
-
 const carouselItems = ref([
   {
-    image: 'https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426.jpeg',
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426.jpeg",
     title: "乌托邦探险之旅",
     description: "乌托邦探险之旅",
     slug: "utopia-journey",
   },
   {
-    image: 'https://cdn.bbsmc.net/bbsmc/data/NxtrWNas/images/329b6261d797271622386b146078d7130a5438c0.jpeg',
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/NxtrWNas/images/329b6261d797271622386b146078d7130a5438c0.jpeg",
     title: "探索自然2",
     description: "通过探索，种田来发展经济，提升实力，面临不断增强的怪物",
     slug: "tansuoziran2",
   },
   {
-    image: 'https://cdn.bbsmc.net/bbsmc/data/dL0Tbr7N/images/19f25c62f6bcc1d068c9b35e4e603e81991754f9.jpeg',
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/dL0Tbr7N/images/19f25c62f6bcc1d068c9b35e4e603e81991754f9.jpeg",
     title: "脆骨症：黯光",
     description: "脆骨症的维度分支，引入了大量的新维度作为内容的补充。",
     slug: "no-flesh-within-chest-dim",
-  }
+  },
 ]);
 
 const currentSlide = ref(0);
@@ -213,9 +224,8 @@ const nextSlide = () => {
 };
 
 const prevSlide = () => {
-  currentSlide.value = currentSlide.value === 0
-    ? carouselItems.value.length - 1
-    : currentSlide.value - 1;
+  currentSlide.value =
+    currentSlide.value === 0 ? carouselItems.value.length - 1 : currentSlide.value - 1;
   startAutoPlay(); // 重置自动播放计时器
 };
 
@@ -242,8 +252,6 @@ const handleMouseEnter = () => {
 const handleMouseLeave = () => {
   startAutoPlay();
 };
-
-
 </script>
 
 <style scoped>
@@ -290,14 +298,13 @@ p {
   display: block;
 }
 
-
 body:has(.game-page) .game-header {
   margin-bottom: -110px;
   background-repeat: no-repeat;
 }
 
 body:has(.game-page) .game-header .hero-container:after {
-  background: linear-gradient(hsla(0, 0%, 5%, .5), var(--color-background, #0d0d0d) 100%);
+  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
 }
 
 .game-header .hero-container:after {
@@ -524,7 +531,6 @@ body:has(.game-page) .game-header .hero-container:after {
 }
 
 .modpack-card {
-
   background: rgb(16, 16, 19);
   border-radius: 8px;
   overflow: hidden;

@@ -35,33 +35,61 @@
       <div class="iconified-input">
         <label for="email" hidden>{{ formatMessage(messages.emailLabel) }}</label>
         <MailIcon />
-        <input id="email" v-model="email" type="email" autocomplete="username" class="auth-form__input"
-          :placeholder="formatMessage(messages.emailLabel)" />
+        <input
+          id="email"
+          v-model="email"
+          type="email"
+          autocomplete="username"
+          class="auth-form__input"
+          :placeholder="formatMessage(messages.emailLabel)"
+        />
       </div>
 
       <div class="iconified-input">
         <label for="username" hidden>{{ formatMessage(messages.usernameLabel) }}</label>
         <UserIcon />
-        <input id="username" v-model="username" type="text" autocomplete="username" class="auth-form__input"
-          :placeholder="formatMessage(messages.usernameLabel)" />
+        <input
+          id="username"
+          v-model="username"
+          type="text"
+          autocomplete="username"
+          class="auth-form__input"
+          :placeholder="formatMessage(messages.usernameLabel)"
+        />
       </div>
 
       <div class="iconified-input">
         <label for="password" hidden>{{ formatMessage(messages.passwordLabel) }}</label>
         <KeyIcon />
-        <input id="password" v-model="password" class="auth-form__input" type="password" autocomplete="new-password"
-          :placeholder="formatMessage(messages.passwordLabel)" />
+        <input
+          id="password"
+          v-model="password"
+          class="auth-form__input"
+          type="password"
+          autocomplete="new-password"
+          :placeholder="formatMessage(messages.passwordLabel)"
+        />
       </div>
 
       <div class="iconified-input">
         <label for="confirm-password" hidden>{{ formatMessage(messages.passwordLabel) }}</label>
         <KeyIcon />
-        <input id="confirm-password" v-model="confirmPassword" type="password" autocomplete="new-password"
-          class="auth-form__input" :placeholder="formatMessage(messages.confirmPasswordLabel)" />
+        <input
+          id="confirm-password"
+          v-model="confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          class="auth-form__input"
+          :placeholder="formatMessage(messages.confirmPasswordLabel)"
+        />
       </div>
 
-      <Checkbox v-model="subscribe" class="subscribe-btn" :label="formatMessage(messages.subscribeLabel)"
-        :description="formatMessage(messages.subscribeLabel)" />
+      <Checkbox
+        v-model="subscribe"
+        class="subscribe-btn"
+        :label="formatMessage(messages.subscribeLabel)"
+        :description="formatMessage(messages.subscribeLabel)"
+      />
 
       <!--      <p>-->
       <!--        <IntlFormatted :message-id="messages.legalDisclaimer">-->
@@ -80,7 +108,11 @@
 
       <GeetestCaptcha ref="captcha" v-model="token" />
 
-      <button class="btn btn-primary continue-btn centered-btn" :disabled="!token" @click="createAccount">
+      <button
+        class="btn btn-primary continue-btn centered-btn"
+        :disabled="!token"
+        @click="createAccount"
+      >
         {{ formatMessage(messages.createAccountButton) }}
         <RightArrowIcon />
       </button>
