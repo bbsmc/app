@@ -181,7 +181,7 @@
         <input id="version-xunlei" v-model="version.xunlei_disk" type="text" autocomplete="off" style="width: 100%" />
         <h3>百度网盘</h3>
         <input id="version-baidu" v-model="version.baidu_disk" type="text" autocomplete="off" style="width: 100%" />
-        <div v-if="!project.versions || project.versions.length === 0" class="adjacent-input">
+        <div class="adjacent-input">
           <label style="margin-top: 15px">
             <span class="label__title">整合包</span>
             <span class="label__description">

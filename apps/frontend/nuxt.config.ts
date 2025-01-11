@@ -55,9 +55,9 @@ export default defineNuxtConfig({
       },
       title: "BBSMC 我的世界资源社区",
       script: [
-        {
-          src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979",
-        },
+        // {
+        //   src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979",
+        // },
       ],
       link: [
         // The type is necessary because the linter can't always compare this very nested/complex type on itself
@@ -169,7 +169,6 @@ export default defineNuxtConfig({
         gameVersions,
         donationPlatforms,
         reportTypes,
-        homePageProjects,
         homePageSearch,
         homePageNotifs,
       ] = await Promise.all([
@@ -178,7 +177,6 @@ export default defineNuxtConfig({
         $fetch(`${API_URL}tag/game_version`, headers),
         $fetch(`${API_URL}tag/donation_platform`, headers),
         $fetch(`${API_URL}tag/report_type`, headers),
-        $fetch(`${API_URL}projects_random?count=60`, headers),
         $fetch(`${API_URL}search?limit=3&query=&index=relevance`, headers),
         $fetch(`${API_URL}search?limit=3&query=&index=updated`, headers),
       ]);
@@ -188,7 +186,6 @@ export default defineNuxtConfig({
       state.gameVersions = gameVersions;
       state.donationPlatforms = donationPlatforms;
       state.reportTypes = reportTypes;
-      state.homePageProjects = homePageProjects;
       state.homePageSearch = homePageSearch;
       state.homePageNotifs = homePageNotifs;
 

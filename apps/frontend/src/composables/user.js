@@ -27,7 +27,7 @@ export const initUser = async () => {
       const [follows, collections, subscriptions] = await Promise.all([
         useBaseFetch(`user/${auth.user.id}/follows`, { headers }, true),
         useBaseFetch(`user/${auth.user.id}/collections`, { apiVersion: 3, headers }, true),
-        useBaseFetch(`billing/subscriptions`, { internal: true, headers }, true),
+        // useBaseFetch(`billing/subscriptions`, { internal: true, headers }, true),
       ]);
 
       user.collections = collections;
