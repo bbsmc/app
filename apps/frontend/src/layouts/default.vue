@@ -523,9 +523,14 @@
       <!--              </a>-->
       <!--            </div>-->
       <!-- <div class="buttons">
+        <button class="iconified-button raised-button" @click="changeTheme">
+          <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
+          <SunIcon v-else aria-hidden="true" />
+          {{ formatMessage(messages.changeTheme) }}
+        </button>
         <nuxt-link class="iconified-button raised-button" to="/settings">
           <SettingsIcon aria-hidden="true" />
-          外观设置
+          {{ formatMessage(commonMessages.settingsLabel) }}
         </nuxt-link>
       </div> -->
 
@@ -940,6 +945,7 @@ function toggleBrowseMenu() {
     isMobileMenuOpen.value = false;
   }
 }
+// const { cycle: changeTheme } = useTheme();
 </script>
 
 <style lang="scss">

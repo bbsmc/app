@@ -15,31 +15,28 @@
       </div>
       <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <ul class="carousel-items">
-          <li
-            v-for="(item, index) in carouselItems"
-            :key="index"
-            :class="[
-              'carousel-item',
-              {
-                previous:
-                  currentSlide === 0
-                    ? index === carouselItems.length - 1
-                    : index === currentSlide - 1,
-                current: index === currentSlide,
-                next:
-                  currentSlide === carouselItems.length - 1
-                    ? index === 0
-                    : index === currentSlide + 1,
-              },
-            ]"
-          >
+          <li v-for="(item, index) in carouselItems" :key="index" :class="[
+            'carousel-item',
+            {
+              previous:
+                currentSlide === 0
+                  ? index === carouselItems.length - 1
+                  : index === currentSlide - 1,
+              current: index === currentSlide,
+              next:
+                currentSlide === carouselItems.length - 1
+                  ? index === 0
+                  : index === currentSlide + 1,
+            },
+          ]">
             <div class="carousel-slide">
               <div class="carousel-image-container">
-                <a :href="`/modpack/${item.slug}`" target="_blank">
+                <!-- <a :href="`/modpack/${item.slug}`" target="_blank" v-if="index === currentSlide">
                   <img :src="item.image" :alt="item.title" />
-                </a>
+                </a> -->
+                <img :src="item.image" :alt="item.title" @click="goToSlide(index)" />
               </div>
-              <div class="carousel-bottom-container">
+              <div v-if="index === currentSlide" class="carousel-bottom-container">
                 <div class="carousel-item-title">{{ item.title }}</div>
                 <div class="carousel-item-content">
                   <div class="carousel-item-description">{{ item.description }}</div>
@@ -48,18 +45,13 @@
             </div>
           </li>
         </ul>
-        <div class="carousel-buttons">
+        <!-- <div class="carousel-buttons">
           <button class="btn-prev" @click="prevSlide">←</button>
           <button class="btn-next" @click="nextSlide">→</button>
-        </div>
+        </div> -->
         <div class="carousel-dots">
-          <span
-            v-for="(_, index) in carouselItems"
-            :key="index"
-            class="dot"
-            :class="{ active: currentSlide === index }"
-            @click="goToSlide(index)"
-          >
+          <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
+            @click="goToSlide(index)">
           </span>
         </div>
       </div>
@@ -70,20 +62,20 @@
           <a href="/modpacks" target="_blank" class="link-btn btn-secondary">查看更多</a>
         </h1>
         <div class="modpacks-grid">
-          <div v-for="modpack in modpacks" :key="modpack.project_id" class="modpack-card">
-            <a :href="`/modpack/${modpack.slug}`" class="modpack-link">
+          <div v-for="project in modpacks" :key="project.project_id" class="modpack-card">
+            <a :href="`/modpack/${project.slug}`" class="modpack-link" target="_blank">
               <div class="card-content">
-                <img :src="modpack.featured_gallery" :alt="modpack.title" class="modpack-image" />
+                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
-                    <h3 class="modpack-title">{{ modpack.title }}</h3>
-                    <div class="modpack-author">By {{ modpack.author }}</div>
+                    <h3 class="modpack-title">{{ project.title }}</h3>
+                    <div class="modpack-author">By {{ project.author }}</div>
                   </div>
                 </div>
                 <div class="modpack-footer">
                   <div class="modpack-stats">
                     <span class="download-count">
-                      <span class="icon">↓</span> {{ $formatNumber(modpack.downloads) }}
+                      <span class="icon">↓</span> {{ $formatNumber(project.downloads) }}
                     </span>
                     <span class="category">整合包</span>
                   </div>
@@ -99,22 +91,80 @@
           <a href="/modpacks?s=newest" target="_blank" class="link-btn btn-secondary">查看更多</a>
         </h1>
         <div class="modpacks-grid">
-          <div v-for="modpack in newModpacks" :key="modpack.project_id" class="modpack-card">
-            <a :href="`/modpack/${modpack.slug}`" class="modpack-link">
+          <div v-for="project in newModpacks" :key="project.project_id" class="modpack-card">
+            <a :href="`/modpack/${project.slug}`" class="modpack-link" target="_blank">
               <div class="card-content">
-                <img :src="modpack.featured_gallery" :alt="modpack.title" class="modpack-image" />
+                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
-                    <h3 class="modpack-title">{{ modpack.title }}</h3>
-                    <div class="modpack-author">By {{ modpack.author }}</div>
+                    <h3 class="modpack-title">{{ project.title }}</h3>
+                    <div class="modpack-author">By {{ project.author }}</div>
                   </div>
                 </div>
                 <div class="modpack-footer">
                   <div class="modpack-stats">
                     <span class="download-count">
-                      <span class="icon">↓</span> {{ modpack.downloads }}
+                      <span class="icon">↓</span> {{ project.downloads }}
                     </span>
                     <span class="category">整合包</span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h1 class="section-title">
+          热门模组
+          <a href="/mods" target="_blank" class="link-btn btn-secondary">查看更多</a>
+        </h1>
+        <div class="modpacks-grid">
+          <div v-for="project in mods" :key="project.project_id" class="modpack-card">
+            <a :href="`/mod/${project.slug}`" class="modpack-link" target="_blank">
+              <div class="card-content">
+                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
+                <div class="modpack-basic-info">
+                  <div class="modpack-info-top">
+                    <h3 class="modpack-title">{{ project.title }}</h3>
+                    <div class="modpack-author">By {{ project.author }}</div>
+                  </div>
+                </div>
+                <div class="modpack-footer">
+                  <div class="modpack-stats">
+                    <span class="download-count">
+                      <span class="icon">↓</span> {{ project.downloads }}
+                    </span>
+                    <span class="category">Mod</span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h1 class="section-title">
+          热门插件
+          <a href="/plugins" target="_blank" class="link-btn btn-secondary">查看更多</a>
+        </h1>
+        <div class="modpacks-grid">
+          <div v-for="project in plugins" :key="project.project_id" class="modpack-card">
+            <a :href="`/plugin/${project.slug}`" class="modpack-link" target="_blank">
+              <div class="card-content">
+                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
+                <div class="modpack-basic-info">
+                  <div class="modpack-info-top">
+                    <h3 class="modpack-title">{{ project.title }}</h3>
+                    <div class="modpack-author">By {{ project.author }}</div>
+                  </div>
+                </div>
+                <div class="modpack-footer">
+                  <div class="modpack-stats">
+                    <span class="download-count">
+                      <span class="icon">↓</span> {{ project.downloads }}
+                    </span>
+                    <span class="category">服务端插件</span>
                   </div>
                 </div>
               </div>
@@ -143,34 +193,51 @@
 // }
 const modpacks = ref([]);
 const newModpacks = ref([]);
-async function getModpacks() {
-  const res = await useBaseFetch(
-    `search?limit=6&index=relevance&facets=[["project_type:modpack"]]`,
-  );
+const mods = ref([]);
+const plugins = ref([]);
+async function getProjects() {
+  const [modpacksResponse, newModpacksResponse, modResponse, pluginsResponse] = await Promise.all([
+    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:modpack"]]`),
+    useBaseFetch(`search?limit=6&index=newest&facets=[["project_type:modpack"]]`),
+    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:mod"]]`),
+    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:plugin"]]`),
+  ]);
 
   modpacks.value =
-    res.hits?.map((modpack) => ({
+    modpacksResponse.hits?.map((modpack) => ({
       ...modpack,
       slug: modpack.slug || modpack.project_id,
       featured_gallery:
         modpack.featured_gallery ||
         (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
     })) ?? [];
-}
-async function getNewsModpacks() {
-  const res = await useBaseFetch(`search?limit=6&index=newest&facets=[["project_type:modpack"]]`);
 
   newModpacks.value =
-    res.hits?.map((modpack) => ({
+    newModpacksResponse.hits?.map((modpack) => ({
       ...modpack,
       slug: modpack.slug || modpack.project_id,
       featured_gallery:
         modpack.featured_gallery ||
         (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
     })) ?? [];
+
+  mods.value =
+    modResponse.hits?.map((mod) => ({
+      ...mod,
+      slug: mod.slug || mod.project_id,
+      featured_gallery:
+        mod.featured_gallery || (mod.gallery?.length > 0 ? mod.gallery[0] : mod.icon_url),
+    })) ?? [];
+  plugins.value =
+    pluginsResponse.hits?.map((plugin) => ({
+      ...plugin,
+      slug: plugin.slug || plugin.project_id,
+      featured_gallery:
+        plugin.featured_gallery ||
+        (plugin.gallery?.length > 0 ? plugin.gallery[0] : plugin.icon_url),
+    })) ?? [];
 }
-await getModpacks();
-await getNewsModpacks();
+await getProjects();
 
 const carouselItems = ref([
   {
@@ -223,13 +290,19 @@ const nextSlide = () => {
   startAutoPlay(); // 重置自动播放计时器
 };
 
-const prevSlide = () => {
-  currentSlide.value =
-    currentSlide.value === 0 ? carouselItems.value.length - 1 : currentSlide.value - 1;
-  startAutoPlay(); // 重置自动播放计时器
-};
+// const prevSlide = () => {
+//   currentSlide.value =
+//     currentSlide.value === 0 ? carouselItems.value.length - 1 : currentSlide.value - 1;
+//   startAutoPlay(); // 重置自动播放计时器
+// };
 
 const goToSlide = (index) => {
+  if (index === currentSlide.value) {
+    // 打开链接
+    window.open(`/modpack/${carouselItems.value[index].slug}`, "_blank");
+    return;
+  }
+
   currentSlide.value = index;
   startAutoPlay(); // 重置自动播放计时器
 };
@@ -633,6 +706,19 @@ body:has(.game-page) .game-header .hero-container:after {
   .section-title {
     padding: 0 8px;
     /* 更小的左右间距 */
+  }
+}
+
+/* 媒体查询：当屏幕宽度小于 768px 时 */
+@media (max-width: 768px) {
+  .game-carousel {
+    height: 300px;
+    /* 手机端高度设置为 300px */
+  }
+
+  .carousel-image-container {
+    height: 200px;
+    /* 手机端高度设置为 200px */
   }
 }
 </style>

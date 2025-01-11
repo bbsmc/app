@@ -55,9 +55,9 @@ export default defineNuxtConfig({
       },
       title: "BBSMC 我的世界资源社区",
       script: [
-        // {
-        //   src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979",
-        // },
+        {
+          src: "https://hm.baidu.com/hm.js?f5137aff8af02e0688d2485989441979",
+        },
       ],
       link: [
         // The type is necessary because the linter can't always compare this very nested/complex type on itself

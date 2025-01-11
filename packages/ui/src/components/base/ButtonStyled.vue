@@ -89,7 +89,7 @@ const fontWeight = computed(() => {
 
 const radius = computed(() => {
   if (props.circular) {
-    return '0.25rem'
+    return '0.5rem'
   }
 
   if (props.size === 'large') {
