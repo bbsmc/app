@@ -1,19 +1,18 @@
 use crate::database::models::forum::PostBuilder;
 use crate::database::models::forum::{Discussion, PostIndex};
 use crate::database::models::ids::{DiscussionId, PostId};
-use crate::database::models::UserId;
 use crate::database::redis::RedisPool;
 use crate::models::ids::base62_impl::parse_base62;
 use crate::util::validate::validation_errors_to_string;
-use crate::{
-    models::v3::forum::{PostResponse, PostsQueryParams},
-    routes::ApiError,
-};
+use crate::{database, models::v3::forum::{PostResponse, PostsQueryParams}, routes::ApiError};
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
 use validator::Validate;
+use crate::auth::{get_user_from_headers, AuthenticationError};
+use crate::models::pats::Scopes;
+use crate::queue::session::AuthQueue;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -100,11 +99,12 @@ pub async fn posts_get(
 }
 
 pub async fn posts_post(
-    _req: HttpRequest,
+    req: HttpRequest,
     info: web::Path<(String,)>,
     body: web::Json<PostRequest>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     body.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))
@@ -113,6 +113,24 @@ pub async fn posts_post(
     let discussion_id = DiscussionId(parse_base62(&string)? as i64);
     let discussion =
         Discussion::get_id(discussion_id.0, &**pool, &redis).await?;
+
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
+    )
+        .await
+        .map(|x| x.1)
+        .ok();
+
+    if user_option.is_none() {
+        return Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ));
+    }
+
 
     if discussion.is_none() {
         return Err(ApiError::NotFound);
@@ -129,7 +147,9 @@ pub async fn posts_post(
         discussion_id,
         content: body.content.clone(),
         created_at: chrono::Utc::now(),
-        user_id: UserId(187799526438262),
+        user_id: database::models::UserId::from(
+            user_option.as_ref().unwrap().id,
+        ),
         replied_to: body
             .replied_to
             .clone()
