@@ -5,6 +5,7 @@
   "scripts": {
     "build": "nuxi build",
     "dev": "nuxi dev",
+    "debug": "nuxi dev --inspect",
     "generate": "nuxi generate",
     "preview": "nuxi preview",
     "postinstall": "nuxi prepare",

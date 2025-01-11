@@ -96,20 +96,24 @@ export const sortedCategories = (tags) => {
 
 export const formatNumber = (number, abbreviate = true) => {
   const x = Number(number)
-  if (x >= 1000000 && abbreviate) {
-    return `${(x / 1000000).toFixed(2).toString()}M`
+  if (x >= 100000000 && abbreviate) {
+    return `${(x / 100000000).toFixed(2).toString()}亿`
   } else if (x >= 10000 && abbreviate) {
-    return `${(x / 1000).toFixed(1).toString()}k`
+    return `${(x / 10000).toFixed(1).toString()}万`
   }
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 export function formatMoney(number, abbreviate = false) {
   const x = Number(number)
-  if (x >= 1000000 && abbreviate) {
-    return `$${(x / 1000000).toFixed(2).toString()}M`
-  } else if (x >= 10000 && abbreviate) {
-    return `$${(x / 1000).toFixed(2).toString()}k`
+  if (x >= 100000000 && abbreviate) {
+    return `$${(x / 100000000).toFixed(2).toString()}亿`
+  } else if (x >= 10000000 && abbreviate) {
+    return `$${(x / 10000000).toFixed(2).toString()}千万`
+  } else if (x >= 1000000 && abbreviate) {
+    return `$${(x / 1000000).toFixed(2).toString()}百万`
+  } else if (x >= 100000 && abbreviate) {
+    return `$${(x / 10000).toFixed(2).toString()}万`
   }
   return `$${x
     .toFixed(2)
@@ -158,9 +162,9 @@ export const formatWallet = (name) => {
 
 export const formatProjectType = (name) => {
   if (name === 'resourcepack') {
-    return 'Resource Pack'
+    return '资源包'
   } else if (name === 'datapack') {
-    return 'Data Pack'
+    return '数据包'
   }
 
   return capitalizeString(name)
@@ -206,10 +210,10 @@ export const formatCategory = (name) => {
 
 export const formatCategoryHeader = (name) => {
   if (name === 'loaders'){
-    return '运行平台';
+    return '加载器';
   }
   if (name === 'platforms'){
-    return '核心';
+    return '平台';
   }
   if (name === 'Categories'){
     return '分类';
@@ -367,7 +371,7 @@ export const fileIsValid = (file, validationOptions) => {
   const { maxSize, alertOnInvalid } = validationOptions
   if (maxSize !== null && maxSize !== undefined && file.size > maxSize) {
     if (alertOnInvalid) {
-      alert(`File ${file.name} is too big! Must be less than ${formatBytes(maxSize)}`)
+      alert(`文件 ${file.name} 太大了！必须小于 ${formatBytes(maxSize)}`)
     }
     return false
   }

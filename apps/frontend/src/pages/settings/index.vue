@@ -398,7 +398,7 @@ const theme = useTheme();
 
 const serverSystemTheme = useState(() => {
   const theme_ = theme.native;
-  if (theme_ === "unknown") return "light";
+  if (theme_ === "unknown") return "oled";
   return theme_;
 });
 
@@ -515,6 +515,7 @@ const listTypes = computed(() => {
     }
   }
 }
+
 .theme-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));

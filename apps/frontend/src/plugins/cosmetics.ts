@@ -40,7 +40,7 @@ export default defineNuxtPlugin({
         externalLinksNewTab: true,
         notUsingBlockers: false,
         hideModrinthAppPromos: false,
-        preferredDarkTheme: "dark",
+        preferredDarkTheme: "oled",
         searchDisplayMode: {
           mod: "list",
           plugin: "list",
