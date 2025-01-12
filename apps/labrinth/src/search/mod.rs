@@ -84,15 +84,15 @@ impl SearchConfig {
         Client::new(self.address.as_str(), Some(self.key.as_str()))
     }
 
-    // Next: true if we want the next index (we are preparing the next swap), false if we want the current index (searching)
+    // Next: true 如果我们要下一个索引（我们正在准备下一个交换），false 如果我们要当前索引（搜索）
     pub fn get_index_name(&self, index: &str, next: bool) -> String {
         let alt = if next { "_alt" } else { "" };
         format!("{}_{}_{}", self.meta_namespace, index, alt)
     }
 }
 
-/// A project document used for uploading projects to MeiliSearch's indices.
-/// This contains some extra data that is not returned by search results.
+/// 用于上传项目到 MeiliSearch 索引的项目文档。
+/// 这包含一些在搜索结果中不返回的额外数据。
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UploadSearchProject {
     pub version_id: String,
@@ -206,7 +206,7 @@ pub async fn search_for_project(
 
     let mut filter_string = String::new();
 
-    // Convert offset and limit to page and hits_per_page
+    // 将 offset 和 limit 转换为 page 和 hits_per_page
     let hits_per_page = limit;
     let page = offset / limit + 1;
 
@@ -236,9 +236,9 @@ pub async fn search_for_project(
                 };
 
             if let Some(facets) = facets {
-                // Search can now *optionally* have a third inner array: So Vec(AND)<Vec(OR)<Vec(AND)< _ >>>
-                // For every inner facet, we will check if it can be deserialized into a Vec<&str>, and do so.
-                // If not, we will assume it is a single facet and wrap it in a Vec.
+                // Search 现在可以 *可选地* 有第三个内部数组：So Vec(AND)<Vec(OR)<Vec(AND)< _ >>>
+                // 对于每个内部 facet，我们将检查它是否可以被反序列化为 Vec<&str>，如果是，则进行反序列化。
+                // 如果不是，我们假设它是一个单一的 facet 并将其包装在 Vec 中。
                 let facets: Vec<Vec<Vec<String>>> = facets
                     .into_iter()
                     .map(|facets| {

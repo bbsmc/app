@@ -149,7 +149,7 @@ pub async fn notification_read(
             Ok(HttpResponse::NoContent().body(""))
         } else {
             Err(ApiError::CustomAuthentication(
-                "You are not authorized to read this notification!".to_string(),
+                "您没有权限读取此通知！".to_string(),
             ))
         }
     } else {
@@ -199,8 +199,7 @@ pub async fn notification_delete(
             Ok(HttpResponse::NoContent().body(""))
         } else {
             Err(ApiError::CustomAuthentication(
-                "You are not authorized to delete this notification!"
-                    .to_string(),
+                "您没有权限删除此通知！".to_string(),
             ))
         }
     } else {

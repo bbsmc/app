@@ -51,7 +51,7 @@ pub async fn upload_image_optimized(
     let content_type = crate::util::ext::get_image_content_type(file_extension)
         .ok_or_else(|| {
             ApiError::InvalidInput(format!(
-                "Invalid format for image: {}",
+                "无效的图像格式: {}",
                 file_extension
             ))
         })?;
@@ -67,7 +67,7 @@ pub async fn upload_image_optimized(
     )?;
     let color = get_color_from_img(&bytes)?;
 
-    // Only upload the processed image if it's smaller than the original
+    // 仅当处理后的图像小于原始图像时才上传
     let processed_upload_data = if processed_image.len() < bytes.len() {
         Some(
             file_host
@@ -127,7 +127,7 @@ fn process_image(
     let webp_bytes = convert_to_webp(&img)?;
     img = image::load_from_memory(&webp_bytes)?;
 
-    // Resize the image
+    // 调整图像大小
     let (orig_width, orig_height) = img.dimensions();
     let aspect_ratio = orig_width as f32 / orig_height as f32;
 
@@ -140,7 +140,7 @@ fn process_image(
     }
 
     if let Some(min_aspect_ratio) = min_aspect_ratio {
-        // Crop if necessary
+        // 如果需要裁剪
         if aspect_ratio < min_aspect_ratio {
             let crop_height =
                 (img.width() as f32 / min_aspect_ratio).round() as u32;
@@ -149,7 +149,7 @@ fn process_image(
         }
     }
 
-    // Optimize and compress
+    // 优化和压缩
     let mut output = Vec::new();
     img.write_to(&mut Cursor::new(&mut output), ImageOutputFormat::WebP)?;
 
@@ -159,7 +159,7 @@ fn process_image(
 fn convert_to_webp(img: &DynamicImage) -> Result<Vec<u8>, ImageError> {
     let rgba = img.to_rgba8();
     let encoder = Encoder::from_rgba(&rgba, img.width(), img.height());
-    let webp = encoder.encode(75.0); // Quality factor: 0-100, 75 is a good balance
+    let webp = encoder.encode(75.0); // 质量因子: 0-100, 75 是平衡
     Ok(webp.to_vec())
 }
 
@@ -189,9 +189,9 @@ pub async fn delete_old_images(
     Ok(())
 }
 
-// check changes to associated images
-// if they no longer exist in the String list, delete them
-// Eg: if description is modified and no longer contains a link to an iamge
+// 检查与图像相关的更改
+// 如果它们不再存在于字符串列表中，则删除它们
+// 例如：如果描述被修改并且不再包含图像的链接
 pub async fn delete_unused_images(
     context: ImageContext,
     reference_strings: Vec<&str>,

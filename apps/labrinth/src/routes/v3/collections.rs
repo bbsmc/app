@@ -45,14 +45,14 @@ pub struct CollectionCreateData {
         length(min = 3, max = 64),
         custom(function = "crate::util::validate::validate_name")
     )]
-    /// The title or name of the project.
+    /// 项目的标题或名称。
     pub name: String,
     #[validate(length(min = 3, max = 255))]
-    /// A short description of the collection.
+    /// 集合的简短描述。
     pub description: Option<String>,
     #[validate(length(max = 32))]
     #[serde(default = "Vec::new")]
-    /// A list of initial projects to use with the created collection
+    /// 创建集合时使用的初始项目列表
     pub projects: Vec<String>,
 }
 
@@ -65,7 +65,7 @@ pub async fn collection_create(
 ) -> Result<HttpResponse, CreateError> {
     let collection_create_data = collection_create_data.into_inner();
 
-    // The currently logged in user
+    // 当前登录用户
     let current_user = get_user_from_headers(
         &req,
         &**client,
@@ -305,7 +305,7 @@ pub async fn collection_edit(
         }
 
         if let Some(new_project_ids) = &new_collection.new_projects {
-            // Delete all existing projects
+            // 删除所有现有项目
             sqlx::query!(
                 "
                 DELETE FROM collections_mods
@@ -332,7 +332,7 @@ pub async fn collection_edit(
                         })?;
                 validated_project_ids.push(project.inner.id.0);
             }
-            // Insert- don't throw an error if it already exists
+            // 插入- 如果已存在，则不抛出错误
             sqlx::query!(
                 "
                         INSERT INTO collections_mods (collection_id, mod_id)

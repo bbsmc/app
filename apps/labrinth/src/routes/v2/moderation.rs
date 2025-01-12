@@ -40,7 +40,7 @@ pub async fn get_projects(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert to V2 projects
+    // 将响应转换为 V2 项目
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =

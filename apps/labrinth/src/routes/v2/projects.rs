@@ -55,15 +55,15 @@ pub async fn project_search(
     web::Query(info): web::Query<SearchRequest>,
     config: web::Data<SearchConfig>,
 ) -> Result<HttpResponse, SearchError> {
-    // Search now uses loader_fields instead of explicit 'client_side' and 'server_side' fields
-    // While the backend for this has changed, it doesnt affect much
-    // in the API calls except that 'versions:x' is now 'game_versions:x'
+    // 搜索现在使用 loader_fields 而不是显式的 'client_side' 和 'server_side' 字段
+    // 尽管后端发生了变化，但这对 API 调用影响不大
+    // 除了 'versions:x' 现在变成了 'game_versions:x'
     let facets: Option<Vec<Vec<String>>> = if let Some(facets) = info.facets {
         let facets = serde_json::from_str::<Vec<Vec<String>>>(&facets)?;
 
-        // These loaders specifically used to be combined with 'mod' to be a plugin, but now
-        // they are their own loader type. We will convert 'mod' to 'mod' OR 'plugin'
-        // as it essentially was before.
+        // 这些加载器以前是与 'mod' 结合在一起，作为插件，但现在
+        // 它们是自己的加载器类型。我们将 'mod' 转换为 'mod' OR 'plugin'
+        // 因为它基本上与以前相同。
         let facets = v2_reroute::convert_plugin_loader_facets_v3(facets);
 
         Some(
@@ -111,7 +111,7 @@ pub async fn project_search(
     Ok(HttpResponse::Ok().json(results))
 }
 
-/// Parses a facet into a key, operator, and value
+/// 解析一个 facet 为 key, operator, 和 value
 fn parse_facet(facet: &str) -> Option<(String, String, String)> {
     let mut key = String::new();
     let mut operator = String::new();
@@ -167,7 +167,7 @@ pub async fn random_projects_get(
     .await
     .or_else(v2_reroute::flatten_404_error)
     .or_else(v2_reroute::flatten_404_error)?;
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =
@@ -186,7 +186,7 @@ pub async fn projects_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Call V3 project creation
+    // 调用 V3 项目创建
     let response = v3::projects::projects_get(
         req,
         web::Query(ids),
@@ -198,7 +198,7 @@ pub async fn projects_get(
     .or_else(v2_reroute::flatten_404_error)
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =
@@ -217,8 +217,8 @@ pub async fn project_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Convert V2 data to V3 data
-    // Call V3 project creation
+    // 将 V2 数据转换为 V3 数据
+    // 调用 V3 项目创建
     let response = v3::projects::project_get(
         req,
         info,
@@ -229,7 +229,7 @@ pub async fn project_get(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Project>(response).await {
         Ok(project) => {
             let version_item = match project.versions.first() {
@@ -246,14 +246,14 @@ pub async fn project_get(
     }
 }
 
-//checks the validity of a project id or slug
+// 检查项目 ID 或 slug 的有效性
 #[get("{id}/check")]
 pub async fn project_get_check(
     info: web::Path<(String,)>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns an id only, do not need to convert
+    // 返回一个 ID，不需要转换
     v3::projects::project_get_check(info, pool, redis)
         .await
         .or_else(v2_reroute::flatten_404_error)
@@ -273,7 +273,7 @@ pub async fn dependency_list(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // TODO: tests, probably
+    // TODO: 测试，可能
     let response = v3::projects::dependency_list(
         req,
         info,
@@ -438,14 +438,14 @@ pub async fn project_edit(
     let server_side = v2_new_project.server_side;
     let new_slug = v2_new_project.slug.clone();
 
-    // TODO: Some kind of handling here to ensure project type is fine.
-    // We expect the version uploaded to be of loader type modpack, but there might  not be a way to check here for that.
-    // After all, theoretically, they could be creating a genuine 'fabric' mod, and modpack no longer carries information on whether its a mod or modpack,
-    // as those are out to the versions.
+    // 检查项目类型是否正确
+    // 我们期望上传的版本是 modpack 类型，但可能无法在此处检查。
+    // 毕竟，理论上，他们可以创建一个真正的 'fabric' mod，而 modpack 不再携带是否是 mod 或 modpack 的信息，
+    // 因为那些信息在版本中。
 
-    // Ideally this would, if the project 'should' be a modpack:
-    // - change the loaders to mrpack only
-    // - add categories to the project for the corresponding loaders
+    // 理想情况下，如果项目 '应该' 是 modpack：
+    // - 将 loaders 更改为 mrpack 仅
+    // - 为项目添加类别以对应 loaders
 
     let mut new_links = HashMap::new();
     if let Some(issues_url) = v2_new_project.issues_url {
@@ -480,10 +480,10 @@ pub async fn project_edit(
         }
     }
 
-    // In v2, setting donation links resets all other donation links
-    // (resetting to the new ones)
+    // 在 v2 中，设置捐赠链接会重置所有其他捐赠链接
+    // （重置为新链接）
     if let Some(donation_urls) = v2_new_project.donation_urls {
-        // Fetch current donation links from project so we know what to delete
+        // 从项目中获取当前捐赠链接，以便我们知道要删除什么
         let fetched_example_project =
             project_item::Project::get(&info.0, &**pool, &redis).await?;
         let donation_links = fetched_example_project
@@ -501,12 +501,12 @@ pub async fn project_edit(
             })
             .unwrap_or_default();
 
-        // Set existing donation links to None
+        // 将现有捐赠链接设置为 None
         for old_link in donation_links {
             new_links.insert(old_link.platform, None);
         }
 
-        // Add new donation links
+        // 添加新捐赠链接
         for donation_url in donation_urls {
             new_links.insert(donation_url.id, Some(donation_url.url));
         }
@@ -514,8 +514,8 @@ pub async fn project_edit(
 
     let new_project = v3::projects::EditProject {
         name: v2_new_project.title,
-        summary: v2_new_project.description, // Description becomes summary
-        description: v2_new_project.body,    // Body becomes description
+        summary: v2_new_project.description, // 描述变为摘要
+        description: v2_new_project.body,    // 正文变为描述
         categories: v2_new_project.categories,
         additional_categories: v2_new_project.additional_categories,
         license_url: v2_new_project.license_url,
@@ -533,7 +533,7 @@ pub async fn project_edit(
         default_game_loaders: v2_new_project.default_game_loaders,
     };
 
-    // This returns 204 or failure so we don't need to do anything with it
+    // 这返回 204 或失败，所以我们不需要对其做任何处理
     let project_id = info.clone().0;
     let mut response = v3::projects::project_edit(
         req.clone(),
@@ -548,8 +548,7 @@ pub async fn project_edit(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // If client and server side were set, we will call
-    // the version setting route for each version to set the side types for each of them.
+    // 如果客户端和服务器端被设置，我们将为每个版本调用版本设置路由，以设置每个版本的服务器端类型。
     if response.status().is_success()
         && (client_side.is_some() || server_side.is_some())
     {
@@ -668,8 +667,8 @@ pub async fn projects_edit(
 
     let mut link_urls = HashMap::new();
 
-    // If we are *setting* donation links, we will set every possible donation link to None, as
-    // setting will delete all of them then 're-add' the ones we want to keep
+    // 如果我们正在设置捐赠链接，我们将设置每个可能的捐赠链接为 None，
+    // 因为设置将删除所有链接，然后重新添加我们想要保留的链接
     if let Some(donation_url) = bulk_edit_project.donation_urls {
         let link_platforms = LinkPlatform::list(&**pool, &redis).await?;
         for link in link_platforms {
@@ -677,20 +676,20 @@ pub async fn projects_edit(
                 link_urls.insert(link.name, None);
             }
         }
-        // add
+        // 添加新捐赠链接
         for donation_url in donation_url {
             link_urls.insert(donation_url.id, Some(donation_url.url));
         }
     }
 
-    // For every delete, we will set the link to None
+    // 对于每个删除，我们将链接设置为 None
     if let Some(donation_url) = bulk_edit_project.remove_donation_urls {
         for donation_url in donation_url {
             link_urls.insert(donation_url.id, None);
         }
     }
 
-    // For every add, we will set the link to the new url
+    // 对于每个添加，我们将链接设置为新链接
     if let Some(donation_url) = bulk_edit_project.add_donation_urls {
         for donation_url in donation_url {
             link_urls.insert(donation_url.id, Some(donation_url.url));
@@ -729,7 +728,7 @@ pub async fn projects_edit(
         }
     }
 
-    // This returns NoContent or failure so we don't need to do anything with it
+    // 这返回 NoContent 或失败，所以我们不需要对其做任何处理
     v3::projects::projects_edit(
         req,
         web::Query(ids),
@@ -769,7 +768,7 @@ pub async fn project_icon_edit(
     payload: web::Payload,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::project_icon_edit(
         web::Query(v3::projects::Extension { ext: ext.ext }),
         req,
@@ -793,7 +792,7 @@ pub async fn delete_project_icon(
     file_host: web::Data<Arc<dyn FileHost + Send + Sync>>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::delete_project_icon(
         req,
         info,
@@ -829,7 +828,7 @@ pub async fn add_gallery_item(
     payload: web::Payload,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::add_gallery_item(
         web::Query(v3::projects::Extension { ext: ext.ext }),
         req,
@@ -852,7 +851,7 @@ pub async fn add_gallery_item(
 
 #[derive(Serialize, Deserialize, Validate)]
 pub struct GalleryEditQuery {
-    /// The url of the gallery item to edit
+    /// 要编辑的画廊项目的 URL
     pub url: String,
     pub featured: Option<bool>,
     #[serde(
@@ -881,7 +880,7 @@ pub async fn edit_gallery_item(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::edit_gallery_item(
         req,
         web::Query(v3::projects::GalleryEditQuery {
@@ -915,7 +914,7 @@ pub async fn delete_gallery_item(
     file_host: web::Data<Arc<dyn FileHost + Send + Sync>>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::delete_gallery_item(
         req,
         web::Query(v3::projects::GalleryDeleteQuery { url: item.url }),
@@ -938,7 +937,7 @@ pub async fn project_delete(
     search_config: web::Data<SearchConfig>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::project_delete(
         req,
         info,
@@ -959,7 +958,7 @@ pub async fn project_follow(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::project_follow(req, info, pool, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)
@@ -973,7 +972,7 @@ pub async fn project_unfollow(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::projects::project_unfollow(req, info, pool, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)

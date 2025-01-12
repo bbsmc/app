@@ -87,7 +87,7 @@ pub struct LoaderData {
     pub name: String,
     pub supported_project_types: Vec<String>,
     pub supported_games: Vec<String>,
-    pub supported_fields: Vec<String>, // Available loader fields for this loader
+    pub supported_fields: Vec<String>, // 此加载器可用的加载器字段
     pub metadata: Value,
 }
 
@@ -129,10 +129,10 @@ pub async fn loader_list(
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct LoaderFieldsEnumQuery {
     pub loader_field: String,
-    pub filters: Option<HashMap<String, Value>>, // For metadata
+    pub filters: Option<HashMap<String, Value>>, // 用于元数据
 }
 
-// Provides the variants for any enumerable loader field.
+// 提供任何可枚举加载器字段的变体。
 pub async fn loader_fields_list(
     pool: web::Data<PgPool>,
     query: web::Query<LoaderFieldsEnumQuery>,
@@ -145,7 +145,7 @@ pub async fn loader_fields_list(
         .find(|x| x.field == query.loader_field)
         .ok_or_else(|| {
             ApiError::InvalidInput(format!(
-                "'{}' 不是一个有效的加载器字段。",
+                "{} 不是一个有效的加载器字段。",
                 query.loader_field
             ))
         })?;
@@ -155,7 +155,7 @@ pub async fn loader_fields_list(
         | LoaderFieldType::ArrayEnum(enum_id) => enum_id,
         _ => {
             return Err(ApiError::InvalidInput(format!(
-                "'{}' 不是一个可枚举字段，而是一个 '{}' 字段。",
+                "{} 不是一个可枚举字段，而是一个 {} 字段。",
                 query.loader_field,
                 loader_field.field_type.to_str()
             )))

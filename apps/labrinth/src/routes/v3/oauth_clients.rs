@@ -87,7 +87,7 @@ pub async fn get_user_clients(
             && !current_user.role.is_admin()
         {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to see the OAuth clients of this user!".to_string(),
+                "您没有权限查看此用户的 OAuth 客户端！".to_string(),
             ));
         }
 
@@ -377,7 +377,7 @@ pub async fn oauth_client_icon_edit(
         .await?
         .ok_or_else(|| {
             ApiError::InvalidInput(
-                "The specified client does not exist!".to_string(),
+                "指定的客户端不存在！".to_string(),
             )
         })?;
 
@@ -444,7 +444,7 @@ pub async fn oauth_client_icon_delete(
         .await?
         .ok_or_else(|| {
             ApiError::InvalidInput(
-                "The specified client does not exist!".to_string(),
+                "指定的客户端不存在！".to_string(),
             )
         })?;
     client.validate_authorized(Some(&user))?;

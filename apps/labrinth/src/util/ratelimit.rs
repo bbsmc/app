@@ -95,7 +95,7 @@ where
                     Box::pin(async move {
                         match fut.await {
                             Ok(mut service_response) => {
-                                // Now you have a mutable reference to the ServiceResponse, so you can modify its headers.
+                                // 现在你有一个可变引用 ServiceResponse，所以你可以修改它的头部。
                                 let headers = service_response.headers_mut();
                                 headers.insert(
                                     actix_web::http::header::HeaderName::from_str(
@@ -124,11 +124,11 @@ where
                                         .into(),
                                 );
 
-                                // Return the modified response as Ok.
+                                // 返回修改后的响应作为 Ok。
                                 Ok(service_response.map_into_left_body())
                             }
                             Err(e) => {
-                                // Handle error case
+                                // 处理错误情况
                                 Err(e)
                             }
                         }
@@ -175,7 +175,7 @@ where
             }
         } else {
             let response = ApiError::CustomAuthentication(
-                "Unable to obtain user IP address!".to_string(),
+                "无法获取用户 IP 地址！".to_string(),
             )
             .error_response();
 

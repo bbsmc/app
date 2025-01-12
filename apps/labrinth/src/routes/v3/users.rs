@@ -368,7 +368,7 @@ pub async fn user_edit(
                     .await?;
                 } else {
                     return Err(ApiError::InvalidInput(format!(
-                        "Username {username} is taken!"
+                        "用户名 {username} 已被占用!"
                     )));
                 }
             }
@@ -390,8 +390,7 @@ pub async fn user_edit(
             if let Some(role) = &new_user.role {
                 if !user.role.is_admin() {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the role of this user!"
-                            .to_string(),
+                        "您没有权限编辑此用户的角色!".to_string(),
                     ));
                 }
 
@@ -413,8 +412,7 @@ pub async fn user_edit(
             if let Some(badges) = &new_user.badges {
                 if !user.role.is_admin() {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the badges of this user!"
-                            .to_string(),
+                        "您没有权限编辑此用户的徽章!".to_string(),
                     ));
                 }
 
@@ -434,8 +432,7 @@ pub async fn user_edit(
             if let Some(venmo_handle) = &new_user.venmo_handle {
                 if !scopes.contains(Scopes::PAYOUTS_WRITE) {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the venmo handle of this user!"
-                            .to_string(),
+                        "您没有权限编辑此用户的Venmo handle!".to_string(),
                     ));
                 }
 
@@ -458,7 +455,7 @@ pub async fn user_edit(
             Ok(HttpResponse::NoContent().body(""))
         } else {
             Err(ApiError::CustomAuthentication(
-                "You do not have permission to edit this user!".to_string(),
+                "您没有权限编辑此用户!".to_string(),
             ))
         }
     } else {
@@ -496,8 +493,7 @@ pub async fn user_icon_edit(
     if let Some(actual_user) = id_option {
         if user.id != actual_user.id.into() && !user.role.is_mod() {
             return Err(ApiError::CustomAuthentication(
-                "You don't have permission to edit this user's icon."
-                    .to_string(),
+                "您没有权限编辑此用户的头像!".to_string(),
             ));
         }
 
@@ -511,7 +507,7 @@ pub async fn user_icon_edit(
         let bytes = read_from_payload(
             &mut payload,
             262144,
-            "Icons must be smaller than 256KiB",
+            "头像必须小于256KiB".to_string(),
         )
         .await?;
 
@@ -567,7 +563,7 @@ pub async fn user_delete(
     if let Some(id) = id_option.map(|x| x.id) {
         if !user.role.is_admin() && user.id != id.into() {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to delete this user!".to_string(),
+                "您没有权限删除此用户!".to_string(),
             ));
         }
 
@@ -608,7 +604,7 @@ pub async fn user_follows(
     if let Some(id) = id_option.map(|x| x.id) {
         if !user.role.is_admin() && user.id != id.into() {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to see the projects this user follows!".to_string(),
+                "您没有权限查看此用户关注的内容!".to_string(),
             ));
         }
 
@@ -650,7 +646,7 @@ pub async fn user_notifications(
     if let Some(id) = id_option.map(|x| x.id) {
         if !user.role.is_admin() && user.id != id.into() {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to see the notifications of this user!".to_string(),
+                "您没有权限查看此用户的通知!".to_string(),
             ));
         }
 

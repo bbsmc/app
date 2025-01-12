@@ -320,7 +320,7 @@ pub async fn send_slack_webhook(
                     },
                     {
                         "type": "mrkdwn",
-                        "text": format!("{} on Modrinth • <!date^{}^{{date_short_pretty}} at {{time}}|Unknown date>", metadata.display_project_type, Utc::now().timestamp())
+                        "text": format!("{} on BBSMC • <!date^{}^{{date_short_pretty}} at {{time}}|Unknown date>", metadata.display_project_type, Utc::now().timestamp())
                     }
                 ]
             })

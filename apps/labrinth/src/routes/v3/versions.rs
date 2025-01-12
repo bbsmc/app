@@ -59,7 +59,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     );
 }
 
-// Given a project ID/slug and a version slug
+// 给定一个项目ID/slug和一个版本slug
 pub async fn version_project_get(
     req: HttpRequest,
     info: web::Path<(String, String)>,
@@ -237,9 +237,9 @@ pub struct EditVersion {
     )]
     pub ordering: Option<Option<i32>>,
 
-    // Flattened loader fields
-    // All other fields are loader-specific VersionFields
-    // These are flattened during serialization
+    // 扁平化加载器字段
+    // 所有其他字段都是加载器特定的 VersionFields
+    // 这些在序列化期间被扁平化
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
     pub fields: HashMap<String, serde_json::Value>,
@@ -319,7 +319,7 @@ pub async fn version_download(
         let url = version_item.disks.first().unwrap().url.clone();
         let url = url::Url::parse(&url).map_err(|_| {
             ApiError::InvalidInput(
-                "invalid download URL specified!".to_string(),
+                "无效的下载URL!".to_string(),
             )
         })?;
 
@@ -731,7 +731,7 @@ pub async fn version_edit_helper(
             if let Some(status) = &new_version.status {
                 if !status.can_be_requested() {
                     return Err(ApiError::InvalidInput(
-                        "The requested status cannot be set!".to_string(),
+                        "请求的状态无法设置!".to_string(),
                     ));
                 }
 
@@ -842,10 +842,10 @@ pub struct VersionListFilters {
     pub limit: Option<usize>,
     pub offset: Option<usize>,
     /*
-        Loader fields to filter with:
+        要过滤的加载器字段:
         "game_versions": ["1.16.5", "1.17"]
 
-        Returns if it matches any of the values
+        返回如果它匹配任何值
     */
     pub loader_fields: Option<String>,
 }
@@ -936,13 +936,13 @@ pub async fn version_list(
             b.inner.date_published.cmp(&a.inner.date_published)
         });
 
-        // Attempt to populate versions with "auto featured" versions
+        // 尝试用 "自动推荐" 版本填充 versions
         if response.is_empty()
             && !versions.is_empty()
             && filters.featured.unwrap_or(false)
         {
-            // TODO: This is a bandaid fix for detecting auto-featured versions.
-            // In the future, not all versions will have 'game_versions' fields, so this will need to be changed.
+            // TODO: 这是一个临时代码，用于检测自动推荐的版本。
+            // 在将来，不是所有的版本都会有 'game_versions' 字段，所以这需要改变。
             let (loaders, game_versions) = futures::future::try_join(
                 database::models::loader_fields::Loader::list(&**pool, &redis),
                 database::models::legacy_loader_fields::MinecraftGameVersion::list(
@@ -965,7 +965,7 @@ pub async fn version_list(
                 versions
                     .iter()
                     .find(|version| {
-                        // TODO: This is the bandaid fix for detecting auto-featured versions.
+                        // TODO: 这是一个临时代码，用于检测自动推荐的版本。
                         let game_versions = version
                             .version_fields
                             .iter()

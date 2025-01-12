@@ -28,13 +28,13 @@ pub fn config(cfg: &mut web::ServiceConfig) {
 pub struct ImageUpload {
     pub ext: String,
 
-    // Context must be an allowed context
-    // currently: project, version, thread_message, report
+    // Context 必须是允许的上下文
+    // 当前：project, version, thread_message, report
     pub context: String,
 
-    // Optional context id to associate with
-    pub project_id: Option<String>, // allow slug or id
-    pub wiki_id: Option<i64>,       // allow slug or id
+    // 可选的上下文 ID 以关联
+    pub project_id: Option<String>, // 允许 slug 或 id
+    pub wiki_id: Option<i64>,       // 允许 slug 或 id
     pub version_id: Option<VersionId>,
     pub thread_message_id: Option<ThreadMessageId>,
     pub report_id: Option<ReportId>,
@@ -63,8 +63,8 @@ pub async fn images_add(
     .await?
     .1;
 
-    // Attempt to associated a supplied id with the context
-    // If the context cannot be found, or the user is not authorized to upload images for the context, return an error
+    // 尝试将提供的 ID 与上下文关联
+    // 如果无法找到上下文，或者用户无权上传上下文的图片，则返回错误
     match &mut context {
         ImageContext::Project { project_id } => {
             if let Some(id) = data.project_id {
@@ -174,7 +174,7 @@ pub async fn images_add(
         }
     }
 
-    // Upload the image to the file host
+    // 将图片上传到文件主机
     let bytes =
         read_from_payload(&mut payload, 4_194_304, "图片大小必须小于4MB")
             .await?;
@@ -234,7 +234,7 @@ pub async fn images_add(
         },
     };
 
-    // Insert
+    // 插入
     db_image.insert(&mut transaction).await?;
 
     let image = Image {

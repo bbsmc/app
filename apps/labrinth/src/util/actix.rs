@@ -1,9 +1,9 @@
 use actix_web::test::TestRequest;
 use bytes::{Bytes, BytesMut};
 
-// Multipart functionality for actix
-// Primarily for testing or some implementations of route-redirection
-// (actix-test does not innately support multipart)
+// actix 的 multipart 功能
+// 主要用于测试或某些路由重定向
+// (actix-test 不原生支持 multipart)
 #[derive(Debug, Clone)]
 pub struct MultipartSegment {
     pub name: String,

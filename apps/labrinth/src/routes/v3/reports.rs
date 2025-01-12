@@ -67,7 +67,7 @@ pub async fn report_create(
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.map_err(|_| {
             ApiError::InvalidInput(
-                "Error while parsing request payload!".to_string(),
+                "解析请求体时出错!".to_string(),
             )
         })?);
     }
@@ -82,7 +82,7 @@ pub async fn report_create(
     .await?
     .ok_or_else(|| {
         ApiError::InvalidInput(format!(
-            "Invalid report type: {}",
+            "报告类型无效: {}",
             new_report.report_type
         ))
     })?;
@@ -113,7 +113,7 @@ pub async fn report_create(
 
             if !result.exists.unwrap_or(false) {
                 return Err(ApiError::InvalidInput(format!(
-                    "Project could not be found: {}",
+                    "项目未找到: {}",
                     new_report.item_id
                 )));
             }
@@ -179,7 +179,7 @@ pub async fn report_create(
                 || image.context.inner_id().is_some()
             {
                 return Err(ApiError::InvalidInput(format!(
-                    "Image {} is not unused and in the 'report' context",
+                    "图片 {} 未使用且在 'report' 上下文中",
                     image_id
                 )));
             }
@@ -199,7 +199,7 @@ pub async fn report_create(
             image_item::Image::clear_cache(image.id.into(), &redis).await?;
         } else {
             return Err(ApiError::InvalidInput(format!(
-                "Image {} could not be found",
+                "图片 {} 未找到",
                 image_id
             )));
         }
@@ -438,7 +438,7 @@ pub async fn report_edit(
         if let Some(edit_closed) = edit_report.closed {
             if !user.role.is_mod() {
                 return Err(ApiError::InvalidInput(
-                    "You cannot reopen a report!".to_string(),
+                    "您不能重新打开报告!".to_string(),
                 ));
             }
 
@@ -468,7 +468,7 @@ pub async fn report_edit(
             .await?;
         }
 
-        // delete any images no longer in the body
+        // 删除不再在正文中的任何图像
         let checkable_strings: Vec<&str> = vec![&edit_report.body]
             .into_iter()
             .filter_map(|x: &Option<String>| x.as_ref().map(|y| y.as_str()))

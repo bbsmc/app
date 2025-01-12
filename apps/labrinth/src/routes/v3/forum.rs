@@ -1,22 +1,27 @@
+use crate::auth::{get_user_from_headers, AuthenticationError};
 use crate::database::models::forum::PostBuilder;
 use crate::database::models::forum::{Discussion, PostIndex};
 use crate::database::models::ids::{DiscussionId, PostId};
 use crate::database::redis::RedisPool;
 use crate::models::ids::base62_impl::parse_base62;
+use crate::models::pats::Scopes;
+use crate::queue::session::AuthQueue;
 use crate::util::validate::validation_errors_to_string;
-use crate::{database, models::v3::forum::{PostResponse, PostsQueryParams}, routes::ApiError};
+use crate::{
+    database,
+    models::v3::forum::{PostResponse, PostsQueryParams},
+    routes::ApiError,
+};
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
 use validator::Validate;
-use crate::auth::{get_user_from_headers, AuthenticationError};
-use crate::models::pats::Scopes;
-use crate::queue::session::AuthQueue;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("forum")
+            .route("{type}/lists", web::get().to(forums_get))
             .route("{id}/posts", web::get().to(posts_get))
             .route("{id}/post", web::post().to(posts_post)),
     );
@@ -27,6 +32,24 @@ pub struct PostRequest {
     #[validate(length(max = 65536))]
     pub content: String,
     pub replied_to: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct ForumsQueryParams {
+    pub page: i32,
+    pub page_size: i32,
+}
+
+pub async fn forums_get(
+    _req: HttpRequest,
+    info: web::Path<(String,)>,
+    query: web::Query<ForumsQueryParams>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+) -> Result<HttpResponse, ApiError> {
+    Ok(HttpResponse::Ok().json(json!({
+        "forums": []
+    })))
 }
 
 pub async fn posts_get(
@@ -121,16 +144,15 @@ pub async fn posts_post(
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
     )
-        .await
-        .map(|x| x.1)
-        .ok();
+    .await
+    .map(|x| x.1)
+    .ok();
 
     if user_option.is_none() {
         return Err(ApiError::Authentication(
             AuthenticationError::InvalidCredentials,
         ));
     }
-
 
     if discussion.is_none() {
         return Err(ApiError::NotFound);

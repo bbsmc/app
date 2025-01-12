@@ -155,7 +155,7 @@ pub async fn organization_create(
 
     let organization_id = generate_organization_id(&mut transaction).await?;
 
-    // Create organization managerial team
+    // 创建组织管理团队
     let team = team_item::TeamBuilder {
         members: vec![team_item::TeamMemberBuilder {
             user_id: current_user.id.into(),
@@ -170,7 +170,7 @@ pub async fn organization_create(
     };
     let team_id = team.insert(&mut transaction).await?;
 
-    // Create organization
+    // 创建组织
     let organization = Organization {
         id: organization_id,
         slug: new_organization.slug.clone(),
@@ -184,7 +184,7 @@ pub async fn organization_create(
     organization.clone().insert(&mut transaction).await?;
     transaction.commit().await?;
 
-    // Only member is the owner, the logged in one
+    // 只有成员是所有者，即当前登录用户
     let member_data = TeamMember::get_from_team_full(team_id, &**pool, &redis)
         .await?
         .into_iter()
@@ -197,7 +197,7 @@ pub async fn organization_create(
         )]
     } else {
         return Err(CreateError::InvalidInput(
-            "Failed to get created team.".to_owned(), // should never happen
+            "Failed to get created team.".to_owned(), // 应该永远不会发生
         ));
     };
 
@@ -423,8 +423,7 @@ pub async fn organizations_edit(
             if let Some(description) = &new_organization.description {
                 if !perms.contains(OrganizationPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the description of this organization!"
-                            .to_string(),
+                        "您没有权限编辑此组织的描述！".to_string(),
                     ));
                 }
                 sqlx::query!(
@@ -443,8 +442,7 @@ pub async fn organizations_edit(
             if let Some(name) = &new_organization.name {
                 if !perms.contains(OrganizationPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the name of this organization!"
-                            .to_string(),
+                        "您没有权限编辑此组织的名称！".to_string(),
                     ));
                 }
                 sqlx::query!(
@@ -463,8 +461,7 @@ pub async fn organizations_edit(
             if let Some(slug) = &new_organization.slug {
                 if !perms.contains(OrganizationPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the slug of this organization!"
-                            .to_string(),
+                        "您没有权限编辑此组织的 slug！".to_string(),
                     ));
                 }
 
@@ -483,8 +480,7 @@ pub async fn organizations_edit(
 
                     if results.exists.unwrap_or(true) {
                         return Err(ApiError::InvalidInput(
-                            "slug collides with other organization's id!"
-                                .to_string(),
+                            "slug 与另一个组织的 id 冲突！".to_string(),
                         ));
                     }
                 }
@@ -503,8 +499,7 @@ pub async fn organizations_edit(
 
                     if results.exists.unwrap_or(true) {
                         return Err(ApiError::InvalidInput(
-                            "slug collides with other organization's id!"
-                                .to_string(),
+                            "slug 与另一个组织的 id 冲突！".to_string(),
                         ));
                     }
                 }
@@ -533,8 +528,7 @@ pub async fn organizations_edit(
             Ok(HttpResponse::NoContent().body(""))
         } else {
             Err(ApiError::CustomAuthentication(
-                "You do not have permission to edit this organization!"
-                    .to_string(),
+                "您没有权限编辑此组织！".to_string(),
             ))
         }
     } else {
@@ -565,7 +559,7 @@ pub async fn organization_delete(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified organization does not exist!".to_string(),
+                    "指定的组织不存在！".to_string(),
                 )
             })?;
 
@@ -581,7 +575,7 @@ pub async fn organization_delete(
             .map_err(ApiError::Database)?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified organization does not exist!".to_string(),
+                    "指定的组织不存在！".to_string(),
                 )
             })?;
 
@@ -593,8 +587,7 @@ pub async fn organization_delete(
 
         if !permissions.contains(OrganizationPermissions::DELETE_ORGANIZATION) {
             return Err(ApiError::CustomAuthentication(
-                "You don't have permission to delete this organization!"
-                    .to_string(),
+                    "您没有权限删除此组织！".to_string(),
             ));
         }
     }
@@ -613,9 +606,9 @@ pub async fn organization_delete(
 
     let mut transaction = pool.begin().await?;
 
-    // Handle projects- every project that is in this organization needs to have its owner changed the organization owner
-    // Now, no project should have an owner if it is in an organization, and also
-    // the owner of an organization should not be a team member in any project
+    // 处理项目- 每个在组织中的项目需要将其所有者更改为组织所有者
+    // 现在，没有项目应该有所有者，如果它在组织中，并且
+    // 组织的所有者不应该是一个团队成员在任何项目中
     let organization_project_teams = sqlx::query!(
         "
         SELECT t.id FROM organizations o
@@ -649,7 +642,7 @@ pub async fn organization_delete(
         };
         member.insert(&mut transaction).await?;
     }
-    // Safely remove the organization
+    // 安全地删除组织
     let result = database::models::Organization::remove(
         organization.id,
         &mut transaction,
@@ -679,7 +672,7 @@ pub async fn organization_delete(
 
 #[derive(Deserialize)]
 pub struct OrganizationProjectAdd {
-    pub project_id: String, // Also allow name/slug
+    pub project_id: String, // 也允许名称/slug
 }
 pub async fn organization_projects_add(
     req: HttpRequest,
@@ -705,7 +698,7 @@ pub async fn organization_projects_add(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified organization does not exist!".to_string(),
+                    "指定的组织不存在！".to_string(),
                 )
             })?;
 
@@ -717,13 +710,12 @@ pub async fn organization_projects_add(
     .await?
     .ok_or_else(|| {
         ApiError::InvalidInput(
-            "The specified project does not exist!".to_string(),
+            "指定的项目不存在！".to_string(),
         )
     })?;
     if project_item.inner.organization_id.is_some() {
         return Err(ApiError::InvalidInput(
-            "The specified project is already owned by an organization!"
-                .to_string(),
+            "指定的项目已由组织拥有！".to_string(),
         ));
     }
 
@@ -737,7 +729,7 @@ pub async fn organization_projects_add(
         .await?
         .ok_or_else(|| {
             ApiError::InvalidInput(
-                "You are not a member of this project!".to_string(),
+                "您不是此项目的成员！".to_string(),
             )
         })?;
     let organization_team_member =
@@ -750,14 +742,14 @@ pub async fn organization_projects_add(
         .await?
         .ok_or_else(|| {
             ApiError::InvalidInput(
-                "You are not a member of this organization!".to_string(),
+                "您不是此组织的成员！".to_string(),
             )
         })?;
 
     // Require ownership of a project to add it to an organization
     if !current_user.role.is_admin() && !project_team_member.is_owner {
         return Err(ApiError::CustomAuthentication(
-            "You need to be an owner of a project to add it to an organization!".to_string(),
+            "您需要是项目的所有者才能将其添加到组织中！".to_string(),
         ));
     }
 
@@ -780,9 +772,9 @@ pub async fn organization_projects_add(
         .execute(&mut *transaction)
         .await?;
 
-        // The former owner is no longer an owner (as it is now 'owned' by the organization, 'given' to them)
-        // The former owner is still a member of the project, but not an owner
-        // When later removed from the organization, the project will  be owned by whoever is specified as the new owner there
+        // 原来的所有者不再是所有者（因为它现在是组织的，'给予'给他们）
+        // 原来的所有者仍然是项目的成员，但不再是所有者
+        // 当后来从组织中移除时，项目将由指定为新所有者的人拥有
 
         let organization_owner_user_id = sqlx::query!(
             "
@@ -830,8 +822,7 @@ pub async fn organization_projects_add(
         .await?;
     } else {
         return Err(ApiError::CustomAuthentication(
-            "You do not have permission to add projects to this organization!"
-                .to_string(),
+            "您没有权限将项目添加到此组织中！".to_string(),
         ));
     }
     Ok(HttpResponse::Ok().finish())
@@ -839,8 +830,8 @@ pub async fn organization_projects_add(
 
 #[derive(Deserialize)]
 pub struct OrganizationProjectRemoval {
-    // A new owner must be supplied for the project.
-    // That user must be a member of the organization, but not necessarily a member of the project.
+    // 必须提供一个新所有者。
+    // 该用户必须是组织的成员，但不一定必须是项目的成员。
     pub new_owner: UserId,
 }
 
@@ -868,7 +859,7 @@ pub async fn organization_projects_remove(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified organization does not exist!".to_string(),
+                    "指定的组织不存在！".to_string(),
                 )
             })?;
 
@@ -877,7 +868,7 @@ pub async fn organization_projects_remove(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified project does not exist!".to_string(),
+                    "指定的项目不存在！".to_string(),
                 )
             })?;
 
@@ -887,8 +878,7 @@ pub async fn organization_projects_remove(
         .eq(&Some(organization.id))
     {
         return Err(ApiError::InvalidInput(
-            "The specified project is not owned by this organization!"
-                .to_string(),
+            "指定的项目不属于此组织！".to_string(),
         ));
     }
 
@@ -902,7 +892,7 @@ pub async fn organization_projects_remove(
         .await?
         .ok_or_else(|| {
             ApiError::InvalidInput(
-                "You are not a member of this organization!".to_string(),
+                "您不是此组织的成员！".to_string(),
             )
         })?;
 
@@ -922,13 +912,12 @@ pub async fn organization_projects_remove(
         .await?
         .ok_or_else(|| {
             ApiError::InvalidInput(
-                "The specified user is not a member of this organization!"
-                    .to_string(),
+                "指定的用户不是此组织的成员！".to_string(),
             )
         })?;
 
-        // Then, we get the team member of the project and that user (if it exists)
-        // We use the team member get directly
+        // 然后，我们获取项目的团队成员和该用户（如果存在）
+        // 我们直接使用团队成员获取
         let new_owner = database::models::TeamMember::get_from_user_id_project(
             project_item.inner.id,
             data.new_owner.into(),
@@ -939,7 +928,7 @@ pub async fn organization_projects_remove(
 
         let mut transaction = pool.begin().await?;
 
-        // If the user is not a member of the project, we add them
+        // 如果用户不是项目的成员，我们添加他们
         let new_owner = match new_owner {
             Some(new_owner) => new_owner,
             None => {
@@ -965,7 +954,7 @@ pub async fn organization_projects_remove(
             }
         };
 
-        // Set the new owner to fit owner
+        // 将新所有者设置为所有者
         sqlx::query!(
             "
             UPDATE team_members
@@ -974,7 +963,7 @@ pub async fn organization_projects_remove(
                 accepted = TRUE,
                 permissions = $2,
                 organization_permissions = NULL,
-                role = 'Inherited Owner'
+                role = '继承所有者'
             WHERE (id = $1)
             ",
             new_owner.id as database::models::ids::TeamMemberId,
@@ -1014,8 +1003,7 @@ pub async fn organization_projects_remove(
         .await?;
     } else {
         return Err(ApiError::CustomAuthentication(
-            "You do not have permission to add projects to this organization!"
-                .to_string(),
+            "您没有权限将项目添加到此组织中！".to_string(),
         ));
     }
     Ok(HttpResponse::Ok().finish())
@@ -1053,7 +1041,7 @@ pub async fn organization_icon_edit(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified organization does not exist!".to_string(),
+                    "指定的组织不存在！".to_string(),
                 )
             })?;
 
@@ -1074,8 +1062,7 @@ pub async fn organization_icon_edit(
 
         if !permissions.contains(OrganizationPermissions::EDIT_DETAILS) {
             return Err(ApiError::CustomAuthentication(
-                "You don't have permission to edit this organization's icon."
-                    .to_string(),
+                "您没有权限编辑此组织的图标！".to_string(),
             ));
         }
     }
@@ -1090,7 +1077,7 @@ pub async fn organization_icon_edit(
     let bytes = read_from_payload(
         &mut payload,
         262144,
-        "Icons must be smaller than 256KiB",
+        "图标必须小于256KiB",
     )
     .await?;
 
@@ -1156,7 +1143,7 @@ pub async fn delete_organization_icon(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "The specified organization does not exist!".to_string(),
+                    "指定的组织不存在！".to_string(),
                 )
             })?;
 
@@ -1177,8 +1164,7 @@ pub async fn delete_organization_icon(
 
         if !permissions.contains(OrganizationPermissions::EDIT_DETAILS) {
             return Err(ApiError::CustomAuthentication(
-                "You don't have permission to edit this organization's icon."
-                    .to_string(),
+                "您没有权限编辑此组织的图标！".to_string(),
             ));
         }
     }
