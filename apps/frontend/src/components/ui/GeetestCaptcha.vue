@@ -9,7 +9,7 @@ export default {
   data() {
     return {
       internalToken: this.modelValue,
-      captchaId: 'fd0d19986b367cde0c815bd23567cb95',
+      captchaId: "fd0d19986b367cde0c815bd23567cb95",
       captchaObj: null,
     };
   },
@@ -23,45 +23,48 @@ export default {
   },
   methods: {
     async initGeetest() {
-      const script = document.createElement('script');
-      script.src = 'https://static.geetest.com/v4/gt4.js';
+      const script = document.createElement("script");
+      script.src = "https://static.geetest.com/v4/gt4.js";
       document.body.appendChild(script);
 
       script.onload = () => {
-        window.initGeetest4({
-          captchaId: this.captchaId,
-          product: 'float',
-          language: 'zho',
-          protocol: window.location.protocol === 'https:' ? 'https://' : 'http://',
-        }, (captchaObj) => {
-          this.captchaObj = captchaObj;
+        window.initGeetest4(
+          {
+            captchaId: this.captchaId,
+            product: "float",
+            language: "zho",
+            protocol: window.location.protocol === "https:" ? "https://" : "http://",
+          },
+          (captchaObj) => {
+            this.captchaObj = captchaObj;
 
-          // 注册事件监听
-          captchaObj.onReady(() => {
-            // console.log('验证码已准备好');
-          });
+            // 注册事件监听
+            captchaObj.onReady(() => {
+              // console.log('验证码已准备好');
+            });
 
-          captchaObj.onSuccess(() => {
-            const result = captchaObj.getValidate();
-            this.onTokenUpdate(result);
-          });
+            captchaObj.onSuccess(() => {
+              const result = captchaObj.getValidate();
+              this.onTokenUpdate(result);
+            });
 
-          captchaObj.onError((e) => {
-            console.error('Geetest error:', e);
-          });
+            captchaObj.onError((e) => {
+              console.error("Geetest error:", e);
+            });
 
-          captchaObj.onClose(() => {
-            // console.log('验证码关闭');
-          });
+            captchaObj.onClose(() => {
+              // console.log('验证码关闭');
+            });
 
-          captchaObj.appendTo(document.getElementById('captcha'));
-        });
+            captchaObj.appendTo(document.getElementById("captcha"));
+          },
+        );
       };
     },
     onTokenUpdate(token) {
       // console.log('Token:', token);
       this.internalToken = token;
-      this.$emit('update:modelValue', token);
+      this.$emit("update:modelValue", token);
     },
     // 暴露给父组件的方法
     reset() {

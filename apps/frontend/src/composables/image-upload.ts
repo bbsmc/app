@@ -35,9 +35,7 @@ export const useImageUpload = async (file: File, ctx: ImageUploadContext) => {
       method: "POST",
       body: file,
       apiVersion: 3,
-    })
-    console.log("waefw")
-    console.log(res);
+    });
     const response = res as ImageUploadResponse;
     // 类型检查以查看响应是否具有 url 属性和 id 属性
     if (!response?.id || typeof response.id !== "string") {
@@ -49,9 +47,6 @@ export const useImageUpload = async (file: File, ctx: ImageUploadContext) => {
 
     return response;
   } catch (e) {
-    console.log(e);
     throw e;
   }
-
-  
 };

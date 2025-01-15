@@ -1,10 +1,18 @@
 <template>
-  <div class="notification" :class="{
-    'has-body': hasBody,
-    compact: compact,
-    read: notification.read,
-  }">
-    <nuxt-link v-if="!type" :to="notification.link" class="notification__icon backed-svg" :class="{ raised: raised }">
+  <div
+    class="notification"
+    :class="{
+      'has-body': hasBody,
+      compact: compact,
+      read: notification.read,
+    }"
+  >
+    <nuxt-link
+      v-if="!type"
+      :to="notification.link"
+      class="notification__icon backed-svg"
+      :class="{ raised: raised }"
+    >
       <NotificationIcon />
     </nuxt-link>
     <DoubleIcon v-else class="notification__icon">
@@ -12,7 +20,11 @@
         <nuxt-link v-if="project" :to="getProjectLink(project)" tabindex="-1">
           <Avatar size="xs" :src="project.icon_url" :raised="raised" no-shadow />
         </nuxt-link>
-        <nuxt-link v-else-if="organization" :to="`/organization/${organization.slug}`" tabindex="-1">
+        <nuxt-link
+          v-else-if="organization"
+          :to="`/organization/${organization.slug}`"
+          tabindex="-1"
+        >
           <Avatar size="xs" :src="organization.icon_url" :raised="raised" no-shadow />
         </nuxt-link>
         <nuxt-link v-else-if="user" :to="getUserLink(user)" tabindex="-1">
@@ -21,9 +33,15 @@
         <Avatar v-else size="xs" :raised="raised" no-shadow />
       </template>
       <template #secondary>
-        <ModerationIcon v-if="type === 'moderator_message' || type === 'status_change'" class="moderation-color" />
+        <ModerationIcon
+          v-if="type === 'moderator_message' || type === 'status_change'"
+          class="moderation-color"
+        />
         <InvitationIcon v-else-if="type === 'team_invite' && project" class="creator-color" />
-        <InvitationIcon v-else-if="type === 'organization_invite' && organization" class="creator-color" />
+        <InvitationIcon
+          v-else-if="type === 'organization_invite' && organization"
+          class="creator-color"
+        />
         <VersionIcon v-else-if="type === 'project_update' && project && version" />
         <NotificationIcon v-else />
       </template>
@@ -31,30 +49,53 @@
     <div class="notification__title">
       <template v-if="type === 'project_update' && project && version">
         您关注的项目
-        <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link>, 已更新
+        <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link
+        >, 已更新
       </template>
       <template v-else-if="type === 'team_invite' && project">
-        <nuxt-link :to="`/user/${invitedBy.username}`" class="iconified-link title-link inline-flex">
-          <Avatar :src="invitedBy.avatar_url" circle size="xxs" no-shadow :raised="raised" class="inline-flex" />
+        <nuxt-link
+          :to="`/user/${invitedBy.username}`"
+          class="iconified-link title-link inline-flex"
+        >
+          <Avatar
+            :src="invitedBy.avatar_url"
+            circle
+            size="xxs"
+            no-shadow
+            :raised="raised"
+            class="inline-flex"
+          />
           <span class="space">&nbsp;</span>
           <span>{{ invitedBy.username }}</span>
         </nuxt-link>
         <span>
           邀请您加入资源
           <nuxt-link :to="getProjectLink(project)" class="title-link">
-            {{ project.title }} </nuxt-link>.
+            {{ project.title }} </nuxt-link
+          >.
         </span>
       </template>
       <template v-else-if="type === 'organization_invite' && organization">
-        <nuxt-link :to="`/user/${invitedBy.username}`" class="iconified-link title-link inline-flex">
-          <Avatar :src="invitedBy.avatar_url" circle size="xxs" no-shadow :raised="raised" class="inline-flex" />
+        <nuxt-link
+          :to="`/user/${invitedBy.username}`"
+          class="iconified-link title-link inline-flex"
+        >
+          <Avatar
+            :src="invitedBy.avatar_url"
+            circle
+            size="xxs"
+            no-shadow
+            :raised="raised"
+            class="inline-flex"
+          />
           <span class="space">&nbsp;</span>
           <span>{{ invitedBy.username }}</span>
         </nuxt-link>
         <span>
           邀请您加入团队
           <nuxt-link :to="`/organization/${organization.slug}`" class="title-link">
-            {{ organization.name }} </nuxt-link>.
+            {{ organization.name }} </nuxt-link
+          >.
         </span>
       </template>
       <template v-else-if="type === 'status_change' && project">
@@ -76,14 +117,16 @@
       <template v-else-if="type === 'wiki_cache'">
         <div v-if="notification.body.type_ === 'review'">
           您管理的资源
-          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }}
+          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link"
+            >{{ project.title }}
           </nuxt-link>
           有用户提交修改百科的请求，请前往审核
         </div>
 
         <div v-if="notification.body.type_ === 'reject'">
           您提交的百科修改
-          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }}
+          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link"
+            >{{ project.title }}
           </nuxt-link>
           被该资源管理员拒绝
           <br />
@@ -92,14 +135,16 @@
         </div>
         <div v-if="notification.body.type_ === 'accept'">
           您提交的百科修改
-          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }}
+          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link"
+            >{{ project.title }}
           </nuxt-link>
           已通过审核
           <br />
         </div>
         <div v-if="notification.body.type_ === 'time_out'">
           您提交的百科修改
-          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link">{{ project.title }}
+          <nuxt-link :to="getProjectLink(project) + '/wikis'" target="_blank" class="title-link"
+            >{{ project.title }}
           </nuxt-link>
           {{ notification.body.msg }}
           <br />
@@ -107,27 +152,33 @@
       </template>
 
       <template v-else-if="type === 'forum'">
-
-        <nuxt-link :to="`/user/${notification.body.sender}`" class="title-link">{{ notification.body.sender
-          }}</nuxt-link> 在
-        <nuxt-link v-if="notification.body.forum_type === 'project'"
+        <nuxt-link :to="`/user/${notification.body.sender}`" class="title-link">{{
+          notification.body.sender
+        }}</nuxt-link>
+        在
+        <nuxt-link
+          v-if="notification.body.forum_type === 'project'"
           :to="`/project/${notification.body.project_id}/forum?id=${notification.body.number_of_posts}`"
-          class="title-link">
+          class="title-link"
+        >
           {{ notification.body.forum_title }}
         </nuxt-link>
-        <nuxt-link v-else :to="`/d/${notification.body.forum_id}?id=${notification.body.number_of_posts}`"
-          class="title-link">
+        <nuxt-link
+          v-else
+          :to="`/d/${notification.body.forum_id}?id=${notification.body.number_of_posts}`"
+          class="title-link"
+        >
           {{ notification.body.forum_title }}
         </nuxt-link>
 
         回复了您
         <br /><br />
-
       </template>
 
       <template v-else-if="type === 'moderator_message' && thread && project && !report">
         您的资源
-        <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link>, 收到版主的
+        <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link
+        >, 收到版主的
         <template v-if="notification.grouped_notifs"> 消息 </template>
         <template v-else>消息</template>
       </template>
@@ -144,7 +195,8 @@
           {{ project.title }}
         </nuxt-link>
         <nuxt-link v-else-if="user" :to="getUserLink(user)" class="title-link">
-          {{ user.username }} </nuxt-link>.
+          {{ user.username }} </nuxt-link
+        >.
       </template>
       <nuxt-link v-else :to="notification.link" class="title-link">
         <span v-html="renderString(notification.title)" />
@@ -153,21 +205,38 @@
     </div>
 
     <div v-if="hasBody" class="notification__body">
-      <ThreadSummary v-if="type === 'moderator_message' && thread" :thread="thread" :link="threadLink" :raised="raised"
-        :messages="getMessages()" class="thread-summary" :auth="auth" />
+      <ThreadSummary
+        v-if="type === 'moderator_message' && thread"
+        :thread="thread"
+        :link="threadLink"
+        :raised="raised"
+        :messages="getMessages()"
+        class="thread-summary"
+        :auth="auth"
+      />
       <div v-else-if="type === 'project_update'" class="version-list">
-        <div v-for="notif in (notification.grouped_notifs
-          ? [notification, ...notification.grouped_notifs]
-          : [notification]
-        ).filter((x) => x.extra_data.version)" :key="notif.id" class="version-link">
+        <div
+          v-for="notif in (notification.grouped_notifs
+            ? [notification, ...notification.grouped_notifs]
+            : [notification]
+          ).filter((x) => x.extra_data.version)"
+          :key="notif.id"
+          class="version-link"
+        >
           <VersionIcon />
-          <nuxt-link :to="getVersionLink(notif.extra_data.project, notif.extra_data.version)" class="text-link">
+          <nuxt-link
+            :to="getVersionLink(notif.extra_data.project, notif.extra_data.version)"
+            class="text-link"
+          >
             {{ notif.extra_data.version.name }}
           </nuxt-link>
           <span class="version-info">
             for
-            <Categories :categories="notif.extra_data.version.loaders" :type="notif.extra_data.project.project_type"
-              class="categories" />
+            <Categories
+              :categories="notif.extra_data.version.loaders"
+              :type="notif.extra_data.project.project_type"
+              class="categories"
+            />
             {{ $formatVersion(notif.extra_data.version.game_versions) }}
             <span v-tooltip="formatDateTime(notif.extra_data.version.date_published)" class="date">
               {{ fromNow(notif.extra_data.version.date_published) }}
@@ -181,107 +250,160 @@
     </div>
 
     <span class="notification__date">
-      <span v-if="notification.read" class="read-badge inline-flex">
-        <ReadIcon /> 已读
-      </span>
+      <span v-if="notification.read" class="read-badge inline-flex"> <ReadIcon /> 已读 </span>
       <span v-tooltip="formatDateTime(notification.created)" class="inline-flex">
         <CalendarIcon class="mr-1" /> 通知时间 {{ fromNow(notification.created) }}
       </span>
     </span>
     <div v-if="compact" class="notification__actions">
       <template v-if="type === 'team_invite' || type === 'organization_invite'">
-        <button v-tooltip="`接受`" class="iconified-button square-button brand-button button-transparent" @click="() => {
-          acceptTeamInvite(notification.body.team_id);
-          read();
-        }
-          ">
+        <button
+          v-tooltip="`接受`"
+          class="iconified-button square-button brand-button button-transparent"
+          @click="
+            () => {
+              acceptTeamInvite(notification.body.team_id);
+              read();
+            }
+          "
+        >
           <CheckIcon />
         </button>
-        <button v-tooltip="`拒绝`" class="iconified-button square-button danger-button button-transparent" @click="() => {
-          removeSelfFromTeam(notification.body.team_id);
-          read();
-        }
-          ">
+        <button
+          v-tooltip="`拒绝`"
+          class="iconified-button square-button danger-button button-transparent"
+          @click="
+            () => {
+              removeSelfFromTeam(notification.body.team_id);
+              read();
+            }
+          "
+        >
           <CrossIcon />
         </button>
       </template>
 
-
-      <button v-else-if="!notification.read" v-tooltip="`标记为已读`"
-        class="iconified-button square-button button-transparent" @click="read()">
+      <button
+        v-else-if="!notification.read"
+        v-tooltip="`标记为已读`"
+        class="iconified-button square-button button-transparent"
+        @click="read()"
+      >
         <CrossIcon />
       </button>
     </div>
     <div v-else class="notification__actions">
       <div v-if="type !== null" class="input-group">
-        <template v-if="type === 'wiki_cache' && notification.body.type_ === 'review' && !notification.read">
-          <button class="iconified-button brand-button" @click="() => {
-            router.push(`/project/${notification.body.project_id}/wikis`);
-            read();
-          }
-            ">
+        <template
+          v-if="type === 'wiki_cache' && notification.body.type_ === 'review' && !notification.read"
+        >
+          <button
+            class="iconified-button brand-button"
+            @click="
+              () => {
+                router.push(`/project/${notification.body.project_id}/wikis`);
+                read();
+              }
+            "
+          >
             前往审核
           </button>
         </template>
-        <template v-if="type === 'wiki_cache' && notification.body.type_ === 'reject' && !notification.read">
+        <template
+          v-if="type === 'wiki_cache' && notification.body.type_ === 'reject' && !notification.read"
+        >
           <button class="iconified-button brand-button" @click="again">重新编辑百科提交</button>
         </template>
         <template v-if="type === 'forum' && !notification.read">
-          <button class="iconified-button brand-button" @click="() => {
-            if (notification.body.forum_type === 'project') {
-              router.push(`/project/${notification.body.project_id}/forum?id=${notification.body.number_of_posts}`);
-            } else {
-              router.push(`/d/${notification.body.forum_id}?id=${notification.body.number_of_posts}`);
-            }
-            read();
-          }
-            ">
+          <button
+            class="iconified-button brand-button"
+            @click="
+              () => {
+                if (notification.body.forum_type === 'project') {
+                  router.push(
+                    `/project/${notification.body.project_id}/forum?id=${notification.body.number_of_posts}`,
+                  );
+                } else {
+                  router.push(
+                    `/d/${notification.body.forum_id}?id=${notification.body.number_of_posts}`,
+                  );
+                }
+                read();
+              }
+            "
+          >
             前往查看
           </button>
         </template>
-        <template v-if="(type === 'team_invite' || type === 'organization_invite') && !notification.read">
-          <button class="iconified-button brand-button" @click="() => {
-            acceptTeamInvite(notification.body.team_id);
-            read();
-          }
-            ">
+        <template
+          v-if="(type === 'team_invite' || type === 'organization_invite') && !notification.read"
+        >
+          <button
+            class="iconified-button brand-button"
+            @click="
+              () => {
+                acceptTeamInvite(notification.body.team_id);
+                read();
+              }
+            "
+          >
             <CheckIcon /> 接受
           </button>
-          <button class="iconified-button danger-button" @click="() => {
-            removeSelfFromTeam(notification.body.team_id);
-            read();
-          }
-            ">
+          <button
+            class="iconified-button danger-button"
+            @click="
+              () => {
+                removeSelfFromTeam(notification.body.team_id);
+                read();
+              }
+            "
+          >
             <CrossIcon /> 拒绝
           </button>
         </template>
 
-        <button v-else-if="!notification.read" class="iconified-button" :class="{ 'raised-button': raised }"
-          @click="read()">
+        <button
+          v-else-if="!notification.read"
+          class="iconified-button"
+          :class="{ 'raised-button': raised }"
+          @click="read()"
+        >
           <div v-if="type === 'wiki_cache' && notification.body.type_ === 'reject'">
             <CheckIcon /> 放弃修改并已读
           </div>
-          <div v-else>
-            <CheckIcon /> 标记为已读
-          </div>
+          <div v-else><CheckIcon /> 标记为已读</div>
         </button>
         <CopyCode v-if="flags.developerMode" :text="notification.id" />
       </div>
       <div v-else class="input-group">
-        <nuxt-link v-if="notification.link && notification.link !== '#'" class="iconified-button"
-          :class="{ 'raised-button': raised }" :to="notification.link" target="_blank">
+        <nuxt-link
+          v-if="notification.link && notification.link !== '#'"
+          class="iconified-button"
+          :class="{ 'raised-button': raised }"
+          :to="notification.link"
+          target="_blank"
+        >
           <ExternalIcon />
           打开链接
         </nuxt-link>
 
-        <button v-for="(action, actionIndex) in notification.actions" :key="actionIndex" class="iconified-button"
-          :class="{ 'raised-button': raised }" @click="performAction(notification, actionIndex)">
+        <button
+          v-for="(action, actionIndex) in notification.actions"
+          :key="actionIndex"
+          class="iconified-button"
+          :class="{ 'raised-button': raised }"
+          @click="performAction(notification, actionIndex)"
+        >
           <CheckIcon v-if="action.title === '接受'" />
           <CrossIcon v-else-if="action.title === '拒绝'" />
           {{ action.title }}
         </button>
-        <button v-if="notification.actions.length === 0 && !notification.read" class="iconified-button"
-          :class="{ 'raised-button': raised }" @click="performAction(notification, null)">
+        <button
+          v-if="notification.actions.length === 0 && !notification.read"
+          class="iconified-button"
+          :class="{ 'raised-button': raised }"
+          @click="performAction(notification, null)"
+        >
           <CheckIcon /> 标记为已读
         </button>
         <CopyCode v-if="flags.developerMode" :text="notification.id" />

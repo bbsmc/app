@@ -1,54 +1,62 @@
 <template>
   <div>
     <section class="universal-card">
-      <Breadcrumbs v-if="history" current-title="历史通知"
-        :link-stack="[{ href: `/dashboard/notifications`, label: '通知' }]" />
+      <Breadcrumbs
+        v-if="history"
+        current-title="历史通知"
+        :link-stack="[{ href: `/dashboard/notifications`, label: '通知' }]"
+      />
       <div class="header__row">
         <div class="header__title">
           <h2 v-if="history" class="text-2xl">历史通知</h2>
           <h2 v-else class="text-2xl">通知</h2>
         </div>
         <template v-if="!history">
-          <Button v-if="hasRead" @click="updateRoute()">
-            <HistoryIcon /> 查看历史通知
-          </Button>
+          <Button v-if="hasRead" @click="updateRoute()"> <HistoryIcon /> 查看历史通知 </Button>
           <Button v-if="notifications.length > 0" color="danger" @click="readAll()">
             <CheckCheckIcon /> 全部标记为已读
           </Button>
         </template>
       </div>
-      <Chips v-if="notifTypes.length > 1" v-model="selectedType" :items="notifTypes" :format-label="(x) => {
-        switch (x) {
-          case 'all': {
-            return '全部';
+      <Chips
+        v-if="notifTypes.length > 1"
+        v-model="selectedType"
+        :items="notifTypes"
+        :format-label="
+          (x) => {
+            switch (x) {
+              case 'all': {
+                return '全部';
+              }
+              case 'status_change': {
+                return '状态变更';
+              }
+              case 'moderator_message': {
+                return '版主消息';
+              }
+              case 'project_update': {
+                return '资源更新';
+              }
+              case 'team_invite': {
+                return '项目邀请';
+              }
+              case 'wiki_cache': {
+                return '百科';
+              }
+              case 'forum': {
+                return '论坛';
+              }
+              case 'organization_invite': {
+                return '团队邀请';
+              }
+              default: {
+                return x;
+              }
+            }
           }
-          case 'status_change': {
-            return '状态变更';
-          }
-          case 'moderator_message': {
-            return '版主消息';
-          }
-          case 'project_update': {
-            return '资源更新';
-          }
-          case 'team_invite': {
-            return '项目邀请';
-          }
-          case 'wiki_cache': {
-            return '百科';
-          }
-          case 'forum': {
-            return '论坛';
-          }
-          case 'organization_invite': {
-            return '团队邀请';
-          }
-          default: {
-            return x;
-          }
-        }
-      }
-        " :capitalize="false" />
+        "
+        :capitalize="false"
+      />
       <p v-if="pending">加载中...</p>
       <template v-else-if="error">
         <p>异常加载通知:</p>
@@ -57,9 +65,16 @@
         </pre>
       </template>
       <template v-else-if="notifications && notifications.length > 0">
-        <NotificationItem v-for="notification in notifications" :key="notification.id" :notifications="notifications"
-          class="universal-card recessed" :notification="notification" :auth="auth" raised
-          @update:notifications="() => refresh()" />
+        <NotificationItem
+          v-for="notification in notifications"
+          :key="notification.id"
+          :notifications="notifications"
+          class="universal-card recessed"
+          :notification="notification"
+          :auth="auth"
+          raised
+          @update:notifications="() => refresh()"
+        />
       </template>
       <p v-else>你没有收到任何消息.</p>
       <Pagination :page="page" :count="pages" @switch-page="changePage" />

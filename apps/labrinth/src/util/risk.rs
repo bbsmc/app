@@ -298,7 +298,7 @@ async fn text_risk(
     );
     let result = response_body.await.unwrap();
     if result.get("Result").is_some()
-        && result.get("Result").unwrap().get("Code").unwrap() == "0"
+        && result.get("Result").unwrap().get("Code").unwrap() == 0
     {
         let decision = result
             .get("Result")
@@ -388,7 +388,7 @@ async fn imasge_risk(
     );
     let result = response_body.await.unwrap();
     if result.get("Result").is_some()
-        && result.get("Result").unwrap().get("Code").unwrap() == "0"
+        && result.get("Result").unwrap().get("Code").unwrap() == 0
     {
         let decision = result
             .get("Result")

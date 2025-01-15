@@ -1,22 +1,22 @@
 <template>
-
-
-
   <div class="forum-container">
-
-    <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px;">
+    <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px">
       还没有任何回复，快来回复吧！
     </div>
 
     <!-- 帖子列表 -->
     <div class="posts-wrapper">
-      <div v-if="isMobile" style="margin: 10px; text-align: center;">
-        <button-styled color="green" @click="showNewReply">
-          发表新帖
-        </button-styled>
+      <div v-if="isMobile" style="margin: 10px; text-align: center">
+        <button-styled color="green" @click="showNewReply"> 发表新帖 </button-styled>
       </div>
-      <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
-        :data-floor-number="post.floor_number" class="card markdown-body">
+      <div
+        v-for="post in forum"
+        :id="`post-${post.floor_number}`"
+        :key="post.floor_number"
+        ref="postRefs"
+        :data-floor-number="post.floor_number"
+        class="card markdown-body"
+      >
         <div class="post-header">
           <!-- 用户信息区 -->
           <div class="user-info">
@@ -34,15 +34,26 @@
         </div>
 
         <!-- 如果是回复帖子，显示回复引用 -->
-        <div v-if="post.reply_content" class="reply-reference" @click="scrollToPost(post.replied_to)">
+        <div
+          v-if="post.reply_content"
+          class="reply-reference"
+          @click="scrollToPost(post.replied_to)"
+        >
           <div class="reply-info">
-            <img :src="post.reply_content.user_avatar" :alt="post.reply_content.user_name" class="reply-avatar" />
+            <img
+              :src="post.reply_content.user_avatar"
+              :alt="post.reply_content.user_name"
+              class="reply-avatar"
+            />
             <div class="reply-user-info">
               <span class="reply-username">{{ post.reply_content.user_name }}</span>
               <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
-          <div class="reply-quote" v-html="renderHighlightedString(post.reply_content.content)"></div>
+          <div
+            class="reply-quote"
+            v-html="renderHighlightedString(post.reply_content.content)"
+          ></div>
         </div>
 
         <!-- 帖子内容 -->
@@ -55,8 +66,14 @@
 
         <!-- 如果有回复，显示回复链接 -->
         <div v-if="post.replies.length > 0" class="replies-info">
-          <span v-for="reply in post.replies" :key="reply" class="reply-link" @click="scrollToPost(reply.floor_number)"
-            @mouseenter="showReplyPreview(reply)" @mouseleave="hideReplyPreview">
+          <span
+            v-for="reply in post.replies"
+            :key="reply"
+            class="reply-link"
+            @click="scrollToPost(reply.floor_number)"
+            @mouseenter="showReplyPreview(reply)"
+            @mouseleave="hideReplyPreview"
+          >
             #{{ reply.floor_number }}
           </span>
         </div>
@@ -74,8 +91,13 @@
       <div class="timeline-content">
         <div class="timeline-line">
           <div class="timeline-sections">
-            <div v-for="(section, index) in timelineSections" :key="index" class="timeline-section"
-              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`" @click="jumpToSection(index)"></div>
+            <div
+              v-for="(section, index) in timelineSections"
+              :key="index"
+              class="timeline-section"
+              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`"
+              @click="jumpToSection(index)"
+            ></div>
           </div>
         </div>
         <div class="timeline-position" :style="{ top: timelinePosition + '%' }">
@@ -115,7 +137,11 @@
           <button class="close-button" @click="cancelReply">×</button>
         </div>
         <div class="reply-form-content">
-          <MarkdownEditor v-model="replyContent" :on-image-upload="onUploadHandler" placeholder="输入回复内容..." />
+          <MarkdownEditor
+            v-model="replyContent"
+            :on-image-upload="onUploadHandler"
+            placeholder="输入回复内容..."
+          />
         </div>
         <div class="reply-form-actions">
           <button class="submit-button" :disabled="!replyContent.trim()" @click="submitReply">
@@ -141,7 +167,6 @@ const router = useRouter();
 const postRefs = ref([]);
 const currentPostId = ref(null);
 const auth = await useAuth();
-
 
 // 添加一个标志来控制观者是否应该更新 URL
 const shouldUpdateUrl = ref(true);
@@ -250,7 +275,10 @@ const fetchPosts = async (page) => {
       // sort: 'floor_number' // 移除排序参数
     });
 
-    const data = await useBaseFetch(`forum/${props.discussionId}/posts?${params}`, { apiVersion: 3, method: "GET" });
+    const data = await useBaseFetch(`forum/${props.discussionId}/posts?${params}`, {
+      apiVersion: 3,
+      method: "GET",
+    });
 
     // 确保返回的帖子按楼层号排序
     if (data?.posts) {
@@ -426,7 +454,7 @@ const forum = computed(() => displayedPosts.value);
 const props = defineProps({
   discussionId: {
     type: String,
-    default: () => (null),
+    default: () => null,
   },
 });
 
@@ -756,7 +784,6 @@ const submitReply = async () => {
   cancelReply();
   scrollToPost(newPost.floor_number);
   return;
-
 
   // 如果是回复帖子，更新被回复帖子的 replies 数组
   if (replyingTo.value.id !== "new") {

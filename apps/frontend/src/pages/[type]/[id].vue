@@ -1776,11 +1776,11 @@ const following = computed(
 
 const title = computed(
   () =>
-    `${project.value.title} - 我的世界 ${projectTypeDisplay.value == "Modpack" ? "整合包" : projectTypeDisplay.value}`,
+    `${project.value.title} - 我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value}`,
 );
 const description = computed(
   () =>
-    `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value == "Modpack" ? "整合包" : projectTypeDisplay.value} ${
+    `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value} ${
       project.value.title
     } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`,
 );

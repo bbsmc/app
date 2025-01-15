@@ -54,7 +54,7 @@ export const useTags = () =>
         actual: "announcement",
         id: "announcement",
         display: "公告",
-      }
+      },
     ],
     loaderData: {
       pluginLoaders: ["bukkit", "spigot", "paper", "purpur", "sponge", "folia"],

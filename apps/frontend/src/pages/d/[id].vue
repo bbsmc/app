@@ -29,23 +29,17 @@
 
         <div class="markdown-body" v-html="renderHighlightedString(forum.content)" />
       </div>
-      <ForumModal :discussion-id="forumId" style="padding: 10px;" />
+      <ForumModal :discussion-id="forumId" style="padding: 10px" />
     </div>
   </div>
-
-
 </template>
 
 <script setup>
-import { ButtonStyled } from "@modrinth/ui";
 import ForumModal from "~/components/ui/ForumModal.vue";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 
-
-const data = useNuxtApp();
-const router = useNativeRouter();
 const route = useNativeRoute();
 
 const forumId = route.params.id;
@@ -56,9 +50,7 @@ forum.value = await useBaseFetch(`forum/${forumId}`, {
 });
 
 console.log(forum.value);
-
 </script>
-
 
 <style scoped>
 .hero-container {
@@ -91,8 +83,6 @@ body:has(.game-page) .game-header {
 body:has(.game-page) .game-header .hero-container:after {
   background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
 }
-
-
 
 .game-header .hero-container:after {
   content: "";
@@ -139,7 +129,9 @@ body:has(.normal-page) .game-header {
 
 /* 添加 universal-card 的悬停效果 */
 .universal-card {
-  transition: box-shadow 0.3s, transform 0.3s;
+  transition:
+    box-shadow 0.3s,
+    transform 0.3s;
 }
 
 .universal-card:hover {

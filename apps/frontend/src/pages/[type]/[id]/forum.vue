@@ -47,7 +47,7 @@ async function openForumModal() {
       apiVersion: 3,
       method: "POST",
     });
-    props.project.forum = res.id;
+    emit("update:project", { ...props.project, forum: res.id });
     data.$notify({
       group: "main",
       title: "成功",

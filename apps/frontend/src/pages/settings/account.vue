@@ -1,48 +1,81 @@
 <template>
   <div>
-    <ModalConfirm ref="modal_confirm" title="你确定要注销该账户吗?"
-      description="这将会 **立即删除您的所有用户数据和关注**. 这不会删除您的已发布的资源. 注销后将无法恢复账户." proceed-label="删除此账户"
-      :confirmation-text="auth.user.username" :has-to-type="true" @proceed="deleteAccount" />
+    <ModalConfirm
+      ref="modal_confirm"
+      title="你确定要注销该账户吗?"
+      description="这将会 **立即删除您的所有用户数据和关注**. 这不会删除您的已发布的资源. 注销后将无法恢复账户."
+      proceed-label="删除此账户"
+      :confirmation-text="auth.user.username"
+      :has-to-type="true"
+      @proceed="deleteAccount"
+    />
     <Modal ref="changeEmailModal" :header="`${auth.user.email ? '修改' : '新增'} 电子邮箱`">
       <div class="universal-modal">
         <p>您的帐户信息不会公开显示</p>
         <label for="email-input"><span class="label__title">电子邮箱地址</span> </label>
-        <input id="email-input" v-model="email" maxlength="2048" type="email" :placeholder="`输入邮箱地址...`"
-          @keyup.enter="saveEmail()" />
+        <input
+          id="email-input"
+          v-model="email"
+          maxlength="2048"
+          type="email"
+          :placeholder="`输入邮箱地址...`"
+          @keyup.enter="saveEmail()"
+        />
         <div class="input-group push-right">
           <button class="iconified-button" @click="$refs.changeEmailModal.hide()">
             <XIcon />
             取消
           </button>
-          <button type="button" class="iconified-button brand-button" :disabled="!email" @click="saveEmail()">
+          <button
+            type="button"
+            class="iconified-button brand-button"
+            :disabled="!email"
+            @click="saveEmail()"
+          >
             <SaveIcon />
             保存
           </button>
         </div>
       </div>
     </Modal>
-    <Modal ref="managePhoneNumberModal" :header="`${auth.user.has_phonenumber ? '修改' : '设置'}手机号`">
+    <Modal
+      ref="managePhoneNumberModal"
+      :header="`${auth.user.has_phonenumber ? '修改' : '设置'}手机号`"
+    >
       <div class="universal-modal">
-
         <label for="new-phone-number"><span class="label__title">手机号</span></label>
-        <input id="new-phone-number" v-model="newPhoneNumber" maxlength="2048" type="text"
-          autocomplete="current-password" :placeholder="`${auth.user.has_phonenumber ? '修改' : '设置'}手机号`" />
+        <input
+          id="new-phone-number"
+          v-model="newPhoneNumber"
+          maxlength="2048"
+          type="text"
+          autocomplete="current-password"
+          :placeholder="`${auth.user.has_phonenumber ? '修改' : '设置'}手机号`"
+        />
 
         <!-- // 验证码 -->
         <!-- 验证码输入框右边加一个按钮验证码  -->
         <label for="verification-code"><span class="label__title">验证码</span></label>
         <div class="input-group">
-          <input id="verification-code" v-model="verificationCode" maxlength="20" type="text"
-            autocomplete="current-password" :placeholder="`验证码`" />
-          <button type="button" class="iconified-button" :disabled="isCooldown" @click="sendVerificationCode">
-            {{ isCooldown ? `重新发送(${cooldownTime})` : '发送验证码' }}
+          <input
+            id="verification-code"
+            v-model="verificationCode"
+            maxlength="20"
+            type="text"
+            autocomplete="current-password"
+            :placeholder="`验证码`"
+          />
+          <button
+            type="button"
+            class="iconified-button"
+            :disabled="isCooldown"
+            @click="sendVerificationCode"
+          >
+            {{ isCooldown ? `重新发送(${cooldownTime})` : "发送验证码" }}
           </button>
         </div>
 
-        <GeetestCaptcha ref="captcha" v-model="token" v-if="!token" />
-
-
-
+        <GeetestCaptcha v-if="!token" ref="captcha" v-model="token" />
 
         <p></p>
         <div class="input-group push-right">
@@ -50,17 +83,26 @@
             <XIcon />
             取消
           </button>
-          <button type="button" class="iconified-button brand-button"
-            :disabled="!verificationCode || verificationCode.length !== 6" @click="savePhoneNumber">
-            提交 </button>
+          <button
+            type="button"
+            class="iconified-button brand-button"
+            :disabled="!verificationCode || verificationCode.length !== 6"
+            @click="savePhoneNumber"
+          >
+            提交
+          </button>
         </div>
-
-
       </div>
     </Modal>
-    <Modal ref="managePasswordModal" :header="`${removePasswordMode ? '删除' : auth.user.has_password ? '修改' : '设置'}密码`">
+    <Modal
+      ref="managePasswordModal"
+      :header="`${removePasswordMode ? '删除' : auth.user.has_password ? '修改' : '设置'}密码`"
+    >
       <div class="universal-modal">
-        <ul v-if="newPassword !== confirmNewPassword && confirmNewPassword.length > 0" class="known-errors">
+        <ul
+          v-if="newPassword !== confirmNewPassword && confirmNewPassword.length > 0"
+          class="known-errors"
+        >
           <li>输入的密码不匹配！</li>
         </ul>
         <label v-if="removePasswordMode" for="old-password">
@@ -70,15 +112,34 @@
         <label v-else-if="auth.user.has_password" for="old-password">
           <span class="label__title">当前密码</span>
         </label>
-        <input v-if="auth.user.has_password" id="old-password" v-model="oldPassword" maxlength="2048" type="password"
-          autocomplete="current-password" :placeholder="`${removePasswordMode ? '确认' : '当前'} 密码`" />
+        <input
+          v-if="auth.user.has_password"
+          id="old-password"
+          v-model="oldPassword"
+          maxlength="2048"
+          type="password"
+          autocomplete="current-password"
+          :placeholder="`${removePasswordMode ? '确认' : '当前'} 密码`"
+        />
         <template v-if="!removePasswordMode">
           <label for="new-password"><span class="label__title">新密码</span></label>
-          <input id="new-password" v-model="newPassword" maxlength="2048" type="password" autocomplete="new-password"
-            placeholder="新密码" />
+          <input
+            id="new-password"
+            v-model="newPassword"
+            maxlength="2048"
+            type="password"
+            autocomplete="new-password"
+            placeholder="新密码"
+          />
           <label for="confirm-new-password"><span class="label__title">再次输入密码</span></label>
-          <input id="confirm-new-password" v-model="confirmNewPassword" maxlength="2048" type="password"
-            autocomplete="new-password" placeholder="再次输入一次新密码" />
+          <input
+            id="confirm-new-password"
+            v-model="confirmNewPassword"
+            maxlength="2048"
+            type="password"
+            autocomplete="new-password"
+            placeholder="再次输入一次新密码"
+          />
         </template>
         <p></p>
         <div class="input-group push-right">
@@ -87,21 +148,36 @@
             取消
           </button>
           <template v-if="removePasswordMode">
-            <button type="button" class="iconified-button danger-button" :disabled="!oldPassword" @click="savePassword">
+            <button
+              type="button"
+              class="iconified-button danger-button"
+              :disabled="!oldPassword"
+              @click="savePassword"
+            >
               <TrashIcon />
               删除密码
             </button>
           </template>
           <template v-else>
-            <button v-if="auth.user.has_password && auth.user.auth_providers.length > 0" type="button"
-              class="iconified-button danger-button" @click="removePasswordMode = true">
+            <button
+              v-if="auth.user.has_password && auth.user.auth_providers.length > 0"
+              type="button"
+              class="iconified-button danger-button"
+              @click="removePasswordMode = true"
+            >
               <TrashIcon />
               删除密码
             </button>
-            <button type="button" class="iconified-button brand-button" :disabled="newPassword.length == 0 ||
-              (auth.user.has_password && oldPassword.length == 0) ||
-              newPassword !== confirmNewPassword
-              " @click="savePassword">
+            <button
+              type="button"
+              class="iconified-button brand-button"
+              :disabled="
+                newPassword.length == 0 ||
+                (auth.user.has_password && oldPassword.length == 0) ||
+                newPassword !== confirmNewPassword
+              "
+              @click="savePassword"
+            >
               <SaveIcon />
               保存密码
             </button>
@@ -109,16 +185,26 @@
         </div>
       </div>
     </Modal>
-    <Modal ref="manageTwoFactorModal" :header="`${auth.user.has_totp && twoFactorStep === 0 ? 'Remove' : 'Setup'
-      } two-factor authentication`">
+    <Modal
+      ref="manageTwoFactorModal"
+      :header="`${
+        auth.user.has_totp && twoFactorStep === 0 ? 'Remove' : 'Setup'
+      } two-factor authentication`"
+    >
       <div class="universal-modal">
         <template v-if="auth.user.has_totp && twoFactorStep === 0">
           <label for="two-factor-code">
             <span class="label__title">Enter two-factor code</span>
             <span class="label__description">Please enter a two-factor code to proceed.</span>
           </label>
-          <input id="two-factor-code" v-model="twoFactorCode" maxlength="11" type="text" placeholder="Enter code..."
-            @keyup.enter="removeTwoFactor()" />
+          <input
+            id="two-factor-code"
+            v-model="twoFactorCode"
+            maxlength="11"
+            type="text"
+            placeholder="Enter code..."
+            @keyup.enter="removeTwoFactor()"
+          />
           <p v-if="twoFactorIncorrect" class="known-errors">The code entered is incorrect!</p>
           <div class="input-group push-right">
             <button class="iconified-button" @click="$refs.manageTwoFactorModal.hide()">
@@ -139,11 +225,18 @@
               <br /><br />
               Scan the QR code with <a href="https://authy.com/">Authy</a>,
               <a href="https://www.microsoft.com/en-us/security/mobile-authenticator-app">
-                Microsoft Authenticator</a>, or any other 2FA app to begin.
+                Microsoft Authenticator</a
+              >, or any other 2FA app to begin.
             </p>
-            <qrcode-vue v-if="twoFactorSecret" :value="`otpauth://totp/${encodeURIComponent(
-              auth.user.email,
-            )}?secret=${twoFactorSecret}&issuer=BBSMC`" :size="250" :margin="2" level="H" />
+            <qrcode-vue
+              v-if="twoFactorSecret"
+              :value="`otpauth://totp/${encodeURIComponent(
+                auth.user.email,
+              )}?secret=${twoFactorSecret}&issuer=BBSMC`"
+              :size="250"
+              :margin="2"
+              level="H"
+            />
             <p>
               If the QR code does not scan, you can manually enter the secret:
               <strong>{{ twoFactorSecret }}</strong>
@@ -152,11 +245,19 @@
           <template v-if="twoFactorStep === 1">
             <label for="verify-code">
               <span class="label__title">Verify code</span>
-              <span class="label__description">Enter the one-time code from authenticator to verify access.
+              <span class="label__description"
+                >Enter the one-time code from authenticator to verify access.
               </span>
             </label>
-            <input id="verify-code" v-model="twoFactorCode" maxlength="6" type="text" autocomplete="one-time-code"
-              placeholder="Enter code..." @keyup.enter="verifyTwoFactorCode()" />
+            <input
+              id="verify-code"
+              v-model="twoFactorCode"
+              maxlength="6"
+              type="text"
+              autocomplete="one-time-code"
+              placeholder="Enter code..."
+              @keyup.enter="verifyTwoFactorCode()"
+            />
             <p v-if="twoFactorIncorrect" class="known-errors">The code entered is incorrect!</p>
           </template>
           <template v-if="twoFactorStep === 2">
@@ -175,17 +276,27 @@
               <LeftArrowIcon />
               Back
             </button>
-            <button v-if="twoFactorStep !== 2" class="iconified-button" @click="$refs.manageTwoFactorModal.hide()">
+            <button
+              v-if="twoFactorStep !== 2"
+              class="iconified-button"
+              @click="$refs.manageTwoFactorModal.hide()"
+            >
               <XIcon />
               Cancel
             </button>
-            <button v-if="twoFactorStep <= 1" class="iconified-button brand-button"
-              @click="twoFactorStep === 1 ? verifyTwoFactorCode() : (twoFactorStep = 1)">
+            <button
+              v-if="twoFactorStep <= 1"
+              class="iconified-button brand-button"
+              @click="twoFactorStep === 1 ? verifyTwoFactorCode() : (twoFactorStep = 1)"
+            >
               <RightArrowIcon />
               Continue
             </button>
-            <button v-if="twoFactorStep === 2" class="iconified-button brand-button"
-              @click="$refs.manageTwoFactorModal.hide()">
+            <button
+              v-if="twoFactorStep === 2"
+              class="iconified-button brand-button"
+              @click="$refs.manageTwoFactorModal.hide()"
+            >
               <CheckIcon />
               Complete setup
             </button>
@@ -202,16 +313,21 @@
           </div>
           <div v-for="provider in authProviders" :key="provider.id" class="table-row">
             <div class="table-text table-cell">
-              <span>
-                <component :is="provider.icon" /> {{ provider.display }}
-              </span>
+              <span> <component :is="provider.icon" /> {{ provider.display }} </span>
             </div>
             <div class="table-text manage table-cell">
-              <button v-if="auth.user.auth_providers.includes(provider.id)" class="btn"
-                @click="removeAuthProvider(provider.id)">
+              <button
+                v-if="auth.user.auth_providers.includes(provider.id)"
+                class="btn"
+                @click="removeAuthProvider(provider.id)"
+              >
                 <TrashIcon /> Remove
               </button>
-              <a v-else class="btn" :href="`${getAuthUrl(provider.id, '/settings/account')}&token=${auth.token}`">
+              <a
+                v-else
+                class="btn"
+                :href="`${getAuthUrl(provider.id, '/settings/account')}&token=${auth.token}`"
+              >
                 <ExternalIcon /> Add
               </a>
             </div>
@@ -236,26 +352,29 @@
             更改<template v-if="auth.user.auth_providers.length > 0">或删除</template>您账户的手机号
           </span>
 
-          <span v-else class="label__description"> 根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息 </span>
+          <span v-else class="label__description">
+            根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息
+          </span>
         </label>
         <div>
-          <button class="iconified-button" @click="() => {
-            oldPassword = '';
-            newPassword = '';
-            confirmNewPassword = '';
-            removePasswordMode = false;
-            $refs.managePhoneNumberModal.show();
-          }
-            ">
+          <button
+            class="iconified-button"
+            @click="
+              () => {
+                oldPassword = '';
+                newPassword = '';
+                confirmNewPassword = '';
+                removePasswordMode = false;
+                $refs.managePhoneNumberModal.show();
+              }
+            "
+          >
             <KeyIcon />
             <template v-if="auth.user.has_phonenumber"> 修改手机号 </template>
             <template v-else> 设置手机号 </template>
           </button>
         </div>
       </div>
-
-
-
 
       <div class="adjacent-input">
         <label for="theme-selector">
@@ -279,19 +398,24 @@
         <label for="theme-selector">
           <span class="label__title">密码</span>
           <span v-if="auth.user.has_password" class="label__description">
-            更改<template v-if="auth.user.auth_providers.length > 0">或删除</template>您账户的登录密码
+            更改<template v-if="auth.user.auth_providers.length > 0">或删除</template
+            >您账户的登录密码
           </span>
           <span v-else class="label__description"> 设置密码来登录您的帐户。 </span>
         </label>
         <div>
-          <button class="iconified-button" @click="() => {
-            oldPassword = '';
-            newPassword = '';
-            confirmNewPassword = '';
-            removePasswordMode = false;
-            $refs.managePasswordModal.show();
-          }
-            ">
+          <button
+            class="iconified-button"
+            @click="
+              () => {
+                oldPassword = '';
+                newPassword = '';
+                confirmNewPassword = '';
+                removePasswordMode = false;
+                $refs.managePasswordModal.show();
+              }
+            "
+          >
             <KeyIcon />
             <template v-if="auth.user.has_password"> 修改密码 </template>
             <template v-else> 设置密码 </template>
@@ -349,7 +473,11 @@
       <p>
         一旦注销帐户，将无法恢复。注销帐户将从我们的服务器中删除所有附加数据（已发布的资源除外）。
       </p>
-      <button type="button" class="iconified-button danger-button" @click="$refs.modal_confirm.show()">
+      <button
+        type="button"
+        class="iconified-button danger-button"
+        @click="$refs.modal_confirm.show()"
+      >
         <TrashIcon />
         注销账户
       </button>
@@ -392,8 +520,7 @@ definePageMeta({
 const data = useNuxtApp();
 const auth = await useAuth();
 const token = ref("");
-const token_code = ref("");
-
+const tokenCode = ref("");
 
 const changeEmailModal = ref();
 const email = ref(auth.value.user.email);
@@ -430,7 +557,6 @@ const oldPassword = ref("");
 const newPassword = ref("");
 
 const newPhoneNumber = ref("");
-
 
 const confirmNewPassword = ref("");
 async function savePassword() {
@@ -558,7 +684,7 @@ async function deleteAccount() {
   stopLoading();
 }
 
-const verificationCode = ref('');
+const verificationCode = ref("");
 const isCooldown = ref(false);
 const cooldownTime = ref(90); // 冷却时间为90秒
 
@@ -569,34 +695,34 @@ async function sendVerificationCode() {
 
   if (!newPhoneNumber.value || newPhoneNumber.value.length !== 11) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
-      text: '请先输入正确的11位手机号',
-      type: 'error',
+      group: "main",
+      title: "发生错误",
+      text: "请先输入正确的11位手机号",
+      type: "error",
     });
     return;
   }
 
   if (!token.value) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
-      text: '请先点击下面的人机验证',
-      type: 'error',
+      group: "main",
+      title: "发生错误",
+      text: "请先点击下面的人机验证",
+      type: "error",
     });
     return;
   }
   // 发送验证码的逻辑
   try {
-    const res = await useBaseFetch('auth/phone_number_code', {
-      method: 'POST',
+    const res = await useBaseFetch("auth/phone_number_code", {
+      method: "POST",
       body: {
         phone_number: newPhoneNumber.value, // 假设你要发送到的手机号
         challenge: token.value,
       },
     });
-    token_code.value = res.token;
-    console.log(token_code.value);
+    tokenCode.value = res.token;
+    // console.log(tokenCode.value);
     // 启动冷却时间
     isCooldown.value = true;
     cooldownTime.value = 90; // 重置冷却时间为90秒
@@ -611,10 +737,10 @@ async function sendVerificationCode() {
   } catch (err) {
     // 处理错误
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error',
+      type: "error",
     });
   }
 }
@@ -622,44 +748,42 @@ async function sendVerificationCode() {
 async function savePhoneNumber() {
   if (!verificationCode.value || verificationCode.value.length !== 6) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
-      text: '请输入正确的6位验证码',
-      type: 'error',
+      group: "main",
+      title: "发生错误",
+      text: "请输入正确的6位验证码",
+      type: "error",
     });
     return;
   }
   try {
-    await useBaseFetch('auth/phone_number_bind', {
-      method: 'POST',
+    await useBaseFetch("auth/phone_number_bind", {
+      method: "POST",
       body: {
         code: verificationCode.value,
-        token: token_code.value,
+        token: tokenCode.value,
         phone_number: newPhoneNumber.value,
       },
     });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '手机号绑定成功',
-      type: 'success',
+      group: "main",
+      title: "成功",
+      text: "手机号绑定成功",
+      type: "success",
     });
     managePhoneNumberModal.value.hide();
     await useAuth(auth.value.token);
-    verificationCode.value = '';
-    newPhoneNumber.value = '';
-    token_code.value = '';
+    verificationCode.value = "";
+    newPhoneNumber.value = "";
+    tokenCode.value = "";
   } catch (err) {
     data.$notify({
-      group: 'main',
-      title: '发生错误',
+      group: "main",
+      title: "发生错误",
       text: err.data.description,
-      type: 'error',
+      type: "error",
     });
   }
 }
-
-
 </script>
 <style lang="scss" scoped>
 canvas {

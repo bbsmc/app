@@ -132,7 +132,7 @@ html {
 
   --tab-underline-hovered: #414146;
 
-  --color-button-bg: rgba(51,54,61,0.2);
+  --color-button-bg: rgba(51, 54, 61, 0.2);
   --color-button-text: var(--color-text);
   --color-button-bg-hover: #2d2d32;
   --color-button-text-hover: #ffffff;
@@ -189,8 +189,8 @@ html {
 
   .experimental-styles-within,
   &.experimental-styles-within {
-    --color-button-bg: rgba(51,54,61,0.2);
-    
+    --color-button-bg: rgba(51, 54, 61, 0.2);
+
     --color-platform-fabric: #dbb69b;
     --color-platform-quilt: #c796f9;
     --color-platform-forge: #959eef;
