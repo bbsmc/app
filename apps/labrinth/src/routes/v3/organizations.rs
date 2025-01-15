@@ -15,7 +15,6 @@ use crate::models::organizations::OrganizationId;
 use crate::models::pats::Scopes;
 use crate::models::teams::{OrganizationPermissions, ProjectPermissions};
 use crate::queue::session::AuthQueue;
-use crate::routes::v3::project_creation::CreateError;
 use crate::util::img::delete_old_images;
 use crate::util::routes::read_from_payload;
 use crate::util::validate::validation_errors_to_string;
@@ -118,7 +117,7 @@ pub async fn organization_create(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<HttpResponse, CreateError> {
+) -> Result<HttpResponse, ApiError> {
     let current_user = get_user_from_headers(
         &req,
         &**pool,
@@ -130,7 +129,7 @@ pub async fn organization_create(
     .1;
 
     new_organization.validate().map_err(|err| {
-        CreateError::ValidationError(validation_errors_to_string(err, None))
+        ApiError::Validation(validation_errors_to_string(err, None))
     })?;
 
     let mut transaction = pool.begin().await?;
@@ -150,7 +149,7 @@ pub async fn organization_create(
     )
     .await?;
     if !results.is_empty() {
-        return Err(CreateError::SlugCollision);
+        return Err(ApiError::InvalidInput("Slug 已被占用!".to_string()));
     }
 
     let organization_id = generate_organization_id(&mut transaction).await?;
@@ -169,6 +168,47 @@ pub async fn organization_create(
         }],
     };
     let team_id = team.insert(&mut transaction).await?;
+
+    let risk = crate::util::risk::check_text_risk(
+        &new_organization.name,
+        &current_user.username,
+        &format!("/organization/{}", new_organization.slug.clone()),
+        "创建组织-名称",
+        &redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "组织名称包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的组织名称".to_string(),
+        ));
+    }
+
+    let risk = crate::util::risk::check_text_risk(
+        &new_organization.description,
+        &current_user.username,
+        &format!("/organization/{}", new_organization.slug.clone()),
+        "创建组织-描述",
+        &redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "组织描述包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的组织描述".to_string(),
+        ));
+    }
+    let risk = crate::util::risk::check_text_risk(
+        &new_organization.slug,
+        &current_user.username,
+        &format!("/organization/{}", new_organization.slug.clone()),
+        "创建组织-slug",
+        &redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "组织URL包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的组织URL".to_string(),
+        ));
+    }
 
     // 创建组织
     let organization = Organization {
@@ -196,7 +236,7 @@ pub async fn organization_create(
             false,
         )]
     } else {
-        return Err(CreateError::InvalidInput(
+        return Err(ApiError::InvalidInput(
             "Failed to get created team.".to_owned(), // 应该永远不会发生
         ));
     };
@@ -426,6 +466,22 @@ pub async fn organizations_edit(
                         "您没有权限编辑此组织的描述！".to_string(),
                     ));
                 }
+                let risk = crate::util::risk::check_text_risk(
+                    description,
+                    &user.username,
+                    &format!(
+                        "/organization/{}",
+                        organization_item.slug.clone()
+                    ),
+                    "修改组织描述",
+                    &redis,
+                )
+                .await?;
+                if !risk {
+                    return Err(ApiError::InvalidInput(
+                        "组织描述包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的组织描述".to_string(),
+                    ));
+                }
                 sqlx::query!(
                     "
                     UPDATE organizations
@@ -445,6 +501,24 @@ pub async fn organizations_edit(
                         "您没有权限编辑此组织的名称！".to_string(),
                     ));
                 }
+
+                let risk = crate::util::risk::check_text_risk(
+                    name,
+                    &user.username,
+                    &format!(
+                        "/organization/{}",
+                        organization_item.slug.clone()
+                    ),
+                    "修改组织名称",
+                    &redis,
+                )
+                .await?;
+                if !risk {
+                    return Err(ApiError::InvalidInput(
+                        "组织名称包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的组织名称".to_string(),
+                    ));
+                }
+
                 sqlx::query!(
                     "
                     UPDATE organizations
@@ -504,6 +578,23 @@ pub async fn organizations_edit(
                     }
                 }
 
+                let risk = crate::util::risk::check_text_risk(
+                    slug,
+                    &user.username,
+                    &format!(
+                        "/organization/{}",
+                        organization_item.slug.clone()
+                    ),
+                    "修改组织URL",
+                    &redis,
+                )
+                .await?;
+                if !risk {
+                    return Err(ApiError::InvalidInput(
+                        "组织URL包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的组织URL".to_string(),
+                    ));
+                }
+
                 sqlx::query!(
                     "
                     UPDATE organizations
@@ -558,9 +649,7 @@ pub async fn organization_delete(
         database::models::Organization::get(&string, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的组织不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的组织不存在！".to_string())
             })?;
 
     if !user.role.is_admin() {
@@ -574,9 +663,7 @@ pub async fn organization_delete(
             .await
             .map_err(ApiError::Database)?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的组织不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的组织不存在！".to_string())
             })?;
 
         let permissions = OrganizationPermissions::get_permissions_by_role(
@@ -587,7 +674,7 @@ pub async fn organization_delete(
 
         if !permissions.contains(OrganizationPermissions::DELETE_ORGANIZATION) {
             return Err(ApiError::CustomAuthentication(
-                    "您没有权限删除此组织！".to_string(),
+                "您没有权限删除此组织！".to_string(),
             ));
         }
     }
@@ -697,9 +784,7 @@ pub async fn organization_projects_add(
         database::models::Organization::get(&info, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的组织不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的组织不存在！".to_string())
             })?;
 
     let project_item = database::models::Project::get(
@@ -708,11 +793,7 @@ pub async fn organization_projects_add(
         &redis,
     )
     .await?
-    .ok_or_else(|| {
-        ApiError::InvalidInput(
-            "指定的项目不存在！".to_string(),
-        )
-    })?;
+    .ok_or_else(|| ApiError::InvalidInput("指定的项目不存在！".to_string()))?;
     if project_item.inner.organization_id.is_some() {
         return Err(ApiError::InvalidInput(
             "指定的项目已由组织拥有！".to_string(),
@@ -728,9 +809,7 @@ pub async fn organization_projects_add(
         )
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "您不是此项目的成员！".to_string(),
-            )
+            ApiError::InvalidInput("您不是此项目的成员！".to_string())
         })?;
     let organization_team_member =
         database::models::TeamMember::get_from_user_id_organization(
@@ -741,9 +820,7 @@ pub async fn organization_projects_add(
         )
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "您不是此组织的成员！".to_string(),
-            )
+            ApiError::InvalidInput("您不是此组织的成员！".to_string())
         })?;
 
     // Require ownership of a project to add it to an organization
@@ -858,18 +935,14 @@ pub async fn organization_projects_remove(
         database::models::Organization::get(&organization_id, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的组织不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的组织不存在！".to_string())
             })?;
 
     let project_item =
         database::models::Project::get(&project_id, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的项目不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的项目不存在！".to_string())
             })?;
 
     if !project_item
@@ -891,9 +964,7 @@ pub async fn organization_projects_remove(
         )
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "您不是此组织的成员！".to_string(),
-            )
+            ApiError::InvalidInput("您不是此组织的成员！".to_string())
         })?;
 
     let permissions = OrganizationPermissions::get_permissions_by_role(
@@ -911,9 +982,7 @@ pub async fn organization_projects_remove(
         )
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的用户不是此组织的成员！".to_string(),
-            )
+            ApiError::InvalidInput("指定的用户不是此组织的成员！".to_string())
         })?;
 
         // 然后，我们获取项目的团队成员和该用户（如果存在）
@@ -1040,9 +1109,7 @@ pub async fn organization_icon_edit(
         database::models::Organization::get(&string, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的组织不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的组织不存在！".to_string())
             })?;
 
     if !user.role.is_mod() {
@@ -1074,12 +1141,8 @@ pub async fn organization_icon_edit(
     )
     .await?;
 
-    let bytes = read_from_payload(
-        &mut payload,
-        262144,
-        "图标必须小于256KiB",
-    )
-    .await?;
+    let bytes =
+        read_from_payload(&mut payload, 262144, "图标必须小于256KiB").await?;
 
     let organization_id: OrganizationId = organization_item.id.into();
     let upload_result = crate::util::img::upload_image_optimized(
@@ -1089,6 +1152,12 @@ pub async fn organization_icon_edit(
         Some(96),
         Some(1.0),
         &***file_host,
+        crate::util::img::UploadImagePos {
+            pos: "团队头像".to_string(),
+            url: format!("/organization/{}", organization_id),
+            username: user.username.clone(),
+        },
+        &redis,
     )
     .await?;
 
@@ -1142,9 +1211,7 @@ pub async fn delete_organization_icon(
         database::models::Organization::get(&string, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "指定的组织不存在！".to_string(),
-                )
+                ApiError::InvalidInput("指定的组织不存在！".to_string())
             })?;
 
     if !user.role.is_mod() {

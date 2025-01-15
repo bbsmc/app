@@ -273,7 +273,7 @@ pub async fn donation_platform_list(
                                 // 我们将其首字母大写以重现旧的行为，并进行一些特殊处理。
                                 // 在 v3 中，short 和 name 的区别不再被识别。
                                 name: match p.name.as_str() {
-                                    "bmac" => "Buy Me A Coffee".to_string(),    
+                                    "bmac" => "Buy Me A Coffee".to_string(),
                                     "github" => "GitHub Sponsors".to_string(),
                                     "ko-fi" => "Ko-fi".to_string(),
                                     "paypal" => "PayPal".to_string(),

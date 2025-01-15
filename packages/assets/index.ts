@@ -369,3 +369,4 @@ export const LoaderIcon = _LoaderIcon
 export const ImportIcon = _ImportIcon
 export const CardIcon = _CardIcon
 export const SparklesIcon = _SparklesIcon
+export const MessageIcon = _MessageIcon

@@ -683,9 +683,7 @@ async fn upload_file_to_version_inner(
     .await?
     .is_none()
     {
-        return Err(CreateError::InvalidInput(
-            "提供的项目id无效".to_string(),
-        ));
+        return Err(CreateError::InvalidInput("提供的项目id无效".to_string()));
     }
 
     if !user.role.is_admin() {
@@ -742,9 +740,7 @@ async fn upload_file_to_version_inner(
         let result = async {
             let content_disposition = field.content_disposition().clone();
             let name = content_disposition.get_name().ok_or_else(|| {
-                CreateError::MissingValueError(
-                    "缺少内容名称".to_string(),
-                )
+                CreateError::MissingValueError("缺少内容名称".to_string())
             })?;
 
             if name == "data" {

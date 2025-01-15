@@ -49,6 +49,7 @@ pub struct User {
     pub email: Option<String>,
     pub email_verified: Option<bool>,
     pub has_password: Option<bool>,
+    pub has_phonenumber: Option<bool>,
     pub has_totp: Option<bool>,
     pub payout_data: Option<UserPayoutData>,
     pub stripe_customer_id: Option<String>,
@@ -84,6 +85,7 @@ impl From<DBUser> for User {
             payout_data: None,
             auth_providers: None,
             has_password: None,
+            has_phonenumber: None,
             has_totp: None,
             github_id: None,
             stripe_customer_id: None,
@@ -131,6 +133,7 @@ impl User {
             badges: db_user.badges,
             auth_providers: Some(auth_providers),
             has_password: Some(db_user.password.is_some()),
+            has_phonenumber: Some(db_user.phone_number.is_some()),
             has_totp: Some(db_user.totp_secret.is_some()),
             github_id: None,
             payout_data: Some(UserPayoutData {

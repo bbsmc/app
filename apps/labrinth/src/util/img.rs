@@ -4,6 +4,7 @@ use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::images::ImageContext;
 use crate::routes::ApiError;
+
 use color_thief::ColorFormat;
 use image::imageops::FilterType;
 use image::{
@@ -40,6 +41,15 @@ pub struct UploadImageResult {
     pub color: Option<u32>,
 }
 
+pub struct UploadImagePos {
+    // 应用场景
+    pub pos: String,
+    // 应该场景地址
+    pub url: String,
+
+    pub username: String,
+}
+
 pub async fn upload_image_optimized(
     upload_folder: &str,
     bytes: bytes::Bytes,
@@ -47,6 +57,8 @@ pub async fn upload_image_optimized(
     target_width: Option<u32>,
     min_aspect_ratio: Option<f32>,
     file_host: &dyn FileHost,
+    pos: UploadImagePos,
+    redis: &RedisPool,
 ) -> Result<UploadImageResult, ApiError> {
     let content_type = crate::util::ext::get_image_content_type(file_extension)
         .ok_or_else(|| {
@@ -97,6 +109,21 @@ pub async fn upload_image_optimized(
         .await?;
 
     let url = format!("{}/{}", cdn_url, upload_data.file_name);
+
+    let risk = crate::util::risk::check_image_risk(
+        &url,
+        &pos.url,
+        &pos.username,
+        &pos.pos,
+        redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "图片包含敏感内容，已被记录该次提交，请勿在本网站使用涉及敏感或违规的图片".to_string(),
+        ));
+    }
+
     Ok(UploadImageResult {
         url: processed_upload_data
             .clone()

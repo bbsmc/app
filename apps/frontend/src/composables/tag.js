@@ -44,6 +44,18 @@ export const useTags = () =>
         display: "模组包/整合包",
       },
     ],
+    forumTypes: [
+      {
+        actual: "chat",
+        id: "chat",
+        display: "矿工茶馆",
+      },
+      {
+        actual: "announcement",
+        id: "announcement",
+        display: "公告",
+      }
+    ],
     loaderData: {
       pluginLoaders: ["bukkit", "spigot", "paper", "purpur", "sponge", "folia"],
       pluginPlatformLoaders: ["bungeecord", "waterfall", "velocity"],

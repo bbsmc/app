@@ -65,13 +65,13 @@ pub struct SearchConfig {
 }
 
 impl SearchConfig {
-    // Panics if the environment variables are not set,
-    // but these are already checked for on startup.
+    // 如果环境变量未设置，则抛出错误，
+    // 但这些错误已经在启动时检查过了。
     pub fn new(meta_namespace: Option<String>) -> Self {
         let address =
-            dotenvy::var("MEILISEARCH_ADDR").expect("MEILISEARCH_ADDR not set");
+            dotenvy::var("MEILISEARCH_ADDR").expect("MEILISEARCH_ADDR 未设置");
         let key =
-            dotenvy::var("MEILISEARCH_KEY").expect("MEILISEARCH_KEY not set");
+            dotenvy::var("MEILISEARCH_KEY").expect("MEILISEARCH_KEY 未设置");
 
         Self {
             address,
@@ -111,20 +111,20 @@ pub struct UploadSearchProject {
     pub license: String,
     pub gallery: Vec<String>,
     pub featured_gallery: Option<String>,
-    /// RFC 3339 formatted creation date of the project
+    /// RFC 3339 格式的项目创建日期
     pub date_created: DateTime<Utc>,
-    /// Unix timestamp of the creation date of the project
+    /// 项目创建日期的 Unix 时间戳
     pub created_timestamp: i64,
-    /// RFC 3339 formatted date/time of last major modification (update)
+    /// RFC 3339 格式的项目最后修改日期
     pub date_modified: DateTime<Utc>,
-    /// Unix timestamp of the last major modification
+    /// 项目最后修改日期的 Unix 时间戳
     pub modified_timestamp: i64,
     pub open_source: bool,
     pub color: Option<u32>,
 
-    // Hidden fields to get the Project model out of the search results.
-    pub loaders: Vec<String>, // Search uses loaders as categories- this is purely for the Project model.
-    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // Aggregation of loader_fields from all versions of the project, allowing for reconstruction of the Project model.
+    // 隐藏字段，用于从搜索结果中获取 Project 模型。
+    pub loaders: Vec<String>, // Search 使用加载器作为类别- 这纯粹是为了 Project 模型。
+    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // 从项目所有版本的加载器字段中聚合，允许重建 Project 模型。
 
     #[serde(flatten)]
     pub loader_fields: HashMap<String, Vec<serde_json::Value>>,
@@ -152,18 +152,18 @@ pub struct ResultSearchProject {
     pub downloads: i32,
     pub follows: i32,
     pub icon_url: Option<String>,
-    /// RFC 3339 formatted creation date of the project
+    /// RFC 3339 格式的项目创建日期
     pub date_created: String,
-    /// RFC 3339 formatted modification date of the project
+    /// RFC 3339 格式的项目最后修改日期
     pub date_modified: String,
     pub license: String,
     pub gallery: Vec<String>,
     pub featured_gallery: Option<String>,
     pub color: Option<u32>,
 
-    // Hidden fields to get the Project model out of the search results.
+    // 用于从搜索结果中获取 Project 模型的隐藏字段。
     pub loaders: Vec<String>, // Search uses loaders as categories- this is purely for the Project model.
-    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // Aggregation of loader_fields from all versions of the project, allowing for reconstruction of the Project model.
+    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // 从项目所有版本的加载器字段中聚合，允许重建 Project 模型。
 
     #[serde(flatten)]
     pub loader_fields: HashMap<String, Vec<serde_json::Value>>,

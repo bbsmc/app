@@ -16,6 +16,7 @@ use crate::util::captcha::check_hcaptcha;
 use crate::util::env::parse_strings_from_var;
 use crate::util::ext::get_image_ext;
 use crate::util::img::upload_image_optimized;
+use crate::util::phone::send_phone_number_code;
 use crate::util::validate::{validation_errors_to_string, RE_URL_SAFE};
 use actix_web::web::{scope, Data, Payload, Query, ServiceConfig};
 use actix_web::{delete, get, patch, post, web, HttpRequest, HttpResponse};
@@ -24,6 +25,7 @@ use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use base64::Engine;
 use chrono::{Duration, Utc};
+use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use reqwest::header::AUTHORIZATION;
@@ -53,7 +55,9 @@ pub fn config(cfg: &mut ServiceConfig) {
             .service(resend_verify_email)
             .service(set_email)
             .service(verify_email)
-            .service(subscribe_newsletter),
+            .service(subscribe_newsletter)
+            .service(phone_number_code)
+            .service(phone_number_bind),
     );
 }
 
@@ -145,6 +149,12 @@ impl TempUser {
                         Some(96),
                         Some(1.0),
                         &**file_host,
+                        crate::util::img::UploadImagePos {
+                            pos: "注册用户".to_string(),
+                            url: format!("/user/{}", &self.username),
+                            username: self.username.clone(),
+                        },
+                        redis,
                     )
                     .await;
 
@@ -235,6 +245,7 @@ impl TempUser {
                 badges: Badges::default(),
                 wiki_ban_time: Default::default(),
                 wiki_overtake_count: 0,
+                phone_number: None,
             }
             .insert(transaction)
             .await?;
@@ -1558,6 +1569,7 @@ pub async fn create_account_with_password(
         badges: Badges::default(),
         wiki_ban_time: Default::default(),
         wiki_overtake_count: 0,
+        phone_number: None,
     }
     .insert(&mut transaction)
     .await?;
@@ -1661,6 +1673,172 @@ pub async fn login_password(
 
         Ok(HttpResponse::Ok().json(res))
     }
+}
+
+#[derive(Deserialize, Validate)]
+pub struct PhoneNumberCode {
+    pub phone_number: String,
+    pub challenge: Challenge,
+}
+
+#[post("phone_number_code")]
+pub async fn phone_number_code(
+    req: HttpRequest,
+    pool: Data<PgPool>,
+    redis: Data<RedisPool>,
+    phone_number_code: web::Json<PhoneNumberCode>,
+    session_queue: Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    if !check_hcaptcha(&phone_number_code.challenge).await? {
+        return Err(ApiError::Turnstile);
+    }
+    let user = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::USER_AUTH_WRITE]),
+    )
+    .await?
+    .1;
+
+    if user.has_phonenumber.unwrap_or(false) {
+        let user_ = if let Some(user_) =
+            crate::database::models::User::get(&user.username, &**pool, &redis)
+                .await?
+        {
+            user_
+        } else {
+            let user_ = crate::database::models::User::get_email(
+                &user.username,
+                &**pool,
+            )
+            .await?
+            .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+
+            crate::database::models::User::get_id(user_, &**pool, &redis)
+                .await?
+                .ok_or_else(|| AuthenticationError::InvalidCredentials)?
+        };
+        if user_.phone_number == Some(phone_number_code.phone_number.clone()) {
+            return Err(ApiError::InvalidInput(
+                "两次修改的手机号相同，请重新输入".to_string(),
+            ));
+        }
+    }
+
+    // 判断 90秒内是否发送过短信
+    let mut conn = redis.connect().await?;
+    let namespace = "phone_number_user_last_send".to_string();
+    let value = conn.get(&namespace, &user.id.to_string()).await?;
+    if value.is_some() {
+        return Err(ApiError::InvalidInput("90秒内已发送过短信".to_string()));
+    }
+
+    // 随机生成 6位数字
+    let code = rand::thread_rng().gen_range(100000..999999);
+
+    // 生成UUID作为key
+    let token = uuid::Uuid::new_v4().to_string();
+
+    conn.set("phone_number_code", &token, &code.to_string(), Some(300))
+        .await?;
+
+    conn.set(
+        "phone_number_cache",
+        &token,
+        &phone_number_code.phone_number,
+        Some(300),
+    )
+    .await?;
+    send_phone_number_code(&phone_number_code.phone_number, &code.to_string())
+        .await?;
+
+    //  记录90秒内发送过短信
+    conn.set(&namespace, &user.id.to_string(), &token, Some(90))
+        .await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "token": token,
+    })))
+}
+
+#[derive(Deserialize, Validate)]
+pub struct PhoneNumberBind {
+    pub phone_number: String,
+    pub code: String,
+    pub token: String,
+}
+
+#[post("phone_number_bind")]
+pub async fn phone_number_bind(
+    req: HttpRequest,
+    pool: Data<PgPool>,
+    redis: Data<RedisPool>,
+    phone_number_bind: web::Json<PhoneNumberBind>,
+    session_queue: Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let user = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::USER_AUTH_WRITE]),
+    )
+    .await?
+    .1;
+    let mut conn = redis.connect().await?;
+    let namespace_code = "phone_number_code".to_string();
+    let namespace_cache = "phone_number_cache".to_string();
+    let value_code =
+        conn.get(&namespace_code, &phone_number_bind.token).await?;
+    let value_cache =
+        conn.get(&namespace_cache, &phone_number_bind.token).await?;
+    if value_code.is_none() || value_cache.is_none() {
+        return Err(ApiError::InvalidInput("验证码已超时".to_string()));
+    }
+
+    if value_code.unwrap() != phone_number_bind.code {
+        return Err(ApiError::InvalidInput("验证码错误".to_string()));
+    }
+
+    if value_cache.unwrap() != phone_number_bind.phone_number {
+        return Err(ApiError::InvalidInput("手机号错误".to_string()));
+    }
+
+    let mut transaction = pool.begin().await?;
+
+    sqlx::query!(
+        "
+        UPDATE users
+        SET phone_number = $1
+        WHERE (id = $2)
+        ",
+        phone_number_bind.phone_number,
+        user.id.0 as i64,
+    )
+    .execute(&mut *transaction)
+    .await?;
+
+    if let Some(user_email) = user.email {
+        send_email(
+            user_email,
+            "手机号已绑定",
+            &format!("您的账户手机号已更新为 {}。", phone_number_bind.phone_number),
+            "如果不是您进行的更改，请立即通过我们的电子邮件 (support@bbsmc.net) 联系我们。",
+            None,
+        )?;
+    }
+
+    transaction.commit().await?;
+
+    crate::database::models::User::clear_caches(
+        &[(user.id.into(), None)],
+        &redis,
+    )
+    .await?;
+
+    Ok(HttpResponse::NoContent().finish())
 }
 
 #[derive(Deserialize, Validate)]

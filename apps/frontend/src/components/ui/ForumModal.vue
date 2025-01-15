@@ -657,6 +657,28 @@ const replyContent = ref("");
 
 // 显示回复表单
 const showReplyForm = (post) => {
+  if (!auth.value.user) {
+    data.$notify({
+      group: "main",
+      title: "未登录",
+      text: "</br>请先登录或创建账号",
+      type: "error",
+    });
+    router.push(`/auth/sign-in`);
+    return;
+  }
+
+  if (!auth.value.user.has_phonenumber) {
+    data.$notify({
+      group: "main",
+      title: "未绑定手机号",
+      text: "</br>根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
+      type: "error",
+    });
+    router.push(`/settings/account`);
+    return;
+  }
+
   replyingTo.value = post;
   replyContent.value = "";
 };
@@ -669,6 +691,28 @@ const cancelReply = () => {
 
 // 修改发表新回复的函数
 const showNewReply = () => {
+  if (!auth.value.user) {
+    data.$notify({
+      group: "main",
+      title: "未登录",
+      text: "</br>请先登录或创建账号",
+      type: "error",
+    });
+    router.push(`/auth/sign-in`);
+    return;
+  }
+
+  if (!auth.value.user.has_phonenumber) {
+    data.$notify({
+      group: "main",
+      title: "未绑定手机号",
+      text: "</br>根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
+      type: "error",
+    });
+    router.push(`/settings/account`);
+    return;
+  }
+
   // 直接显示回复表单，不设置 replyingTo
   replyingTo.value = { id: "new" }; // 设置一个特殊值表示新帖子
   replyContent.value = "";
@@ -1040,14 +1084,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .reply-reference {
   margin: 8px 16px;
   padding: 8px 12px;
-  background: #2d3139;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .reply-reference:hover {
-  background: #363b44;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .reply-info {

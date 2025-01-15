@@ -10,7 +10,6 @@ use crate::models::ids::base62_impl::parse_base62;
 use crate::models::ids::{CollectionId, ProjectId};
 use crate::models::pats::Scopes;
 use crate::queue::session::AuthQueue;
-use crate::routes::v3::project_creation::CreateError;
 use crate::routes::ApiError;
 use crate::util::img::delete_old_images;
 use crate::util::routes::read_from_payload;
@@ -62,7 +61,7 @@ pub async fn collection_create(
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     session_queue: Data<AuthQueue>,
-) -> Result<HttpResponse, CreateError> {
+) -> Result<HttpResponse, ApiError> {
     let collection_create_data = collection_create_data.into_inner();
 
     // 当前登录用户
@@ -77,7 +76,7 @@ pub async fn collection_create(
     .1;
 
     collection_create_data.validate().map_err(|err| {
-        CreateError::InvalidInput(validation_errors_to_string(err, None))
+        ApiError::Validation(validation_errors_to_string(err, None))
     })?;
 
     let mut transaction = client.begin().await?;
@@ -94,6 +93,39 @@ pub async fn collection_create(
     .into_iter()
     .map(|x| x.inner.id.into())
     .collect::<Vec<ProjectId>>();
+
+    // 检查收藏夹名称
+    let risk = crate::util::risk::check_text_risk(
+        &collection_create_data.name,
+        &current_user.username,
+        &format!("/collection/{}", collection_id.clone()),
+        "创建收藏夹-名称",
+        &redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "收藏夹名称包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的收藏夹名称".to_string(),
+        ));
+    }
+
+    // 检查收藏夹描述
+    let risk = crate::util::risk::check_text_risk(
+        &collection_create_data
+            .description
+            .clone()
+            .unwrap_or_default(),
+        &current_user.username,
+        &format!("/collection/{}", collection_id.clone()),
+        "创建收藏夹-描述",
+        &redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "收藏夹描述包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的收藏夹描述".to_string(),
+        ));
+    }
 
     let collection_builder_actual = collection_item::CollectionBuilder {
         collection_id: collection_id.into(),
@@ -415,12 +447,8 @@ pub async fn collection_icon_edit(
     )
     .await?;
 
-    let bytes = read_from_payload(
-        &mut payload,
-        262144,
-        "Icons must be smaller than 256KiB",
-    )
-    .await?;
+    let bytes =
+        read_from_payload(&mut payload, 262144, "头像必须小于256KiB").await?;
 
     let collection_id: CollectionId = collection_item.id.into();
     let upload_result = crate::util::img::upload_image_optimized(
@@ -430,6 +458,12 @@ pub async fn collection_icon_edit(
         Some(96),
         Some(1.0),
         &***file_host,
+        crate::util::img::UploadImagePos {
+            pos: "收藏夹头像".to_string(),
+            url: format!("/collection/{}", collection_id),
+            username: user.username.clone(),
+        },
+        &redis,
     )
     .await?;
 

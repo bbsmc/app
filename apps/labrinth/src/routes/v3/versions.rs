@@ -277,7 +277,7 @@ pub async fn version_download(
     .map(|x| x.1)
     .ok();
     let user_id = if let Some(user_option) = user_option {
-        user_option.id.0 as u64
+        user_option.id.0
     } else {
         0
     };
@@ -318,9 +318,7 @@ pub async fn version_download(
         }
         let url = version_item.disks.first().unwrap().url.clone();
         let url = url::Url::parse(&url).map_err(|_| {
-            ApiError::InvalidInput(
-                "无效的下载URL!".to_string(),
-            )
+            ApiError::InvalidInput("无效的下载URL!".to_string())
         })?;
 
         analytics_queue.add_download(Download {

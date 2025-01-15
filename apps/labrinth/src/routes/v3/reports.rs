@@ -66,9 +66,7 @@ pub async fn report_create(
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&item.map_err(|_| {
-            ApiError::InvalidInput(
-                "解析请求体时出错!".to_string(),
-            )
+            ApiError::InvalidInput("解析请求体时出错!".to_string())
         })?);
     }
     let new_report: CreateReport = serde_json::from_slice(bytes.as_ref())?;

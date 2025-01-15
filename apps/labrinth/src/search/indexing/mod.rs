@@ -338,13 +338,13 @@ async fn update_and_add_to_index(
 
 pub async fn add_projects(
     indices: &[Index],
-    projects: &Vec<UploadSearchProject>,
+    projects: &[UploadSearchProject],
     additional_fields: Vec<String>,
     config: &SearchConfig,
 ) -> Result<(), IndexingError> {
     let client = config.make_client();
     for index in indices {
-        update_and_add_to_index(&client, index, &projects, &additional_fields)
+        update_and_add_to_index(&client, index, projects, &additional_fields)
             .await?;
     }
 
@@ -353,13 +353,13 @@ pub async fn add_projects(
 
 fn default_settings() -> Settings {
     Settings::new()
-        .with_distinct_attribute("project_id")
-        .with_displayed_attributes(DEFAULT_DISPLAYED_ATTRIBUTES)
-        .with_searchable_attributes(DEFAULT_SEARCHABLE_ATTRIBUTES)
-        .with_sortable_attributes(DEFAULT_SORTABLE_ATTRIBUTES)
-        .with_filterable_attributes(DEFAULT_ATTRIBUTES_FOR_FACETING)
+        .with_distinct_attribute("project_id") // 设置唯一属性为 project_id
+        .with_displayed_attributes(DEFAULT_DISPLAYED_ATTRIBUTES) // 设置显示属性
+        .with_searchable_attributes(DEFAULT_SEARCHABLE_ATTRIBUTES) // 设置可搜索属性
+        .with_sortable_attributes(DEFAULT_SORTABLE_ATTRIBUTES) // 设置可排序属性
+        .with_filterable_attributes(DEFAULT_ATTRIBUTES_FOR_FACETING) // 设置可过滤属性
         .with_pagination(PaginationSetting {
-            max_total_hits: 2147483647,
+            max_total_hits: 2147483647, // 设置最大命中数为 2147483647
         })
 }
 

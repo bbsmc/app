@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    SELECT id, email,\n                        avatar_url, raw_avatar_url, username, bio,\n                        created, role, badges,\n                        github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,\n                        email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,\n                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time\n                    FROM users\n                    WHERE id = ANY($1) OR LOWER(username) = ANY($2)\n                    ",
+  "query": "\n                    SELECT id, email,\n                        avatar_url, raw_avatar_url, username, bio,\n                        created, role, badges,\n                        github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,\n                        email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,\n                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number\n                    FROM users\n                    WHERE id = ANY($1) OR LOWER(username) = ANY($2)\n                    ",
   "describe": {
     "columns": [
       {
@@ -127,6 +127,11 @@
         "ordinal": 24,
         "name": "wiki_ban_time",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 25,
+        "name": "phone_number",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
@@ -160,8 +165,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "4d72184951f1520899a2c39593086c59d557aa6c5be838553e7c254509f80e68"
+  "hash": "2e8b3034ff9b274065c7e3433c756047059a8c0b8db059efe46e42bb378e5776"
 }

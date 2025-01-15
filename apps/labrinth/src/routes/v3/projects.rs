@@ -349,6 +349,22 @@ pub async fn project_edit(
                         "您没有权限编辑此项目的名称！".to_string(),
                     ));
                 }
+                let risk = crate::util::risk::check_text_risk(
+                    name,
+                    &user.username,
+                    &format!(
+                        "/project/{}",
+                        project_item.inner.slug.clone().unwrap()
+                    ),
+                    "项目名称",
+                    &redis,
+                )
+                .await?;
+                if !risk {
+                    return Err(ApiError::InvalidInput(
+                        "项目名称包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目名称".to_string(),
+                    ));
+                }
 
                 sqlx::query!(
                     "
@@ -472,6 +488,23 @@ pub async fn project_edit(
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
                     return Err(ApiError::CustomAuthentication(
                         "您没有权限编辑此项目的摘要!".to_string(),
+                    ));
+                }
+
+                let risk = crate::util::risk::check_text_risk(
+                    summary,
+                    &user.username,
+                    &format!(
+                        "/project/{}",
+                        project_item.inner.slug.clone().unwrap()
+                    ),
+                    "项目摘要",
+                    &redis,
+                )
+                .await?;
+                if !risk {
+                    return Err(ApiError::InvalidInput(
+                        "项目摘要包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目摘要".to_string(),
                     ));
                 }
 
@@ -940,7 +973,7 @@ pub async fn project_edit(
                         || moderation_message_body.is_some())
                 {
                     return Err(ApiError::CustomAuthentication(
-                            "您没有权限编辑此项目的审核消息!".to_string(),
+                        "您没有权限编辑此项目的审核消息!".to_string(),
                     ));
                 }
 
@@ -961,6 +994,22 @@ pub async fn project_edit(
                 if !perms.contains(ProjectPermissions::EDIT_BODY) {
                     return Err(ApiError::CustomAuthentication(
                         "您没有权限编辑此项目的描述!".to_string(),
+                    ));
+                }
+                let risk = crate::util::risk::check_text_risk(
+                    description,
+                    &user.username,
+                    &format!(
+                        "/project/{}",
+                        project_item.inner.slug.clone().unwrap()
+                    ),
+                    "项目描述",
+                    &redis,
+                )
+                .await?;
+                if !risk {
+                    return Err(ApiError::InvalidInput(
+                        "项目描述包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目描述".to_string(),
                     ));
                 }
 
@@ -1060,7 +1109,7 @@ pub async fn edit_project_categories(
     if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
         let additional_str = if additional { "附加 " } else { "" };
         return Err(ApiError::CustomAuthentication(format!(
-            "您没有权限编辑此项目的 {additional_str}类别!".to_string()
+            "您没有权限编辑此项目的 {additional_str}类别!",
         )));
     }
 
@@ -1576,9 +1625,7 @@ pub async fn project_icon_edit(
     let project_item = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if !user.role.is_mod() {
@@ -1618,12 +1665,8 @@ pub async fn project_icon_edit(
     )
     .await?;
 
-    let bytes = read_from_payload(
-        &mut payload,
-        262144,
-        "图标必须小于 256KiB",
-    )
-    .await?;
+    let bytes =
+        read_from_payload(&mut payload, 262144, "图标必须小于 256KiB").await?;
 
     let project_id: ProjectId = project_item.inner.id.into();
     let upload_result = upload_image_optimized(
@@ -1633,6 +1676,12 @@ pub async fn project_icon_edit(
         Some(96),
         Some(1.0),
         &***file_host,
+        crate::util::img::UploadImagePos {
+            pos: "项目图标".to_string(),
+            url: format!("/project/{}", project_id),
+            username: user.username.clone(),
+        },
+        &redis,
     )
     .await?;
 
@@ -1686,9 +1735,7 @@ pub async fn delete_project_icon(
     let project_item = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if !user.role.is_mod() {
@@ -1792,9 +1839,7 @@ pub async fn add_gallery_item(
     let project_item = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if project_item.gallery_items.len() > 64 {
@@ -1837,7 +1882,7 @@ pub async fn add_gallery_item(
         read_from_payload(
             &mut payload,
             10 * (1 << 20),
-            "渲染图图片超过最大 2MiB.",
+            "渲染图图片超过最大 10MiB.",
         )
         .await?
     } else {
@@ -1857,6 +1902,12 @@ pub async fn add_gallery_item(
         Some(350),
         Some(1.0),
         &***file_host,
+        crate::util::img::UploadImagePos {
+            pos: "项目渲染图".to_string(),
+            url: format!("/project/{}", id),
+            username: "".to_string(),
+        },
+        &redis,
     )
     .await?;
 
@@ -1962,9 +2013,7 @@ pub async fn edit_gallery_item(
     let project_item = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if !user.role.is_mod() {
@@ -2124,9 +2173,7 @@ pub async fn delete_gallery_item(
     let project_item = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if !user.role.is_mod() {
@@ -2230,9 +2277,7 @@ pub async fn project_delete(
     let project = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if !user.role.is_admin() {
@@ -2329,9 +2374,7 @@ pub async fn project_follow(
     let result = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     let user_id: db_ids::UserId = user.id.into();
@@ -2409,9 +2452,7 @@ pub async fn project_unfollow(
     let result = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     let user_id: db_ids::UserId = user.id.into();
@@ -2458,9 +2499,7 @@ pub async fn project_unfollow(
 
         Ok(HttpResponse::NoContent().body(""))
     } else {
-        Err(ApiError::InvalidInput(
-            "您没有关注此项目!".to_string(),
-        ))
+        Err(ApiError::InvalidInput("您没有关注此项目!".to_string()))
     }
 }
 
@@ -2487,23 +2526,17 @@ pub async fn project_get_organization(
     let result = db_models::Project::get(&string, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的项目不存在!".to_string(),
-            )
+            ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
     if !is_visible_project(&result.inner, &current_user, &pool, false).await? {
-        Err(ApiError::InvalidInput(
-            "指定的项目不存在!".to_string(),
-        ))
+        Err(ApiError::InvalidInput("指定的项目不存在!".to_string()))
     } else if let Some(organization_id) = result.inner.organization_id {
         let organization =
             db_models::Organization::get_id(organization_id, &**pool, &redis)
                 .await?
                 .ok_or_else(|| {
-                    ApiError::InvalidInput(
-                        "附件组织不存在!".to_string(),
-                    )
+                    ApiError::InvalidInput("附件组织不存在!".to_string())
                 })?;
 
         let members_data = TeamMember::get_from_team_full(
@@ -2646,12 +2679,14 @@ pub async fn project_forum_create(
             user_id: database::models::UserId::from(
                 user_option.as_ref().unwrap().id,
             ),
+            last_post_time: Utc::now(),
             state: "open".to_string(),
             pinned: false,
             deleted: false,
             deleted_at: None,
             user_name: "".to_string(),
             user_avatar: None,
+            project_id: None,
         };
         discussion.insert(&mut transaction).await?;
         discussion
@@ -2662,6 +2697,11 @@ pub async fn project_forum_create(
             project.inner.id,
             project.inner.slug,
             None,
+            &redis,
+        )
+        .await?;
+        crate::database::models::forum::Discussion::clear_cache_discussions(
+            &["all".to_string()],
             &redis,
         )
         .await?;

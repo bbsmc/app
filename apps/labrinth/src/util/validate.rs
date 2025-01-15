@@ -143,9 +143,7 @@ pub fn validate_no_restricted_scopes(
     value: &Scopes,
 ) -> Result<(), validator::ValidationError> {
     if value.is_restricted() {
-        return Err(validator::ValidationError::new(
-            "不允许受限范围",
-        ));
+        return Err(validator::ValidationError::new("不允许受限范围"));
     }
 
     Ok(())
@@ -153,9 +151,7 @@ pub fn validate_no_restricted_scopes(
 
 pub fn validate_name(value: &str) -> Result<(), validator::ValidationError> {
     if value.trim().is_empty() {
-        return Err(validator::ValidationError::new(
-            "名称不能仅包含空格",
-        ));
+        return Err(validator::ValidationError::new("名称不能仅包含空格"));
     }
 
     Ok(())

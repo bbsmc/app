@@ -21,7 +21,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.route("image", web::post().to(images_add));
+    cfg.service(
+        web::scope("image").route("", web::post().to(images_add)), // .route("/can_upload", web::get().to(images_can_upload)),
+    );
+    // cfg.route("image", web::post().to(images_add));
 }
 
 #[derive(Serialize, Deserialize)]
@@ -34,11 +37,37 @@ pub struct ImageUpload {
 
     // 可选的上下文 ID 以关联
     pub project_id: Option<String>, // 允许 slug 或 id
+    pub user_id: Option<String>,    // 允许 slug 或 id
     pub wiki_id: Option<i64>,       // 允许 slug 或 id
     pub version_id: Option<VersionId>,
     pub thread_message_id: Option<ThreadMessageId>,
     pub report_id: Option<ReportId>,
 }
+// pub async fn images_can_upload(
+//     req: HttpRequest,
+//     pool: web::Data<PgPool>,
+//     redis: web::Data<RedisPool>,
+//     session_queue: web::Data<AuthQueue>,
+// ) -> Result<HttpResponse, ApiError> {
+//     let user =
+//         get_user_from_headers(&req, &**pool, &redis, &session_queue, None)
+//             .await?
+//             .1;
+
+//     let mut transaction = pool.begin().await?;
+
+//     let images = database::models::image_item::Image::get_user_images(
+//         database::models::UserId::from(user.id),
+//         &mut transaction,
+//     )
+//     .await?;
+
+//     if images.len() >= 300 {
+//         return Err(ApiError::ImageLimit(images.len() as u32, 300));
+//     }
+
+//     Ok(HttpResponse::Ok().json(true))
+// }
 
 pub async fn images_add(
     req: HttpRequest,
@@ -167,9 +196,33 @@ pub async fn images_add(
                 }
             }
         }
+
+        ImageContext::User { user_id } => {
+            if data.user_id.is_some() {
+                let mut transaction = pool.begin().await?;
+                let images =
+                    database::models::image_item::Image::get_user_images(
+                        database::models::UserId::from(user.id),
+                        &mut transaction,
+                    )
+                    .await?;
+
+                if images.len() >= 300 {
+                    // println!("images.len() >= 3");
+                    return Err(ApiError::ImageLimit(images.len() as u32, 300));
+                }
+
+                *user_id = None;
+            } else {
+                *user_id = None;
+            }
+
+            // transaction.commit().await?;
+        }
+
         ImageContext::Unknown => {
             return Err(ApiError::InvalidInput(
-               "Context 必须是以下之一：project, version, thread_message, wiki, report".to_string(),
+               "Context 必须是以下之一：project, version, thread_message, wiki, report 或 user".to_string(),
             ));
         }
     }
@@ -187,6 +240,12 @@ pub async fn images_add(
         None,
         None,
         &***file_host,
+        crate::util::img::UploadImagePos {
+            pos: "Markdown图片上传,具体使用地点未知".to_string(),
+            url: format!("/user/{}", &user.username),
+            username: user.username.clone(),
+        },
+        &redis,
     )
     .await?;
 
@@ -229,6 +288,11 @@ pub async fn images_add(
         } = context
         {
             Some(database::models::ReportId::from(id))
+        } else {
+            None
+        },
+        user_id: if let ImageContext::User { user_id: Some(id) } = context {
+            Some(database::models::UserId::from(id))
         } else {
             None
         },

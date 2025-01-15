@@ -498,6 +498,7 @@ async fn project_create_inner(
                         file_extension,
                         file_host,
                         field,
+                        redis,
                     )
                     .await?,
                 );
@@ -532,6 +533,12 @@ async fn project_create_inner(
                         Some(350),
                         Some(1.0),
                         file_host,
+                        crate::util::img::UploadImagePos {
+                            pos: "项目渲染图".to_string(),
+                            url: format!("/project/{}", project_id),
+                            username: current_user.username.clone(),
+                        },
+                        redis,
                     )
                     .await
                     .map_err(|e| {
@@ -1015,6 +1022,7 @@ async fn process_icon_upload(
     file_extension: &str,
     file_host: &dyn FileHost,
     mut field: Field,
+    redis: &RedisPool,
 ) -> Result<(String, String, Option<u32>), CreateError> {
     let data =
         read_from_field(&mut field, 262144, "图标必须小于 256KB").await?;
@@ -1025,6 +1033,12 @@ async fn process_icon_upload(
         Some(96),
         Some(1.0),
         file_host,
+        crate::util::img::UploadImagePos {
+            pos: "项目图标".to_string(),
+            url: format!("/project/{}", id),
+            username: "".to_string(),
+        },
+        redis,
     )
     .await
     .map_err(|e| CreateError::InvalidIconFormat(e.to_string()))?;

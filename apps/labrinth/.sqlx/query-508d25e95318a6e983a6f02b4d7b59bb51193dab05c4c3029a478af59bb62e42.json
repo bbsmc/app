@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE users\n        SET phone_number = $1\n        WHERE (id = $2)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "508d25e95318a6e983a6f02b4d7b59bb51193dab05c4c3029a478af59bb62e42"
+}

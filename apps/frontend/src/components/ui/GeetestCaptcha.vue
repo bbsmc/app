@@ -38,7 +38,7 @@ export default {
 
           // 注册事件监听
           captchaObj.onReady(() => {
-            console.log('验证码已准备好');
+            // console.log('验证码已准备好');
           });
 
           captchaObj.onSuccess(() => {
@@ -51,7 +51,7 @@ export default {
           });
 
           captchaObj.onClose(() => {
-            console.log('验证码关闭');
+            // console.log('验证码关闭');
           });
 
           captchaObj.appendTo(document.getElementById('captcha'));
@@ -59,7 +59,7 @@ export default {
       };
     },
     onTokenUpdate(token) {
-      console.log('Token:', token);
+      // console.log('Token:', token);
       this.internalToken = token;
       this.$emit('update:modelValue', token);
     },

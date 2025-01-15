@@ -376,9 +376,7 @@ pub async fn oauth_client_icon_edit(
     let client = OAuthClient::get((*client_id).into(), &**pool)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的客户端不存在！".to_string(),
-            )
+            ApiError::InvalidInput("指定的客户端不存在！".to_string())
         })?;
 
     client.validate_authorized(Some(&user))?;
@@ -403,6 +401,12 @@ pub async fn oauth_client_icon_edit(
         Some(96),
         Some(1.0),
         &***file_host,
+        crate::util::img::UploadImagePos {
+            pos: "OAuth客户端头像".to_string(),
+            url: format!("/user/{}", user.username),
+            username: user.username.clone(),
+        },
+        &redis,
     )
     .await?;
 
@@ -443,9 +447,7 @@ pub async fn oauth_client_icon_delete(
     let client = OAuthClient::get((*client_id).into(), &**pool)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的客户端不存在！".to_string(),
-            )
+            ApiError::InvalidInput("指定的客户端不存在！".to_string())
         })?;
     client.validate_authorized(Some(&user))?;
 

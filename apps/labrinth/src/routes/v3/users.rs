@@ -355,6 +355,20 @@ pub async fn user_edit(
                     .map(|id| id == user.id)
                     .unwrap_or(true)
                 {
+                    let risk = crate::util::risk::check_text_risk(
+                        username,
+                        &user.username,
+                        &format!("/user/{}", user.username),
+                        "修改新的用户名",
+                        &redis,
+                    )
+                    .await?;
+                    if !risk {
+                        return Err(ApiError::InvalidInput(
+                            "新的用户名包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的修改新的用户名".to_string(),
+                        ));
+                    }
+
                     sqlx::query!(
                         "
                         UPDATE users
@@ -374,6 +388,24 @@ pub async fn user_edit(
             }
 
             if let Some(bio) = &new_user.bio {
+                if bio.as_deref().is_some() {
+                    // 应用场景URL
+
+                    let risk = crate::util::risk::check_text_risk(
+                        bio.as_deref().unwrap(),
+                        &user.username,
+                        &format!("/user/{}", user.username),
+                        "个人资料简介",
+                        &redis,
+                    )
+                    .await?;
+                    if !risk {
+                        return Err(ApiError::InvalidInput(
+                            "简介包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的简介".to_string(),
+                        ));
+                    }
+                }
+
                 sqlx::query!(
                     "
                     UPDATE users
@@ -504,12 +536,9 @@ pub async fn user_icon_edit(
         )
         .await?;
 
-        let bytes = read_from_payload(
-            &mut payload,
-            262144,
-            "头像必须小于256KiB".to_string(),
-        )
-        .await?;
+        let bytes =
+            read_from_payload(&mut payload, 262144, "头像必须小于256KiB")
+                .await?;
 
         let user_id: UserId = actual_user.id.into();
         let upload_result = crate::util::img::upload_image_optimized(
@@ -519,6 +548,12 @@ pub async fn user_icon_edit(
             Some(96),
             Some(1.0),
             &***file_host,
+            crate::util::img::UploadImagePos {
+                pos: "用户头像".to_string(),
+                url: format!("/user/{}", actual_user.username),
+                username: actual_user.username.clone(),
+            },
+            &redis,
         )
         .await?;
 

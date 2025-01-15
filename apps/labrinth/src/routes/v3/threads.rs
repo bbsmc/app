@@ -393,9 +393,7 @@ pub async fn thread_send_message(
     } = &new_message.body
     {
         if body.len() > 65536 {
-            return Err(ApiError::InvalidInput(
-                "输入内容过长!".to_string(),
-            ));
+            return Err(ApiError::InvalidInput("输入内容过长!".to_string()));
         }
 
         if *private && !user.role.is_mod() {

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub const DISCUSSION_NAMESPACE: &str = "discussions";
+pub const DISCUSSION_TYPES_NAMESPACE: &str = "discussions_types";
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PostQuery {
     pub id: PostId,
@@ -56,6 +57,8 @@ pub struct Discussion {
     pub pinned: bool,
     pub deleted: bool,
     pub deleted_at: Option<DateTime<Utc>>,
+    pub last_post_time: DateTime<Utc>,
+    pub project_id: Option<ProjectId>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct QueryDiscussion {
@@ -116,6 +119,98 @@ impl Discussion {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn update_last_post_time(
+        &self,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE discussions SET last_post_time = $1 WHERE id = $2",
+            self.last_post_time,
+            self.id.0
+        )
+        .execute(&mut **transaction)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn clear_cache_discussions(
+        types: &[String],
+        redis: &RedisPool,
+    ) -> Result<(), DatabaseError> {
+        let mut redis = redis.connect().await?;
+        redis
+            .delete_many(
+                types
+                    .iter()
+                    .map(|id| (DISCUSSION_TYPES_NAMESPACE, Some(id.clone()))),
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn forums<'a, E>(
+        exec: E,
+        redis: &RedisPool,
+    ) -> Result<Vec<DiscussionId>, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let forums = redis
+            .get_cached_key(
+                DISCUSSION_TYPES_NAMESPACE,
+                "all".to_string(),
+                || async move {
+                    let mut exec = exec.acquire().await?;
+
+                    let forums: Vec<DiscussionId> = sqlx::query!(
+                        "SELECT id
+                FROM discussions
+                WHERE deleted = false order by last_post_time desc limit 5"
+                    )
+                    .fetch(&mut *exec)
+                    .try_fold(Vec::new(), |mut acc, row| {
+                        acc.push(DiscussionId(row.id));
+                        async move { Ok(acc) }
+                    })
+                    .await?;
+
+                    Ok(forums)
+                },
+            )
+            .await?;
+
+        Ok(forums)
+    }
+
+    pub async fn get_forums<'a, E>(
+        forum_type: String,
+        exec: E,
+        redis: &RedisPool,
+    ) -> Result<Vec<DiscussionId>, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let forums = redis.get_cached_key(DISCUSSION_TYPES_NAMESPACE, forum_type.clone(), || async move {
+            let mut exec = exec.acquire().await?;
+
+            let forums: Vec<DiscussionId> = sqlx::query!(
+                "SELECT id
+                FROM discussions
+                WHERE deleted = false AND category = $1 order by last_post_time desc",
+                &forum_type
+            )
+            .fetch(&mut *exec)
+            .try_fold(Vec::new(), |mut acc, row| {
+                acc.push(DiscussionId(row.id));
+                async move { Ok(acc) }
+            })
+            .await?;
+            Ok(forums)
+        }).await?;
+
+        Ok(forums)
     }
 
     pub async fn get_id<'a, E>(
@@ -182,10 +277,13 @@ impl Discussion {
                            d.pinned pinned,
                            d.deleted deleted,
                            d.deleted_at deleted_at,
+                           d.last_post_time last_post_time,
                            u.username user_name,
-                           u.avatar_url avatar_url
+                           u.avatar_url avatar_url,
+                           m.id project_id
                     FROM discussions d
                              LEFT JOIN users u ON d.user_id = u.id
+                             LEFT JOIN mods m ON m.forum = d.id
                     WHERE d.id = ANY ($1) AND d.deleted = false",
                     &ids
                 )
@@ -199,6 +297,10 @@ impl Discussion {
                             .get(&id.0)
                             .map(|v| v.clone())
                             .unwrap_or_default();
+
+                        let project_id: Option<ProjectId> =
+                            m.project_id.map(ProjectId);
+
                         acc.insert(
                             id.0,
                             QueryDiscussion {
@@ -217,6 +319,8 @@ impl Discussion {
                                     pinned: m.pinned.unwrap(),
                                     deleted: m.deleted.unwrap(),
                                     deleted_at: m.deleted_at,
+                                    last_post_time: m.last_post_time.unwrap(),
+                                    project_id,
                                 },
                             },
                         );
@@ -371,7 +475,13 @@ impl PostQuery {
 
                     // 判断 w.replied_to 是否为空
                     let replied_to = if let Some(replied_to) = w.replied_to {
-                        Some(posts.get(&w.discussion_id).unwrap().iter().find(|p| p.post_id == PostId(replied_to)).unwrap().floor_number)
+                        if posts.get(&w.discussion_id).is_none() {
+                            None
+                        } else {
+                            let posts = posts.get(&w.discussion_id).unwrap();
+                            let p = posts.iter().find(|p| p.post_id == PostId(replied_to));
+                            p.map(|p| p.floor_number)
+                        }
                     } else {
                         None
                     };

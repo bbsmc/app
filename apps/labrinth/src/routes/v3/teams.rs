@@ -558,9 +558,7 @@ pub async fn add_team_member(
         &redis,
     )
     .await?
-    .ok_or_else(|| {
-        ApiError::InvalidInput("无效的用户ID".to_string())
-    })?;
+    .ok_or_else(|| ApiError::InvalidInput("无效的用户ID".to_string()))?;
 
     let mut force_accepted = false;
     if let TeamAssociationId::Project(pid) = team_association {
@@ -689,9 +687,7 @@ pub async fn edit_team_member(
 
     let team_association =
         Team::get_association(id, &**pool).await?.ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的团队不存在".to_string(),
-            )
+            ApiError::InvalidInput("指定的团队不存在".to_string())
         })?;
     let member =
         TeamMember::get_from_user_id(id, current_user.id.into(), &**pool)
@@ -834,6 +830,22 @@ pub async fn edit_team_member(
         }
     }
 
+    if let Some(role) = &edit_member.role {
+        let risk = crate::util::risk::check_text_risk(
+            role,
+            &current_user.username,
+            &format!("/user/{}", current_user.username),
+            "团队成员角色",
+            &redis,
+        )
+        .await?;
+        if !risk {
+            return Err(ApiError::InvalidInput(
+                "团队成员角色包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的团队成员角色".to_string(),
+            ));
+        }
+    }
+
     TeamMember::edit_team_member(
         id,
         user_id,
@@ -888,7 +900,8 @@ pub async fn transfer_ownership(
         if let Some(project_item) = result {
             if project_item.inner.organization_id.is_some() {
                 return Err(ApiError::InvalidInput(
-                    "您不能转移项目团队的所有权，这些团队由组织拥有".to_string(),
+                    "您不能转移项目团队的所有权，这些团队由组织拥有"
+                        .to_string(),
                 ));
             }
         }
@@ -921,9 +934,7 @@ pub async fn transfer_ownership(
     )
     .await?
     .ok_or_else(|| {
-        ApiError::InvalidInput(
-            "指定的新的所有者不存在".to_string(),
-        )
+        ApiError::InvalidInput("指定的新的所有者不存在".to_string())
     })?;
 
     if !new_member.accepted {
@@ -1041,9 +1052,7 @@ pub async fn remove_team_member(
 
     let team_association =
         Team::get_association(id, &**pool).await?.ok_or_else(|| {
-            ApiError::InvalidInput(
-                "指定的团队不存在".to_string(),
-            )
+            ApiError::InvalidInput("指定的团队不存在".to_string())
         })?;
     let member =
         TeamMember::get_from_user_id(id, current_user.id.into(), &**pool)

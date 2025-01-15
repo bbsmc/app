@@ -21,7 +21,7 @@ pub struct Image {
     pub created: DateTime<Utc>,
     pub owner_id: UserId,
 
-    // context it is associated with
+    // 关联的上下文
     #[serde(flatten)]
     pub context: ImageContext,
 }
@@ -41,6 +41,9 @@ impl From<DBImage> for Image {
             }
             ImageContext::Report { report_id } => {
                 *report_id = x.report_id.map(|x| x.into());
+            }
+            ImageContext::User { user_id } => {
+                *user_id = x.user_id.map(|x| x.into());
             }
             ImageContext::Unknown => {}
         }
@@ -73,6 +76,9 @@ pub enum ImageContext {
     Report {
         report_id: Option<ReportId>,
     },
+    User {
+        user_id: Option<UserId>,
+    },
     Unknown,
 }
 
@@ -83,6 +89,7 @@ impl ImageContext {
             ImageContext::Version { .. } => "version",
             ImageContext::ThreadMessage { .. } => "thread_message",
             ImageContext::Report { .. } => "report",
+            ImageContext::User { .. } => "user",
             ImageContext::Unknown => "unknown",
         }
     }
@@ -94,6 +101,7 @@ impl ImageContext {
                 thread_message_id.map(|x| x.0)
             }
             ImageContext::Report { report_id } => report_id.map(|x| x.0),
+            ImageContext::User { user_id } => user_id.map(|x| x.0),
             ImageContext::Unknown => None,
         }
     }
@@ -103,6 +111,7 @@ impl ImageContext {
             ImageContext::Version { .. } => Scopes::VERSION_WRITE,
             ImageContext::ThreadMessage { .. } => Scopes::THREAD_WRITE,
             ImageContext::Report { .. } => Scopes::REPORT_WRITE,
+            ImageContext::User { .. } => Scopes::USER_WRITE,
             ImageContext::Unknown => Scopes::NONE,
         }
     }
@@ -119,6 +128,9 @@ impl ImageContext {
             },
             "report" => ImageContext::Report {
                 report_id: id.map(ReportId),
+            },
+            "user" => ImageContext::User {
+                user_id: id.map(UserId),
             },
             _ => ImageContext::Unknown,
         }

@@ -16,11 +16,12 @@ pub struct Image {
     pub created: DateTime<Utc>,
     pub owner_id: UserId,
 
-    // context it is associated with
+    // 关联的上下文
     pub context: String,
 
     pub project_id: Option<ProjectId>,
     pub version_id: Option<VersionId>,
+    pub user_id: Option<UserId>,
     pub thread_message_id: Option<ThreadMessageId>,
     pub report_id: Option<ReportId>,
 }
@@ -83,12 +84,50 @@ impl Image {
         }
     }
 
+    pub async fn get_user_images(
+        user_id: UserId,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<Vec<Image>, sqlx::Error> {
+        use futures::stream::TryStreamExt;
+        sqlx::query!(
+            "
+            SELECT id, url, raw_url, size, created, owner_id, context, mod_id, version_id, thread_message_id, report_id
+            FROM uploaded_images
+            WHERE owner_id = $1 AND context = 'user'
+            GROUP BY id
+            ",
+            user_id as UserId,
+
+        )
+        .fetch(&mut **transaction)
+        .map_ok(|row| {
+            let id = ImageId(row.id);
+
+            Image {
+                id,
+                url: row.url,
+                raw_url: row.raw_url,
+                size: row.size as u64,
+                created: row.created,
+                owner_id: UserId(row.owner_id),
+                context: row.context,
+                project_id: row.mod_id.map(ProjectId),
+                version_id: row.version_id.map(VersionId),
+                thread_message_id: row.thread_message_id.map(ThreadMessageId),
+                report_id: row.report_id.map(ReportId),
+                user_id: Some(UserId(row.owner_id)),
+            }
+        })
+        .try_collect::<Vec<Image>>()
+        .await
+    }
+
     pub async fn get_many_contexted(
         context: ImageContext,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> Result<Vec<Image>, sqlx::Error> {
-        // Set all of project_id, version_id, thread_message_id, report_id to None
-        // Then set the one that is relevant to Some
+        // 将所有 project_id, version_id, thread_message_id, report_id 设置为 None
+        // 然后设置与上下文相关的那个为 Some
 
         let mut project_id = None;
         let mut version_id = None;
@@ -115,6 +154,7 @@ impl Image {
             } => {
                 report_id = Some(ReportId::from(id));
             }
+
             _ => {}
         }
 
@@ -153,6 +193,7 @@ impl Image {
                 version_id: row.version_id.map(VersionId),
                 thread_message_id: row.thread_message_id.map(ThreadMessageId),
                 report_id: row.report_id.map(ReportId),
+                user_id: Some(UserId(row.owner_id)),
             }
         })
         .try_collect::<Vec<Image>>()
@@ -204,6 +245,7 @@ impl Image {
                             size: i.size as u64,
                             created: i.created,
                             owner_id: UserId(i.owner_id),
+                            user_id: Some(UserId(i.owner_id)),
                             context: i.context,
                             project_id: i.mod_id.map(ProjectId),
                             version_id: i.version_id.map(VersionId),

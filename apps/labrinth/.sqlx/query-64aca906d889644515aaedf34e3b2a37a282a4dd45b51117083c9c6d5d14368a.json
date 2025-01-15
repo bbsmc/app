@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id\n                FROM discussions\n                WHERE deleted = false AND category = $1 order by last_post_time desc",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "64aca906d889644515aaedf34e3b2a37a282a4dd45b51117083c9c6d5d14368a"
+}
