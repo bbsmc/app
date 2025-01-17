@@ -15,24 +15,20 @@
       </div>
       <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <ul class="carousel-items">
-          <li
-            v-for="(item, index) in carouselItems"
-            :key="index"
-            :class="[
-              'carousel-item',
-              {
-                previous:
-                  currentSlide === 0
-                    ? index === carouselItems.length - 1
-                    : index === currentSlide - 1,
-                current: index === currentSlide,
-                next:
-                  currentSlide === carouselItems.length - 1
-                    ? index === 0
-                    : index === currentSlide + 1,
-              },
-            ]"
-          >
+          <li v-for="(item, index) in carouselItems" :key="index" :class="[
+            'carousel-item',
+            {
+              previous:
+                currentSlide === 0
+                  ? index === carouselItems.length - 1
+                  : index === currentSlide - 1,
+              current: index === currentSlide,
+              next:
+                currentSlide === carouselItems.length - 1
+                  ? index === 0
+                  : index === currentSlide + 1,
+            },
+          ]">
             <div class="carousel-slide">
               <div class="carousel-image-container">
                 <a v-if="index === currentSlide" :href="item.slug" target="_blank">
@@ -54,13 +50,8 @@
           <button class="btn-next" @click="nextSlide">→</button>
         </div> -->
         <div class="carousel-dots">
-          <span
-            v-for="(_, index) in carouselItems"
-            :key="index"
-            class="dot"
-            :class="{ active: currentSlide === index }"
-            @click="goToSlide(index)"
-          >
+          <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
+            @click="goToSlide(index)">
           </span>
         </div>
       </div>
@@ -440,7 +431,7 @@ body:has(.game-page) .game-header .hero-container:after {
   background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
 }
 
-.game-header .hero-container:after {
+.game-header .hero-container:afterfont-weight {
   content: "";
   position: absolute;
   top: 0;
