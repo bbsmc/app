@@ -322,14 +322,16 @@ pub async fn forum_create(
         user_id: database::models::UserId::from(
             user_option.as_ref().unwrap().id,
         ),
+        organization_id: None,
         last_post_time: chrono::Utc::now(),
         state: "open".to_string(),
         pinned: false,
         deleted: false,
         deleted_at: None,
         user_name: user_option.as_ref().unwrap().username.clone(),
-        user_avatar: user_option.as_ref().unwrap().avatar_url.clone(),
+        avatar: user_option.as_ref().unwrap().avatar_url.clone(),
         project_id: None,
+        organization: None,
     };
     discussion.insert(&mut transaction).await?;
     transaction.commit().await?;

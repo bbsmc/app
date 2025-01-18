@@ -2642,6 +2642,17 @@ pub async fn project_forum_create(
             )
             .await?;
 
+        let team_members =
+            crate::database::models::TeamMember::get_from_team_full(
+                project.inner.team_id,
+                &**pool,
+                &redis,
+            )
+            .await?
+            .into_iter()
+            .filter(|x| x.is_owner)
+            .collect::<Vec<_>>();
+
         let permissions = ProjectPermissions::get_permissions_by_role(
             &user_option.as_ref().unwrap().role,
             &team_member,
@@ -2669,6 +2680,16 @@ pub async fn project_forum_create(
             )
             .await?;
 
+        let mut user_id =
+            database::models::UserId::from(user_option.as_ref().unwrap().id);
+
+        if !team_members.is_empty() {
+            let team_member = team_members.first().unwrap();
+            if team_member.user_id == user_id {
+                user_id = team_member.user_id;
+            }
+        }
+
         let discussion = database::models::forum::Discussion {
             id: discussion_id,
             title: project.inner.name.clone(),
@@ -2676,16 +2697,16 @@ pub async fn project_forum_create(
             category: "project".to_string(),
             created_at: Utc::now(),
             updated_at: None,
-            user_id: database::models::UserId::from(
-                user_option.as_ref().unwrap().id,
-            ),
+            user_id,
             last_post_time: Utc::now(),
             state: "open".to_string(),
             pinned: false,
             deleted: false,
             deleted_at: None,
             user_name: "".to_string(),
-            user_avatar: None,
+            avatar: None,
+            organization: None,
+            organization_id: None,
             project_id: None,
         };
         discussion.insert(&mut transaction).await?;

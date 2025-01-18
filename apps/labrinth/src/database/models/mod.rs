@@ -51,6 +51,8 @@ pub use wiki_item::Wiki;
 pub enum DatabaseError {
     #[error("Error while interacting with the database: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("Error while interacting with the database: {0}")]
+    Database2(String),
     #[error("Error while trying to generate random ID")]
     RandomId,
     #[error("Error while interacting with the cache: {0}")]

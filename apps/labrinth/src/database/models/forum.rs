@@ -52,7 +52,9 @@ pub struct Discussion {
     pub updated_at: Option<DateTime<Utc>>,
     pub user_id: UserId,
     pub user_name: String,
-    pub user_avatar: Option<String>,
+    pub organization: Option<String>,
+    pub organization_id: Option<String>,
+    pub avatar: Option<String>,
     pub state: String,
     pub pinned: bool,
     pub deleted: bool,
@@ -314,7 +316,9 @@ impl Discussion {
                                     updated_at: m.updated_at,
                                     user_id: UserId(m.user_id.unwrap()),
                                     user_name: m.user_name,
-                                    user_avatar: m.avatar_url,
+                                    avatar: m.avatar_url,
+                                    organization: None,
+                                    organization_id: None,
                                     state: m.state.unwrap(),
                                     pinned: m.pinned.unwrap(),
                                     deleted: m.deleted.unwrap(),
@@ -328,6 +332,45 @@ impl Discussion {
                     },
                 )
                 .await?;
+
+                // 获取posts的所有keys
+                let keys: Vec<i64> = posts.iter().map(|r| *r.key()).collect();
+
+                // 遍历并更新每个帖子
+                for key in keys {
+                    if let Some(mut ele) = posts.get_mut(&key) {
+                        if ele.inner.project_id.is_some() {
+                            let project =
+                                crate::database::models::Project::get_id(
+                                    ele.inner.project_id.unwrap(),
+                                    &mut *exec,
+                                    &redis,
+                                )
+                                .await?;
+                            if let Some(project) = project {
+                                ele.inner.title = project.inner.name;
+                                ele.inner.avatar = project.inner.icon_url;
+
+                                
+                                if let Some(organization_id) =
+                                    project.inner.organization_id
+                                {
+                                    let organization = crate::database::models::Organization::get_id(
+                                        organization_id,
+                                        &mut *exec,
+                                        &redis,
+                                    )
+                                    .await?;
+                                    if let Some(organization) = organization {
+                                        ele.inner.organization = Some(organization.name);
+                                        ele.inner.organization_id = Some(organization.slug);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Ok(posts)
             })
             .await?;

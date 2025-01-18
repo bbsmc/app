@@ -4,7 +4,7 @@
             <div class="truncate text-lg font-extrabold text-contrast"">发表新帖</div>
         </template>
 <div class=" mt-5 flex gap-2 " style=" justify-content: flex-end">
-    <MarkdownEditor v-model="forumContent" :on-image-upload="onUploadHandler" />
+  <MarkdownEditor v-model="forumContent" :on-image-upload="onUploadHandler" />
 </div>
 </NewModal> -->
   <div class="game-header">
@@ -46,14 +46,7 @@
                 <span class="text-brand-red">*</span>
               </span>
             </label>
-            <input
-              id="name"
-              v-model="forumTitle"
-              type="text"
-              maxlength="64"
-              placeholder="帖子标题"
-              autocomplete="off"
-            />
+            <input id="name" v-model="forumTitle" type="text" maxlength="64" placeholder="帖子标题" autocomplete="off" />
           </div>
           <div class="flex flex-col gap-2" style="margin-bottom: 10px">
             <label for="name">
@@ -81,7 +74,7 @@
         <div v-for="forum in forums" :key="forum.id" class="universal-card tf">
           <div class="forum-header">
             <a :href="`/user/${forum.user_name}`" target="_blank">
-              <img :src="forum.user_avatar" alt="User Avatar" class="user-avatar" />
+              <img :src="forum.avatar" alt="User Avatar" class="user-avatar" />
             </a>
             <div class="forum-info">
               <a v-if="forum.project_id" :href="`/project/${forum.project_id}/forum`">
@@ -91,7 +84,11 @@
                 <h2 class="forum-title">{{ forum.title }}</h2>
               </a>
               <p class="forum-meta">
-                <a :href="`/user/${forum.user_name}`" target="_blank" class="forum-user">{{
+                <a v-if="forum.organization_id" :href="`/organization/${forum.organization_id}`" target="_blank"
+                  class="forum-user">{{
+                    forum.organization
+                  }}</a>
+                <a v-else :href="`/user/${forum.user_name}`" target="_blank" class="forum-user">{{
                   forum.user_name
                 }}</a>
                 <span class="forum-date" style="margin-left: 4px">{{
@@ -107,13 +104,9 @@
           </div>
         </div>
         <div>
-          <pagination
-            :page="currentPage"
-            :count="pageCount"
-            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)"
-            class="justify-end"
-            @switch-page="onSearchChangeToTop"
-          />
+          <pagination :page="currentPage" :count="pageCount"
+            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)" class="justify-end"
+            @switch-page="onSearchChangeToTop" />
         </div>
       </div>
     </div>

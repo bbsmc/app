@@ -44,7 +44,9 @@ pub struct ForumResponse {
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
     pub user_name: String,
-    pub user_avatar: Option<String>,
+    pub avatar: Option<String>,
+    pub organization: Option<String>,
+    pub organization_id: Option<String>,
     pub state: String,
     pub pinned: bool,
     pub deleted: bool,
@@ -75,6 +77,10 @@ pub struct Replay {
 
 impl From<PostQuery> for PostResponse {
     fn from(post: PostQuery) -> Self {
+        let mut avatar = post.user_avatar;
+        if avatar.is_empty() {
+            avatar = "https://cdn.bbsmc.net/raw/bbsmc-logo.png".to_string();
+        }
         PostResponse {
             post_id: post.id.into(),
             discussion_id: post.discussion_id.into(),
@@ -83,7 +89,7 @@ impl From<PostQuery> for PostResponse {
             created_at: post.created_at,
             updated_at: post.updated_at,
             user_name: post.user_name,
-            user_avatar: post.user_avatar,
+            user_avatar: avatar,
             replied_to: post.replied_to,
             reply_content: post.reply_content,
             replies: post.replies,
@@ -93,6 +99,11 @@ impl From<PostQuery> for PostResponse {
 
 impl From<QueryDiscussion> for ForumResponse {
     fn from(discussion: QueryDiscussion) -> Self {
+        let mut avatar = discussion.inner.avatar;
+        if avatar.is_none() {
+            avatar =
+                Some("https://cdn.bbsmc.net/raw/bbsmc-logo.png".to_string());
+        }
         ForumResponse {
             id: discussion.inner.id.into(),
             title: discussion.inner.title,
@@ -101,7 +112,9 @@ impl From<QueryDiscussion> for ForumResponse {
             created_at: discussion.inner.created_at,
             updated_at: discussion.inner.updated_at,
             user_name: discussion.inner.user_name,
-            user_avatar: discussion.inner.user_avatar,
+            avatar,
+            organization: discussion.inner.organization,
+            organization_id: discussion.inner.organization_id,
             state: discussion.inner.state,
             pinned: discussion.inner.pinned,
             deleted: discussion.inner.deleted,
