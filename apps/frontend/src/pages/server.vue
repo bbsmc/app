@@ -263,6 +263,8 @@ const creaters = {
         "items": [
             {
                 "name": "高频套餐",
+                "p1": "AMD 霄龙 EPYC 74F3(CPUZ 580分)",
+                "p2": "英特尔U.2 P4510，ECC DDR4 2400MHz",
                 "data": [
                     {
                         "player": "3-4",
@@ -286,6 +288,8 @@ const creaters = {
             },
             {
                 "name": "发烧套餐",
+                "p1": "Intel 酷睿 I7-13700K(CPUZ 830分)",
+                "p2": "英特尔U.2 P4510，DDR4 3200MHz",
                 "data": [
                     {
                         "player": "3-4",

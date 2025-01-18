@@ -1034,6 +1034,7 @@ const platformAccordion = ref();
 const WikiFatherAccordion = ref();
 
 const affs = ref({
+  "1p2TFl6X": "wutuobang", // 乌托邦
   "NxtrWNas": "wuye", // 探索自然2
   "Z1Z1xI1K": "wuye", // 自然之旅3
   "Gd9LgTCW": "wuye", // 悠然人生1
