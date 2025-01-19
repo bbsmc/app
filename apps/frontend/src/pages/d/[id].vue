@@ -23,8 +23,14 @@
         <!-- 分割线 -->
         <div class="divider"></div>
         <div class="user-info">
-          <img :src="forum.user_avatar" alt="user-avatar" class="user-avatar" />
-          <span class="user-name">{{ forum.user_name }}</span>
+          <a :href="`/user/${forum.user_name}`" target="_blank">
+            <img :src="forum.avatar" alt="user-avatar" class="user-avatar" />
+          </a>
+
+          <a :href="`/user/${forum.user_name}`" target="_blank">
+            <span class="user-name">{{ forum.user_name }}</span>
+          </a>
+
         </div>
 
         <div class="markdown-body" v-html="renderHighlightedString(forum.content)" />
