@@ -328,7 +328,7 @@ async function submitForum() {
       text: "帖子发布成功",
       type: "success",
     });
-    console.log(res);
+    // console.log(res);
 
     router.push(`/d/${res.discussion}`);
   } catch (e) {

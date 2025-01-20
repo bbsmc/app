@@ -55,7 +55,7 @@ forum.value = await useBaseFetch(`forum/${forumId}`, {
   apiVersion: "3",
 });
 
-console.log(forum.value);
+// console.log(forum.value);
 </script>
 
 <style scoped>
