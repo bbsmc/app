@@ -46,6 +46,7 @@ pub struct User {
     pub badges: Badges,
     pub wiki_ban_time: DateTime<Utc>,
     pub wiki_overtake_count: i64,
+    pub phone_number: Option<String>,
 }
 
 impl User {
@@ -174,7 +175,7 @@ impl User {
                         created, role, badges,
                         github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
                         email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
-                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time
+                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number
                     FROM users
                     WHERE id = ANY($1) OR LOWER(username) = ANY($2)
                     ",
@@ -209,6 +210,7 @@ impl User {
                             totp_secret: u.totp_secret,
                             wiki_overtake_count: u.wiki_overtake_count,
                             wiki_ban_time: u.wiki_ban_time,
+                            phone_number: u.phone_number,
                         };
 
                         acc.insert(u.id, (Some(u.username), user));
@@ -240,6 +242,26 @@ impl User {
 
         Ok(user_pass.map(|x| UserId(x.id)))
     }
+
+    // pub async fn get_phone_number<'a, E>(
+    //     phone_number: &str,
+    //     exec: E,
+    // ) -> Result<Option<UserId>, sqlx::Error>
+    // where
+    //     E: sqlx::Executor<'a, Database = sqlx::Postgres> + Copy,
+    // {
+    //     let user_pass = sqlx::query!(
+    //         "
+    //         SELECT id FROM users
+    //         WHERE phone_number = $1
+    //         ",
+    //         phone_number
+    //     )
+    //     .fetch_optional(exec)
+    //     .await?;
+
+    //     Ok(user_pass.map(|x| UserId(x.id)))
+    // }
 
     pub async fn get_projects<'a, E>(
         user_id: UserId,

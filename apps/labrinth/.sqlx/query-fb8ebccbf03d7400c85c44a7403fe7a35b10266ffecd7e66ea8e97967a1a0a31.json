@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id\n                FROM discussions\n                WHERE deleted = false order by last_post_time desc limit 5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fb8ebccbf03d7400c85c44a7403fe7a35b10266ffecd7e66ea8e97967a1a0a31"
+}

@@ -20,7 +20,7 @@ pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
         actix_web::web::scope("v2")
             .wrap(default_cors())
             .configure(super::internal::admin::config)
-            // Todo: separate these- they need to also follow v2-v3 conversion
+            // Todo: 分离这些- 它们也需要遵循 v2-v3 转换
             .configure(super::internal::session::config)
             .configure(super::internal::flows::config)
             .configure(super::internal::pats::config)

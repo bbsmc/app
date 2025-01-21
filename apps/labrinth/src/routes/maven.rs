@@ -21,7 +21,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(version_file);
 }
 
-// TODO: These were modified in v3 and should be tested
+// TODO: 这些在 v3 中被修改，应该被测试
 
 #[derive(Default, Debug, Clone, YaSerialize)]
 #[yaserde(root = "metadata", rename = "metadata")]
@@ -248,7 +248,7 @@ fn find_file<'a>(
     }
 
     // Minecraft mods are not going to be both a mod and a modpack, so this minecraft-specific handling is fine
-    // As there can be multiple project types, returns the first allowable match
+    // 由于可能有多种项目类型，返回第一个允许的匹配
     let mut fileexts = vec![];
     for project_type in version.project_types.iter() {
         match project_type.as_str() {

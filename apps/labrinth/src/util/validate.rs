@@ -10,7 +10,7 @@ lazy_static! {
         Regex::new(r#"^[a-zA-Z0-9!@$()`.+,_"-]*$"#).unwrap();
 }
 
-//TODO: In order to ensure readability, only the first error is printed, this may need to be expanded on in the future!
+//TODO: 为了确保可读性，只打印第一个错误，这可能需要在将来扩展！
 pub fn validation_errors_to_string(
     errors: ValidationErrors,
     adder: Option<String>,
@@ -101,7 +101,7 @@ pub fn validate_deps(
         .next()
         .is_some()
     {
-        return Err(validator::ValidationError::new("duplicate dependency"));
+        return Err(validator::ValidationError::new("重复依赖"));
     }
 
     Ok(())
@@ -110,10 +110,10 @@ pub fn validate_deps(
 pub fn validate_url(value: &str) -> Result<(), validator::ValidationError> {
     let url = url::Url::parse(value)
         .ok()
-        .ok_or_else(|| validator::ValidationError::new("invalid URL"))?;
+        .ok_or_else(|| validator::ValidationError::new("无效的 URL"))?;
 
     if url.scheme() != "https" {
-        return Err(validator::ValidationError::new("URL must be https"));
+        return Err(validator::ValidationError::new("URL 必须是 https"));
     }
 
     Ok(())
@@ -143,9 +143,7 @@ pub fn validate_no_restricted_scopes(
     value: &Scopes,
 ) -> Result<(), validator::ValidationError> {
     if value.is_restricted() {
-        return Err(validator::ValidationError::new(
-            "Restricted scopes not allowed",
-        ));
+        return Err(validator::ValidationError::new("不允许受限范围"));
     }
 
     Ok(())
@@ -153,9 +151,7 @@ pub fn validate_no_restricted_scopes(
 
 pub fn validate_name(value: &str) -> Result<(), validator::ValidationError> {
     if value.trim().is_empty() {
-        return Err(validator::ValidationError::new(
-            "Name cannot contain only whitespace.",
-        ));
+        return Err(validator::ValidationError::new("名称不能仅包含空格"));
     }
 
     Ok(())

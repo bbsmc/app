@@ -46,7 +46,7 @@ pub async fn team_members_get_project(
     )
     .await
     .or_else(v2_reroute::flatten_404_error)?;
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<TeamMember>>(response).await {
         Ok(members) => {
             let members = members
@@ -72,7 +72,7 @@ pub async fn team_members_get(
         v3::teams::team_members_get(req, info, pool, redis, session_queue)
             .await
             .or_else(v2_reroute::flatten_404_error)?;
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<TeamMember>>(response).await {
         Ok(members) => {
             let members = members
@@ -107,7 +107,7 @@ pub async fn teams_get(
     )
     .await
     .or_else(v2_reroute::flatten_404_error);
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Vec<TeamMember>>>(response?).await {
         Ok(members) => {
             let members = members
@@ -133,7 +133,7 @@ pub async fn join_team(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::teams::join_team(req, info, pool, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)
@@ -172,7 +172,7 @@ pub async fn add_team_member(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::teams::add_team_member(
         req,
         info,
@@ -210,7 +210,7 @@ pub async fn edit_team_member(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::teams::edit_team_member(
         req,
         info,
@@ -243,7 +243,7 @@ pub async fn transfer_ownership(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::teams::transfer_ownership(
         req,
         info,
@@ -266,7 +266,7 @@ pub async fn remove_team_member(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::teams::remove_team_member(req, info, pool, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)

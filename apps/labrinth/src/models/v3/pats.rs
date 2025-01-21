@@ -13,99 +13,100 @@ pub struct PatId(pub u64);
 bitflags::bitflags! {
     #[derive(Copy, Clone, Debug)]
     pub struct Scopes: u64 {
-        // read a user's email
+        // 读取用户的邮箱
         const USER_READ_EMAIL = 1 << 0;
-        // read a user's data
+        // 读取用户数据
         const USER_READ = 1 << 1;
-        // write to a user's profile (edit username, email, avatar, follows, etc)
+        // 写入用户数据
         const USER_WRITE = 1 << 2;
-        // delete a user
+        // 删除用户
         const USER_DELETE = 1 << 3;
-        // modify a user's authentication data
+        // 修改用户认证数据
         const USER_AUTH_WRITE = 1 << 4;
 
-        // read a user's notifications
+        // 读取用户通知
         const NOTIFICATION_READ = 1 << 5;
-        // delete or read a notification
+        // 删除或读取通知
         const NOTIFICATION_WRITE = 1 << 6;
 
-        // read a user's payouts data
+        // 读取用户提现数据
         const PAYOUTS_READ = 1 << 7;
-        // withdraw money from a user's account
+        // 从用户账户中提现
         const PAYOUTS_WRITE = 1<< 8;
-        // access user analytics (payout analytics at the moment)
+        // 访问用户分析（目前仅限于提现分析）
         const ANALYTICS = 1 << 9;
 
-        // create a project
+        // 创建项目
         const PROJECT_CREATE = 1 << 10;
-        // read a user's projects (including private)
+        // 读取用户项目（包括私有）
         const PROJECT_READ = 1 << 11;
-        // write to a project's data (metadata, title, team members, etc)
+        // 写入项目数据（元数据、标题、团队成员等）
         const PROJECT_WRITE = 1 << 12;
-        // delete a project
+        // 删除项目
         const PROJECT_DELETE = 1 << 13;
 
-        // create a version
+        // 创建版本
         const VERSION_CREATE = 1 << 14;
-        // read a user's versions (including private)
+        // 读取用户版本（包括私有）
         const VERSION_READ = 1 << 15;
-        // write to a version's data (metadata, files, etc)
+        // 写入版本数据（元数据、文件等）
         const VERSION_WRITE = 1 << 16;
-        // delete a version
+        // 删除版本
         const VERSION_DELETE = 1 << 17;
 
-        // create a report
+        // 创建报告
         const REPORT_CREATE = 1 << 18;
-        // read a user's reports
+        // 读取用户报告
         const REPORT_READ = 1 << 19;
-        // edit a report
+        // 编辑报告
         const REPORT_WRITE = 1 << 20;
-        // delete a report
+        // 删除报告
         const REPORT_DELETE = 1 << 21;
 
-        // read a thread
+        // 读取帖子
         const THREAD_READ = 1 << 22;
-        // write to a thread (send a message, delete a message)
+        // 写入帖子（发送消息、删除消息）
         const THREAD_WRITE = 1 << 23;
 
-        // create a pat
+        // 创建个人访问令牌
         const PAT_CREATE = 1 << 24;
-        // read a user's pats
+        // 读取用户个人访问令牌
         const PAT_READ = 1 << 25;
-        // edit a pat
+        // 编辑个人访问令牌
         const PAT_WRITE = 1 << 26;
-        // delete a pat
+        // 删除个人访问令牌
         const PAT_DELETE = 1 << 27;
 
-        // read a user's sessions
+        // 读取用户会话
         const SESSION_READ = 1 << 28;
-        // delete a session
+        // 删除会话
         const SESSION_DELETE = 1 << 29;
 
-        // perform analytics action
+        // 执行分析操作
         const PERFORM_ANALYTICS = 1 << 30;
 
-        // create a collection
+        // 创建集合
         const COLLECTION_CREATE = 1 << 31;
-        // read a user's collections
+        // 读取用户集合
         const COLLECTION_READ = 1 << 32;
-        // write to a collection
+        // 写入集合
         const COLLECTION_WRITE = 1 << 33;
-        // delete a collection
+        // 删除集合
         const COLLECTION_DELETE = 1 << 34;
 
-        // create an organization
+        // 创建组织
         const ORGANIZATION_CREATE = 1 << 35;
-        // read a user's organizations
+        // 读取用户组织
         const ORGANIZATION_READ = 1 << 36;
-        // write to an organization
+        // 写入组织
         const ORGANIZATION_WRITE = 1 << 37;
-        // delete an organization
+        // 删除组织
         const ORGANIZATION_DELETE = 1 << 38;
 
-        // only accessible by modrinth-issued sessions
+        // 仅限 modrinth 发出的会话
         const SESSION_ACCESS = 1 << 39;
 
+        // 写入wiki
         const WIKI_WRITE = 1 << 40;
 
         const NONE = 0b0;

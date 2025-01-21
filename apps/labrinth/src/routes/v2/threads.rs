@@ -57,7 +57,7 @@ pub async fn threads_get(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Thread>>(response).await {
         Ok(threads) => {
             let threads = threads
@@ -85,7 +85,7 @@ pub async fn thread_send_message(
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let new_message = new_message.into_inner();
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::threads::thread_send_message(
         req,
         info,
@@ -109,7 +109,7 @@ pub async fn message_delete(
     session_queue: web::Data<AuthQueue>,
     file_host: web::Data<Arc<dyn FileHost + Send + Sync>>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换
     v3::threads::message_delete(
         req,
         info,

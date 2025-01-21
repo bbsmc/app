@@ -100,9 +100,9 @@ pub async fn forge_updates(
     };
 
     for version in versions {
-        // For forge in particular, we will hardcode it to use GameVersions rather than generic loader fields, as this is minecraft-java exclusive
-        // Will have duplicates between game_versions (for non-forge loaders), but that's okay as
-        // before v3 this was stored to the project and not the version
+        // 对于 forge，我们将硬编码使用 GameVersions 而不是通用的加载器字段，因为这是 Minecraft-Java 独有的
+        // 在 game_versions 之间会有重复（对于非 forge 加载器），但这是没问题的，因为
+        // 在 v3 之前，它存储在项目中而不是版本中
         let game_versions: Vec<String> = version
             .fields
             .iter()

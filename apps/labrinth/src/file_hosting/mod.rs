@@ -22,6 +22,8 @@ pub enum FileHostingError {
     FileSystemError(#[from] std::io::Error),
     #[error("Invalid Filename")]
     InvalidFilename,
+    #[error("异常: {0}")]
+    Custom(String),
 }
 
 #[derive(Debug, Clone)]

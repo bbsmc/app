@@ -1,4 +1,4 @@
-/// This module is used for the indexing from any source.
+/// 此模块用于从任何来源进行索引。
 pub mod local_import;
 
 use crate::database::redis::RedisPool;
@@ -11,7 +11,6 @@ use meilisearch_sdk::indexes::Index;
 use meilisearch_sdk::settings::{PaginationSetting, Settings};
 use meilisearch_sdk::SwapIndexes;
 use sqlx::postgres::PgPool;
-use std::collections::HashSet;
 use std::error::Error;
 use thiserror::Error;
 
@@ -31,9 +30,9 @@ pub enum IndexingError {
     Task,
 }
 
-// The chunk size for adding projects to the indexing database. If the request size
-// is too large (>10MiB) then the request fails with an error.  This chunk size
-// assumes a max average size of 4KiB per project to avoid this cap.
+// 添加项目到索引数据库的块大小。如果请求大小
+// 太大 (>10MiB) 则请求失败。这个块大小
+// 假设每个项目平均大小为 4KiB 以避免这个限制。
 const MEILISEARCH_CHUNK_SIZE: usize = 10000000;
 const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
@@ -63,15 +62,15 @@ pub async fn index_projects(
 ) -> Result<(), IndexingError> {
     info!("索引项目。");
 
-    // First, ensure current index exists (so no error happens- current index should be worst-case empty, not missing)
+    // 首先，确保当前索引存在（这样不会发生错误- 当前索引应该是空的最坏情况，而不是缺失）
     get_indexes_for_indexing(config, false).await?;
 
-    // Then, delete the next index if it still exists
+    // 然后，如果存在，删除下一个索引
     let indices = get_indexes_for_indexing(config, true).await?;
     for index in indices {
         index.delete().await?;
     }
-    // Recreate the next index for indexing
+    // 重新创建下一个索引进行索引
     let indices = get_indexes_for_indexing(config, true).await?;
 
     let all_loader_fields =
@@ -86,11 +85,11 @@ pub async fn index_projects(
     let uploads = index_local(&pool).await?;
     add_projects(&indices, &uploads, all_loader_fields.clone(), config).await?;
 
-    // Swap the index
+    // 交换索引
     swap_index(config, "projects").await?;
     swap_index(config, "projects_filtered").await?;
 
-    // Delete the now-old index
+    // 删除现在已过时的索引
     for index in indices {
         index.delete().await?;
     }
@@ -178,7 +177,7 @@ pub async fn swap_index(
 
 pub async fn get_indexes_for_indexing(
     config: &SearchConfig,
-    next: bool, // Get the 'next' one
+    next: bool, // 获取下一个索引
 ) -> Result<Vec<Index>, meilisearch_sdk::errors::Error> {
     let client = config.make_client();
     let project_name = config.get_index_name("projects", next);
@@ -244,7 +243,7 @@ async fn create_or_update_index(
         _ => {
             info!("创建索引。");
 
-            // Only create index and set settings if the index doesn't already exist
+            // 仅当索引不存在时创建索引并设置设置
             let task = client.create_index(name, Some("version_id")).await?;
             let task = task
                 .wait_for_completion(client, None, Some(TIMEOUT))
@@ -276,7 +275,7 @@ async fn add_to_index(
     mods: &[UploadSearchProject],
 ) -> Result<(), IndexingError> {
     for chunk in mods.chunks(MEILISEARCH_CHUNK_SIZE) {
-        info!("添加以版本 ID {} 开头的块", chunk[0].version_id);
+        info!("添加以版本 ID {} 开头的版本", chunk[0].version_id);
         index
             .add_or_replace(chunk, Some("version_id"))
             .await?
@@ -298,12 +297,12 @@ async fn update_and_add_to_index(
     projects: &[UploadSearchProject],
     _additional_fields: &[String],
 ) -> Result<(), IndexingError> {
-    // TODO: Uncomment this- hardcoding loader_fields is a band-aid fix, and will be fixed soon
+    // TODO: 取消注释此代码- 硬编码加载器字段是临时修复，很快就会修复
     // let mut new_filterable_attributes: Vec<String> = index.get_filterable_attributes().await?;
     // let mut new_displayed_attributes = index.get_displayed_attributes().await?;
 
-    // // Check if any 'additional_fields' are not already in the index
-    // // Only add if they are not already in the index
+    // // 检查任何 'additional_fields' 是否不在索引中
+    // // 仅当它们不在索引中时添加
     // let new_fields = additional_fields
     //     .iter()
     //     .filter(|x| !new_filterable_attributes.contains(x))
@@ -313,7 +312,7 @@ async fn update_and_add_to_index(
     //     new_filterable_attributes.extend(new_fields.iter().map(|s: &&String| s.to_string()));
     //     new_displayed_attributes.extend(new_fields.iter().map(|s| s.to_string()));
 
-    //     // Adds new fields to the index
+    //     // 将新字段添加到索引
     //     let filterable_task = index
     //         .set_filterable_attributes(new_filterable_attributes)
     //         .await?;
@@ -321,7 +320,7 @@ async fn update_and_add_to_index(
     //         .set_displayed_attributes(new_displayed_attributes)
     //         .await?;
 
-    //     // Allow a long timeout for adding new attributes- it only needs to happen the once
+    //     // 允许长时间超时以添加新属性- 它只需要发生一次
     //     filterable_task
     //         .wait_for_completion(client, None, Some(TIMEOUT * 100))
     //         .await?;
@@ -339,13 +338,13 @@ async fn update_and_add_to_index(
 
 pub async fn add_projects(
     indices: &[Index],
-    projects: &Vec<UploadSearchProject>,
+    projects: &[UploadSearchProject],
     additional_fields: Vec<String>,
     config: &SearchConfig,
 ) -> Result<(), IndexingError> {
     let client = config.make_client();
     for index in indices {
-        update_and_add_to_index(&client, index, &projects, &additional_fields)
+        update_and_add_to_index(&client, index, projects, &additional_fields)
             .await?;
     }
 
@@ -354,13 +353,13 @@ pub async fn add_projects(
 
 fn default_settings() -> Settings {
     Settings::new()
-        .with_distinct_attribute("project_id")
-        .with_displayed_attributes(DEFAULT_DISPLAYED_ATTRIBUTES)
-        .with_searchable_attributes(DEFAULT_SEARCHABLE_ATTRIBUTES)
-        .with_sortable_attributes(DEFAULT_SORTABLE_ATTRIBUTES)
-        .with_filterable_attributes(DEFAULT_ATTRIBUTES_FOR_FACETING)
+        .with_distinct_attribute("project_id") // 设置唯一属性为 project_id
+        .with_displayed_attributes(DEFAULT_DISPLAYED_ATTRIBUTES) // 设置显示属性
+        .with_searchable_attributes(DEFAULT_SEARCHABLE_ATTRIBUTES) // 设置可搜索属性
+        .with_sortable_attributes(DEFAULT_SORTABLE_ATTRIBUTES) // 设置可排序属性
+        .with_filterable_attributes(DEFAULT_ATTRIBUTES_FOR_FACETING) // 设置可过滤属性
         .with_pagination(PaginationSetting {
-            max_total_hits: 2147483647,
+            max_total_hits: 2147483647, // 设置最大命中数为 2147483647
         })
 }
 
@@ -384,18 +383,18 @@ const DEFAULT_DISPLAYED_ATTRIBUTES: &[&str] = &[
     "gallery",
     "featured_gallery",
     "color",
-    // Note: loader fields are not here, but are added on as they are needed (so they can be dynamically added depending on which exist).
-    // TODO: remove these- as they should be automatically populated. This is a band-aid fix.
+    // 注意：加载器字段不在这里，但会根据需要添加（因此可以根据存在的字段动态添加）。
+    // TODO：删除这些- 因为它们应该被自动填充。这是一个临时解决方案。
     "server_only",
     "client_only",
     "game_versions",
     "singleplayer",
     "client_and_server",
     "mrpack_loaders",
-    // V2 legacy fields for logical consistency
+    // V2 逻辑一致性字段
     "client_side",
     "server_side",
-    // Non-searchable fields for filling out the Project model.
+    // 非搜索字段，用于填充 Project 模型。
     "license_url",
     "monetization_status",
     "team_id",
@@ -409,8 +408,9 @@ const DEFAULT_DISPLAYED_ATTRIBUTES: &[&str] = &[
     "organization_id",
     "links",
     "gallery_items",
-    "loaders", // search uses loaders as categories- this is purely for the Project model.
+    "loaders", // 搜索使用加载器作为类别- 这只是为了 Project 模型。
     "project_loader_fields",
+    "chat_id",
 ];
 
 const DEFAULT_SEARCHABLE_ATTRIBUTES: &[&str] =
@@ -431,15 +431,15 @@ const DEFAULT_ATTRIBUTES_FOR_FACETING: &[&str] = &[
     "project_id",
     "open_source",
     "color",
-    // Note: loader fields are not here, but are added on as they are needed (so they can be dynamically added depending on which exist).
-    // TODO: remove these- as they should be automatically populated. This is a band-aid fix.
+    // 注意：加载器字段不在这里，但会根据需要添加（因此可以根据存在的字段动态添加）。
+    // TODO：删除这些- 因为它们应该被自动填充。这是一个临时解决方案。
     "server_only",
     "client_only",
     "game_versions",
     "singleplayer",
     "client_and_server",
     "mrpack_loaders",
-    // V2 legacy fields for logical consistency
+    // V2 逻辑一致性字段
     "client_side",
     "server_side",
 ];

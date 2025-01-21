@@ -1,9 +1,9 @@
 use chrono::Utc;
 
-// this converts timestamps to the timestamp format clickhouse requires/uses
+// 将时间戳转换为 ClickHouse 所需的格式
 pub fn get_current_tenths_of_ms() -> i64 {
     Utc::now()
         .timestamp_nanos_opt()
-        .expect("value can not be represented in a timestamp with nanosecond precision.")
+        .expect("无法以纳秒精度表示该值.")
         / 100_000
 }

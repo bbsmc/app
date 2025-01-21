@@ -25,7 +25,7 @@ pub async fn index_local(
 ) -> Result<Vec<UploadSearchProject>, IndexingError> {
     info!("Indexing local projects!");
 
-    // todo: loaders, project type, game versions
+    // 待办事项：加载器、项目类型、游戏版本
     struct PartialProject {
         id: ProjectId,
         name: String,

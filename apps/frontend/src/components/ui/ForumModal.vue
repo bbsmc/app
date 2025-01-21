@@ -1,22 +1,22 @@
 <template>
-
-
-
   <div class="forum-container">
-
-    <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px;">
+    <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px">
       还没有任何回复，快来回复吧！
     </div>
 
     <!-- 帖子列表 -->
     <div class="posts-wrapper">
-      <div v-if="isMobile" style="margin: 10px; text-align: center;">
-        <button-styled color="green" @click="showNewReply">
-          发表新帖
-        </button-styled>
+      <div v-if="isMobile" style="margin: 10px; text-align: center">
+        <button-styled color="green" @click="showNewReply"> 发表新帖 </button-styled>
       </div>
-      <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
-        :data-floor-number="post.floor_number" class="card markdown-body">
+      <div
+        v-for="post in forum"
+        :id="`post-${post.floor_number}`"
+        :key="post.floor_number"
+        ref="postRefs"
+        :data-floor-number="post.floor_number"
+        class="card markdown-body"
+      >
         <div class="post-header">
           <!-- 用户信息区 -->
           <div class="user-info">
@@ -34,15 +34,26 @@
         </div>
 
         <!-- 如果是回复帖子，显示回复引用 -->
-        <div v-if="post.reply_content" class="reply-reference" @click="scrollToPost(post.replied_to)">
+        <div
+          v-if="post.reply_content"
+          class="reply-reference"
+          @click="scrollToPost(post.replied_to)"
+        >
           <div class="reply-info">
-            <img :src="post.reply_content.user_avatar" :alt="post.reply_content.user_name" class="reply-avatar" />
+            <img
+              :src="post.reply_content.user_avatar"
+              :alt="post.reply_content.user_name"
+              class="reply-avatar"
+            />
             <div class="reply-user-info">
               <span class="reply-username">{{ post.reply_content.user_name }}</span>
               <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
-          <div class="reply-quote" v-html="renderHighlightedString(post.reply_content.content)"></div>
+          <div
+            class="reply-quote"
+            v-html="renderHighlightedString(post.reply_content.content)"
+          ></div>
         </div>
 
         <!-- 帖子内容 -->
@@ -55,8 +66,14 @@
 
         <!-- 如果有回复，显示回复链接 -->
         <div v-if="post.replies.length > 0" class="replies-info">
-          <span v-for="reply in post.replies" :key="reply" class="reply-link" @click="scrollToPost(reply.floor_number)"
-            @mouseenter="showReplyPreview(reply)" @mouseleave="hideReplyPreview">
+          <span
+            v-for="reply in post.replies"
+            :key="reply"
+            class="reply-link"
+            @click="scrollToPost(reply.floor_number)"
+            @mouseenter="showReplyPreview(reply)"
+            @mouseleave="hideReplyPreview"
+          >
             #{{ reply.floor_number }}
           </span>
         </div>
@@ -74,8 +91,13 @@
       <div class="timeline-content">
         <div class="timeline-line">
           <div class="timeline-sections">
-            <div v-for="(section, index) in timelineSections" :key="index" class="timeline-section"
-              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`" @click="jumpToSection(index)"></div>
+            <div
+              v-for="(section, index) in timelineSections"
+              :key="index"
+              class="timeline-section"
+              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`"
+              @click="jumpToSection(index)"
+            ></div>
           </div>
         </div>
         <div class="timeline-position" :style="{ top: timelinePosition + '%' }">
@@ -115,7 +137,11 @@
           <button class="close-button" @click="cancelReply">×</button>
         </div>
         <div class="reply-form-content">
-          <MarkdownEditor v-model="replyContent" :on-image-upload="onUploadHandler" placeholder="输入回复内容..." />
+          <MarkdownEditor
+            v-model="replyContent"
+            :on-image-upload="onUploadHandler"
+            placeholder="输入回复内容..."
+          />
         </div>
         <div class="reply-form-actions">
           <button class="submit-button" :disabled="!replyContent.trim()" @click="submitReply">
@@ -141,7 +167,6 @@ const router = useRouter();
 const postRefs = ref([]);
 const currentPostId = ref(null);
 const auth = await useAuth();
-
 
 // 添加一个标志来控制观者是否应该更新 URL
 const shouldUpdateUrl = ref(true);
@@ -250,7 +275,10 @@ const fetchPosts = async (page) => {
       // sort: 'floor_number' // 移除排序参数
     });
 
-    const data = await useBaseFetch(`forum/${props.discussionId}/posts?${params}`, { apiVersion: 3, method: "GET" });
+    const data = await useBaseFetch(`forum/${props.discussionId}/posts?${params}`, {
+      apiVersion: 3,
+      method: "GET",
+    });
 
     // 确保返回的帖子按楼层号排序
     if (data?.posts) {
@@ -426,7 +454,7 @@ const forum = computed(() => displayedPosts.value);
 const props = defineProps({
   discussionId: {
     type: String,
-    default: () => (null),
+    default: () => null,
   },
 });
 
@@ -657,6 +685,28 @@ const replyContent = ref("");
 
 // 显示回复表单
 const showReplyForm = (post) => {
+  if (!auth.value.user) {
+    data.$notify({
+      group: "main",
+      title: "未登录",
+      text: "</br>请先登录或创建账号",
+      type: "error",
+    });
+    router.push(`/auth/sign-in`);
+    return;
+  }
+
+  if (!auth.value.user.has_phonenumber) {
+    data.$notify({
+      group: "main",
+      title: "未绑定手机号",
+      text: "</br>根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
+      type: "error",
+    });
+    router.push(`/settings/account`);
+    return;
+  }
+
   replyingTo.value = post;
   replyContent.value = "";
 };
@@ -669,6 +719,28 @@ const cancelReply = () => {
 
 // 修改发表新回复的函数
 const showNewReply = () => {
+  if (!auth.value.user) {
+    data.$notify({
+      group: "main",
+      title: "未登录",
+      text: "</br>请先登录或创建账号",
+      type: "error",
+    });
+    router.push(`/auth/sign-in`);
+    return;
+  }
+
+  if (!auth.value.user.has_phonenumber) {
+    data.$notify({
+      group: "main",
+      title: "未绑定手机号",
+      text: "</br>根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
+      type: "error",
+    });
+    router.push(`/settings/account`);
+    return;
+  }
+
   // 直接显示回复表单，不设置 replyingTo
   replyingTo.value = { id: "new" }; // 设置一个特殊值表示新帖子
   replyContent.value = "";
@@ -712,7 +784,6 @@ const submitReply = async () => {
   cancelReply();
   scrollToPost(newPost.floor_number);
   return;
-
 
   // 如果是回复帖子，更新被回复帖子的 replies 数组
   if (replyingTo.value.id !== "new") {
@@ -1040,14 +1111,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .reply-reference {
   margin: 8px 16px;
   padding: 8px 12px;
-  background: #2d3139;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .reply-reference:hover {
-  background: #363b44;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .reply-info {

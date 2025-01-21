@@ -320,7 +320,7 @@ pub async fn send_slack_webhook(
                     },
                     {
                         "type": "mrkdwn",
-                        "text": format!("{} on Modrinth • <!date^{}^{{date_short_pretty}} at {{time}}|Unknown date>", metadata.display_project_type, Utc::now().timestamp())
+                        "text": format!("{} on BBSMC • <!date^{}^{{date_short_pretty}} at {{time}}|Unknown date>", metadata.display_project_type, Utc::now().timestamp())
                     }
                 ]
             })
@@ -439,7 +439,7 @@ pub async fn send_discord_webhook(
                 icon_url: x.icon_url,
             }),
             url: project.project_url,
-            title: project.project_title, // Do not change DiscordEmbed
+            title: project.project_title, // 不要更改 DiscordEmbed
             description: project.project_summary,
             timestamp: Utc::now(),
             color: project.color.unwrap_or(0x1bd96a),
@@ -474,9 +474,7 @@ pub async fn send_discord_webhook(
             .send()
             .await
             .map_err(|_| {
-                ApiError::Discord(
-                    "Error while sending projects webhook".to_string(),
-                )
+                ApiError::Discord("发送项目 webhook 时出错".to_string())
             })?;
     }
 

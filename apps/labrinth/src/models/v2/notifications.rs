@@ -1,8 +1,8 @@
 use crate::database::models::WikiCacheId;
 use crate::models::{
     ids::{
-        NotificationId, OrganizationId, ProjectId, ReportId, TeamId, ThreadId,
-        ThreadMessageId, UserId, VersionId,
+        DiscussionId, NotificationId, OrganizationId, ProjectId, ReportId,
+        TeamId, ThreadId, ThreadMessageId, UserId, VersionId,
     },
     notifications::{Notification, NotificationAction, NotificationBody},
     projects::ProjectStatus,
@@ -80,6 +80,14 @@ pub enum LegacyNotificationBody {
         wiki_cache_id: WikiCacheId,
         type_: String,
     },
+    Forum {
+        forum_id: DiscussionId,
+        forum_title: String,
+        forum_type: String,
+        number_of_posts: u32,
+        project_id: Option<ProjectId>,
+        sender: String,
+    },
     Unknown,
 }
 
@@ -104,6 +112,7 @@ impl LegacyNotification {
             NotificationBody::WikiCache { .. } => {
                 Some("wiki_cache".to_string())
             }
+            NotificationBody::Forum { .. } => Some("forum".to_string()),
             NotificationBody::LegacyMarkdown {
                 notification_type, ..
             } => notification_type.clone(),
@@ -185,6 +194,21 @@ impl LegacyNotification {
                 msg,
                 wiki_cache_id,
                 type_,
+            },
+            NotificationBody::Forum {
+                forum_id,
+                forum_title,
+                forum_type,
+                number_of_posts,
+                project_id,
+                sender,
+            } => LegacyNotificationBody::Forum {
+                forum_id,
+                forum_title,
+                forum_type,
+                number_of_posts,
+                project_id,
+                sender,
             },
             NotificationBody::Unknown => LegacyNotificationBody::Unknown,
         };

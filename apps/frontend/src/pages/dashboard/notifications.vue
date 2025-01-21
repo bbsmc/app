@@ -43,6 +43,9 @@
               case 'wiki_cache': {
                 return '百科';
               }
+              case 'forum': {
+                return '论坛';
+              }
               case 'organization_invite': {
                 return '团队邀请';
               }
@@ -177,7 +180,9 @@ async function readAll() {
   ]);
 
   const updateNotifs = await markAsRead(ids);
-  allNotifs.value = updateNotifs(allNotifs.value);
+  notifications.value = updateNotifs(notifications.value);
+  router.push("/dashboard/notifications");
+
   fetchNotifications();
 }
 

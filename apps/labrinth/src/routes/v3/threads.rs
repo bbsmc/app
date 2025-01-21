@@ -393,14 +393,12 @@ pub async fn thread_send_message(
     } = &new_message.body
     {
         if body.len() > 65536 {
-            return Err(ApiError::InvalidInput(
-                "Input body is too long!".to_string(),
-            ));
+            return Err(ApiError::InvalidInput("输入内容过长!".to_string()));
         }
 
         if *private && !user.role.is_mod() {
             return Err(ApiError::InvalidInput(
-                "You are not allowed to send private messages!".to_string(),
+                "您不允许发送私密消息!".to_string(),
             ));
         }
 
@@ -414,19 +412,18 @@ pub async fn thread_send_message(
             if let Some(thread_message) = thread_message {
                 if thread_message.thread_id != string {
                     return Err(ApiError::InvalidInput(
-                        "Message replied to is from another thread!"
-                            .to_string(),
+                        "回复的消息来自另一个线程!".to_string(),
                     ));
                 }
             } else {
                 return Err(ApiError::InvalidInput(
-                    "Message replied to does not exist!".to_string(),
+                    "回复的消息不存在!".to_string(),
                 ));
             }
         }
     } else {
         return Err(ApiError::InvalidInput(
-            "You may only send text messages through this route!".to_string(),
+            "您只能通过此路由发送文本消息!".to_string(),
         ));
     }
 
@@ -489,7 +486,7 @@ pub async fn thread_send_message(
             if let Some(report) = report {
                 if report.closed && !user.role.is_mod() {
                     return Err(ApiError::InvalidInput(
-                        "You may not reply to a closed report".to_string(),
+                        "您不能回复已关闭的举报".to_string(),
                     ));
                 }
 
@@ -527,7 +524,7 @@ pub async fn thread_send_message(
                     ) || image.context.inner_id().is_some()
                     {
                         return Err(ApiError::InvalidInput(format!(
-                            "Image {} is not unused and in the 'thread_message' context",
+                            "Image {} 不是未使用的，并且不在 'thread_message' 上下文中",
                             image_id
                         )));
                     }
@@ -548,7 +545,7 @@ pub async fn thread_send_message(
                         .await?;
                 } else {
                     return Err(ApiError::InvalidInput(format!(
-                        "Image {} does not exist",
+                        "Image {} 不存在",
                         image_id
                     )));
                 }
@@ -590,7 +587,7 @@ pub async fn message_delete(
     if let Some(thread) = result {
         if !user.role.is_mod() && thread.author_id != Some(user.id.into()) {
             return Err(ApiError::CustomAuthentication(
-                "You cannot delete this message!".to_string(),
+                "您不能删除此消息!".to_string(),
             ));
         }
 

@@ -151,6 +151,30 @@
         </div>
       </template>
 
+      <template v-else-if="type === 'forum'">
+        <nuxt-link :to="`/user/${notification.body.sender}`" class="title-link">{{
+          notification.body.sender
+        }}</nuxt-link>
+        在
+        <nuxt-link
+          v-if="notification.body.forum_type === 'project'"
+          :to="`/project/${notification.body.project_id}/forum?id=${notification.body.number_of_posts}`"
+          class="title-link"
+        >
+          {{ notification.body.forum_title }}
+        </nuxt-link>
+        <nuxt-link
+          v-else
+          :to="`/d/${notification.body.forum_id}?id=${notification.body.number_of_posts}`"
+          class="title-link"
+        >
+          {{ notification.body.forum_title }}
+        </nuxt-link>
+
+        回复了您
+        <br /><br />
+      </template>
+
       <template v-else-if="type === 'moderator_message' && thread && project && !report">
         您的资源
         <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link
@@ -290,7 +314,27 @@
         >
           <button class="iconified-button brand-button" @click="again">重新编辑百科提交</button>
         </template>
-
+        <template v-if="type === 'forum' && !notification.read">
+          <button
+            class="iconified-button brand-button"
+            @click="
+              () => {
+                if (notification.body.forum_type === 'project') {
+                  router.push(
+                    `/project/${notification.body.project_id}/forum?id=${notification.body.number_of_posts}`,
+                  );
+                } else {
+                  router.push(
+                    `/d/${notification.body.forum_id}?id=${notification.body.number_of_posts}`,
+                  );
+                }
+                read();
+              }
+            "
+          >
+            前往查看
+          </button>
+        </template>
         <template
           v-if="(type === 'team_invite' || type === 'organization_invite') && !notification.read"
         >
@@ -317,6 +361,7 @@
             <CrossIcon /> 拒绝
           </button>
         </template>
+
         <button
           v-else-if="!notification.read"
           class="iconified-button"
@@ -341,6 +386,7 @@
           <ExternalIcon />
           打开链接
         </nuxt-link>
+
         <button
           v-for="(action, actionIndex) in notification.actions"
           :key="actionIndex"

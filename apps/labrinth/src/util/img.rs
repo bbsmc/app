@@ -4,6 +4,7 @@ use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::images::ImageContext;
 use crate::routes::ApiError;
+
 use color_thief::ColorFormat;
 use image::imageops::FilterType;
 use image::{
@@ -40,6 +41,15 @@ pub struct UploadImageResult {
     pub color: Option<u32>,
 }
 
+pub struct UploadImagePos {
+    // 应用场景
+    pub pos: String,
+    // 应该场景地址
+    pub url: String,
+
+    pub username: String,
+}
+
 pub async fn upload_image_optimized(
     upload_folder: &str,
     bytes: bytes::Bytes,
@@ -47,11 +57,13 @@ pub async fn upload_image_optimized(
     target_width: Option<u32>,
     min_aspect_ratio: Option<f32>,
     file_host: &dyn FileHost,
+    pos: UploadImagePos,
+    redis: &RedisPool,
 ) -> Result<UploadImageResult, ApiError> {
     let content_type = crate::util::ext::get_image_content_type(file_extension)
         .ok_or_else(|| {
             ApiError::InvalidInput(format!(
-                "Invalid format for image: {}",
+                "无效的图像格式: {}",
                 file_extension
             ))
         })?;
@@ -67,7 +79,7 @@ pub async fn upload_image_optimized(
     )?;
     let color = get_color_from_img(&bytes)?;
 
-    // Only upload the processed image if it's smaller than the original
+    // 仅当处理后的图像小于原始图像时才上传
     let processed_upload_data = if processed_image.len() < bytes.len() {
         Some(
             file_host
@@ -97,6 +109,21 @@ pub async fn upload_image_optimized(
         .await?;
 
     let url = format!("{}/{}", cdn_url, upload_data.file_name);
+
+    let risk = crate::util::risk::check_image_risk(
+        &url,
+        &pos.url,
+        &pos.username,
+        &pos.pos,
+        redis,
+    )
+    .await?;
+    if !risk {
+        return Err(ApiError::InvalidInput(
+            "图片包含敏感内容，已被记录该次提交，请勿在本网站使用涉及敏感或违规的图片".to_string(),
+        ));
+    }
+
     Ok(UploadImageResult {
         url: processed_upload_data
             .clone()
@@ -127,7 +154,7 @@ fn process_image(
     let webp_bytes = convert_to_webp(&img)?;
     img = image::load_from_memory(&webp_bytes)?;
 
-    // Resize the image
+    // 调整图像大小
     let (orig_width, orig_height) = img.dimensions();
     let aspect_ratio = orig_width as f32 / orig_height as f32;
 
@@ -140,7 +167,7 @@ fn process_image(
     }
 
     if let Some(min_aspect_ratio) = min_aspect_ratio {
-        // Crop if necessary
+        // 如果需要裁剪
         if aspect_ratio < min_aspect_ratio {
             let crop_height =
                 (img.width() as f32 / min_aspect_ratio).round() as u32;
@@ -149,7 +176,7 @@ fn process_image(
         }
     }
 
-    // Optimize and compress
+    // 优化和压缩
     let mut output = Vec::new();
     img.write_to(&mut Cursor::new(&mut output), ImageOutputFormat::WebP)?;
 
@@ -159,7 +186,7 @@ fn process_image(
 fn convert_to_webp(img: &DynamicImage) -> Result<Vec<u8>, ImageError> {
     let rgba = img.to_rgba8();
     let encoder = Encoder::from_rgba(&rgba, img.width(), img.height());
-    let webp = encoder.encode(75.0); // Quality factor: 0-100, 75 is a good balance
+    let webp = encoder.encode(75.0); // 质量因子: 0-100, 75 是平衡
     Ok(webp.to_vec())
 }
 
@@ -189,9 +216,9 @@ pub async fn delete_old_images(
     Ok(())
 }
 
-// check changes to associated images
-// if they no longer exist in the String list, delete them
-// Eg: if description is modified and no longer contains a link to an iamge
+// 检查与图像相关的更改
+// 如果它们不再存在于字符串列表中，则删除它们
+// 例如：如果描述被修改并且不再包含图像的链接
 pub async fn delete_unused_images(
     context: ImageContext,
     reference_strings: Vec<&str>,

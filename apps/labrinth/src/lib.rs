@@ -111,8 +111,7 @@ pub fn app_setup(
         async move {}
     });
 
-    // The interval in seconds at which the local database is indexed
-    // for searching.  Defaults to 1 hour if unset.
+    // 本地数据库索引的间隔时间，单位为秒。默认值为 1 小时。
     let local_index_interval = std::time::Duration::from_secs(
         parse_var("LOCAL_INDEX_INTERVAL").unwrap_or(3600),
     );
@@ -125,7 +124,7 @@ pub fn app_setup(
         let redis_pool_ref = redis_pool_ref.clone();
         let search_config_ref = search_config_ref.clone();
         async move {
-            // info!("索引本地数据库");
+            info!("索引本地数据库");
             let result = index_projects(
                 pool_ref,
                 redis_pool_ref.clone(),
@@ -135,7 +134,7 @@ pub fn app_setup(
             if let Err(e) = result {
                 warn!("本地项目索引失败：{:?}", e);
             }
-            // info!("完成索引本地数据库");
+            info!("完成索引本地数据库");
         }
     });
 
@@ -376,6 +375,7 @@ pub fn app_setup(
                                                     totp_secret: None,
                                                     wiki_overtake_count: u.wiki_overtake_count,
                                                     wiki_ban_time: u.wiki_ban_time,
+                                                    phone_number: None,
                                                 };
 
                                                 let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id, &pool_ref_clone2).await {

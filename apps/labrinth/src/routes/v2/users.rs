@@ -43,7 +43,7 @@ pub async fn user_auth_get(
         .await
         .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<User>(response).await {
         Ok(user) => {
             let user = LegacyUser::from(user);
@@ -72,7 +72,7 @@ pub async fn users_get(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<User>>(response).await {
         Ok(users) => {
             let legacy_users: Vec<LegacyUser> =
@@ -93,7 +93,7 @@ pub async fn user_get(
         .await
         .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<User>(response).await {
         Ok(user) => {
             let user = LegacyUser::from(user);
@@ -121,7 +121,7 @@ pub async fn projects_list(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert to V2 projects
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =
@@ -168,7 +168,7 @@ pub async fn user_edit(
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let new_user = new_user.into_inner();
-    // Returns NoContent, so we don't need to convert to V2
+    // 返回 NoContent，所以不需要转换为 V2
     v3::users::user_edit(
         req,
         info,
@@ -204,7 +204,7 @@ pub async fn user_icon_edit(
     payload: web::Payload,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert to V2
+    // 返回 NoContent，所以不需要转换为 V2
     v3::users::user_icon_edit(
         web::Query(v3::users::Extension { ext: ext.ext }),
         req,
@@ -227,7 +227,7 @@ pub async fn user_delete(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert to V2
+    // 返回 NoContent，所以不需要转换为 V2
     v3::users::user_delete(req, info, pool, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)
@@ -251,7 +251,7 @@ pub async fn user_follows(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert to V2 projects
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =
@@ -274,7 +274,7 @@ pub async fn user_notifications(
         v3::users::user_notifications(req, info, pool, redis, session_queue)
             .await
             .or_else(v2_reroute::flatten_404_error)?;
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Notification>>(response).await {
         Ok(notifications) => {
             let legacy_notifications: Vec<LegacyNotification> = notifications

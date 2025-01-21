@@ -355,6 +355,20 @@ pub async fn user_edit(
                     .map(|id| id == user.id)
                     .unwrap_or(true)
                 {
+                    let risk = crate::util::risk::check_text_risk(
+                        username,
+                        &user.username,
+                        &format!("/user/{}", user.username),
+                        "修改新的用户名",
+                        &redis,
+                    )
+                    .await?;
+                    if !risk {
+                        return Err(ApiError::InvalidInput(
+                            "新的用户名包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的修改新的用户名".to_string(),
+                        ));
+                    }
+
                     sqlx::query!(
                         "
                         UPDATE users
@@ -368,12 +382,30 @@ pub async fn user_edit(
                     .await?;
                 } else {
                     return Err(ApiError::InvalidInput(format!(
-                        "Username {username} is taken!"
+                        "用户名 {username} 已被占用!"
                     )));
                 }
             }
 
             if let Some(bio) = &new_user.bio {
+                if bio.as_deref().is_some() {
+                    // 应用场景URL
+
+                    let risk = crate::util::risk::check_text_risk(
+                        bio.as_deref().unwrap(),
+                        &user.username,
+                        &format!("/user/{}", user.username),
+                        "个人资料简介",
+                        &redis,
+                    )
+                    .await?;
+                    if !risk {
+                        return Err(ApiError::InvalidInput(
+                            "简介包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的简介".to_string(),
+                        ));
+                    }
+                }
+
                 sqlx::query!(
                     "
                     UPDATE users
@@ -390,8 +422,7 @@ pub async fn user_edit(
             if let Some(role) = &new_user.role {
                 if !user.role.is_admin() {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the role of this user!"
-                            .to_string(),
+                        "您没有权限编辑此用户的角色!".to_string(),
                     ));
                 }
 
@@ -413,8 +444,7 @@ pub async fn user_edit(
             if let Some(badges) = &new_user.badges {
                 if !user.role.is_admin() {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the badges of this user!"
-                            .to_string(),
+                        "您没有权限编辑此用户的徽章!".to_string(),
                     ));
                 }
 
@@ -434,8 +464,7 @@ pub async fn user_edit(
             if let Some(venmo_handle) = &new_user.venmo_handle {
                 if !scopes.contains(Scopes::PAYOUTS_WRITE) {
                     return Err(ApiError::CustomAuthentication(
-                        "You do not have the permissions to edit the venmo handle of this user!"
-                            .to_string(),
+                        "您没有权限编辑此用户的Venmo handle!".to_string(),
                     ));
                 }
 
@@ -458,7 +487,7 @@ pub async fn user_edit(
             Ok(HttpResponse::NoContent().body(""))
         } else {
             Err(ApiError::CustomAuthentication(
-                "You do not have permission to edit this user!".to_string(),
+                "您没有权限编辑此用户!".to_string(),
             ))
         }
     } else {
@@ -496,8 +525,7 @@ pub async fn user_icon_edit(
     if let Some(actual_user) = id_option {
         if user.id != actual_user.id.into() && !user.role.is_mod() {
             return Err(ApiError::CustomAuthentication(
-                "You don't have permission to edit this user's icon."
-                    .to_string(),
+                "您没有权限编辑此用户的头像!".to_string(),
             ));
         }
 
@@ -508,12 +536,9 @@ pub async fn user_icon_edit(
         )
         .await?;
 
-        let bytes = read_from_payload(
-            &mut payload,
-            262144,
-            "Icons must be smaller than 256KiB",
-        )
-        .await?;
+        let bytes =
+            read_from_payload(&mut payload, 262144, "头像必须小于256KiB")
+                .await?;
 
         let user_id: UserId = actual_user.id.into();
         let upload_result = crate::util::img::upload_image_optimized(
@@ -523,6 +548,12 @@ pub async fn user_icon_edit(
             Some(96),
             Some(1.0),
             &***file_host,
+            crate::util::img::UploadImagePos {
+                pos: "用户头像".to_string(),
+                url: format!("/user/{}", actual_user.username),
+                username: actual_user.username.clone(),
+            },
+            &redis,
         )
         .await?;
 
@@ -567,7 +598,7 @@ pub async fn user_delete(
     if let Some(id) = id_option.map(|x| x.id) {
         if !user.role.is_admin() && user.id != id.into() {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to delete this user!".to_string(),
+                "您没有权限删除此用户!".to_string(),
             ));
         }
 
@@ -608,7 +639,7 @@ pub async fn user_follows(
     if let Some(id) = id_option.map(|x| x.id) {
         if !user.role.is_admin() && user.id != id.into() {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to see the projects this user follows!".to_string(),
+                "您没有权限查看此用户关注的内容!".to_string(),
             ));
         }
 
@@ -650,7 +681,7 @@ pub async fn user_notifications(
     if let Some(id) = id_option.map(|x| x.id) {
         if !user.role.is_admin() && user.id != id.into() {
             return Err(ApiError::CustomAuthentication(
-                "You do not have permission to see the notifications of this user!".to_string(),
+                "您没有权限查看此用户的通知!".to_string(),
             ));
         }
 

@@ -5,7 +5,8 @@ use crate::database::models::notification_item::Notification as DBNotification;
 use crate::database::models::notification_item::NotificationAction as DBNotificationAction;
 use crate::database::models::WikiCacheId;
 use crate::models::ids::{
-    ProjectId, ReportId, TeamId, ThreadId, ThreadMessageId, VersionId,
+    DiscussionId, ProjectId, ReportId, TeamId, ThreadId, ThreadMessageId,
+    VersionId,
 };
 use crate::models::projects::ProjectStatus;
 use chrono::{DateTime, Utc};
@@ -30,6 +31,7 @@ pub struct Notification {
     pub actions: Vec<NotificationAction>,
 }
 
+// 通知类型
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum NotificationBody {
@@ -75,6 +77,14 @@ pub enum NotificationBody {
         wiki_cache_id: WikiCacheId,
         type_: String,
     },
+    Forum {
+        forum_id: DiscussionId,
+        forum_title: String,
+        forum_type: String,
+        number_of_posts: u32,
+        project_id: Option<ProjectId>,
+        sender: String,
+    },
     Unknown,
 }
 
@@ -104,6 +114,26 @@ impl From<DBNotification> for Notification {
                         project_title, type_
                     ),
                     format!("/project/{}/wikis", project_id),
+                    vec![],
+                ),
+                NotificationBody::Forum {
+                    forum_id,
+                    forum_title,
+                    forum_type,
+                    number_of_posts,
+                    project_id,
+                    sender,
+                } => (
+                    "您收到了一条回复".to_string(),
+                    format!(
+                        "{} 在帖子 {} 中回复了您 {} {}",
+                        sender,
+                        forum_title,
+                        forum_type,
+                        project_id
+                            .map_or_else(String::new, |id| format!("{}", id))
+                    ),
+                    format!("/d/{}?id={}", forum_id, number_of_posts),
                     vec![],
                 ),
                 NotificationBody::TeamInvite {

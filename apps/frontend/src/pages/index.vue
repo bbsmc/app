@@ -31,10 +31,10 @@
           ]">
             <div class="carousel-slide">
               <div class="carousel-image-container">
-                <!-- <a :href="`/modpack/${item.slug}`" target="_blank" v-if="index === currentSlide">
+                <a v-if="index === currentSlide" :href="item.slug" target="_blank">
                   <img :src="item.image" :alt="item.title" />
-                </a> -->
-                <img :src="item.image" :alt="item.title" @click="goToSlide(index)" />
+                </a>
+                <img v-else :src="item.image" :alt="item.title" @click="goToSlide(index)" />
               </div>
               <div v-if="index === currentSlide" class="carousel-bottom-container">
                 <div class="carousel-item-title">{{ item.title }}</div>
@@ -53,6 +53,24 @@
           <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
             @click="goToSlide(index)">
           </span>
+        </div>
+      </div>
+
+      <div>
+        <h1 class="section-title">
+          矿工茶馆
+          <a href="/forums/chat" target="_blank" class="link-btn btn-secondary">查看更多</a>
+        </h1>
+        <div class="forum-list">
+          <div v-for="forum in forums" :key="forum.id" class="forum-item">
+            <h5 class="section-title">
+              <a v-if="forum.project_id" :href="`/project/${forum.project_id}/forum`">{{
+                forum.title
+              }}</a>
+              <a v-else :href="`/d/${forum.id}`">{{ forum.title }}</a>
+              <span>{{ fromNow(forum.last_post_time) }}</span>
+            </h5>
+          </div>
         </div>
       </div>
 
@@ -191,17 +209,21 @@
 
 //   searchProjects.value = res.hits ?? [];
 // }
+import dayjs from "dayjs";
 const modpacks = ref([]);
 const newModpacks = ref([]);
 const mods = ref([]);
 const plugins = ref([]);
+const forums = ref([]);
 async function getProjects() {
-  const [modpacksResponse, newModpacksResponse, modResponse, pluginsResponse] = await Promise.all([
-    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:modpack"]]`),
-    useBaseFetch(`search?limit=6&index=newest&facets=[["project_type:modpack"]]`),
-    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:mod"]]`),
-    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:plugin"]]`),
-  ]);
+  const [modpacksResponse, newModpacksResponse, modResponse, pluginsResponse, forumsResponse] =
+    await Promise.all([
+      useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:modpack"]]`),
+      useBaseFetch(`search?limit=6&index=newest&facets=[["project_type:modpack"]]`),
+      useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:mod"]]`),
+      useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:plugin"]]`),
+      useBaseFetch(`forum`, { apiVersion: 3 }),
+    ]);
 
   modpacks.value =
     modpacksResponse.hits?.map((modpack) => ({
@@ -236,8 +258,12 @@ async function getProjects() {
         plugin.featured_gallery ||
         (plugin.gallery?.length > 0 ? plugin.gallery[0] : plugin.icon_url),
     })) ?? [];
+
+  forums.value = forumsResponse.forums ?? [];
 }
 await getProjects();
+
+// 初始化的时候就打乱carouselItems的顺序
 
 const carouselItems = ref([
   {
@@ -245,32 +271,52 @@ const carouselItems = ref([
       "https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426.jpeg",
     title: "乌托邦探险之旅",
     description: "乌托邦探险之旅",
-    slug: "utopia-journey",
+    slug: "/modpack/utopia-journey",
   },
   {
     image:
       "https://cdn.bbsmc.net/bbsmc/data/NxtrWNas/images/329b6261d797271622386b146078d7130a5438c0.jpeg",
     title: "探索自然2",
     description: "通过探索，种田来发展经济，提升实力，面临不断增强的怪物",
-    slug: "tansuoziran2",
+    slug: "/modpack/tansuoziran2",
   },
   {
     image:
       "https://cdn.bbsmc.net/bbsmc/data/dL0Tbr7N/images/19f25c62f6bcc1d068c9b35e4e603e81991754f9.jpeg",
     title: "脆骨症：黯光",
     description: "脆骨症的维度分支，引入了大量的新维度作为内容的补充。",
-    slug: "no-flesh-within-chest-dim",
+    slug: "/modpack/no-flesh-within-chest-dim",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/uXcveaXY/images/3e6d50d5bc617f730cddff4c93407272443c911c.gif",
+    title: "TrMenu",
+    description: "社区维护TrMenu3.0",
+    slug: "/plugin/trmenu",
   },
 ]);
 
 const currentSlide = ref(0);
 
-const autoPlayInterval = ref(null); // 用于存储自动播放的定时器
-const autoPlayDelay = 5000; // 自动播放间隔时间，5秒
+const fromNow = (date) => {
+  const currentDate = useCurrentDate();
+  return dayjs(date).from(currentDate.value);
+};
+
+// const currentSlide = ref(0);
+
+const autoPlayInterval = ref(null);
+const autoPlayDelay = 5000;
+
+// 添加一个标志来判断是否在客户端
+const isClient = ref(false);
 
 // 开始自动播放
 const startAutoPlay = () => {
-  stopAutoPlay(); // 先清除可能存在的定时器
+  // 只在客户端执行
+  if (!isClient.value) return;
+
+  stopAutoPlay();
   autoPlayInterval.value = setInterval(() => {
     nextSlide();
   }, autoPlayDelay);
@@ -299,7 +345,7 @@ const nextSlide = () => {
 const goToSlide = (index) => {
   if (index === currentSlide.value) {
     // 打开链接
-    window.open(`/modpack/${carouselItems.value[index].slug}`, "_blank");
+    window.open(`${carouselItems.value[index].slug}`, "_blank");
     return;
   }
 
@@ -309,20 +355,25 @@ const goToSlide = (index) => {
 
 // 在组件挂载时启动自动播放
 onMounted(() => {
+  isClient.value = true;
+  currentSlide.value = Math.floor(Math.random() * carouselItems.value.length);
   startAutoPlay();
 });
 
-// 在组件卸载时清除定时器
+// 确保在组件卸载时清除定时器
 onUnmounted(() => {
   stopAutoPlay();
+  isClient.value = false;
 });
 
-// 添加鼠标悬停事件处理
+// 鼠标事件处理
 const handleMouseEnter = () => {
+  if (!isClient.value) return;
   stopAutoPlay();
 };
 
 const handleMouseLeave = () => {
+  if (!isClient.value) return;
   startAutoPlay();
 };
 </script>
@@ -380,7 +431,7 @@ body:has(.game-page) .game-header .hero-container:after {
   background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
 }
 
-.game-header .hero-container:after {
+.game-header .hero-container:afterfont-weight {
   content: "";
   position: absolute;
   top: 0;

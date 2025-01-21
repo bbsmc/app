@@ -144,6 +144,10 @@ pub enum ApiError {
     RateLimitError(u128, u32),
     #[error("与支付处理器交互时出错: {0}")]
     Stripe(#[from] stripe::StripeError),
+    #[error("您已达到上传图片的限制 ({0}/{1})")]
+    ImageLimit(u32, u32),
+    #[error("由于您多次上传文本被识别为风险违规，您已达到上传文本/图片的限制，解除时间: {0}")]
+    RiskLimit(String),
 }
 
 impl ApiError {
@@ -180,6 +184,8 @@ impl ApiError {
                 ApiError::Io(..) => "io_error",
                 ApiError::RateLimitError(..) => "ratelimit_error",
                 ApiError::Stripe(..) => "stripe_error",
+                ApiError::ImageLimit(..) => "image_limit",
+                ApiError::RiskLimit(..) => "risk_limit",
             },
             description: self.to_string(),
         }
@@ -219,6 +225,8 @@ impl actix_web::ResponseError for ApiError {
             ApiError::RateLimitError(..) => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Stripe(..) => StatusCode::FAILED_DEPENDENCY,
             ApiError::WikiBan(..) => StatusCode::BAD_REQUEST,
+            ApiError::ImageLimit(..) => StatusCode::BAD_REQUEST,
+            ApiError::RiskLimit(..) => StatusCode::BAD_REQUEST,
         }
     }
 

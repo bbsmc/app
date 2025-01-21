@@ -61,7 +61,7 @@ pub async fn version_list(
     };
 
     let loader_fields = if let Some(game_versions) = filters.game_versions {
-        // TODO: extract this logic which is similar to the other v2->v3 version_file functions
+        // TODO: 提取此逻辑，类似于其他 v2->v3 version_file 函数
         let mut loader_fields = HashMap::new();
         serde_json::from_str::<Vec<String>>(&game_versions)
             .ok()
@@ -109,7 +109,7 @@ pub async fn version_list(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Version>>(response).await {
         Ok(versions) => {
             let v2_versions = versions
@@ -122,7 +122,7 @@ pub async fn version_list(
     }
 }
 
-// Given a project ID/slug and a version slug
+// 给定一个项目 ID/slug 和一个版本 slug
 #[get("version/{slug}")]
 pub async fn version_project_get(
     req: HttpRequest,
@@ -141,7 +141,7 @@ pub async fn version_project_get(
     )
     .await
     .or_else(v2_reroute::flatten_404_error)?;
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Version>(response).await {
         Ok(version) => {
             let v2_version = LegacyVersion::from(version);
@@ -175,7 +175,7 @@ pub async fn versions_get(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Version>>(response).await {
         Ok(versions) => {
             let v2_versions = versions
@@ -201,7 +201,7 @@ pub async fn version_get(
         v3::versions::version_get_helper(req, id, pool, redis, session_queue)
             .await
             .or_else(v2_reroute::flatten_404_error)?;
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Version>(response).await {
         Ok(version) => {
             let v2_version = LegacyVersion::from(version);
@@ -267,7 +267,7 @@ pub async fn version_edit(
         );
     }
 
-    // Get the older version to get info from
+    // 获取旧版本以获取信息
     let old_version = v3::versions::version_get_helper(
         req.clone(),
         (*info).0,
@@ -283,9 +283,9 @@ pub async fn version_edit(
             Err(response) => return Ok(response),
         };
 
-    // If this has 'mrpack_loaders' as a loader field previously, this is a modpack.
-    // Therefore, if we are modifying the 'loader' field in this case,
-    // we are actually modifying the 'mrpack_loaders' loader field
+    // 如果此版本有 'mrpack_loaders' 作为加载器字段，则这是一个 modpack。
+    // 因此，如果我们在这种情况下修改 'loader' 字段，
+    // 我们实际上是在修改 'mrpack_loaders' 加载器字段
     let mut loaders = new_version.loaders.clone();
     if old_version.fields.contains_key("mrpack_loaders")
         && new_version.loaders.is_some()
@@ -344,7 +344,7 @@ pub async fn version_delete(
     session_queue: web::Data<AuthQueue>,
     search_config: web::Data<SearchConfig>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so we don't need to convert the response
+    // 返回 NoContent，所以不需要转换响应
     v3::versions::version_delete(
         req,
         info,

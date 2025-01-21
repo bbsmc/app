@@ -34,31 +34,31 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     );
 }
 
-/// The json data to be passed to fetch analytic data
-/// Either a list of project_ids or version_ids can be used, but not both. Unauthorized projects/versions will be filtered out.
-/// start_date and end_date are optional, and default to two weeks ago, and the maximum date respectively.
-/// resolution_minutes is optional. This refers to the window by which we are looking (every day, every minute, etc) and defaults to 1440 (1 day)
+/// 传递给获取分析数据的数据
+/// 可以使用项目 ID 列表或版本 ID 列表，但不能同时使用。未经授权的项目/版本将被过滤掉。
+/// start_date 和 end_date 是可选的，默认分别为两周前和当前日期。
+/// resolution_minutes 是可选的。这指的是我们正在查看的窗口（每天、每分钟等），默认为 1440（1 天）
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GetData {
-    // only one of project_ids or version_ids should be used
-    // if neither are provided, all projects the user has access to will be used
+    // 项目 ID 列表或版本 ID 列表，但不能同时使用。
+    // 如果未提供，则使用用户有权访问的所有项目
     pub project_ids: Option<String>,
 
-    pub start_date: Option<DateTime<Utc>>, // defaults to 2 weeks ago
-    pub end_date: Option<DateTime<Utc>>,   // defaults to now
+    pub start_date: Option<DateTime<Utc>>, // 默认两周前
+    pub end_date: Option<DateTime<Utc>>,   // 默认当前日期
 
-    pub resolution_minutes: Option<u32>, // defaults to 1 day. Ignored in routes that do not aggregate over a resolution (eg: /countries)
+    pub resolution_minutes: Option<u32>, // 默认 1 天。在未聚合到分辨率的路径中忽略（例如：/countries）
 }
 
-/// Get playtime data for a set of projects or versions
-/// Data is returned as a hashmap of project/version ids to a hashmap of days to playtime data
-/// eg:
+/// 获取一组项目或版本的游玩时间数据
+/// 数据以哈希映射的形式返回，项目/版本 ID 映射到每天的游玩时间数据。
+/// 例如:
 /// {
 ///     "4N1tEhnO": {
 ///         "20230824": 23
 ///    }
 ///}
-/// Either a list of project_ids or version_ids can be used, but not both. Unauthorized projects/versions will be filtered out.
+/// 可以使用项目 ID 列表或版本 ID 列表，但不能同时使用。未经授权的项目/版本将被过滤掉。
 #[derive(Serialize, Deserialize, Clone)]
 pub struct FetchedPlaytime {
     pub time: u64,
@@ -95,13 +95,13 @@ pub async fn playtimes_get(
     let end_date = data.end_date.unwrap_or(Utc::now());
     let resolution_minutes = data.resolution_minutes.unwrap_or(60 * 24);
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
-    // - If no project_ids or version_ids are provided, we default to all projects the user has access to
+    // 将字符串列表转换为项目 ID 或版本 ID 列表
+    // - 过滤掉未经授权的项目/版本
+    // - 如果未提供项目 ID 或版本 ID，则默认使用用户有权访问的所有项目
     let project_ids =
         filter_allowed_ids(project_ids, user, &pool, &redis, None).await?;
 
-    // Get the views
+    // 获取游玩时间
     let playtimes = crate::clickhouse::fetch_playtimes(
         project_ids.unwrap_or_default(),
         start_date,
@@ -125,15 +125,15 @@ pub async fn playtimes_get(
     Ok(HttpResponse::Ok().json(hm))
 }
 
-/// Get view data for a set of projects or versions
-/// Data is returned as a hashmap of project/version ids to a hashmap of days to views
-/// eg:
+/// 获取一组项目或版本的浏览数据
+/// 数据以哈希映射的形式返回，项目/版本 ID 映射到每天的浏览量。
+/// 例如:
 /// {
 ///     "4N1tEhnO": {
 ///         "20230824": 1090
 ///    }
 ///}
-/// Either a list of project_ids or version_ids can be used, but not both. Unauthorized projects/versions will be filtered out.
+/// 可以使用项目 ID 列表或版本 ID 列表，但不能同时使用。未经授权的项目/版本将被过滤掉。
 pub async fn views_get(
     req: HttpRequest,
     clickhouse: web::Data<clickhouse::Client>,
@@ -162,13 +162,13 @@ pub async fn views_get(
     let end_date = data.end_date.unwrap_or(Utc::now());
     let resolution_minutes = data.resolution_minutes.unwrap_or(60 * 24);
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
-    // - If no project_ids or version_ids are provided, we default to all projects the user has access to
+    // 将字符串列表转换为项目 ID 或版本 ID 列表
+    // - 过滤掉未经授权的项目/版本
+    // - 如果未提供项目 ID 或版本 ID，则默认使用用户有权访问的所有项目
     let project_ids =
         filter_allowed_ids(project_ids, user, &pool, &redis, None).await?;
 
-    // Get the views
+    // 获取浏览量
     let views = crate::clickhouse::fetch_views(
         project_ids.unwrap_or_default(),
         start_date,
@@ -229,14 +229,14 @@ pub async fn downloads_get(
     let end_date = data.end_date.unwrap_or(Utc::now());
     let resolution_minutes = data.resolution_minutes.unwrap_or(60 * 24);
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
-    // - If no project_ids or version_ids are provided, we default to all projects the user has access to
+    // 将字符串列表转换为项目 ID 或版本 ID 列表
+    // - 过滤掉未经授权的项目/版本
+    // - 如果未提供项目 ID 或版本 ID，则默认使用用户有权访问的所有项目
     let project_ids =
         filter_allowed_ids(project_ids, user_option, &pool, &redis, None)
             .await?;
 
-    // Get the downloads
+    // 获取下载量
     let downloads = crate::clickhouse::fetch_downloads(
         project_ids.unwrap_or_default(),
         start_date,
@@ -260,15 +260,15 @@ pub async fn downloads_get(
     Ok(HttpResponse::Ok().json(hm))
 }
 
-/// Get payout data for a set of projects
-/// Data is returned as a hashmap of project ids to a hashmap of days to amount earned per day
-/// eg:
+/// 获取一组项目的收入数据
+/// 数据以哈希映射的形式返回，项目 ID 映射到每天的收入数据。
+/// 例如:
 /// {
 ///     "4N1tEhnO": {
 ///         "20230824": 0.001
 ///    }
 ///}
-/// ONLY project IDs can be used. Unauthorized projects will be filtered out.
+/// 只能使用项目 ID。未经授权的项目将被过滤掉。
 pub async fn revenue_get(
     req: HttpRequest,
     data: web::Query<GetData>,
@@ -296,19 +296,19 @@ pub async fn revenue_get(
     let end_date = data.end_date.unwrap_or(Utc::now());
     let resolution_minutes = data.resolution_minutes.unwrap_or(60 * 24);
 
-    // Round up/down to nearest duration as we are using pgadmin, does not have rounding in the fetch command
-    // Round start_date down to nearest resolution
+    // 将开始日期和结束日期四舍五入到最近的分辨率，因为我们使用的是 pgadmin，没有在 fetch 命令中进行四舍五入
+    // 将开始日期四舍五入到最近的分辨率
     let diff = start_date.timestamp() % (resolution_minutes as i64 * 60);
     let start_date = start_date - Duration::seconds(diff);
 
-    // Round end_date up to nearest resolution
+    // 将结束日期四舍五入到最近的分辨率
     let diff = end_date.timestamp() % (resolution_minutes as i64 * 60);
     let end_date =
         end_date + Duration::seconds((resolution_minutes as i64 * 60) - diff);
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
-    // - If no project_ids or version_ids are provided, we default to all projects the user has access to
+    // 将字符串列表转换为项目 ID 列表
+    // - 过滤掉未经授权的项目
+    // - 如果未提供项目 ID，则默认使用用户有权访问的所有项目
     let project_ids = filter_allowed_ids(
         project_ids,
         user.clone(),
@@ -323,7 +323,7 @@ pub async fn revenue_get(
         .map_err(|_| {
             ApiError::InvalidInput("Invalid resolution_minutes".to_string())
         })?;
-    // Get the revenue data
+    // 获取收入数据
     let project_ids = project_ids.unwrap_or_default();
 
     struct PayoutValue {
@@ -434,13 +434,13 @@ pub async fn countries_downloads_get(
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
-    // - If no project_ids or version_ids are provided, we default to all projects the user has access to
+    // 将字符串列表转换为项目 ID 或版本 ID 列表
+    // - 过滤掉未经授权的项目/版本
+    // - 如果未提供项目 ID 或版本 ID，则默认使用用户有权访问的所有项目
     let project_ids =
         filter_allowed_ids(project_ids, user, &pool, &redis, None).await?;
 
-    // Get the countries
+    // 获取国家数据
     let countries = crate::clickhouse::fetch_countries_downloads(
         project_ids.unwrap_or_default(),
         start_date,
@@ -468,18 +468,18 @@ pub async fn countries_downloads_get(
     Ok(HttpResponse::Ok().json(hm))
 }
 
-/// Get country data for a set of projects or versions
-/// Data is returned as a hashmap of project/version ids to a hashmap of coutnry to views.
-/// Unknown countries are labeled "".
-/// This is usuable to see significant performing countries per project
-/// eg:
+/// 获取一组项目或版本的国家数据
+/// 数据以哈希映射的形式返回，项目/版本 ID 映射到国家浏览量的哈希映射。
+/// 未知国家标记为 ""。
+/// 这可以用来查看每个项目的显著表现国家
+/// 例如:
 /// {
 ///     "4N1tEhnO": {
 ///         "CAN":  56165
 ///    }
 ///}
-/// Either a list of project_ids or version_ids can be used, but not both. Unauthorized projects/versions will be filtered out.
-/// For this endpoint, provided dates are a range to aggregate over, not specific days to fetch
+/// 可以使用项目 ID 列表或版本 ID 列表，但不能同时使用。未经授权的项目/版本将被过滤掉。
+/// 对于此端点，提供的日期是要聚合的范围，而不是要获取的特定日期
 pub async fn countries_views_get(
     req: HttpRequest,
     clickhouse: web::Data<clickhouse::Client>,
@@ -507,13 +507,13 @@ pub async fn countries_views_get(
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
-    // - If no project_ids or version_ids are provided, we default to all projects the user has access to
+    // 将字符串列表转换为项目 ID 或版本 ID 列表
+    // - 过滤掉未经授权的项目/版本
+    // - 如果未提供项目 ID 或版本 ID，则默认使用用户有权访问的所有项目
     let project_ids =
         filter_allowed_ids(project_ids, user, &pool, &redis, None).await?;
 
-    // Get the countries
+    // 获取国家数据
     let countries = crate::clickhouse::fetch_countries_views(
         project_ids.unwrap_or_default(),
         start_date,
@@ -542,7 +542,7 @@ pub async fn countries_views_get(
 }
 
 fn condense_countries(countries: HashMap<String, u64>) -> HashMap<String, u64> {
-    // Every country under '15' (view or downloads) should be condensed into 'XX'
+    // 每个国家（视图或下载）低于 '15' 的应缩减为 'XX'
     let mut hm = HashMap::new();
     for (mut country, count) in countries {
         if count < 50 {
@@ -565,7 +565,7 @@ async fn filter_allowed_ids(
     redis: &RedisPool,
     remove_defaults: Option<bool>,
 ) -> Result<Option<Vec<ProjectId>>, ApiError> {
-    // If no project_ids or version_ids are provided, we default to all projects the user has *public* access to
+    // 如果未提供项目 ID 或版本 ID，则默认使用用户有权访问的所有项目
     if project_ids.is_none() && !remove_defaults.unwrap_or(false) {
         project_ids = Some(
             user_item::User::get_projects(user.id.into(), &***pool, redis)
@@ -576,8 +576,8 @@ async fn filter_allowed_ids(
         );
     }
 
-    // Convert String list to list of ProjectIds or VersionIds
-    // - Filter out unauthorized projects/versions
+    // 将字符串列表转换为项目 ID 或版本 ID 列表
+    // - 过滤掉未经授权的项目/版本
     let project_ids = if let Some(project_strings) = project_ids {
         let projects_data = database::models::Project::get_many(
             &project_strings,
@@ -658,6 +658,6 @@ async fn filter_allowed_ids(
     } else {
         None
     };
-    // Only one of project_ids or version_ids will be Some
+    // 只有 project_ids 或 version_ids 之一会为 Some
     Ok(project_ids)
 }

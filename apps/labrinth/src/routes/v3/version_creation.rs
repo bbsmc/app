@@ -76,16 +76,16 @@ pub struct InitialVersionData {
     pub status: VersionStatus,
     #[serde(default = "HashMap::new")]
     pub file_types: HashMap<String, Option<FileType>>,
-    // Associations to uploaded images in changelog
+    // 关联到 changelog 中的上传图像
     #[validate(length(max = 10))]
     #[serde(default)]
     pub uploaded_images: Vec<ImageId>,
-    // The ordering relative to other versions
+    // 相对于其他版本的顺序
     pub ordering: Option<i32>,
 
     // Flattened loader fields
-    // All other fields are loader-specific VersionFields
-    // These are flattened during serialization
+    // 所有其他字段都是特定于加载器的 VersionFields
+    // 这些在序列化期间被展平
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
     pub fields: HashMap<String, serde_json::Value>,
@@ -184,7 +184,7 @@ async fn version_create_inner(
         let result = async {
             let content_disposition = field.content_disposition().clone();
             let name = content_disposition.get_name().ok_or_else(|| {
-                CreateError::MissingValueError("Missing content name".to_string())
+                CreateError::MissingValueError("缺少内容名称".to_string())
             })?;
 
             if name == "data" {
@@ -198,7 +198,7 @@ async fn version_create_inner(
                 let version_create_data = initial_version_data.as_ref().unwrap();
                 if version_create_data.project_id.is_none() {
                     return Err(CreateError::MissingValueError(
-                        "Missing project id".to_string(),
+                        "缺少项目id".to_string(),
                     ));
                 }
 
@@ -208,7 +208,7 @@ async fn version_create_inner(
 
                 if !version_create_data.status.can_be_requested() {
                     return Err(CreateError::InvalidInput(
-                        "Status specified cannot be requested".to_string(),
+                        "指定的状态不能被请求".to_string(),
                     ));
                 }
                 if version_create_data.disk_only && version_create_data.disk_urls.is_some() && version_create_data.disk_urls.clone().unwrap().len() > 3{
@@ -219,18 +219,18 @@ async fn version_create_inner(
 
                 let project_id: models::ProjectId = version_create_data.project_id.unwrap().into();
 
-                // Ensure that the project this version is being added to exists
+                // 确保项目存在
                 if models::Project::get_id(project_id, &mut **transaction, redis)
                     .await?
                     .is_none()
                 {
                     return Err(CreateError::InvalidInput(
-                        "An invalid project id was supplied".to_string(),
+                        "提供的项目id无效".to_string(),
                     ));
                 }
 
-                // Check that the user creating this version is a team member
-                // of the project the version is being added to.
+                // 检查创建此版本的用户是否是项目团队成员
+                // 项目版本正在添加。
                 let team_member = models::TeamMember::get_from_user_id_project(
                     project_id,
                     user.id.into(),
@@ -239,7 +239,7 @@ async fn version_create_inner(
                 )
                 .await?;
 
-                // Get organization attached, if exists, and the member project permissions
+                // 获取附加的组织，如果存在，并获取成员项目权限
                 let organization = models::Organization::get_associated_organization_project_id(
                     project_id,
                     &mut **transaction,
@@ -266,7 +266,7 @@ async fn version_create_inner(
 
                 if !permissions.contains(ProjectPermissions::UPLOAD_VERSION) {
                     return Err(CreateError::CustomAuthenticationError(
-                        "You don't have permission to upload this version!".to_string(),
+                        "您没有权限上传此版本!".to_string(),
                     ));
                 }
 
@@ -341,13 +341,13 @@ async fn version_create_inner(
             }
 
             let version = version_builder.as_mut().ok_or_else(|| {
-                CreateError::InvalidInput(String::from("`data` field must come before file fields"))
+                CreateError::InvalidInput("`data` field 必须在文件字段之前".to_string())
             })?;
 
 
 
             let loaders = selected_loaders.as_ref().ok_or_else(|| {
-                CreateError::InvalidInput(String::from("`data` field must come before file fields"))
+                CreateError::InvalidInput("`data` field 必须在文件字段之前".to_string())
             })?;
             let loaders = loaders
                 .iter()
@@ -356,7 +356,7 @@ async fn version_create_inner(
 
             let version_data = initial_version_data
                 .clone()
-                .ok_or_else(|| CreateError::InvalidInput("`data` field is required".to_string()))?;
+                .ok_or_else(|| CreateError::InvalidInput("`data` field 是必需的".to_string()))?;
 
             let existing_file_names = version.files.iter().map(|x| x.filename.clone()).collect();
 
@@ -406,10 +406,10 @@ async fn version_create_inner(
     }
 
     let version_data = initial_version_data.ok_or_else(|| {
-        CreateError::InvalidInput("`data` field is required".to_string())
+        CreateError::InvalidInput("`data` field 是必需的".to_string())
     })?;
     let builder = version_builder.ok_or_else(|| {
-        CreateError::InvalidInput("`data` field is required".to_string())
+        CreateError::InvalidInput("`data` field 是必需的".to_string())
     })?;
 
     if builder.files.is_empty() && !version_data.disk_only {
@@ -464,10 +464,9 @@ async fn version_create_inner(
                 .map(|hash| {
                     (
                         hash.algorithm.clone(),
-                        // This is a hack since the hashes are currently stored as ASCII
-                        // in the database, but represented here as a Vec<u8>.  At some
-                        // point we need to change the hash to be the real bytes  in the
-                        // database and add more processing here.
+                        // 这是一个 hack，因为哈希目前存储为 ASCII
+                        // 在数据库中，但在这里表示为 Vec<u8>。 在某个时候，我们需要将哈希更改为数据库中的真实字节
+                        // 并在此处添加更多处理。
                         String::from_utf8(hash.hash.clone()).unwrap(),
                     )
                 })
@@ -534,7 +533,7 @@ async fn version_create_inner(
                 || image.context.inner_id().is_some()
             {
                 return Err(CreateError::InvalidInput(format!(
-                    "Image {} is not unused and in the 'version' context",
+                    "Image {} 不是未使用的，并且处于 'version' 上下文",
                     image_id
                 )));
             }
@@ -554,7 +553,7 @@ async fn version_create_inner(
             image_item::Image::clear_cache(image.id.into(), redis).await?;
         } else {
             return Err(CreateError::InvalidInput(format!(
-                "Image {} does not exist",
+                "Image {} 不存在",
                 image_id
             )));
         }
@@ -657,7 +656,7 @@ async fn upload_file_to_version_inner(
         Some(v) => v,
         None => {
             return Err(CreateError::InvalidInput(
-                "An invalid version id was supplied".to_string(),
+                "提供的版本id无效".to_string(),
             ));
         }
     };
@@ -684,9 +683,7 @@ async fn upload_file_to_version_inner(
     .await?
     .is_none()
     {
-        return Err(CreateError::InvalidInput(
-            "An invalid project id was supplied".to_string(),
-        ));
+        return Err(CreateError::InvalidInput("提供的项目id无效".to_string()));
     }
 
     if !user.role.is_admin() {
@@ -726,8 +723,7 @@ async fn upload_file_to_version_inner(
 
         if !permissions.contains(ProjectPermissions::UPLOAD_VERSION) {
             return Err(CreateError::CustomAuthenticationError(
-                "You don't have permission to upload files to this version!"
-                    .to_string(),
+                "您没有权限上传文件到此版本!".to_string(),
             ));
         }
     }
@@ -744,9 +740,7 @@ async fn upload_file_to_version_inner(
         let result = async {
             let content_disposition = field.content_disposition().clone();
             let name = content_disposition.get_name().ok_or_else(|| {
-                CreateError::MissingValueError(
-                    "Missing content name".to_string(),
-                )
+                CreateError::MissingValueError("缺少内容名称".to_string())
             })?;
 
             if name == "data" {
@@ -762,7 +756,7 @@ async fn upload_file_to_version_inner(
 
             let file_data = initial_file_data.as_ref().ok_or_else(|| {
                 CreateError::InvalidInput(String::from(
-                    "`data` field must come before file fields",
+                    "`data` field 必须在文件字段之前",
                 ))
             })?;
 
@@ -819,7 +813,7 @@ async fn upload_file_to_version_inner(
 
     if file_builders.is_empty() {
         return Err(CreateError::InvalidInput(
-            "At least one file must be specified".to_string(),
+            "至少需要上传一个文件".to_string(),
         ));
     } else {
         for file in file_builders {
@@ -827,13 +821,12 @@ async fn upload_file_to_version_inner(
         }
     }
 
-    // Clear version cache
+    // 清除版本缓存
     models::Version::clear_cache(&version, &redis).await?;
 
     Ok(HttpResponse::NoContent().body(""))
 }
-// This function is used for adding a file to a version, uploading the initial
-// files for a version, and for uploading the initial version files for a project
+// 此函数用于添加文件到版本，上传版本的初始文件，以及上传项目的初始版本文件
 
 #[allow(clippy::too_many_arguments)]
 pub async fn upload_file(
@@ -1033,14 +1026,12 @@ pub async fn upload_file(
         hashes: vec![
             models::version_item::HashBuilder {
                 algorithm: "sha1".to_string(),
-                // This is an invalid cast - the database expects the hash's
-                // bytes, but this is the string version.
+                // 这是一个无效的转换 - 数据库期望哈希的字节，但这是字符串版本。
                 hash: sha1_bytes,
             },
             models::version_item::HashBuilder {
                 algorithm: "sha512".to_string(),
-                // This is an invalid cast - the database expects the hash's
-                // bytes, but this is the string version.
+                // 这是一个无效的转换 - 数据库期望哈希的字节，但这是字符串版本。
                 hash: sha512_bytes,
             },
         ],
@@ -1068,8 +1059,8 @@ pub fn get_name_ext(
     Ok((file_name, file_extension))
 }
 
-// Reused functionality between project_creation and version_creation
-// Create a list of VersionFields from the fetched data, and check that all mandatory fields are present
+// 在 project_creation 和 version_creation 之间重用的功能
+// 从获取的数据创建 VersionFields 列表，并检查所有必需的字段是否存在
 pub fn try_create_version_fields(
     version_id: VersionId,
     submitted_fields: &HashMap<String, serde_json::Value>,
@@ -1093,7 +1084,7 @@ pub fn try_create_version_fields(
             .find(|lf| &lf.field == key)
             .ok_or_else(|| {
                 CreateError::InvalidInput(format!(
-                    "Loader field '{key}' does not exist for any loaders supplied,"
+                    "加载器字段 '{key}' 对于任何提供的加载器都不存在,"
                 ))
             })?;
         remaining_mandatory_loader_fields.remove(&loader_field.field);
@@ -1113,7 +1104,7 @@ pub fn try_create_version_fields(
 
     if !remaining_mandatory_loader_fields.is_empty() {
         return Err(CreateError::InvalidInput(format!(
-            "Missing mandatory loader fields: {}",
+            "缺少必需的加载器字段: {}",
             remaining_mandatory_loader_fields.iter().join(", ")
         )));
     }

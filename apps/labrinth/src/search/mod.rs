@@ -65,13 +65,13 @@ pub struct SearchConfig {
 }
 
 impl SearchConfig {
-    // Panics if the environment variables are not set,
-    // but these are already checked for on startup.
+    // 如果环境变量未设置，则抛出错误，
+    // 但这些错误已经在启动时检查过了。
     pub fn new(meta_namespace: Option<String>) -> Self {
         let address =
-            dotenvy::var("MEILISEARCH_ADDR").expect("MEILISEARCH_ADDR not set");
+            dotenvy::var("MEILISEARCH_ADDR").expect("MEILISEARCH_ADDR 未设置");
         let key =
-            dotenvy::var("MEILISEARCH_KEY").expect("MEILISEARCH_KEY not set");
+            dotenvy::var("MEILISEARCH_KEY").expect("MEILISEARCH_KEY 未设置");
 
         Self {
             address,
@@ -84,15 +84,15 @@ impl SearchConfig {
         Client::new(self.address.as_str(), Some(self.key.as_str()))
     }
 
-    // Next: true if we want the next index (we are preparing the next swap), false if we want the current index (searching)
+    // Next: true 如果我们要下一个索引（我们正在准备下一个交换），false 如果我们要当前索引（搜索）
     pub fn get_index_name(&self, index: &str, next: bool) -> String {
         let alt = if next { "_alt" } else { "" };
         format!("{}_{}_{}", self.meta_namespace, index, alt)
     }
 }
 
-/// A project document used for uploading projects to MeiliSearch's indices.
-/// This contains some extra data that is not returned by search results.
+/// 用于上传项目到 MeiliSearch 索引的项目文档。
+/// 这包含一些在搜索结果中不返回的额外数据。
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UploadSearchProject {
     pub version_id: String,
@@ -111,20 +111,20 @@ pub struct UploadSearchProject {
     pub license: String,
     pub gallery: Vec<String>,
     pub featured_gallery: Option<String>,
-    /// RFC 3339 formatted creation date of the project
+    /// RFC 3339 格式的项目创建日期
     pub date_created: DateTime<Utc>,
-    /// Unix timestamp of the creation date of the project
+    /// 项目创建日期的 Unix 时间戳
     pub created_timestamp: i64,
-    /// RFC 3339 formatted date/time of last major modification (update)
+    /// RFC 3339 格式的项目最后修改日期
     pub date_modified: DateTime<Utc>,
-    /// Unix timestamp of the last major modification
+    /// 项目最后修改日期的 Unix 时间戳
     pub modified_timestamp: i64,
     pub open_source: bool,
     pub color: Option<u32>,
 
-    // Hidden fields to get the Project model out of the search results.
-    pub loaders: Vec<String>, // Search uses loaders as categories- this is purely for the Project model.
-    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // Aggregation of loader_fields from all versions of the project, allowing for reconstruction of the Project model.
+    // 隐藏字段，用于从搜索结果中获取 Project 模型。
+    pub loaders: Vec<String>, // Search 使用加载器作为类别- 这纯粹是为了 Project 模型。
+    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // 从项目所有版本的加载器字段中聚合，允许重建 Project 模型。
 
     #[serde(flatten)]
     pub loader_fields: HashMap<String, Vec<serde_json::Value>>,
@@ -152,18 +152,18 @@ pub struct ResultSearchProject {
     pub downloads: i32,
     pub follows: i32,
     pub icon_url: Option<String>,
-    /// RFC 3339 formatted creation date of the project
+    /// RFC 3339 格式的项目创建日期
     pub date_created: String,
-    /// RFC 3339 formatted modification date of the project
+    /// RFC 3339 格式的项目最后修改日期
     pub date_modified: String,
     pub license: String,
     pub gallery: Vec<String>,
     pub featured_gallery: Option<String>,
     pub color: Option<u32>,
 
-    // Hidden fields to get the Project model out of the search results.
+    // 用于从搜索结果中获取 Project 模型的隐藏字段。
     pub loaders: Vec<String>, // Search uses loaders as categories- this is purely for the Project model.
-    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // Aggregation of loader_fields from all versions of the project, allowing for reconstruction of the Project model.
+    pub project_loader_fields: HashMap<String, Vec<serde_json::Value>>, // 从项目所有版本的加载器字段中聚合，允许重建 Project 模型。
 
     #[serde(flatten)]
     pub loader_fields: HashMap<String, Vec<serde_json::Value>>,
@@ -206,7 +206,7 @@ pub async fn search_for_project(
 
     let mut filter_string = String::new();
 
-    // Convert offset and limit to page and hits_per_page
+    // 将 offset 和 limit 转换为 page 和 hits_per_page
     let hits_per_page = limit;
     let page = offset / limit + 1;
 
@@ -236,9 +236,9 @@ pub async fn search_for_project(
                 };
 
             if let Some(facets) = facets {
-                // Search can now *optionally* have a third inner array: So Vec(AND)<Vec(OR)<Vec(AND)< _ >>>
-                // For every inner facet, we will check if it can be deserialized into a Vec<&str>, and do so.
-                // If not, we will assume it is a single facet and wrap it in a Vec.
+                // Search 现在可以 *可选地* 有第三个内部数组：So Vec(AND)<Vec(OR)<Vec(AND)< _ >>>
+                // 对于每个内部 facet，我们将检查它是否可以被反序列化为 Vec<&str>，如果是，则进行反序列化。
+                // 如果不是，我们假设它是一个单一的 facet 并将其包装在 Vec 中。
                 let facets: Vec<Vec<Vec<String>>> = facets
                     .into_iter()
                     .map(|facets| {

@@ -49,7 +49,7 @@ pub async fn get_version_from_hash(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Version>(response).await {
         Ok(version) => {
             let v2_version = LegacyVersion::from(version);
@@ -69,7 +69,7 @@ pub async fn download_version(
     hash_query: web::Query<HashQuery>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns TemporaryRedirect, so no need to convert to V2
+    // 返回 TemporaryRedirect，所以不需要转换为 V2
     v3::version_file::download_version(
         req,
         info,
@@ -92,7 +92,7 @@ pub async fn delete_file(
     hash_query: web::Query<HashQuery>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert to V2
+    // 返回 NoContent，所以不需要转换为 V2
     v3::version_file::delete_file(
         req,
         info,
@@ -149,7 +149,7 @@ pub async fn get_update_from_hash(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Version>(response).await {
         Ok(version) => {
             let v2_version = LegacyVersion::from(version);
@@ -159,7 +159,7 @@ pub async fn get_update_from_hash(
     }
 }
 
-// Requests above with multiple versions below
+// 请求多个版本
 #[derive(Deserialize)]
 pub struct FileHashes {
     pub algorithm: Option<String>,
@@ -190,7 +190,7 @@ pub async fn get_versions_from_hashes(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert to V2
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<HashMap<String, Version>>(response)
         .await
     {
@@ -231,7 +231,7 @@ pub async fn get_projects_from_hashes(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert to V2
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<HashMap<String, Project>>(response)
         .await
     {
@@ -268,7 +268,7 @@ pub async fn get_projects_from_hashes(
 
 #[derive(Deserialize)]
 pub struct ManyUpdateData {
-    pub algorithm: Option<String>, // Defaults to calculation based on size of hash
+    pub algorithm: Option<String>, // 默认基于哈希大小计算
     pub hashes: Vec<String>,
     pub loaders: Option<Vec<String>>,
     pub game_versions: Option<Vec<String>>,
@@ -295,7 +295,7 @@ pub async fn update_files(
             .await
             .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<HashMap<String, Version>>(response)
         .await
     {
@@ -323,7 +323,7 @@ pub struct FileUpdateData {
 
 #[derive(Deserialize)]
 pub struct ManyFileUpdateData {
-    pub algorithm: Option<String>, // Defaults to calculation based on size of hash
+    pub algorithm: Option<String>, // 默认基于哈希大小计算
     pub hashes: Vec<FileUpdateData>,
 }
 
@@ -371,7 +371,7 @@ pub async fn update_individual_files(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<HashMap<String, Version>>(response)
         .await
     {

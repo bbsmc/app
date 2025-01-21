@@ -30,7 +30,7 @@ pub async fn report_create(
             .await
             .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Report>(response).await {
         Ok(report) => {
             let report = LegacyReport::from(report);
@@ -76,7 +76,7 @@ pub async fn reports(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Report>>(response).await {
         Ok(reports) => {
             let reports: Vec<_> =
@@ -110,7 +110,7 @@ pub async fn reports_get(
     .await
     .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<Report>>(response).await {
         Ok(report_list) => {
             let report_list: Vec<_> =
@@ -134,7 +134,7 @@ pub async fn report_get(
             .await
             .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert response to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Report>(response).await {
         Ok(report) => {
             let report = LegacyReport::from(report);
@@ -161,7 +161,7 @@ pub async fn report_edit(
     edit_report: web::Json<EditReport>,
 ) -> Result<HttpResponse, ApiError> {
     let edit_report = edit_report.into_inner();
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::reports::report_edit(
         req,
         pool,
@@ -185,7 +185,7 @@ pub async fn report_delete(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    // Returns NoContent, so no need to convert
+    // 返回 NoContent，所以不需要转换
     v3::reports::report_delete(req, pool, info, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)

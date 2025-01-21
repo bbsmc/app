@@ -39,6 +39,62 @@
       </div>
     </Modal>
     <Modal
+      ref="managePhoneNumberModal"
+      :header="`${auth.user.has_phonenumber ? '修改' : '设置'}手机号`"
+    >
+      <div class="universal-modal">
+        <label for="new-phone-number"><span class="label__title">手机号</span></label>
+        <input
+          id="new-phone-number"
+          v-model="newPhoneNumber"
+          maxlength="2048"
+          type="text"
+          autocomplete="current-password"
+          :placeholder="`${auth.user.has_phonenumber ? '修改' : '设置'}手机号`"
+        />
+
+        <!-- // 验证码 -->
+        <!-- 验证码输入框右边加一个按钮验证码  -->
+        <label for="verification-code"><span class="label__title">验证码</span></label>
+        <div class="input-group">
+          <input
+            id="verification-code"
+            v-model="verificationCode"
+            maxlength="20"
+            type="text"
+            autocomplete="current-password"
+            :placeholder="`验证码`"
+          />
+          <button
+            type="button"
+            class="iconified-button"
+            :disabled="isCooldown"
+            @click="sendVerificationCode"
+          >
+            {{ isCooldown ? `重新发送(${cooldownTime})` : "发送验证码" }}
+          </button>
+        </div>
+
+        <GeetestCaptcha v-if="!token" ref="captcha" v-model="token" />
+
+        <p></p>
+        <div class="input-group push-right">
+          <button class="iconified-button" @click="$refs.managePhoneNumberModal.hide()">
+            <XIcon />
+            取消
+          </button>
+          <button
+            type="button"
+            class="iconified-button brand-button"
+            :disabled="!verificationCode || verificationCode.length !== 6"
+            @click="savePhoneNumber"
+          >
+            提交
+          </button>
+        </div>
+      </div>
+    </Modal>
+    <Modal
       ref="managePasswordModal"
       :header="`${removePasswordMode ? '删除' : auth.user.has_password ? '修改' : '设置'}密码`"
     >
@@ -257,7 +313,7 @@
           </div>
           <div v-for="provider in authProviders" :key="provider.id" class="table-row">
             <div class="table-text table-cell">
-              <span><component :is="provider.icon" /> {{ provider.display }}</span>
+              <span> <component :is="provider.icon" /> {{ provider.display }} </span>
             </div>
             <div class="table-text manage table-cell">
               <button
@@ -288,6 +344,37 @@
     </Modal>
     <section class="universal-card">
       <h2 class="text-2xl">账号安全</h2>
+
+      <div class="adjacent-input">
+        <label for="theme-selector">
+          <span class="label__title">手机号</span>
+          <span v-if="auth.user.has_phonenumber" class="label__description">
+            更改<template v-if="auth.user.auth_providers.length > 0">或删除</template>您账户的手机号
+          </span>
+
+          <span v-else class="label__description">
+            根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息
+          </span>
+        </label>
+        <div>
+          <button
+            class="iconified-button"
+            @click="
+              () => {
+                oldPassword = '';
+                newPassword = '';
+                confirmNewPassword = '';
+                removePasswordMode = false;
+                $refs.managePhoneNumberModal.show();
+              }
+            "
+          >
+            <KeyIcon />
+            <template v-if="auth.user.has_phonenumber"> 修改手机号 </template>
+            <template v-else> 设置手机号 </template>
+          </button>
+        </div>
+      </div>
 
       <div class="adjacent-input">
         <label for="theme-selector">
@@ -420,6 +507,7 @@ import KeyIcon from "assets/icons/auth/key.svg";
 import GitLabIcon from "assets/icons/auth/sso-gitlab.svg";
 import ModalConfirm from "~/components/ui/ModalConfirm.vue";
 import Modal from "~/components/ui/Modal.vue";
+import GeetestCaptcha from "@/components/ui/GeetestCaptcha.vue";
 
 useHead({
   title: "Account settings - Modrinth",
@@ -431,6 +519,8 @@ definePageMeta({
 
 const data = useNuxtApp();
 const auth = await useAuth();
+const token = ref("");
+const tokenCode = ref("");
 
 const changeEmailModal = ref();
 const email = ref(auth.value.user.email);
@@ -462,8 +552,12 @@ async function saveEmail() {
 
 const managePasswordModal = ref();
 const removePasswordMode = ref(false);
+const managePhoneNumberModal = ref();
 const oldPassword = ref("");
 const newPassword = ref("");
+
+const newPhoneNumber = ref("");
+
 const confirmNewPassword = ref("");
 async function savePassword() {
   if (newPassword.value !== confirmNewPassword.value) {
@@ -588,6 +682,107 @@ async function deleteAccount() {
   window.location.href = "/";
 
   stopLoading();
+}
+
+const verificationCode = ref("");
+const isCooldown = ref(false);
+const cooldownTime = ref(90); // 冷却时间为90秒
+
+async function sendVerificationCode() {
+  if (isCooldown.value) {
+    return; // 如果在冷却时间内，不执行发送验证码
+  }
+
+  if (!newPhoneNumber.value || newPhoneNumber.value.length !== 11) {
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: "请先输入正确的11位手机号",
+      type: "error",
+    });
+    return;
+  }
+
+  if (!token.value) {
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: "请先点击下面的人机验证",
+      type: "error",
+    });
+    return;
+  }
+  // 发送验证码的逻辑
+  try {
+    const res = await useBaseFetch("auth/phone_number_code", {
+      method: "POST",
+      body: {
+        phone_number: newPhoneNumber.value, // 假设你要发送到的手机号
+        challenge: token.value,
+      },
+    });
+    tokenCode.value = res.token;
+    // console.log(tokenCode.value);
+    // 启动冷却时间
+    isCooldown.value = true;
+    cooldownTime.value = 90; // 重置冷却时间为90秒
+
+    const countdown = setInterval(() => {
+      cooldownTime.value--;
+      if (cooldownTime.value <= 0) {
+        clearInterval(countdown);
+        isCooldown.value = false; // 90秒后解除冷却
+      }
+    }, 1000);
+  } catch (err) {
+    // 处理错误
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: err.data.description,
+      type: "error",
+    });
+  }
+}
+
+async function savePhoneNumber() {
+  if (!verificationCode.value || verificationCode.value.length !== 6) {
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: "请输入正确的6位验证码",
+      type: "error",
+    });
+    return;
+  }
+  try {
+    await useBaseFetch("auth/phone_number_bind", {
+      method: "POST",
+      body: {
+        code: verificationCode.value,
+        token: tokenCode.value,
+        phone_number: newPhoneNumber.value,
+      },
+    });
+    data.$notify({
+      group: "main",
+      title: "成功",
+      text: "手机号绑定成功",
+      type: "success",
+    });
+    managePhoneNumberModal.value.hide();
+    await useAuth(auth.value.token);
+    verificationCode.value = "";
+    newPhoneNumber.value = "";
+    tokenCode.value = "";
+  } catch (err) {
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: err.data.description,
+      type: "error",
+    });
+  }
 }
 </script>
 <style lang="scss" scoped>

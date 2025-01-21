@@ -1,4 +1,5 @@
 use crate::database::models::loader_fields::VersionField;
+use crate::database::models::version_item::QueryDisk;
 use crate::database::models::{project_item, version_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
@@ -17,8 +18,6 @@ use actix_multipart::Multipart;
 use actix_web::http::header::ContentDisposition;
 use actix_web::web::Data;
 use actix_web::{post, web, HttpRequest, HttpResponse};
-// use futures_util::StreamExt;
-use crate::database::models::version_item::QueryDisk;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::postgres::PgPool;

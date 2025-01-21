@@ -16,13 +16,8 @@
       </label>
       <div class="iconified-input">
         <LinkIcon />
-        <input
-          id="insert-link-url"
-          v-model="linkUrl"
-          type="text"
-          placeholder="Enter the link's URL..."
-          @input="validateURL"
-        />
+        <input id="insert-link-url" v-model="linkUrl" type="text" placeholder="Enter the link's URL..."
+          @input="validateURL" />
         <Button class="r-btn" @click="() => (linkUrl = '')">
           <XIcon />
         </Button>
@@ -38,30 +33,24 @@
         <span class="label__description"></span>
       </span>
       <div class="markdown-body-wrapper">
-        <div
-          style="width: 100%"
-          class="markdown-body"
-          v-html="renderHighlightedString(linkMarkdown)"
-        />
+        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(linkMarkdown)" />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => linkModal?.hide()"><XIcon /> Cancel</Button>
-        <Button
-          color="primary"
-          :disabled="linkValidationErrorMessage || !linkUrl"
-          :action="
-            () => {
-              if (editor) markdownCommands.replaceSelection(editor, linkMarkdown)
-              linkModal?.hide()
-            }
-          "
-          ><PlusIcon /> Insert</Button
-        >
+        <Button :action="() => linkModal?.hide()">
+          <XIcon /> Cancel
+        </Button>
+        <Button color="primary" :disabled="linkValidationErrorMessage || !linkUrl" :action="() => {
+            if (editor) markdownCommands.replaceSelection(editor, linkMarkdown)
+            linkModal?.hide()
+          }
+          ">
+          <PlusIcon /> Insert
+        </Button>
       </div>
     </div>
   </Modal>
   <Modal ref="imageModal" header="插入图片">
-    <div class="modal-insert">
+    <div class="modal-insert" style="max-height: 500px;overflow-y: scroll;">
       <label class="label" for="insert-image-alt">
         <span class="label__title">描述<span class="required">*</span></span>
         <span class="label__description">
@@ -70,12 +59,7 @@
       </label>
       <div class="iconified-input">
         <AlignLeftIcon />
-        <input
-          id="insert-image-alt"
-          v-model="linkText"
-          type="text"
-          placeholder="描述图像.."
-        />
+        <input id="insert-image-alt" v-model="linkText" type="text" placeholder="描述图像.." />
         <Button class="r-btn" @click="() => (linkText = '')">
           <XIcon />
         </Button>
@@ -86,30 +70,16 @@
       <div v-if="props.onImageUpload" class="image-strategy-chips">
         <Chips v-model="imageUploadOption" :items="['上传', '链接']" />
       </div>
-      <div
-        v-if="props.onImageUpload && imageUploadOption === '上传'"
-        class="btn-input-alternative"
-      >
-        <FileInput
-          accept="image/png,image/jpeg,image/gif,image/webp"
-          prompt="拖放即可上传或单击即可选择文件"
-          long-style
-          should-always-reset
-          class="file-input"
-          @change="handleImageUpload"
-        >
+      <div v-if="props.onImageUpload && imageUploadOption === '上传'" class="btn-input-alternative">
+        <FileInput accept="image/png,image/jpeg,image/gif,image/webp" prompt="拖放即可上传或单击即可选择文件" long-style
+          should-always-reset class="file-input" @change="handleImageUpload">
           <UploadIcon />
         </FileInput>
       </div>
       <div v-if="!props.onImageUpload || imageUploadOption === '链接'" class="iconified-input">
         <ImageIcon />
-        <input
-          id="insert-link-url"
-          v-model="linkUrl"
-          type="text"
-          placeholder="请填入被上传到图床得到的静态URL"
-          @input="validateURL"
-        />
+        <input id="insert-link-url" v-model="linkUrl" type="text" placeholder="请填入被上传到图床得到的静态URL"
+          @input="validateURL" />
         <Button class="r-btn" @click="() => (linkUrl = '')">
           <XIcon />
         </Button>
@@ -125,24 +95,17 @@
         <span class="label__description"></span>
       </span>
       <div class="markdown-body-wrapper">
-        <div
-          style="width: 100%"
-          class="markdown-body"
-          v-html="renderHighlightedString(imageMarkdown)"
-        />
+        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(imageMarkdown)" />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => imageModal?.hide()"><XIcon /> Cancel</Button>
-        <Button
-          color="primary"
-          :disabled="!canInsertImage"
-          :action="
-            () => {
-              if (editor) markdownCommands.replaceSelection(editor, imageMarkdown)
-              imageModal?.hide()
-            }
-          "
-        >
+        <Button :action="() => imageModal?.hide()">
+          <XIcon /> Cancel
+        </Button>
+        <Button color="primary" :disabled="!canInsertImage" :action="() => {
+            if (editor) markdownCommands.replaceSelection(editor, imageMarkdown)
+            imageModal?.hide()
+          }
+          ">
           <PlusIcon /> Insert
         </Button>
       </div>
@@ -156,13 +119,7 @@
       </label>
       <div class="iconified-input">
         <YouTubeIcon />
-        <input
-          id="insert-video-url"
-          v-model="linkUrl"
-          type="text"
-          placeholder="b站视频链接"
-          @input="validateURL"
-        />
+        <input id="insert-video-url" v-model="linkUrl" type="text" placeholder="b站视频链接" @input="validateURL" />
         <Button class="r-btn" @click="() => (linkUrl = '')">
           <XIcon />
         </Button>
@@ -179,24 +136,17 @@
       </span>
 
       <div class="markdown-body-wrapper">
-        <div
-          style="width: 100%"
-          class="markdown-body"
-          v-html="renderHighlightedString(videoMarkdown)"
-        />
+        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(videoMarkdown)" />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => videoModal?.hide()"><XIcon /> Cancel</Button>
-        <Button
-          color="primary"
-          :disabled="linkValidationErrorMessage || !linkUrl"
-          :action="
-            () => {
-              if (editor) markdownCommands.replaceSelection(editor, videoMarkdown)
-              videoModal?.hide()
-            }
-          "
-        >
+        <Button :action="() => videoModal?.hide()">
+          <XIcon /> Cancel
+        </Button>
+        <Button color="primary" :disabled="linkValidationErrorMessage || !linkUrl" :action="() => {
+            if (editor) markdownCommands.replaceSelection(editor, videoMarkdown)
+            videoModal?.hide()
+          }
+          ">
           <PlusIcon /> Insert
         </Button>
       </div>
@@ -205,20 +155,12 @@
   <div class="resizable-textarea-wrapper">
     <div class="editor-action-row">
       <div class="editor-actions">
-        <template
-          v-for="(buttonGroup, _i) in Object.values(BUTTONS).filter((bg) => bg.display)"
-          :key="_i"
-        >
+        <template v-for="(buttonGroup, _i) in Object.values(BUTTONS).filter((bg) => bg.display)" :key="_i">
           <div class="divider"></div>
           <template v-for="button in buttonGroup.buttons" :key="button.label">
-            <Button
-              v-tooltip="button.label"
-              icon-only
-              :aria-label="button.label"
-              :class="{ 'mobile-hidden-group': !!buttonGroup.hideOnMobile }"
-              :action="() => button.action(editor)"
-              :disabled="previewMode || disabled"
-            >
+            <Button v-tooltip="button.label" icon-only :aria-label="button.label"
+              :class="{ 'mobile-hidden-group': !!buttonGroup.hideOnMobile }" :action="() => button.action(editor)"
+              :disabled="previewMode || disabled">
               <component :is="button.icon" />
             </Button>
           </template>
@@ -232,16 +174,16 @@
     <div ref="editorRef" :class="{ hide: previewMode }" />
     <div v-if="!previewMode" class="info-blurb">
       <div class="info-blurb">
-<!--        <InfoIcon />-->
-<!--        <span-->
-<!--          >This editor supports-->
-<!--          <a-->
-<!--            class="markdown-resource-link"-->
-<!--            href="https://support.modrinth.com/en/articles/8801962-advanced-markdown-formatting"-->
-<!--            target="_blank"-->
-<!--            >Markdown formatting</a-->
-<!--          >.</span-->
-<!--        >-->
+        <!--        <InfoIcon />-->
+        <!--        <span-->
+        <!--          >This editor supports-->
+        <!--          <a-->
+        <!--            class="markdown-resource-link"-->
+        <!--            href="https://support.modrinth.com/en/articles/8801962-advanced-markdown-formatting"-->
+        <!--            target="_blank"-->
+        <!--            >Markdown formatting</a-->
+        <!--          >.</span-->
+        <!--        >-->
       </div>
       <div :class="{ hide: !props.maxLength }" class="max-length-label">
         <span>Max length: </span>
@@ -252,11 +194,7 @@
     </div>
     <div v-else>
       <div class="markdown-body-wrapper">
-        <div
-          style="width: 100%"
-          class="markdown-body"
-          v-html="renderHighlightedString(currentValue ?? '')"
-        />
+        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(currentValue ?? '')" />
       </div>
     </div>
   </div>
@@ -673,7 +611,7 @@ function cleanUrl(input: string): string {
   if (blockedDomains.some((domain) => url.hostname.includes(domain))) {
     throw new Error('Invalid URL. This domain is not allowed.')
   }
-  
+
   return url.toString()
 }
 

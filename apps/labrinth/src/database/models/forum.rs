@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub const DISCUSSION_NAMESPACE: &str = "discussions";
+pub const DISCUSSION_TYPES_NAMESPACE: &str = "discussions_types";
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PostQuery {
     pub id: PostId,
@@ -51,11 +52,15 @@ pub struct Discussion {
     pub updated_at: Option<DateTime<Utc>>,
     pub user_id: UserId,
     pub user_name: String,
-    pub user_avatar: Option<String>,
+    pub organization: Option<String>,
+    pub organization_id: Option<String>,
+    pub avatar: Option<String>,
     pub state: String,
     pub pinned: bool,
     pub deleted: bool,
     pub deleted_at: Option<DateTime<Utc>>,
+    pub last_post_time: DateTime<Utc>,
+    pub project_id: Option<ProjectId>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct QueryDiscussion {
@@ -116,6 +121,98 @@ impl Discussion {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn update_last_post_time(
+        &self,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE discussions SET last_post_time = $1 WHERE id = $2",
+            self.last_post_time,
+            self.id.0
+        )
+        .execute(&mut **transaction)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn clear_cache_discussions(
+        types: &[String],
+        redis: &RedisPool,
+    ) -> Result<(), DatabaseError> {
+        let mut redis = redis.connect().await?;
+        redis
+            .delete_many(
+                types
+                    .iter()
+                    .map(|id| (DISCUSSION_TYPES_NAMESPACE, Some(id.clone()))),
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn forums<'a, E>(
+        exec: E,
+        redis: &RedisPool,
+    ) -> Result<Vec<DiscussionId>, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let forums = redis
+            .get_cached_key(
+                DISCUSSION_TYPES_NAMESPACE,
+                "all".to_string(),
+                || async move {
+                    let mut exec = exec.acquire().await?;
+
+                    let forums: Vec<DiscussionId> = sqlx::query!(
+                        "SELECT id
+                FROM discussions
+                WHERE deleted = false order by last_post_time desc limit 5"
+                    )
+                    .fetch(&mut *exec)
+                    .try_fold(Vec::new(), |mut acc, row| {
+                        acc.push(DiscussionId(row.id));
+                        async move { Ok(acc) }
+                    })
+                    .await?;
+
+                    Ok(forums)
+                },
+            )
+            .await?;
+
+        Ok(forums)
+    }
+
+    pub async fn get_forums<'a, E>(
+        forum_type: String,
+        exec: E,
+        redis: &RedisPool,
+    ) -> Result<Vec<DiscussionId>, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let forums = redis.get_cached_key(DISCUSSION_TYPES_NAMESPACE, forum_type.clone(), || async move {
+            let mut exec = exec.acquire().await?;
+
+            let forums: Vec<DiscussionId> = sqlx::query!(
+                "SELECT id
+                FROM discussions
+                WHERE deleted = false AND category = $1 order by last_post_time desc",
+                &forum_type
+            )
+            .fetch(&mut *exec)
+            .try_fold(Vec::new(), |mut acc, row| {
+                acc.push(DiscussionId(row.id));
+                async move { Ok(acc) }
+            })
+            .await?;
+            Ok(forums)
+        }).await?;
+
+        Ok(forums)
     }
 
     pub async fn get_id<'a, E>(
@@ -182,10 +279,13 @@ impl Discussion {
                            d.pinned pinned,
                            d.deleted deleted,
                            d.deleted_at deleted_at,
+                           d.last_post_time last_post_time,
                            u.username user_name,
-                           u.avatar_url avatar_url
+                           u.avatar_url avatar_url,
+                           m.id project_id
                     FROM discussions d
                              LEFT JOIN users u ON d.user_id = u.id
+                             LEFT JOIN mods m ON m.forum = d.id
                     WHERE d.id = ANY ($1) AND d.deleted = false",
                     &ids
                 )
@@ -199,6 +299,10 @@ impl Discussion {
                             .get(&id.0)
                             .map(|v| v.clone())
                             .unwrap_or_default();
+
+                        let project_id: Option<ProjectId> =
+                            m.project_id.map(ProjectId);
+
                         acc.insert(
                             id.0,
                             QueryDiscussion {
@@ -212,11 +316,15 @@ impl Discussion {
                                     updated_at: m.updated_at,
                                     user_id: UserId(m.user_id.unwrap()),
                                     user_name: m.user_name,
-                                    user_avatar: m.avatar_url,
+                                    avatar: m.avatar_url,
+                                    organization: None,
+                                    organization_id: None,
                                     state: m.state.unwrap(),
                                     pinned: m.pinned.unwrap(),
                                     deleted: m.deleted.unwrap(),
                                     deleted_at: m.deleted_at,
+                                    last_post_time: m.last_post_time.unwrap(),
+                                    project_id,
                                 },
                             },
                         );
@@ -224,6 +332,45 @@ impl Discussion {
                     },
                 )
                 .await?;
+
+                // 获取posts的所有keys
+                let keys: Vec<i64> = posts.iter().map(|r| *r.key()).collect();
+
+                // 遍历并更新每个帖子
+                for key in keys {
+                    if let Some(mut ele) = posts.get_mut(&key) {
+                        if ele.inner.project_id.is_some() {
+                            let project =
+                                crate::database::models::Project::get_id(
+                                    ele.inner.project_id.unwrap(),
+                                    &mut *exec,
+                                    &redis,
+                                )
+                                .await?;
+                            if let Some(project) = project {
+                                ele.inner.title = project.inner.name;
+                                ele.inner.avatar = project.inner.icon_url;
+
+                                
+                                if let Some(organization_id) =
+                                    project.inner.organization_id
+                                {
+                                    let organization = crate::database::models::Organization::get_id(
+                                        organization_id,
+                                        &mut *exec,
+                                        &redis,
+                                    )
+                                    .await?;
+                                    if let Some(organization) = organization {
+                                        ele.inner.organization = Some(organization.name);
+                                        ele.inner.organization_id = Some(organization.slug);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Ok(posts)
             })
             .await?;
@@ -371,7 +518,13 @@ impl PostQuery {
 
                     // 判断 w.replied_to 是否为空
                     let replied_to = if let Some(replied_to) = w.replied_to {
-                        Some(posts.get(&w.discussion_id).unwrap().iter().find(|p| p.post_id == PostId(replied_to)).unwrap().floor_number)
+                        if posts.get(&w.discussion_id).is_none() {
+                            None
+                        } else {
+                            let posts = posts.get(&w.discussion_id).unwrap();
+                            let p = posts.iter().find(|p| p.post_id == PostId(replied_to));
+                            p.map(|p| p.floor_number)
+                        }
                     } else {
                         None
                     };

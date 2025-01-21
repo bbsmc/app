@@ -168,79 +168,79 @@ pub struct ProjectCreateData {
         custom(function = "crate::util::validate::validate_name")
     )]
     #[serde(alias = "mod_name")]
-    /// The title or name of the project.
+    /// 项目的标题或名称。
     pub name: String,
     #[validate(
         length(min = 3, max = 64),
         regex = "crate::util::validate::RE_URL_SAFE"
     )]
     #[serde(alias = "mod_slug")]
-    /// The slug of a project, used for vanity URLs
+    /// 项目的别名，用于 vanity URLs
     pub slug: String,
     #[validate(length(min = 3, max = 255))]
     #[serde(alias = "mod_description")]
-    /// A short description of the project.
+    /// 项目的简短描述。
     pub summary: String,
     #[validate(length(max = 65536))]
     #[serde(alias = "mod_body")]
-    /// A long description of the project, in markdown.
+    /// 项目的详细描述，以 markdown 格式。
     pub description: String,
 
     #[validate(length(max = 32))]
     #[validate]
-    /// A list of initial versions to upload with the created project
+    /// 要与创建的项目一起上传的初始版本列表
     pub initial_versions: Vec<InitialVersionData>,
     #[validate(length(max = 3))]
-    /// A list of the categories that the project is in.
+    /// 项目所属的类别列表。
     pub categories: Vec<String>,
     #[validate(length(max = 256))]
     #[serde(default = "Vec::new")]
-    /// A list of the categories that the project is in.
+    /// 项目所属的类别列表。
     pub additional_categories: Vec<String>,
 
-    /// An optional link to the project's license page
+    /// 项目许可证页面的可选链接
     pub license_url: Option<String>,
-    /// An optional list of all donation links the project has
+    /// 项目所有捐赠链接的列表
     #[validate(custom(
         function = "crate::util::validate::validate_url_hashmap_values"
     ))]
     #[serde(default)]
     pub link_urls: HashMap<String, String>,
 
-    /// An optional boolean. If true, the project will be created as a draft.
+    /// 一个可选布尔值。如果为 true，则项目将被创建为草稿。
     pub is_draft: Option<bool>,
 
-    /// The license id that the project follows
+    /// 项目遵循的许可证 id
     pub license_id: String,
 
     #[validate(length(max = 64))]
     #[validate]
-    /// The multipart names of the gallery items to upload
+    /// 要上传的画廊项目的 multipart 名称
     pub gallery_items: Option<Vec<NewGalleryItem>>,
     #[serde(default = "default_requested_status")]
-    /// The status of the mod to be set once it is approved
+    /// 一旦批准，项目的状态
     pub requested_status: ProjectStatus,
 
-    // Associations to uploaded images in body/description
+    // 正文/描述中上传的图像关联
     #[validate(length(max = 10))]
     #[serde(default)]
     pub uploaded_images: Vec<ImageId>,
 
-    /// The id of the organization to create the project in
+    /// 要创建项目的组织 id
     pub organization_id: Option<OrganizationId>,
 }
 
 #[derive(Serialize, Deserialize, Validate, Clone)]
 pub struct NewGalleryItem {
-    /// The name of the multipart item where the gallery media is located
+    /// 画廊媒体所在的 multipart 项的名称
     pub item: String,
-    /// Whether the gallery item should show in search or not
+    /// 画廊项目是否应在搜索中显示
     pub featured: bool,
     #[validate(length(min = 1, max = 2048))]
-    /// The title of the gallery item
+    /// 画廊项目的标题
     pub name: Option<String>,
     #[validate(length(min = 1, max = 2048))]
-    /// The description of the gallery item
+    /// 画廊项目的描述
     pub description: Option<String>,
     pub ordering: i64,
 }
@@ -301,32 +301,32 @@ pub async fn project_create(
 }
 /*
 
-Project Creation Steps:
-Get logged in user
-    Must match the author in the version creation
+项目创建步骤：
+获取已登录用户
+    必须匹配版本创建中的作者
 
 1. Data
-    - Gets "data" field from multipart form; must be first
-    - Verification: string lengths
-    - Create versions
-        - Some shared logic with version creation
-        - Create list of VersionBuilders
-    - Create ProjectBuilder
+    - 从 multipart 表单中获取 "data" 字段；必须是第一个
+    - 验证：字符串长度
+    - 创建版本
+        - 与版本创建中的一些共享逻辑
+        - 创建 VersionBuilders 列表
+    - 创建 ProjectBuilder
 
 2. Upload
-    - Icon: check file format & size
-        - Upload to backblaze & record URL
-    - Project files
-        - Check for matching version
-        - File size limits?
-        - Check file type
-            - Eventually, malware scan
-        - Upload to backblaze & create VersionFileBuilder
-    -
+    - 图标：检查文件格式 & 大小
+        - 上传到 backblaze & 记录 URL
+    - 项目文件
+        - 检查匹配版本
+        - 文件大小限制？
+        - 检查文件类型
+            - 最终，恶意软件扫描
+        - 上传到 backblaze & create VersionFileBuilder
 
-3. Creation
-    - Database stuff
-    - Add project data to indexing queue
+
+3. 创建
+    - 数据库操作
+    - 将项目信息添加到索引队列
 */
 
 #[allow(clippy::too_many_arguments)]
@@ -340,10 +340,10 @@ async fn project_create_inner(
     redis: &RedisPool,
     session_queue: &AuthQueue,
 ) -> Result<HttpResponse, CreateError> {
-    // The base URL for files uploaded to backblaze
+    // 上传到 CDN 的文件的 base URL
     let cdn_url = dotenvy::var("CDN_URL")?;
 
-    // The currently logged in user
+    // 当前登录用户
     let current_user = get_user_from_headers(
         &req,
         pool,
@@ -364,8 +364,7 @@ async fn project_create_inner(
     let mut versions_map = std::collections::HashMap::new();
     let mut gallery_urls = Vec::new();
     {
-        // The first multipart field must be named "data" and contain a
-        // JSON `ProjectCreateData` object.
+        // 第一个 multipart 字段必须命名为 "data" 并包含一个 JSON `ProjectCreateData` 对象。
 
         let mut field = payload
             .next()
@@ -379,7 +378,7 @@ async fn project_create_inner(
 
         let content_disposition = field.content_disposition();
         let name = content_disposition.get_name().ok_or_else(|| {
-            CreateError::MissingValueError(String::from("Missing content name"))
+            CreateError::MissingValueError(String::from("缺少内容名称"))
         })?;
 
         if name != "data" {
@@ -437,15 +436,15 @@ async fn project_create_inner(
             }
         }
 
-        // Create VersionBuilders for the versions specified in `initial_versions`
+        // 为 `initial_versions` 中指定的版本创建 VersionBuilders
         versions = Vec::with_capacity(create_data.initial_versions.len());
         for (i, data) in create_data.initial_versions.iter().enumerate() {
-            // Create a map of multipart field names to version indices
+            // 创建一个 multipart 字段名称到版本索引的映射
             for name in &data.file_parts {
                 if versions_map.insert(name.to_owned(), i).is_some() {
-                    // If the name is already used
+                    // 如果名称已使用
                     return Err(CreateError::InvalidInput(String::from(
-                        "Duplicate multipart field name",
+                        "重复的 multipart 字段名称",
                     )));
                 }
             }
@@ -479,9 +478,7 @@ async fn project_create_inner(
             let content_disposition = field.content_disposition().clone();
 
             let name = content_disposition.get_name().ok_or_else(|| {
-                CreateError::MissingValueError(
-                    "Missing content name".to_string(),
-                )
+                CreateError::MissingValueError(String::from("缺少内容名称"))
             })?;
 
             let (file_name, file_extension) =
@@ -493,7 +490,7 @@ async fn project_create_inner(
                         "只能设置一个资源",
                     )));
                 }
-                // Upload the icon to the cdn
+                // 将图标上传到 CDN
                 icon_data = Some(
                     process_icon_upload(
                         uploaded_files,
@@ -501,6 +498,7 @@ async fn project_create_inner(
                         file_extension,
                         file_host,
                         field,
+                        redis,
                     )
                     .await?,
                 );
@@ -535,6 +533,12 @@ async fn project_create_inner(
                         Some(350),
                         Some(1.0),
                         file_host,
+                        crate::util::img::UploadImagePos {
+                            pos: "项目渲染图".to_string(),
+                            url: format!("/project/{}", project_id),
+                            username: current_user.username.clone(),
+                        },
+                        redis,
                     )
                     .await
                     .map_err(|e| {
@@ -565,18 +569,18 @@ async fn project_create_inner(
                     "文件 `{file_name}` (字段 {name}) 未在版本数据中指定"
                 )));
             };
-            // `index` is always valid for these lists
+            // `index` 对于这些列表总是有效的
             let created_version = versions.get_mut(index).unwrap();
             let version_data =
                 project_create_data.initial_versions.get(index).unwrap();
-            // TODO: maybe redundant is this calculation done elsewhere?
+            // TODO: 可能冗余，这个计算是否在其他地方完成？
 
             let existing_file_names = created_version
                 .files
                 .iter()
                 .map(|x| x.filename.clone())
                 .collect();
-            // Upload the new jar file
+            // 上传新的 jar 文件
             super::version_creation::upload_file(
                 &mut field,
                 file_host,
@@ -613,7 +617,7 @@ async fn project_create_inner(
     }
 
     {
-        // Check to make sure that all specified files were uploaded
+        // 检查是否所有指定的文件都已上传
         for (version_data, builder) in project_create_data
             .initial_versions
             .iter()
@@ -626,7 +630,7 @@ async fn project_create_inner(
             }
         }
 
-        // Convert the list of category names to actual categories
+        // 将类别名称列表转换为实际类别
         let mut categories =
             Vec::with_capacity(project_create_data.categories.len());
         for category in &project_create_data.categories {
@@ -639,8 +643,8 @@ async fn project_create_inner(
                 return Err(CreateError::InvalidCategory(category.clone()));
             }
 
-            // TODO: We should filter out categories that don't match the project type of any of the versions
-            // ie: if mod and modpack both share a name this should only have modpack if it only has a modpack as a version
+            // TODO: 我们应该过滤掉与任何版本的项目类型不匹配的类别
+            // ie: 如果 mod 和 modpack 共享一个名称，则只有 modpack 应该存在，如果它只有 modpack 作为版本
             categories.extend(ids.values());
         }
 
@@ -655,8 +659,8 @@ async fn project_create_inner(
             if ids.is_empty() {
                 return Err(CreateError::InvalidCategory(category.clone()));
             }
-            // TODO: We should filter out categories that don't match the project type of any of the versions
-            // ie: if mod and modpack both share a name this should only have modpack if it only has a modpack as a version
+            // TODO: 我们应该过滤掉与任何版本的项目类型不匹配的类别
+            // ie: 如果 mod 和 modpack 共享一个名称，则只有 modpack 应该存在，如果它只有 modpack 作为版本
             additional_categories.extend(ids.values());
         }
 
@@ -946,7 +950,7 @@ async fn create_initial_version(
         CreateError::ValidationError(validation_errors_to_string(err, None))
     })?;
 
-    // Randomly generate a new id to be used for the version
+    // 随机生成一个新 ID 用于版本
     let version_id: VersionId =
         models::generate_version_id(transaction).await?.into();
 
@@ -1018,6 +1022,7 @@ async fn process_icon_upload(
     file_extension: &str,
     file_host: &dyn FileHost,
     mut field: Field,
+    redis: &RedisPool,
 ) -> Result<(String, String, Option<u32>), CreateError> {
     let data =
         read_from_field(&mut field, 262144, "图标必须小于 256KB").await?;
@@ -1028,6 +1033,12 @@ async fn process_icon_upload(
         Some(96),
         Some(1.0),
         file_host,
+        crate::util::img::UploadImagePos {
+            pos: "项目图标".to_string(),
+            url: format!("/project/{}", id),
+            username: "".to_string(),
+        },
+        redis,
     )
     .await
     .map_err(|e| CreateError::InvalidIconFormat(e.to_string()))?;

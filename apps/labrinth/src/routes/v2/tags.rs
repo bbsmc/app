@@ -42,7 +42,7 @@ pub async fn category_list(
 ) -> Result<HttpResponse, ApiError> {
     let response = v3::tags::category_list(pool, redis).await?;
 
-    // Convert to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<v3::tags::CategoryData>>(response)
         .await
     {
@@ -76,7 +76,7 @@ pub async fn loader_list(
 ) -> Result<HttpResponse, ApiError> {
     let response = v3::tags::loader_list(pool, redis).await?;
 
-    // Convert to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<v3::tags::LoaderData>>(response)
         .await
     {
@@ -154,7 +154,7 @@ pub async fn game_version_list(
     )
     .await?;
 
-    // Convert to V2 format
+    // 将响应转换为 V2 格式
     Ok(
         match v2_reroute::extract_ok_json::<Vec<LoaderFieldEnumValue>>(response)
             .await
@@ -195,7 +195,7 @@ pub struct License {
 pub async fn license_list() -> HttpResponse {
     let response = v3::tags::license_list().await;
 
-    // Convert to V2 format
+    // 将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<Vec<v3::tags::License>>(response).await
     {
         Ok(licenses) => {
@@ -226,7 +226,7 @@ pub async fn license_text(
         .await
         .or_else(v2_reroute::flatten_404_error)?;
 
-    // Convert to V2 format
+    // 将响应转换为 V2 格式
     Ok(
         match v2_reroute::extract_ok_json::<v3::tags::LicenseText>(license)
             .await
@@ -242,8 +242,8 @@ pub async fn license_text(
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
 pub struct DonationPlatformQueryData {
-    // The difference between name and short is removed in v3.
-    // Now, the 'id' becomes the name, and the 'name' is removed (the frontend uses the id as the name)
+    // 在 v3 中，name 和 short 的区别被移除。
+    // 现在，'id' 成为 name，'name' 被移除（前端使用 id 作为 name）
     // pub short: String,
     pub short: String,
     pub name: String,
@@ -256,7 +256,7 @@ pub async fn donation_platform_list(
 ) -> Result<HttpResponse, ApiError> {
     let response = v3::tags::link_platform_list(pool, redis).await?;
 
-    // Convert to V2 format
+    // 将响应转换为 V2 格式
     Ok(
         match v2_reroute::extract_ok_json::<Vec<LinkPlatformQueryData>>(
             response,
@@ -269,15 +269,15 @@ pub async fn donation_platform_list(
                     .filter_map(|p| {
                         if p.donation {
                             Some(DonationPlatformQueryData {
-                                // Short vs name is no longer a recognized difference in v3.
-                                // We capitalize to recreate the old behavior, with some special handling.
-                                // This may result in different behaviour for platforms added after the v3 migration.
+                                // 短名称与名称之间的区别在 v3 中不再被识别。
+                                // 我们将其首字母大写以重现旧的行为，并进行一些特殊处理。
+                                // 在 v3 中，short 和 name 的区别不再被识别。
                                 name: match p.name.as_str() {
                                     "bmac" => "Buy Me A Coffee".to_string(),
                                     "github" => "GitHub Sponsors".to_string(),
                                     "ko-fi" => "Ko-fi".to_string(),
                                     "paypal" => "PayPal".to_string(),
-                                    // Otherwise, capitalize it
+                                    // 否则，将其首字母大写
                                     _ => capitalize_first(&p.name),
                                 },
                                 short: p.name,
@@ -300,7 +300,7 @@ pub async fn report_type_list(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-    // This returns a list of strings directly, so we don't need to convert to v2 format.
+    // 返回一个字符串列表，所以不需要转换为 v2 格式。
     v3::tags::report_type_list(pool, redis)
         .await
         .or_else(v2_reroute::flatten_404_error)
@@ -311,7 +311,7 @@ pub async fn project_type_list(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-    // This returns a list of strings directly, so we don't need to convert to v2 format.
+    // 返回一个字符串列表，所以不需要转换为 v2 格式。
     v3::tags::project_type_list(pool, redis)
         .await
         .or_else(v2_reroute::flatten_404_error)
@@ -319,8 +319,8 @@ pub async fn project_type_list(
 
 #[get("side_type")]
 pub async fn side_type_list() -> Result<HttpResponse, ApiError> {
-    // Original side types are no longer reflected in the database.
-    // Therefore, we hardcode and return all the fields that are supported by our v2 conversion logic.
+    // 原始的 side 类型不再反映在数据库中。
+    // 因此，我们硬编码并返回所有支持我们 v2 转换逻辑的字段。
     let side_types = [
         LegacySideType::Required,
         LegacySideType::Optional,
