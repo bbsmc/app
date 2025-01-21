@@ -1905,7 +1905,7 @@ pub async fn add_gallery_item(
         crate::util::img::UploadImagePos {
             pos: "项目渲染图".to_string(),
             url: format!("/project/{}", id),
-            username: "".to_string(),
+            username: user.username.clone(),
         },
         &redis,
     )
