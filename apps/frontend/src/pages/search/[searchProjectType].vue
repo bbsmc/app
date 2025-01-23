@@ -222,13 +222,13 @@
             />
           </div>
           <button
-            v-tooltip="localString(cosmetics.searchDisplayMode[projectType.id]) + ' 视图'"
-            :aria-label="localString(cosmetics.searchDisplayMode[projectType.id]) + ' 视图'"
+            v-tooltip="localString(cosmetics.searchDisplayMode?.[projectType.id] || 'gallery') + ' 视图'"
+            :aria-label="localString(cosmetics.searchDisplayMode?.[projectType.id] || 'gallery') + ' 视图'"
             class="square-button"
             @click="cycleSearchDisplayMode()"
           >
-            <GridIcon v-if="cosmetics.searchDisplayMode[projectType.id] === 'grid'" />
-            <ImageIcon v-else-if="cosmetics.searchDisplayMode[projectType.id] === 'gallery'" />
+            <GridIcon v-if="cosmetics.searchDisplayMode?.[projectType.id] || 'gallery' === 'grid'" />
+            <ImageIcon v-else-if="cosmetics.searchDisplayMode?.[projectType.id] || 'gallery' === 'gallery'" />
             <ListIcon v-else />
           </button>
         </div>
@@ -241,7 +241,7 @@
         <div
           id="search-results"
           class="project-list"
-          :class="'display-mode--' + cosmetics.searchDisplayMode[projectType.id]"
+          :class="'display-mode--' + (cosmetics.searchDisplayMode?.[projectType.id] === undefined ? 'gallery' : cosmetics.searchDisplayMode?.[projectType.id])"
           role="list"
           aria-label="Search results"
         >
@@ -249,7 +249,7 @@
             v-for="result in results?.hits"
             :id="result.slug ? result.slug : result.project_id"
             :key="result.project_id"
-            :display="cosmetics.searchDisplayMode[projectType.id]"
+            :display="cosmetics.searchDisplayMode?.[projectType.id] || 'gallery'"
             :featured-image="result.featured_gallery ? result.featured_gallery : result.gallery[0]"
             :type="result.project_type"
             :author="result.author"
@@ -736,7 +736,7 @@ function onSearchChangeToTop(newPageNumber) {
 
 function cycleSearchDisplayMode() {
   cosmetics.value.searchDisplayMode[projectType.value.id] = data.$cycleValue(
-    cosmetics.value.searchDisplayMode[projectType.value.id],
+    cosmetics.value.searchDisplayMode?.[projectType.id] || 'gallery',
     tags.value.projectViewModes,
   );
   setClosestMaxResults();
@@ -762,7 +762,7 @@ function onMaxResultsChange(newPageNumber) {
 }
 
 function setClosestMaxResults() {
-  const view = cosmetics.value.searchDisplayMode[projectType.value.id];
+  const view = cosmetics.value.searchDisplayMode?.[projectType.id] || 'gallery'
   const maxResultsOptions = maxResultsForView.value[view] ?? [20];
   const currentMax = maxResults.value;
   if (!maxResultsOptions.includes(currentMax)) {
