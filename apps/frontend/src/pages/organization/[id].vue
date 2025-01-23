@@ -1,18 +1,24 @@
 <template>
-  <div v-if="organization" class="experimental-styles-within new-page sidebar"
-    :class="{ 'alt-layout': cosmetics.leftContentLayout || routeHasSettings }">
+  <div
+    v-if="organization"
+    class="experimental-styles-within new-page sidebar"
+    :class="{ 'alt-layout': cosmetics.leftContentLayout || routeHasSettings }"
+  >
     <ModalCreation ref="" :organization-id="organization.id" />
     <template v-if="routeHasSettings">
       <div class="normal-page__sidebar">
         <div class="universal-card">
-          <Breadcrumbs current-title="设置" :link-stack="[
-            { href: `/dashboard/organizations`, label: '团队' },
-            {
-              href: `/organization/${organization.slug}`,
-              label: organization.name,
-              allowTrimming: true,
-            },
-          ]" />
+          <Breadcrumbs
+            current-title="设置"
+            :link-stack="[
+              { href: `/dashboard/organizations`, label: '团队' },
+              {
+                href: `/organization/${organization.slug}`,
+                label: organization.name,
+                allowTrimming: true,
+              },
+            ]"
+          />
           <div class="page-header__settings">
             <Avatar size="sm" :src="organization.icon_url" />
             <div class="title-section">
@@ -34,13 +40,22 @@
             <NavStackItem :link="`/organization/${organization.slug}/settings`" label="主要">
               <SettingsIcon />
             </NavStackItem>
-            <NavStackItem :link="`/organization/${organization.slug}/settings/members`" label="成员">
+            <NavStackItem
+              :link="`/organization/${organization.slug}/settings/members`"
+              label="成员"
+            >
               <UsersIcon />
             </NavStackItem>
-            <NavStackItem :link="`/organization/${organization.slug}/settings/projects`" label="资源">
+            <NavStackItem
+              :link="`/organization/${organization.slug}/settings/projects`"
+              label="资源"
+            >
               <BoxIcon />
             </NavStackItem>
-            <NavStackItem :link="`/organization/${organization.slug}/settings/analytics`" label="分析">
+            <NavStackItem
+              :link="`/organization/${organization.slug}/settings/analytics`"
+              label="分析"
+            >
               <ChartIcon />
             </NavStackItem>
           </NavStack>
@@ -60,20 +75,22 @@
             {{ organization.name }}
           </template>
           <template #title-suffix>
-            <div class="ml-1 flex items-center gap-2 font-semibold">
-              <OrganizationIcon /> 团队
-            </div>
+            <div class="ml-1 flex items-center gap-2 font-semibold"><OrganizationIcon /> 团队</div>
           </template>
           <template #summary>
             {{ organization.description }}
           </template>
           <template #stats>
-            <div class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold">
+            <div
+              class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold"
+            >
               <UsersIcon class="h-6 w-6 text-secondary" />
               {{ formatCompactNumber(acceptedMembers?.length || 0) }}
               成员
             </div>
-            <div class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold">
+            <div
+              class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold"
+            >
               <BoxIcon class="h-6 w-6 text-secondary" />
               {{ formatCompactNumber(projects?.length || 0) }}
               资源
@@ -92,17 +109,20 @@
               </NuxtLink>
             </ButtonStyled>
             <ButtonStyled size="large" circular type="transparent">
-              <OverflowMenu :options="[
-                {
-                  id: 'manage-projects',
-                  action: () =>
-                    navigateTo('/organization/' + organization.slug + '/settings/projects'),
-                  hoverOnly: true,
-                  shown: auth.user && currentMember,
-                },
-                { divider: true, shown: auth.user && currentMember },
-                { id: 'copy-id', action: () => copyId() },
-              ]" aria-label="More options">
+              <OverflowMenu
+                :options="[
+                  {
+                    id: 'manage-projects',
+                    action: () =>
+                      navigateTo('/organization/' + organization.slug + '/settings/projects'),
+                    hoverOnly: true,
+                    shown: auth.user && currentMember,
+                  },
+                  { divider: true, shown: auth.user && currentMember },
+                  { id: 'copy-id', action: () => copyId() },
+                ]"
+                aria-label="More options"
+              >
                 <MoreVerticalIcon aria-hidden="true" />
                 <template #manage-projects>
                   <BoxIcon aria-hidden="true" />
@@ -122,13 +142,19 @@
           <h2>成员</h2>
           <div class="details-list">
             <template v-for="member in acceptedMembers" :key="member.user.id">
-              <nuxt-link class="details-list__item details-list__item--type-large"
-                :to="`/user/${member.user.username}`">
+              <nuxt-link
+                class="details-list__item details-list__item--type-large"
+                :to="`/user/${member.user.username}`"
+              >
                 <Avatar :src="member.user.avatar_url" circle />
                 <div class="rows">
                   <span class="flex items-center gap-1">
                     {{ member.user.username }}
-                    <CrownIcon v-if="member.is_owner" v-tooltip="'Organization owner'" class="text-brand-orange" />
+                    <CrownIcon
+                      v-if="member.is_owner"
+                      v-tooltip="'Organization owner'"
+                      class="text-brand-orange"
+                    />
                   </span>
                   <span class="details-list__item__text--style-secondary">
                     {{ member.role ? member.role : "成员" }}
@@ -157,25 +183,40 @@
         </div>
         <template v-if="projects?.length > 0">
           <div class="project-list display-mode--list">
-            <ProjectCard v-for="project in (route.params.projectType !== undefined
-              ? projects.filter((x) =>
-                x.project_types.includes(
-                  route.params.projectType.substr(0, route.params.projectType.length - 1),
-                ),
+            <ProjectCard
+              v-for="project in (route.params.projectType !== undefined
+                ? projects.filter((x) =>
+                    x.project_types.includes(
+                      route.params.projectType.substr(0, route.params.projectType.length - 1),
+                    ),
+                  )
+                : projects
               )
-              : projects
-            )
-              .slice()
-              .sort((a, b) => b.downloads - a.downloads)" :id="project.slug || project.id" :key="project.id"
-              :name="project.name" :display="cosmetics.searchDisplayMode.user"
-              :featured-image="project.gallery.find((element) => element.featured)?.url" project-type-url="project"
-              :description="project.summary" :created-at="project.published" :updated-at="project.updated"
-              :downloads="project.downloads.toString()" :follows="project.followers.toString()"
-              :icon-url="project.icon_url" :categories="project.categories" :client-side="project.client_side"
-              :server-side="project.server_side" :status="auth.user && (auth.user.id === user.id || tags.staffRoles.includes(auth.user.role))
-                ? project.status
-                : null
-                " :type="project.project_types[0] ?? 'project'" :color="project.color" />
+                .slice()
+                .sort((a, b) => b.downloads - a.downloads)"
+              :id="project.slug || project.id"
+              :key="project.id"
+              :name="project.name"
+              :display="cosmetics.searchDisplayMode.user"
+              :featured-image="project.gallery.find((element) => element.featured)?.url"
+              project-type-url="project"
+              :description="project.summary"
+              :created-at="project.published"
+              :updated-at="project.updated"
+              :downloads="project.downloads.toString()"
+              :follows="project.followers.toString()"
+              :icon-url="project.icon_url"
+              :categories="project.categories"
+              :client-side="project.client_side"
+              :server-side="project.server_side"
+              :status="
+                auth.user && (auth.user.id === user.id || tags.staffRoles.includes(auth.user.role))
+                  ? project.status
+                  : null
+              "
+              :type="project.project_types[0] ?? 'project'"
+              :color="project.color"
+            />
           </div>
         </template>
 
@@ -242,8 +283,11 @@ const [
     useBaseFetch(`organization/${orgId}`, { apiVersion: 3 }),
   ),
   useAsyncData(
-    `organization/${orgId === 'bbsmc' ? 'bbsmc-create' : orgId}/projects`,
-    () => useBaseFetch(`organization/${orgId === 'bbsmc' ? 'bbsmc-create' : orgId}/projects`, { apiVersion: 3 }),
+    `organization/${orgId === "bbsmc" ? "bbsmc-create" : orgId}/projects`,
+    () =>
+      useBaseFetch(`organization/${orgId === "bbsmc" ? "bbsmc-create" : orgId}/projects`, {
+        apiVersion: 3,
+      }),
     {
       transform: (projects) => {
         for (const project of projects) {
@@ -494,7 +538,6 @@ async function copyId() {
     grid-template:
       "avatar name" auto
       "avatar role" auto
-
       / auto 1fr;
     p {
       margin: 0;

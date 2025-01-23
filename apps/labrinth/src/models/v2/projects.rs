@@ -87,6 +87,9 @@ impl LegacyProject {
         if project_types.contains(&"modpack".to_string()) {
             project_types = vec!["modpack".to_string()];
         }
+        if project_types.contains(&"software".to_string()) {
+            project_types = vec!["software".to_string()];
+        }
 
         let og_project_type = project_types
             .first()
@@ -180,6 +183,29 @@ impl LegacyProject {
                         .filter(|l| l != "mrpack")
                         .collect::<Vec<_>>();
                     // and replace with mrpack_loaders
+                    loaders.extend(values);
+                    // remove duplicate loaders
+                    loaders = loaders.into_iter().unique().collect::<Vec<_>>();
+                }
+            }
+            if loaders.contains(&"software".to_string()) {
+                project_type = "software".to_string();
+                if let Some(software_loaders) =
+                    data.fields.iter().find(|f| f.0 == "software_loaders")
+                {
+                    let values = software_loaders
+                        .1
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>();
+
+                    // drop software from loaders
+                    loaders = loaders
+                        .into_iter()
+                        .filter(|l| l != "software")
+                        .collect::<Vec<_>>();
+                    // and replace with software_loaders
                     loaders.extend(values);
                     // remove duplicate loaders
                     loaders = loaders.into_iter().unique().collect::<Vec<_>>();
@@ -365,6 +391,7 @@ impl From<Version> for LegacyVersion {
         if loaders.contains(&"mrpack".to_string()) {
             if let Some((_, mrpack_loaders)) = data
                 .fields
+                .clone()
                 .into_iter()
                 .find(|(key, _)| key == "mrpack_loaders")
             {
@@ -372,6 +399,19 @@ impl From<Version> for LegacyVersion {
                     serde_json::from_value(mrpack_loaders)
                 {
                     loaders = mrpack_loaders;
+                }
+            }
+        }
+        if loaders.contains(&"software".to_string()) {
+            if let Some((_, software_loaders)) = data
+                .fields
+                .into_iter()
+                .find(|(key, _)| key == "software_loaders")
+            {
+                if let Ok(software_loaders) =
+                    serde_json::from_value(software_loaders)
+                {
+                    loaders = software_loaders;
                 }
             }
         }

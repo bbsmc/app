@@ -46,7 +46,14 @@
                 <span class="text-brand-red">*</span>
               </span>
             </label>
-            <input id="name" v-model="forumTitle" type="text" maxlength="64" placeholder="帖子标题" autocomplete="off" />
+            <input
+              id="name"
+              v-model="forumTitle"
+              type="text"
+              maxlength="64"
+              placeholder="帖子标题"
+              autocomplete="off"
+            />
           </div>
           <div class="flex flex-col gap-2" style="margin-bottom: 10px">
             <label for="name">
@@ -84,10 +91,13 @@
                 <h2 class="forum-title">{{ forum.title }}</h2>
               </a>
               <p class="forum-meta">
-                <a v-if="forum.organization_id" :href="`/organization/${forum.organization_id}`" target="_blank"
-                  class="forum-user">{{
-                    forum.organization
-                  }}</a>
+                <a
+                  v-if="forum.organization_id"
+                  :href="`/organization/${forum.organization_id}`"
+                  target="_blank"
+                  class="forum-user"
+                  >{{ forum.organization }}</a
+                >
                 <a v-else :href="`/user/${forum.user_name}`" target="_blank" class="forum-user">{{
                   forum.user_name
                 }}</a>
@@ -104,9 +114,13 @@
           </div>
         </div>
         <div>
-          <pagination :page="currentPage" :count="pageCount"
-            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)" class="justify-end"
-            @switch-page="onSearchChangeToTop" />
+          <pagination
+            :page="currentPage"
+            :count="pageCount"
+            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)"
+            class="justify-end"
+            @switch-page="onSearchChangeToTop"
+          />
         </div>
       </div>
     </div>

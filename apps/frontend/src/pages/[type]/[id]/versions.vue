@@ -49,6 +49,7 @@
         <div class="w-9 max-sm:hidden"></div>
         <div class="text-sm font-bold text-contrast max-sm:hidden">名字</div>
         <div
+          v-if="project.project_type !== 'software'"
           class="text-sm font-bold text-contrast max-sm:hidden sm:max-xl:collapse sm:max-xl:hidden"
         >
           游戏版本
@@ -108,7 +109,7 @@
             </div>
             <div class="flex flex-col justify-center gap-2 sm:contents">
               <div class="flex flex-row flex-wrap items-center gap-1 xl:contents">
-                <div class="flex items-center">
+                <div v-if="project.project_type !== 'software'" class="flex items-center">
                   <div class="tag-list">
                     <div
                       v-for="gameVersion in formatVersionsForDisplay(version.game_versions)"
@@ -126,7 +127,7 @@
                     <div
                       v-for="platform in version.loaders"
                       :key="`platform-tag-${platform}`"
-                      v-tooltip="`Toggle filter for ${platform}`"
+                      v-tooltip="`筛选 ${platform} 平台`"
                       :class="`tag-list__item z-[1] cursor-pointer hover:underline`"
                       :style="`--_color: var(--color-platform-${platform})`"
                       @click="versionFilters.toggleFilter('platform', platform)"
@@ -162,29 +163,29 @@
             </div>
           </div>
           <div class="flex items-start justify-end gap-1 sm:items-center">
-            <ButtonStyled circular type="transparent">
-              <a
-                v-if="!version.disk_only"
-                v-tooltip="`下载`"
-                :href="getPrimaryFile(version).url"
-                class="z-[1] group-hover:!bg-brand group-hover:!text-brand-inverted"
-                aria-label="Download"
-                @click="emits('onDownload')"
-              >
-                <DownloadIcon aria-hidden="true" />
-              </a>
-              <a
-                v-else
-                v-tooltip="`下载`"
-                target="_blank"
-                :href="getPrimaryDiskUrl(version)"
-                class="z-[1] group-hover:!bg-brand group-hover:!text-brand-inverted"
-                aria-label="Download"
-                @click="onDownload(version.id)"
-              >
-                <DownloadIcon aria-hidden="true" />
-              </a>
-            </ButtonStyled>
+            <!--            <ButtonStyled circular type="transparent">-->
+            <!--              <a-->
+            <!--                v-if="!version.disk_only"-->
+            <!--                v-tooltip="`下载`"-->
+            <!--                :href="getPrimaryFile(version).url"-->
+            <!--                class="z-[1] group-hover:!bg-brand group-hover:!text-brand-inverted"-->
+            <!--                aria-label="Download"-->
+            <!--                @click="emits('onDownload')"-->
+            <!--              >-->
+            <!--                <DownloadIcon aria-hidden="true" />-->
+            <!--              </a>-->
+            <!--              <a-->
+            <!--                v-else-->
+            <!--                v-tooltip="`下载`"-->
+            <!--                target="_blank"-->
+            <!--                :href="getPrimaryDiskUrl(version)"-->
+            <!--                class="z-[1] group-hover:!bg-brand group-hover:!text-brand-inverted"-->
+            <!--                aria-label="Download"-->
+            <!--                @click="onDownload(version.id)"-->
+            <!--              >-->
+            <!--                <DownloadIcon aria-hidden="true" />-->
+            <!--              </a>-->
+            <!--            </ButtonStyled>-->
             <ButtonStyled circular type="transparent">
               <OverflowMenu
                 class="group-hover:!bg-button-bg"
@@ -360,18 +361,18 @@ const tags = useTags();
 const flags = useFeatureFlags();
 const formatRelativeTime = useRelativeTime();
 
-const emits = defineEmits(["onDownload"]);
+// const emits = defineEmits(["onDownload"]);
 
 const route = useNativeRoute();
 const router = useNativeRouter();
 
 const currentPage = ref(route.query.page ?? 1);
-function onDownload(version) {
-  useBaseFetch(`version/${version}/download`, {
-    method: "PATCH",
-    apiVersion: 3,
-  });
-}
+// function onDownload(version) {
+//   useBaseFetch(`version/${version}/download`, {
+//     method: "PATCH",
+//     apiVersion: 3,
+//   });
+// }
 function switchPage(page) {
   currentPage.value = page;
 
@@ -383,27 +384,27 @@ function switchPage(page) {
   });
 }
 
-function getPrimaryFile(version) {
-  return version.files.find((x) => x.primary) || version.files[0];
-}
-function getPrimaryDiskUrl(version) {
-  for (const url of version.disk_urls) {
-    if (url.platform === "quark") {
-      return url.url;
-    }
-  }
-  for (const url of version.disk_urls) {
-    if (url.platform === "xunlei") {
-      return url.url;
-    }
-  }
-  for (const url of version.disk_urls) {
-    if (url.platform === "baidu") {
-      return url.url;
-    }
-  }
-  return "https://bbsmc.net";
-}
+// function getPrimaryFile(version) {
+//   return version.files.find((x) => x.primary) || version.files[0];
+// }
+// function getPrimaryDiskUrl(version) {
+//   for (const url of version.disk_urls) {
+//     if (url.platform === "quark") {
+//       return url.url;
+//     }
+//   }
+//   for (const url of version.disk_urls) {
+//     if (url.platform === "xunlei") {
+//       return url.url;
+//     }
+//   }
+//   for (const url of version.disk_urls) {
+//     if (url.platform === "baidu") {
+//       return url.url;
+//     }
+//   }
+//   return "https://bbsmc.net";
+// }
 
 const selectedGameVersions = computed(() => {
   return getArrayOrString(route.query.g) ?? [];

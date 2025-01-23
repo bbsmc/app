@@ -43,6 +43,11 @@ export const useTags = () =>
         id: "modpack",
         display: "模组包/整合包",
       },
+      {
+        actual: "software",
+        id: "software",
+        display: "软件资源",
+      },
     ],
     forumTypes: [
       {
@@ -89,6 +94,7 @@ export const useTags = () =>
         "folia",
       ],
       dataPackLoaders: ["datapack"],
+      dataSoftwareLoaders: ["windows", "linux", "macos"],
       modLoaders: ["forge", "fabric", "quilt", "liteloader", "modloader", "rift", "neoforge"],
       hiddenModLoaders: ["liteloader", "modloader", "rift"],
     },

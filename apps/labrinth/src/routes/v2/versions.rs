@@ -296,6 +296,15 @@ pub async fn version_edit(
         );
         loaders = None;
     }
+    if old_version.fields.contains_key("software_loaders")
+        && new_version.loaders.is_some()
+    {
+        fields.insert(
+            "software_loaders".to_string(),
+            serde_json::json!(new_version.loaders),
+        );
+        loaders = None;
+    }
 
     let new_version = v3::versions::EditVersion {
         name: new_version.name,

@@ -842,14 +842,14 @@ impl Version {
                                         a.filename.cmp(&b.filename)
                                     }
                                 });
-                                if !disks.is_empty(){
-                                    files.clear();
+                                if !disks.is_empty() && files.is_empty(){
+                                    // files.clear();
                                     files.push(QueryFile {
                                         id: FileId(-1),
                                         url: disks.first().unwrap().url.clone(),
                                         filename: "".to_string(),
                                         hashes: HashMap::new(),
-                                        primary: true,
+                                        primary: false,
                                         size: 0,
                                         file_type: None,
                                     });

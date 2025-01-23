@@ -55,7 +55,7 @@ pub struct InitialVersionData {
     )]
     pub dependencies: Vec<Dependency>, // 依赖项
     #[validate(length(min = 1))]
-    pub game_versions: Vec<String>, // 游戏版本
+    pub game_versions: Option<Vec<String>>, // 游戏版本
     #[serde(alias = "version_type")]
     pub release_channel: VersionType, // 发布渠道
     #[validate(length(min = 1))]
@@ -71,6 +71,7 @@ pub struct InitialVersionData {
     pub uploaded_images: Vec<ImageId>, // 上传的图片
     pub ordering: Option<i32>,        // 排序
     pub curse: bool,
+    pub software: bool,
     pub disk_only: bool,
     pub disk_urls: Option<Vec<QueryDisk>>,
 }
@@ -187,6 +188,9 @@ pub async fn version_create(
                         );
                     }
                 }
+                for (k, v) in &fields {
+                    println!("{}: {}", k, v);
+                }
 
                 // 通过文件扩展名预测处理项目类型
                 let mut project_type = None;
@@ -225,6 +229,9 @@ pub async fn version_create(
                 if legacy_create.curse {
                     project_type = Some("modpack");
                 }
+                if legacy_create.software {
+                    project_type = Some("software");
+                }
 
                 // Modpacks 现在使用“mrpack”加载器，并且加载器被转换为加载器字段。
                 // 直接设置“project_type”已被删除，现在是基于加载器的。
@@ -234,9 +241,17 @@ pub async fn version_create(
                         json!(legacy_create.loaders),
                     );
                 }
+                if project_type == Some("software") {
+                    fields.insert(
+                        "software_loaders".to_string(),
+                        json!(legacy_create.loaders),
+                    );
+                }
 
                 let loaders = if project_type == Some("modpack") {
                     vec![Loader("mrpack".to_string())]
+                } else if project_type == Some("software") {
+                    vec![Loader("software".to_string())]
                 } else {
                     legacy_create.loaders
                 };

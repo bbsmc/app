@@ -210,7 +210,7 @@ export const formatCategory = (name) => {
 
 export const formatCategoryHeader = (name) => {
   if (name === 'loaders'){
-    return '加载器';
+    return '加载核心';
   }
   if (name === 'platforms'){
     return '平台';

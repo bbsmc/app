@@ -23,7 +23,7 @@ use sqlx::postgres::PgPool;
 pub async fn index_local(
     pool: &PgPool,
 ) -> Result<Vec<UploadSearchProject>, IndexingError> {
-    info!("Indexing local projects!");
+    info!("索引本地项目");
 
     // 待办事项：加载器、项目类型、游戏版本
     struct PartialProject {
@@ -84,7 +84,7 @@ pub async fn index_local(
         ordering: i64,
     }
 
-    info!("Indexing local gallery!");
+    info!("索引本地渲染图");
 
     let mods_gallery: DashMap<ProjectId, Vec<PartialGallery>> = sqlx::query!(
         "
@@ -110,7 +110,7 @@ pub async fn index_local(
     )
     .await?;
 
-    info!("Indexing local categories!");
+    info!("索引本地分类");
 
     let categories: DashMap<ProjectId, Vec<(String, bool)>> = sqlx::query!(
         "
@@ -133,10 +133,10 @@ pub async fn index_local(
     )
     .await?;
 
-    info!("Indexing local versions!");
+    info!("索引本地版本");
     let mut versions = index_versions(pool, project_ids.clone()).await?;
 
-    info!("Indexing local org owners!");
+    info!("索引本地组织所有者");
 
     let mods_org_owners: DashMap<ProjectId, String> = sqlx::query!(
         "
@@ -156,7 +156,7 @@ pub async fn index_local(
     })
     .await?;
 
-    info!("Indexing local team owners!");
+    info!("索引本地Team权限所有者");
 
     let mods_team_owners: DashMap<ProjectId, String> = sqlx::query!(
         "
@@ -175,7 +175,7 @@ pub async fn index_local(
     })
     .await?;
 
-    info!("Getting all loader fields!");
+    info!("获取所有加载器字段");
     let loader_fields: Vec<QueryLoaderField> = sqlx::query!(
         "
         SELECT DISTINCT id, field, field_type, enum_type, min_val, max_val, optional
@@ -196,7 +196,7 @@ pub async fn index_local(
     .await?;
     let loader_fields: Vec<&QueryLoaderField> = loader_fields.iter().collect();
 
-    info!("Getting all loader field enum values!");
+    info!("索引所有加载器字段枚举值");
 
     let loader_field_enum_values: Vec<QueryLoaderFieldEnumValue> =
         sqlx::query!(
@@ -218,14 +218,14 @@ pub async fn index_local(
         .try_collect()
         .await?;
 
-    info!("Indexing loaders, project types!");
+    info!("索引加载器, 项目类别");
     let mut uploads = Vec::new();
 
     let total_len = db_projects.len();
     let mut count = 0;
     for project in db_projects {
         count += 1;
-        info!("projects index prog: {count}/{total_len}");
+        info!("项目索引中: {count}/{total_len}");
 
         let owner =
             if let Some((_, org_owner)) = mods_org_owners.remove(&project.id) {
@@ -236,7 +236,7 @@ pub async fn index_local(
                 team_owner
             } else {
                 println!(
-                    "org owner not found for project {} id: {}!",
+                    "未找到项目的组织所有者 {} id: {}!",
                     project.name, project.id.0
                 );
                 continue;
@@ -355,8 +355,23 @@ pub async fn index_local(
                     })
                     .unwrap_or_default();
                 categories.extend(mrpack_loaders);
+
+                let software_loaders = loader_fields
+                    .get("software_loaders")
+                    .cloned()
+                    .map(|x| {
+                        x.into_iter()
+                            .filter_map(|x| x.as_str().map(String::from))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                categories.extend(software_loaders);
+
                 if loader_fields.contains_key("mrpack_loaders") {
                     categories.retain(|x| *x != "mrpack");
+                }
+                if loader_fields.contains_key("software_loaders") {
+                    categories.retain(|x| *x != "software");
                 }
 
                 // 特殊行为：

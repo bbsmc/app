@@ -97,14 +97,12 @@ pub async fn loader_list(
 ) -> Result<HttpResponse, ApiError> {
     let loaders = Loader::list(&**pool, &redis).await?;
 
-    println!("1");
     let loader_fields = LoaderField::get_fields_per_loader(
         &loaders.iter().map(|x| x.id).collect_vec(),
         &**pool,
         &redis,
     )
     .await?;
-    println!("2");
 
     let mut results = loaders
         .into_iter()

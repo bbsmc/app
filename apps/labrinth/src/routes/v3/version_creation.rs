@@ -360,7 +360,7 @@ async fn version_create_inner(
 
             let existing_file_names = version.files.iter().map(|x| x.filename.clone()).collect();
 
-            if version_data.disk_only {
+            if version_data.file_parts.is_empty() && version_data.disk_only {
                 return Ok(())
             }
 
@@ -851,6 +851,7 @@ pub async fn upload_file(
 ) -> Result<(), CreateError> {
     let (file_name, file_extension) = get_name_ext(content_disposition)?;
 
+    println!("Uploading file {file_name}.{file_extension}");
     if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到BBSMC过,无法重复上传!1".to_string(),

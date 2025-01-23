@@ -42,7 +42,7 @@
       <section class="card gap-1" :class="{ 'max-lg:!hidden': !sidebarMenuOpen }">
         <div class="flex items-center gap-2">
           <div class="iconified-input w-full">
-            <label class="hidden" for="search">Search</label>
+            <label class="hidden" for="search">搜索</label>
             <SearchIcon aria-hidden="true" />
             <input
               id="search"
@@ -88,6 +88,9 @@
             "
           >
             <template v-if="header === 'gameVersion'"> 游戏版本 </template>
+            <template v-else-if="header === 'loaders' && projectType.id === 'software'">
+              操作系统
+            </template>
             <template v-else>
               {{ formatCategoryHeader(header) }}
             </template>
@@ -208,7 +211,9 @@
               v-model="maxResults"
               placeholder="Select one"
               class="labeled-control__control"
-              :options="maxResultsForView[cosmetics.searchDisplayMode[projectType.id]]"
+              :options="
+                maxResultsForView[cosmetics.searchDisplayMode?.[projectType.id] || 'gallery']
+              "
               :searchable="false"
               :close-on-select="true"
               :show-labels="false"
@@ -261,7 +266,7 @@
             :search="true"
             :show-updated-date="!server && sortType.name !== 'newest'"
             :show-created-date="!server"
-            :hide-loaders="['resourcepack', 'datapack'].includes(projectType.id)"
+            :hide-loaders="['resourcepack', 'datapack', 'software'].includes(projectType.id)"
             :color="result.color"
           >
             <template v-if="server">
@@ -349,7 +354,6 @@ const sortType = ref({ display: "相关", name: "relevance" });
 const maxResults = ref(20);
 const currentPage = ref(1);
 const projectType = ref({ id: "mod", display: "mod", actual: "mod" });
-
 const ogTitle = computed(
   () => `搜索 ${projectType.value.display} ${query.value ? " | " + query.value : ""}`,
 );
@@ -529,6 +533,12 @@ const {
       } else if (projectType.value.id === "datapack") {
         formattedFacets.push(
           tags.value.loaderData.dataPackLoaders.map((x) => `categories:'${encodeURIComponent(x)}'`),
+        );
+      } else if (projectType.value.id === "software") {
+        formattedFacets.push(
+          tags.value.loaderData.dataSoftwareLoaders.map(
+            (x) => `categories:'${encodeURIComponent(x)}'`,
+          ),
         );
       }
 
@@ -769,7 +779,10 @@ const filters = computed(() => {
   if (
     projectType.value.id !== "resourcepack" &&
     projectType.value.id !== "datapack" &&
-    (!server.value || serverOverrideLoaders.value || projectType.value.id === "modpack")
+    (!server.value ||
+      serverOverrideLoaders.value ||
+      projectType.value.id === "modpack" ||
+      projectType.value.id === "software")
   ) {
     const loaders = tags.value.loaders
       .filter((x) => {
@@ -784,6 +797,8 @@ const filters = computed(() => {
           return tags.value.loaderData.pluginLoaders.includes(x.name);
         } else if (projectType.value.id === "datapack") {
           return tags.value.loaderData.dataPackLoaders.includes(x.name);
+        } else if (projectType.value.id === "software") {
+          return tags.value.loaderData.dataSoftwareLoaders.includes(x.name);
         } else {
           return x.supported_project_types.includes(projectType.value.actual);
         }
@@ -829,7 +844,9 @@ const filters = computed(() => {
       .map((x) => ({ name: x.version, type: "gameVersion" }));
   }
 
-  if (!["resourcepack", "plugin", "shader", "datapack"].includes(projectType.value.id)) {
+  if (
+    !["resourcepack", "plugin", "shader", "datapack", "software"].includes(projectType.value.id)
+  ) {
     filters.environment = [
       { name: "客户端", type: "env" },
       { name: "服务端", type: "env" },
@@ -866,6 +883,13 @@ const filters = computed(() => {
     if (filters.length > 0) {
       filteredObj[key] = filters;
     }
+  }
+
+  // 对于 software 类型，只返回 loaders 筛选条件
+  if (projectType.value.id === "software") {
+    return {
+      loaders: filteredObj.loaders || [],
+    };
   }
 
   return filteredObj;
