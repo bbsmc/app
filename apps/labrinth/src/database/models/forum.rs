@@ -344,21 +344,19 @@ impl Discussion {
                                 crate::database::models::Project::get_id(
                                     ele.inner.project_id.unwrap(),
                                     &mut *exec,
-                                    &redis,
+                                    redis,
                                 )
                                 .await?;
                             if let Some(project) = project {
                                 ele.inner.title = project.inner.name;
                                 ele.inner.avatar = project.inner.icon_url;
-
-                                
                                 if let Some(organization_id) =
                                     project.inner.organization_id
                                 {
                                     let organization = crate::database::models::Organization::get_id(
                                         organization_id,
                                         &mut *exec,
-                                        &redis,
+                                        redis,
                                     )
                                     .await?;
                                     if let Some(organization) = organization {

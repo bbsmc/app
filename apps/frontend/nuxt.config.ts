@@ -191,7 +191,7 @@ export default defineNuxtConfig({
 
       await fs.writeFile("./src/generated/state.json", JSON.stringify(state));
 
-      console.log("Tags generated!");
+      console.log("Tags 已生成!");
     },
     "pages:extend"(routes) {
       routes.splice(
@@ -199,7 +199,15 @@ export default defineNuxtConfig({
         1,
       );
 
-      const types = ["mods", "modpacks", "plugins", "resourcepacks", "shaders", "datapacks"];
+      const types = [
+        "mods",
+        "modpacks",
+        "plugins",
+        "resourcepacks",
+        "shaders",
+        "datapacks",
+        "softwares",
+      ];
 
       types.forEach((type) =>
         routes.push({

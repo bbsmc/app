@@ -179,6 +179,7 @@
       <template
         v-if="
           project.versions.length !== 0 &&
+          project.project_type !== 'software' &&
           project.project_type !== 'resourcepack' &&
           project.project_type !== 'plugin' &&
           project.project_type !== 'shader' &&

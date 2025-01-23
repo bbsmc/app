@@ -84,7 +84,9 @@
           >
             您选择了网盘，必须提供至少一个网盘地址
           </li>
-          <li v-if="version.game_versions.length === 0">您必须选择支持的 Minecraft 版本</li>
+          <li v-if="version.game_versions.length === 0 && version.type === 'minecraft'">
+            您必须选择支持的 Minecraft 版本
+          </li>
           <li
             v-if="
               newFiles.length === 0 &&
@@ -146,16 +148,16 @@
       </div>
       <div v-else class="input-group">
         <ButtonStyled v-if="primaryFile" color="green">
-          <a
-            v-if="primaryFile.url.includes('cdn.bbsmc.net')"
-            v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'"
-            :href="primaryFile.url"
-            @click="emit('onDownload')"
-          >
-            <DownloadIcon aria-hidden="true" />
-            下载
-          </a>
-          <button-styled v-else color="green" @click="$refs.downloadModal.show()">
+          <!--          <a-->
+          <!--            v-if="primaryFile.url.includes('cdn.bbsmc.net')"-->
+          <!--            v-tooltip="primaryFile.filename + ' (' + $formatBytes(primaryFile.size) + ')'"-->
+          <!--            :href="primaryFile.url"-->
+          <!--            @click="emit('onDownload')"-->
+          <!--          >-->
+          <!--            <DownloadIcon aria-hidden="true" />-->
+          <!--            下载-->
+          <!--          </a>-->
+          <button-styled color="green" @click="$refs.downloadModal.show()">
             <nuxt-link>
               <DownloadIcon aria-hidden="true" />
               下载
@@ -214,7 +216,8 @@
           <span class="label__title">第三方网盘</span>
           <span class="label__description">
             如果您有夸克迅雷等网盘的合作，需要参与网盘的拉新激励，可选择只提供网盘链接，则无需选择要上传的文件，提供网盘下载方式后，点击下载按钮会直接跳转到网盘进行下载便可得到网盘的拉新激励。
-            如果您启用网盘提供下载，本网站将不提供直接下载文件的功能
+            如果您启用网盘提供下载，如果你希望提供本站下载+网盘下载，请你在版本列表页面点击
+            版本上传(文件) 按钮来创建上传页面，不然文件会被识别为附加文件
             <br />
             <br />
             请至少提供一种网盘
@@ -398,8 +401,16 @@
         </div>
       </div>
     </div>
-    <div v-if="version.disk_only === false" class="version-page__files universal-card">
+    <div
+      v-if="
+        isEditing ||
+        isCreating ||
+        version.files.filter((x) => x.url.includes('cdn.bbsmc.net')).length > 0
+      "
+      class="version-page__files universal-card"
+    >
       <h3>文件</h3>
+      <!--      编辑中-->
       <div v-if="isEditing && replaceFile" class="file primary">
         <FileIcon aria-hidden="true" />
         <span class="filename">
@@ -418,14 +429,18 @@
           <TransferIcon aria-hidden="true" />
         </FileInput>
       </div>
+      <!--      非编辑-->
       <div
-        v-for="(file, index) in version.files"
+        v-for="(file, index) in version.files.filter((x) => x.url.includes('cdn.bbsmc.net'))"
         :key="file.hashes.sha1"
         :class="{
           file: true,
           primary: primaryFile.hashes.sha1 === file.hashes.sha1,
         }"
       >
+        <!--        <div v-if="file.url.includes('cdn.bbsmc.net')">-->
+        <!--          -->
+        <!--        </div>-->
         <FileIcon aria-hidden="true" />
         <span class="filename">
           <strong>{{ file.filename }}</strong>
@@ -565,6 +580,25 @@
       <div class="universal-card full-width-inputs">
         <h3>更多信息</h3>
         <div>
+          <h4 style="margin-bottom: 10px">资源类型</h4>
+          <Multiselect
+            v-if="isEditing"
+            v-model="version.type"
+            class="input"
+            placeholder="选择"
+            :options="['software', 'minecraft']"
+            :custom-label="(value) => (value === 'software' ? '软件资源' : '我的世界资源')"
+            :searchable="false"
+            :close-on-select="true"
+            :show-labels="false"
+            :allow-empty="false"
+          />
+          <template v-else>
+            <span v-if="version.type === 'software'">软件资源</span>
+            <span v-else-if="version.type === 'minecraft'">Minecraft资源</span>
+          </template>
+        </div>
+        <div>
           <h4>发布版本</h4>
           <Multiselect
             v-if="isEditing"
@@ -616,6 +650,7 @@
         </div>
         <div v-if="project.project_type !== 'resourcepack'">
           <h4>运行环境</h4>
+          <!--          {{tags.loaders}}-->
           <Multiselect
             v-if="isEditing"
             v-model="version.loaders"
@@ -640,8 +675,9 @@
           />
           <Categories v-else :categories="version.loaders" :type="project.actualProjectType" />
         </div>
-        <div>
+        <div v-if="version.type === 'minecraft'">
           <h4>游戏版本</h4>
+
           <template v-if="isEditing">
             <multiselect
               v-model="version.game_versions"
@@ -881,6 +917,7 @@ export default defineNuxtComponent({
       isCreating = true;
       isEditing = true;
 
+      // 新建资源的版本信息
       version = {
         id: "none",
         project_id: props.project.id,
@@ -902,6 +939,7 @@ export default defineNuxtComponent({
         disk_only: false,
         is_modpack: false,
         curseforge: "",
+        type: undefined,
       };
       // 用于从版本页面导航/上传文件提示
 
@@ -925,6 +963,7 @@ export default defineNuxtComponent({
       } else {
         version.disk_only = true;
       }
+      version.type = null;
     } else if (route.params.version === "latest") {
       let versionList = props.versions;
       if (route.query.loader) {
@@ -962,6 +1001,18 @@ export default defineNuxtComponent({
         }
       });
     }
+    if (version.loaders.length > 0) {
+      if (
+        version.loaders.includes("windows") ||
+        version.loaders.includes("linux") ||
+        version.loaders.includes("macos")
+      ) {
+        version.type = "software";
+      } else {
+        version.type = "minecraft";
+      }
+    }
+
     primaryFile = version.files.find((file) => file.primary) ?? version.files[0];
 
     alternateFile = version.files.find(
@@ -999,7 +1050,7 @@ export default defineNuxtComponent({
       () =>
         `Download ${props.project.title} ${
           version.version_number
-        } on Modrinth. Supports ${data.$formatVersion(version.game_versions)} ${version.loaders
+        } on BBSMC. Supports ${data.$formatVersion(version.game_versions)} ${version.loaders
           .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
           .join(" & ")}. Published on ${data
           .$dayjs(version.date_published)
@@ -1059,7 +1110,7 @@ export default defineNuxtComponent({
           (this.version.quark_disk === "" || this.version.quark_disk === undefined) &&
           (this.version.xunlei_disk === "" || this.version.xunlei_disk === undefined) &&
           (this.version.baidu_disk === "" || this.version.baidu_disk === undefined)) ||
-        this.version.game_versions.length === 0 ||
+        (this.version.game_versions.length === 0 && this.version.type === "minecraft") ||
         (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
         (this.newFiles.length === 0 &&
           this.version.files.length === 0 &&
@@ -1272,7 +1323,7 @@ export default defineNuxtComponent({
           changelog: this.version.changelog,
           version_type: this.version.version_type,
           dependencies: this.version.dependencies,
-          game_versions: this.version.game_versions,
+
           loaders: this.version.loaders,
           disk_urls: this.version.disk_only ? disks : null,
           disk_only: this.version.disk_only,
@@ -1288,6 +1339,9 @@ export default defineNuxtComponent({
                 };
               }),
         };
+        if (this.version.type === "minecraft") {
+          body.game_versions = this.version.game_versions;
+        }
 
         if (this.project.project_type === "modpack") {
           delete body.dependencies;
@@ -1406,27 +1460,31 @@ export default defineNuxtComponent({
       const newVersion = {
         project_id: version.project_id,
         curse,
+        software: version.type === "software",
         file_parts: fileParts,
         version_number: version.version_number,
         version_title: version.name || version.version_number,
         version_body: version.changelog,
         dependencies: version.dependencies,
-        game_versions: version.game_versions,
         loaders: version.loaders,
         release_channel: version.version_type,
         featured: version.featured,
         disk_only: version.disk_only,
         disk_urls: version.disk_only ? disks : null,
-        file_types: version.disk_only
-          ? {}
-          : this.newFileTypes.reduce(
-              (acc, x, i) => ({
-                ...acc,
-                [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
-              }),
-              {},
-            ),
+        file_types:
+          version.disk_only && this.newFileTypes.length === 0
+            ? {}
+            : this.newFileTypes.reduce(
+                (acc, x, i) => ({
+                  ...acc,
+                  [fileParts[this.replaceFile ? i + 1 : i]]: x ? x.value : null,
+                }),
+                {},
+              ),
       };
+      if (this.version.type === "minecraft") {
+        newVersion.game_versions = this.version.game_versions;
+      }
 
       formData.append("data", JSON.stringify(newVersion));
 

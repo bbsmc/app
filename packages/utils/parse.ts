@@ -102,7 +102,8 @@ export const configuredXss = new FilterXSS({
           'i.postimg.cc',
           'wsrv.nl',
           'cf.way2muchnoise.eu',
-          'bstats.org'
+          'bstats.org',
+          'sm.ms',
         ]
 
         if (!allowedHostnames.includes(url.hostname)) {

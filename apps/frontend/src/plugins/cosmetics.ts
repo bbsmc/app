@@ -9,6 +9,7 @@ export type DisplayLocation =
   | "modpack"
   | "shader"
   | "datapack"
+  | "software"
   | "user"
   | "collection";
 
@@ -48,6 +49,7 @@ export default defineNuxtPlugin({
           modpack: "gallery",
           shader: "gallery",
           datapack: "list",
+          software: "gallery",
           user: "list",
           collection: "list",
         },

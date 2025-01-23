@@ -391,6 +391,7 @@ const DEFAULT_DISPLAYED_ATTRIBUTES: &[&str] = &[
     "singleplayer",
     "client_and_server",
     "mrpack_loaders",
+    "software_loaders",
     // V2 逻辑一致性字段
     "client_side",
     "server_side",
@@ -439,6 +440,7 @@ const DEFAULT_ATTRIBUTES_FOR_FACETING: &[&str] = &[
     "singleplayer",
     "client_and_server",
     "mrpack_loaders",
+    "software_loaders",
     // V2 逻辑一致性字段
     "client_side",
     "server_side",

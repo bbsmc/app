@@ -30,7 +30,6 @@
           <a :href="`/user/${forum.user_name}`" target="_blank">
             <span class="user-name">{{ forum.user_name }}</span>
           </a>
-
         </div>
 
         <div class="markdown-body" v-html="renderHighlightedString(forum.content)" />

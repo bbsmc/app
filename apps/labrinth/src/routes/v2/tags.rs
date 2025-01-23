@@ -83,7 +83,7 @@ pub async fn loader_list(
         Ok(loaders) => {
             let loaders = loaders
                 .into_iter()
-                .filter(|l| &*l.name != "mrpack")
+                .filter(|l| &*l.name != "mrpack" && &*l.name != "software")
                 .map(|l| {
                     let mut supported_project_types = l.supported_project_types;
                     // Add generic 'project' type to all loaders, which is the v2 representation of
@@ -94,6 +94,10 @@ pub async fn loader_list(
                         .contains(&&*l.name)
                     {
                         supported_project_types.push("modpack".to_string());
+                    }
+
+                    if ["windows", "macos", "linux"].contains(&&*l.name) {
+                        supported_project_types.push("software".to_string());
                     }
 
                     if supported_project_types.contains(&"datapack".to_string())

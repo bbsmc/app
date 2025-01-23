@@ -41,7 +41,7 @@ pub async fn check_text_risk(
     pos: &str,
     redis: &RedisPool,
 ) -> Result<bool, ApiError> {
-    if vec!["bbsmc", "mzxiaoliu", "laotou"]
+    if ["bbsmc", "mzxiaoliu", "laotou"]
         .contains(&username.to_lowercase().as_str())
     {
         return Ok(true);
@@ -120,7 +120,7 @@ pub async fn check_image_risk(
     pos: &str,
     redis: &RedisPool,
 ) -> Result<bool, ApiError> {
-    if vec!["bbsmc", "mzxiaoliu", "laotou"]
+    if ["bbsmc", "mzxiaoliu", "laotou"]
         .contains(&username.to_lowercase().as_str())
     {
         return Ok(true);
