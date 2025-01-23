@@ -666,7 +666,11 @@
               </ButtonStyled>
 
               <ButtonStyled v-if="affs[project.id]" size="large" color="purple" type="transparent">
-                <nuxt-link :to="`/server?aff=${affs[project.id]}`" target="_blank">
+                <nuxt-link v-if="affs[project.id] === 'pcl'" :to="`/pcl`" target="_blank">
+                  <ServerIcon aria-hidden="true" />
+                  联机搭建
+                </nuxt-link>
+                <nuxt-link v-else :to="`/server?aff=${affs[project.id]}`" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
@@ -688,7 +692,11 @@
               </ButtonStyled>
 
               <ButtonStyled v-if="affs[project.id]" size="large" color="purple" type="transparent">
-                <nuxt-link :to="`/server?aff=${affs[project.id]}`" target="_blank">
+                <nuxt-link v-if="affs[project.id] === 'pcl'" :to="`/pcl`" target="_blank">
+                  <ServerIcon aria-hidden="true" />
+                  联机搭建
+                </nuxt-link>
+                <nuxt-link v-else :to="`/server?aff=${affs[project.id]}`" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
