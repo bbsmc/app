@@ -131,6 +131,7 @@ pub async fn page_view_ingest(
                 "resourcepack",
                 "shader",
                 "datapack",
+                "software",
             ];
 
             if PROJECT_TYPES.contains(&segments_vec[0]) {

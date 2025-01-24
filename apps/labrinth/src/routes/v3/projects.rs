@@ -406,7 +406,7 @@ pub async fn project_edit(
                 }
 
                 let default_types = [
-                    "project", "modpack", "mod", "datapack", "shader", "plugin",
+                    "project", "modpack", "mod", "datapack", "shader", "plugin", "software",
                 ];
 
                 if !default_types.contains(&default_type.as_str()) {

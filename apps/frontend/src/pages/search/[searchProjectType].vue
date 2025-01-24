@@ -222,13 +222,13 @@
             />
           </div>
           <button
-            v-tooltip="localString(cosmetics.searchDisplayMode?.[projectType.id] || 'gallery') + ' 视图'"
-            :aria-label="localString(cosmetics.searchDisplayMode?.[projectType.id] || 'gallery') + ' 视图'"
+            v-tooltip="localString(cosmetics.searchDisplayMode[projectType.id]) + ' 视图'"
+            :aria-label="localString(cosmetics.searchDisplayMode[projectType.id]) + ' 视图'"
             class="square-button"
             @click="cycleSearchDisplayMode()"
           >
-            <GridIcon v-if="cosmetics.searchDisplayMode?.[projectType.id] || 'gallery' === 'grid'" />
-            <ImageIcon v-else-if="cosmetics.searchDisplayMode?.[projectType.id] || 'gallery' === 'gallery'" />
+            <GridIcon v-if="cosmetics.searchDisplayMode[projectType.id] === 'grid'" />
+            <ImageIcon v-else-if="cosmetics.searchDisplayMode[projectType.id] === 'gallery'" />
             <ListIcon v-else />
           </button>
         </div>
@@ -736,7 +736,7 @@ function onSearchChangeToTop(newPageNumber) {
 
 function cycleSearchDisplayMode() {
   cosmetics.value.searchDisplayMode[projectType.value.id] = data.$cycleValue(
-    cosmetics.value.searchDisplayMode?.[projectType.id] || 'gallery',
+    cosmetics.value.searchDisplayMode[projectType.value.id],
     tags.value.projectViewModes,
   );
   setClosestMaxResults();
@@ -762,7 +762,7 @@ function onMaxResultsChange(newPageNumber) {
 }
 
 function setClosestMaxResults() {
-  const view = cosmetics.value.searchDisplayMode?.[projectType.id] || 'gallery'
+  const view = cosmetics.value.searchDisplayMode[projectType.value.id];
   const maxResultsOptions = maxResultsForView.value[view] ?? [20];
   const currentMax = maxResults.value;
   if (!maxResultsOptions.includes(currentMax)) {
