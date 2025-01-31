@@ -241,7 +241,7 @@
         <div
           id="search-results"
           class="project-list"
-          :class="'display-mode--' + cosmetics.searchDisplayMode[projectType.id]"
+          :class="'display-mode--' + (cosmetics.searchDisplayMode?.[projectType.id] === undefined ? 'gallery' : cosmetics.searchDisplayMode?.[projectType.id])"
           role="list"
           aria-label="Search results"
         >
@@ -249,7 +249,7 @@
             v-for="result in results?.hits"
             :id="result.slug ? result.slug : result.project_id"
             :key="result.project_id"
-            :display="cosmetics.searchDisplayMode[projectType.id]"
+            :display="cosmetics.searchDisplayMode?.[projectType.id] || 'gallery'"
             :featured-image="result.featured_gallery ? result.featured_gallery : result.gallery[0]"
             :type="result.project_type"
             :author="result.author"

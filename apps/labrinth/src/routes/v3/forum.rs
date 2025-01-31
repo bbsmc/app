@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::net::Ipv4Addr;
 use crate::auth::{get_user_from_headers, AuthenticationError};
 use crate::database::models::forum::PostBuilder;
 use crate::database::models::forum::{Discussion, PostIndex};
@@ -81,10 +83,11 @@ pub async fn forum_get(
 }
 
 pub async fn forums(
-    _req: HttpRequest,
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
+
     let mut exec = pool.acquire().await?;
 
     let forums =

@@ -11,7 +11,7 @@
       <div class="game-description">
         <div class="game-title">
           <h1 class="section-title">联机搭建</h1>
-          <span class="num-projects">BBSMC & {{ cf.name }}</span>
+          <span class="num-projects">BBSMC</span>
         </div>
       </div>
 
@@ -25,10 +25,6 @@
           已支持100+ <span data-v-56edd70f="" class="font-bold"> 主流整合包</span> ，
           快速一键部署，无需繁琐上传和配置即可联机。
           <br />
-          <br />
-          与
-          <span data-v-56edd70f="" class="font-bold"> {{ cf.name }}</span>
-          联动合作，您的购买将会把销售收益的20%-30%的归于{{ cf.name }}所有用于创作持续性收益
         </h2>
         <h1 style="font-size: 30px; font-weight: bold; color: #e5e5e5; margin-top: 30px">
           咨询客服
@@ -95,81 +91,6 @@ const route = useRoute();
 const aff = route.query.aff;
 
 const creaters = {
-  wuye: {
-    name: "吴也MC",
-    link: "https://item.taobao.com/item.htm?ft=t&id=874809176779",
-    items: [
-      {
-        name: "旗舰套餐",
-        p1: "Intel 铂金至强 Platinum 8151(CPUZ 480分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "38",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "68",
-          },
-        ],
-      },
-      {
-        name: "高频套餐",
-        p1: "AMD 霄龙 EPYC 74F3(CPUZ 580分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "58",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "88",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "118",
-          },
-        ],
-      },
-      {
-        name: "发烧套餐",
-        p1: "Intel 酷睿 I7-13700K(CPUZ 830分)",
-        p2: "英特尔U.2 P4510，DDR4 3200MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "78",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "108",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "168",
-          },
-        ],
-      },
-    ],
-  },
   pcl: {
     name: "PCL2",
     link: "https://item.taobao.com/item.htm?ft=t&id=881229604563",
@@ -245,221 +166,10 @@ const creaters = {
       },
     ],
   },
-  cuiguzheng: {
-    name: "脆骨症",
-    link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",
-    items: [
-      {
-        name: "旗舰套餐",
-        p1: "Intel 铂金至强 Platinum 8151(CPUZ 480分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "38",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "68",
-          },
-        ],
-      },
-      {
-        name: "高频套餐",
-        p1: "AMD 霄龙 EPYC 74F3(CPUZ 580分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "58",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "88",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "118",
-          },
-        ],
-      },
-      {
-        name: "发烧套餐",
-        p1: "Intel 酷睿 I7-13700K(CPUZ 830分)",
-        p2: "英特尔U.2 P4510，DDR4 3200MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "78",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "108",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "168",
-          },
-        ],
-      },
-    ],
-  },
-  grannixie: {
-    name: "浙水院Minecraft社",
-    link: "https://item.taobao.com/item.htm?ft=t&id=883095512357",
-    items: [
-      {
-        name: "旗舰套餐",
-        p1: "Intel 铂金至强 Platinum 8151(CPUZ 480分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "38",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "68",
-          },
-        ],
-      },
-      {
-        name: "高频套餐",
-        p1: "AMD 霄龙 EPYC 74F3(CPUZ 580分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "58",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "88",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "118",
-          },
-        ],
-      },
-      {
-        name: "发烧套餐",
-        p1: "Intel 酷睿 I7-13700K(CPUZ 830分)",
-        p2: "英特尔U.2 P4510，DDR4 3200MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "78",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "108",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "168",
-          },
-        ],
-      },
-    ],
-  },
-  wutuobang: {
-    name: "乌托邦",
-    link: "https://item.taobao.com/item.htm?ft=t&id=876821726196",
-    items: [
-      {
-        name: "高频套餐",
-        p1: "AMD 霄龙 EPYC 74F3(CPUZ 580分)",
-        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "58",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "88",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "118",
-          },
-        ],
-      },
-      {
-        name: "发烧套餐",
-        p1: "Intel 酷睿 I7-13700K(CPUZ 830分)",
-        p2: "英特尔U.2 P4510，DDR4 3200MHz",
-        data: [
-          {
-            player: "3-4",
-            cpu: "4",
-            memory: "8",
-            price: "78",
-          },
-          {
-            player: "5-7",
-            cpu: "8",
-            memory: "12",
-            price: "108",
-          },
-          {
-            player: "8-10",
-            cpu: "8",
-            memory: "18",
-            price: "168",
-          },
-        ],
-      },
-    ],
-  },
+
 };
 
-const cf = ref(creaters[aff]);
-
-onMounted(() => {
-  if (cf.value == null) {
-    router.push("/");
-  }
-});
+const cf = ref(creaters['pcl']);
 </script>
 <style scoped>
 .resource-list {

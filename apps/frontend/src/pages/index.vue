@@ -15,24 +15,20 @@
       </div>
       <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <ul class="carousel-items">
-          <li
-            v-for="(item, index) in carouselItems"
-            :key="index"
-            :class="[
-              'carousel-item',
-              {
-                previous:
-                  currentSlide === 0
-                    ? index === carouselItems.length - 1
-                    : index === currentSlide - 1,
-                current: index === currentSlide,
-                next:
-                  currentSlide === carouselItems.length - 1
-                    ? index === 0
-                    : index === currentSlide + 1,
-              },
-            ]"
-          >
+          <li v-for="(item, index) in carouselItems" :key="index" :class="[
+            'carousel-item',
+            {
+              previous:
+                currentSlide === 0
+                  ? index === carouselItems.length - 1
+                  : index === currentSlide - 1,
+              current: index === currentSlide,
+              next:
+                currentSlide === carouselItems.length - 1
+                  ? index === 0
+                  : index === currentSlide + 1,
+            },
+          ]">
             <div class="carousel-slide">
               <div class="carousel-image-container">
                 <a v-if="index === currentSlide" :href="item.slug" target="_blank">
@@ -54,13 +50,8 @@
           <button class="btn-next" @click="nextSlide">→</button>
         </div> -->
         <div class="carousel-dots">
-          <span
-            v-for="(_, index) in carouselItems"
-            :key="index"
-            class="dot"
-            :class="{ active: currentSlide === index }"
-            @click="goToSlide(index)"
-          >
+          <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
+            @click="goToSlide(index)">
           </span>
         </div>
       </div>
@@ -277,7 +268,7 @@ await getProjects();
 const carouselItems = ref([
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/YJBkhCZM/images/c33793fa733d07842521e40e0195ae865ea3a9bb.jpeg",
+      "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
     title: "PCL2",
     description: "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
     slug: "/software/pcl",
