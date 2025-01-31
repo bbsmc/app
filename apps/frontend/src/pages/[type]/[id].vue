@@ -1378,6 +1378,7 @@ const affs = ref({
   "pC0EfVWW": "wuye", // 探索自然1
   "fZSAKVSg": "cuiguzheng", // 脆骨症
   "dL0Tbr7N": "cuiguzheng", // 脆骨症：黯光
+  "r0WJ4XSq": "grannixie", // 脆骨症：黯光
 })
 const compatibilityMessages = defineMessages({
   title: {

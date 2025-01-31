@@ -320,6 +320,81 @@ const creaters = {
       },
     ],
   },
+  grannixie: {
+    name: "浙水院Minecraft社",
+    link: "https://item.taobao.com/item.htm?ft=t&id=883095512357",
+    items: [
+      {
+        name: "旗舰套餐",
+        p1: "Intel 铂金至强 Platinum 8151(CPUZ 480分)",
+        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
+        data: [
+          {
+            player: "3-4",
+            cpu: "4",
+            memory: "8",
+            price: "38",
+          },
+          {
+            player: "5-7",
+            cpu: "8",
+            memory: "12",
+            price: "68",
+          },
+        ],
+      },
+      {
+        name: "高频套餐",
+        p1: "AMD 霄龙 EPYC 74F3(CPUZ 580分)",
+        p2: "英特尔U.2 P4510，ECC DDR4 2400MHz",
+        data: [
+          {
+            player: "3-4",
+            cpu: "4",
+            memory: "8",
+            price: "58",
+          },
+          {
+            player: "5-7",
+            cpu: "8",
+            memory: "12",
+            price: "88",
+          },
+          {
+            player: "8-10",
+            cpu: "8",
+            memory: "18",
+            price: "118",
+          },
+        ],
+      },
+      {
+        name: "发烧套餐",
+        p1: "Intel 酷睿 I7-13700K(CPUZ 830分)",
+        p2: "英特尔U.2 P4510，DDR4 3200MHz",
+        data: [
+          {
+            player: "3-4",
+            cpu: "4",
+            memory: "8",
+            price: "78",
+          },
+          {
+            player: "5-7",
+            cpu: "8",
+            memory: "12",
+            price: "108",
+          },
+          {
+            player: "8-10",
+            cpu: "8",
+            memory: "18",
+            price: "168",
+          },
+        ],
+      },
+    ],
+  },
   wutuobang: {
     name: "乌托邦",
     link: "https://item.taobao.com/item.htm?ft=t&id=876821726196",
