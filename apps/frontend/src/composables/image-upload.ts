@@ -30,19 +30,23 @@ export const useImageUpload = async (file: File, ctx: ImageUploadContext) => {
   qs.set("ext", file.type.split("/")[1]);
   const url = `image?${qs.toString()}`;
 
-  const res = await useBaseFetch(url, {
-    method: "POST",
-    body: file,
-    apiVersion: 3,
-  });
-  const response = res as ImageUploadResponse;
-  // 类型检查以查看响应是否具有 url 属性和 id 属性
-  if (!response?.id || typeof response.id !== "string") {
-    throw new Error("服务器响应异常");
-  }
-  if (!response?.url || typeof response.url !== "string") {
-    throw new Error("服务器响应异常");
-  }
+  try {
+    const res = await useBaseFetch(url, {
+      method: "POST",
+      body: file,
+      apiVersion: 3,
+    });
+    const response = res as ImageUploadResponse;
+    // 类型检查以查看响应是否具有 url 属性和 id 属性
+    if (!response?.id || typeof response.id !== "string") {
+      throw new Error("服务器响应异常");
+    }
+    if (!response?.url || typeof response.url !== "string") {
+      throw new Error("服务器响应异常");
+    }
 
-  return response;
+    return response;
+  } catch (e) {
+    throw e;
+  }
 };
