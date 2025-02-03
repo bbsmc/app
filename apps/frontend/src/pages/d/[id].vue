@@ -9,11 +9,15 @@
   <div class="normal-page">
     <div class="normal-page__sidebar">
       <div class="universal-card">
-        <h2>论坛</h2>
+        <h2>综合交流</h2>
         <NavStack>
-          <NavStackItem link="/forums/notice" label="公告" />
           <NavStackItem link="/forums/chat" label="矿工茶馆" />
           <NavStackItem link="/forums/project" label="资源讨论" />
+          <NavStackItem link="/forums/article" label="专栏" />
+        </NavStack>
+        <h2>论坛事务</h2>
+        <NavStack>
+          <NavStackItem link="/forums/notice" label="公告" />
         </NavStack>
       </div>
     </div>

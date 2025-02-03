@@ -269,7 +269,7 @@ pub async fn forum_create(
         return Err(ApiError::InvalidInput("请输入帖子内容".to_string()));
     }
 
-    let types = ["notice", "chat"];
+    let types = ["notice", "chat", "article"];
     if !types.contains(&body.forum_type.as_str()) {
         return Err(ApiError::InvalidInput("请选择正确的帖子类型".to_string()));
     }
@@ -315,6 +315,12 @@ pub async fn forum_create(
         crate::database::models::ids::generate_discussion_id(&mut transaction)
             .await?;
 
+    let state = "open".to_string();
+    
+    // if body.forum_type == "article" {
+    //
+    // }
+    
     let discussion = database::models::forum::Discussion {
         id: discussion_id,
         title: body.title.clone(),
@@ -327,7 +333,7 @@ pub async fn forum_create(
         ),
         organization_id: None,
         last_post_time: chrono::Utc::now(),
-        state: "open".to_string(),
+        state,
         pinned: false,
         deleted: false,
         deleted_at: None,
