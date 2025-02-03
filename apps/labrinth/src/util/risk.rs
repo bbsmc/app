@@ -120,7 +120,7 @@ pub async fn check_image_risk(
     pos: &str,
     redis: &RedisPool,
 ) -> Result<bool, ApiError> {
-    if ["bbsmc", "mzxiaoliu", "laotou"]
+    if ["bbsmc", "mzxiaoliu"]
         .contains(&username.to_lowercase().as_str())
     {
         return Ok(true);
