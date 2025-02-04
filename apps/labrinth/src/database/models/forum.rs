@@ -123,6 +123,53 @@ impl Discussion {
         Ok(())
     }
 
+    pub async fn update_discussion_content(
+        &self,
+        content: String,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "update discussions set content=$1,updated_at=$2 where id=$3",
+            content,
+            Utc::now(),
+            self.id.0
+        )
+        .execute(&mut **transaction)
+        .await?;
+
+        Ok(())
+    }
+    pub async fn update_discussion_title(
+        &self,
+        title: String,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "update discussions set title=$1,updated_at=$2 where id=$3",
+            title,
+            Utc::now(),
+            self.id.0
+        )
+        .execute(&mut **transaction)
+        .await?;
+
+        Ok(())
+    }
+    pub async fn delete_discussion(
+        &self,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "update discussions set deleted=$1,deleted_at=$2 where id=$3",
+            true,
+            Utc::now(),
+            self.id.0
+        )
+        .execute(&mut **transaction)
+        .await?;
+
+        Ok(())
+    }
     pub async fn update_last_post_time(
         &self,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -243,7 +290,7 @@ impl Discussion {
                      SELECT DISTINCT discussion_id, p.id as id, p.created_at
                     FROM discussions d
                     INNER JOIN posts p ON d.id = p.discussion_id
-                    WHERE d.id = ANY($1) ORDER BY p.created_at ASC
+                    WHERE d.deleted = false and d.id = ANY($1) ORDER BY p.created_at ASC
                     ",
                     &ids.clone()
                 )

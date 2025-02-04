@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update discussions set content=$1,updated_at=$2 where id=$3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fba6ccfacef8278f4d86c6e21294af4d42e4acb0b4b1484c31ce91e2166166a2"
+}

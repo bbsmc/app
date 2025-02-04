@@ -38,6 +38,7 @@ import Chips from "~/components/ui/Chips.vue";
 import SaveIcon from "~/assets/images/utils/save.svg?component";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { useImageUpload } from "~/composables/image-upload.ts";
+const data = useNuxtApp();
 
 export default defineNuxtComponent({
   components: {
@@ -109,11 +110,21 @@ export default defineNuxtComponent({
       }
     },
     async onUploadHandler(file) {
-      const response = await useImageUpload(file, {
-        context: "project",
-        projectID: this.project.id,
-      });
-      return response.url;
+      try {
+        const response = await useImageUpload(file, {
+          context: "project",
+          projectID: this.project.id,
+        });
+        return response.url;
+      } catch (e) {
+        data.$notify({
+          group: "main",
+          title: "发生错误",
+          text: e.data.description,
+          type: "error",
+        });
+        return "";
+      }
     },
   },
 });

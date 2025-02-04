@@ -80,16 +80,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ButtonStyled } from "@modrinth/ui";
 
-const router = useRouter();
 const route = useRoute();
-
-// 获取 aff 参数
-const aff = route.query.aff;
-
 const creaters = {
   pcl: {
     name: "PCL2",
@@ -166,10 +161,9 @@ const creaters = {
       },
     ],
   },
-
 };
 
-const cf = ref(creaters['pcl']);
+const cf = ref(creaters.pcl);
 </script>
 <style scoped>
 .resource-list {

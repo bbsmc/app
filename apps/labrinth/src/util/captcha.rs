@@ -29,10 +29,6 @@ pub async fn check_hcaptcha(challenge: &Challenge) -> Result<bool, ApiError> {
     form.insert("lot_number", &challenge.lot_number);
     form.insert("pass_token", &challenge.pass_token);
 
-    for x in &form {
-        println!("{:?}", x);
-    }
-
     let val: Response = client
         .post("https://gcaptcha4.geetest.com/validate")
         .form(&form)

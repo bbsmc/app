@@ -241,7 +241,12 @@
         <div
           id="search-results"
           class="project-list"
-          :class="'display-mode--' + (cosmetics.searchDisplayMode?.[projectType.id] === undefined ? 'gallery' : cosmetics.searchDisplayMode?.[projectType.id])"
+          :class="
+            'display-mode--' +
+            (cosmetics.searchDisplayMode?.[projectType.id] === undefined
+              ? 'gallery'
+              : cosmetics.searchDisplayMode?.[projectType.id])
+          "
           role="list"
           aria-label="Search results"
         >

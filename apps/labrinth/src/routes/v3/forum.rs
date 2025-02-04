@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-use std::net::Ipv4Addr;
 use crate::auth::{get_user_from_headers, AuthenticationError};
 use crate::database::models::forum::PostBuilder;
 use crate::database::models::forum::{Discussion, PostIndex};
@@ -11,6 +9,7 @@ use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
 use crate::queue::session::AuthQueue;
 
+use crate::database::models::UserId;
 use crate::util::validate::validation_errors_to_string;
 use crate::{
     database,
@@ -29,6 +28,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("", web::get().to(forums))
             .route("", web::post().to(forum_create))
             .route("{id}", web::get().to(forum_get))
+            .route("{id}", web::delete().to(forum_delete))
+            .route("{id}", web::patch().to(forum_edit))
             .route("{type}/lists", web::get().to(forums_get))
             .route("{id}/posts", web::get().to(posts_get))
             .route("{id}/post", web::post().to(posts_post)),
@@ -40,10 +41,18 @@ pub struct ForumRequest {
     #[validate(length(max = 300))]
     pub title: String,
     #[validate(length(max = 65536))]
-    pub context: String,
+    pub content: String,
 
     // 限制只能 chat 和 notice
     pub forum_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct ForumEditRequest {
+    #[validate(length(max = 300))]
+    pub title: String,
+    #[validate(length(max = 65536))]
+    pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -83,11 +92,10 @@ pub async fn forum_get(
 }
 
 pub async fn forums(
-    req: HttpRequest,
+    _req: HttpRequest,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-
     let mut exec = pool.acquire().await?;
 
     let forums =
@@ -224,6 +232,190 @@ pub async fn posts_get(
     })))
 }
 
+pub async fn forum_edit(
+    req: HttpRequest,
+    info: web::Path<(String,)>,
+    body: web::Json<ForumEditRequest>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    body.validate().map_err(|err| {
+        ApiError::Validation(validation_errors_to_string(err, None))
+    })?;
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+    if user_option.is_none() {
+        return Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ));
+    }
+    let user = user_option.unwrap();
+
+    let discussion_id: String = info.into_inner().0;
+    let discussion_id =
+        DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
+    let discussion = crate::database::models::forum::Discussion::get_id(
+        discussion_id.0,
+        &**pool,
+        &redis,
+    )
+    .await?;
+    if discussion.is_none() {
+        return Err(ApiError::NotFound);
+    }
+    let discussion = discussion.unwrap();
+
+    if discussion.inner.user_id.0 != UserId::from(user.id).0
+        && !&user.role.is_admin()
+    {
+        return Err(ApiError::InvalidInput("您没有权限修改此帖子".to_string()));
+    }
+    if discussion.inner.state == "closed" && !user.role.is_admin() {
+        return Err(ApiError::InvalidInput(
+            "此帖子已被关闭，无法修改".to_string(),
+        ));
+    }
+
+    if !["article", "notice"].contains(&discussion.inner.category.as_str())
+    {
+        return Err(ApiError::InvalidInput(
+            "此帖子所处板块不允许修改主题".to_string(),
+        ));
+    }
+    if discussion.inner.content == body.content
+        && discussion.inner.title == body.title
+    {
+        return Err(ApiError::InvalidInput("未做任何修改".to_string()));
+    }
+    let mut transaction = pool.begin().await?;
+
+    if discussion.inner.content != body.content {
+        // 检查帖子内容
+        let risk = crate::util::risk::check_text_risk(
+            &body.content,
+            &user.username,
+            &format!("/user/{}", user.username),
+            "创建帖子",
+            &redis,
+        )
+        .await?;
+        if !risk {
+            return Err(ApiError::InvalidInput(
+                "帖子内容包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的帖子回复内容".to_string(),
+            ));
+        }
+        discussion
+            .inner
+            .update_discussion_content(body.content.clone(), &mut transaction)
+            .await?;
+    }
+
+    if discussion.inner.title != body.title {
+        // 检查帖子内容
+        let risk = crate::util::risk::check_text_risk(
+            &body.title,
+            &user.username,
+            &format!("/user/{}", user.username),
+            "创建帖子",
+            &redis,
+        )
+        .await?;
+        if !risk {
+            return Err(ApiError::InvalidInput(
+                "帖子标题包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的帖子回复内容".to_string(),
+            ));
+        }
+        discussion
+            .inner
+            .update_discussion_title(body.title.clone(), &mut transaction)
+            .await?;
+    }
+
+    transaction.commit().await?;
+    Discussion::clear_cache(&[discussion_id], &redis).await?;
+    Discussion::clear_cache_discussions(
+        &[discussion.inner.category.clone(), "all".to_string()],
+        &redis,
+    )
+    .await?;
+
+    Ok(HttpResponse::NoContent().finish())
+}
+pub async fn forum_delete(
+    req: HttpRequest,
+    info: web::Path<(String,)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+    if user_option.is_none() {
+        return Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ));
+    }
+    let user = user_option.unwrap();
+
+    let discussion_id: String = info.into_inner().0;
+    let discussion_id =
+        DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
+    let discussion = crate::database::models::forum::Discussion::get_id(
+        discussion_id.0,
+        &**pool,
+        &redis,
+    )
+    .await?;
+    if discussion.is_none() {
+        return Err(ApiError::NotFound);
+    }
+    let discussion = discussion.unwrap();
+
+    if discussion.inner.user_id.0 != UserId::from(user.id).0
+        && !&user.role.is_admin()
+    {
+        return Err(ApiError::InvalidInput("您没有权限删除此帖子".to_string()));
+    }
+    if discussion.inner.state == "closed" && !user.role.is_admin() {
+        return Err(ApiError::InvalidInput(
+            "此帖子已被关闭，无法删除".to_string(),
+        ));
+    }
+    let mut transaction = pool.begin().await?;
+
+    discussion.inner.delete_discussion(&mut transaction).await?;
+
+    transaction.commit().await?;
+    crate::database::models::forum::Discussion::clear_cache(
+        &[discussion_id],
+        &redis,
+    )
+    .await?;
+    crate::database::models::forum::Discussion::clear_cache_discussions(
+        &[discussion.inner.category.clone(), "all".to_string()],
+        &redis,
+    )
+    .await?;
+
+    Ok(HttpResponse::NoContent().finish())
+}
 pub async fn forum_create(
     req: HttpRequest,
     body: web::Json<ForumRequest>,
@@ -265,11 +457,11 @@ pub async fn forum_create(
     if body.title.is_empty() {
         return Err(ApiError::InvalidInput("请输入帖子标题".to_string()));
     }
-    if body.context.is_empty() {
+    if body.content.is_empty() {
         return Err(ApiError::InvalidInput("请输入帖子内容".to_string()));
     }
 
-    let types = ["notice", "chat"];
+    let types = ["notice", "chat", "article"];
     if !types.contains(&body.forum_type.as_str()) {
         return Err(ApiError::InvalidInput("请选择正确的帖子类型".to_string()));
     }
@@ -283,7 +475,7 @@ pub async fn forum_create(
     }
     // 检查帖子内容
     let risk = crate::util::risk::check_text_risk(
-        &body.context,
+        &body.content,
         &user_option.as_ref().unwrap().username,
         &format!("/user/{}", user_option.as_ref().unwrap().username),
         "创建帖子",
@@ -315,10 +507,16 @@ pub async fn forum_create(
         crate::database::models::ids::generate_discussion_id(&mut transaction)
             .await?;
 
-    let discussion = database::models::forum::Discussion {
+    let state = "open".to_string();
+
+    // if body.forum_type == "article" {
+    //
+    // }
+
+    let discussion = Discussion {
         id: discussion_id,
         title: body.title.clone(),
-        content: body.context.clone(),
+        content: body.content.clone(),
         category: body.forum_type.clone(),
         created_at: chrono::Utc::now(),
         updated_at: None,
@@ -327,7 +525,7 @@ pub async fn forum_create(
         ),
         organization_id: None,
         last_post_time: chrono::Utc::now(),
-        state: "open".to_string(),
+        state,
         pinned: false,
         deleted: false,
         deleted_at: None,
@@ -437,8 +635,7 @@ pub async fn posts_post(
     let mut transaction = pool.begin().await?;
 
     let post_id: PostId =
-        crate::database::models::ids::generate_post_id(&mut transaction)
-            .await?;
+        database::models::ids::generate_post_id(&mut transaction).await?;
     let id: crate::models::v3::forum::DiscussionId = discussion_id.into();
     let post = PostBuilder {
         id: post_id,
@@ -475,19 +672,15 @@ pub async fn posts_post(
 
     transaction.commit().await?;
 
-    crate::database::models::forum::Discussion::clear_cache(
-        &[discussion_id],
-        &redis,
-    )
-    .await?;
-    crate::database::models::forum::Discussion::clear_cache_discussions(
+    Discussion::clear_cache(&[discussion_id], &redis).await?;
+    Discussion::clear_cache_discussions(
         &[discussion.category.clone(), "all".to_string()],
         &redis,
     )
     .await?;
 
     let posts: Vec<PostResponse> =
-        crate::database::models::forum::PostQuery::get_many(
+        database::models::forum::PostQuery::get_many(
             &[post_id.0],
             &discussion_id,
             &**pool,

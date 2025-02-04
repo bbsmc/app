@@ -9,7 +9,7 @@
 
   <ConfirmModal
     ref="modal_confirm_delete"
-    title="你确定要将该该页面删除吗?"
+    title="你确定要将该页面删除吗?"
     description="若页面为目录并且目录下含有子页面，请先删除子页面后再提交删除"
     proceed-label="确认"
     @proceed="deleteWiki()"
