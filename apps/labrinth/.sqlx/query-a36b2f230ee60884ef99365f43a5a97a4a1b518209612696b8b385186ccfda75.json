@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update discussions set deleted=$1,deleted_at=$2 where id=$3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a36b2f230ee60884ef99365f43a5a97a4a1b518209612696b8b385186ccfda75"
+}

@@ -31,7 +31,9 @@
     <div class="normal-page__content">
       <div style="display: flex; justify-content: space-between; align-items: center">
         <h1>{{ title }}</h1>
-        <div v-if="type === 'chat' || type === 'article'|| (auth.user && auth.user.role === 'admin')">
+        <div
+          v-if="type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')"
+        >
           <ButtonStyled v-if="!createForumModel" color="green">
             <button @click="createForum">发帖</button>
           </ButtonStyled>
@@ -153,7 +155,17 @@ const router = useNativeRouter();
 const noLoad = ref(false);
 const query = ref("");
 const type = ref(route.params.forum);
-const title = ref(type.value === "chat" ? "矿工茶馆" : type.value === "notice" ? "公告": type.value === "project" ? "资源讨论": type.value === "article" ? "专栏" : "论坛");
+const title = ref(
+  type.value === "chat"
+    ? "矿工茶馆"
+    : type.value === "notice"
+      ? "公告"
+      : type.value === "project"
+        ? "资源讨论"
+        : type.value === "article"
+          ? "专栏"
+          : "论坛",
+);
 
 const forumContent = ref("");
 const forumTitle = ref("");
@@ -335,7 +347,7 @@ async function submitForum() {
       method: "POST",
       body: {
         title: forumTitle.value,
-        context: forumContent.value,
+        content: forumContent.value,
         forum_type: type.value,
       },
     });
