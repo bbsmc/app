@@ -1366,20 +1366,20 @@ const platformAccordion = ref();
 const WikiFatherAccordion = ref();
 
 const affs = ref({
-  "YJBkhCZM": "pcl", // PCL2
+  YJBkhCZM: "pcl", // PCL2
   "1p2TFl6X": "wutuobang", // 乌托邦
-  "NxtrWNas": "wuye", // 探索自然2
-  "Z1Z1xI1K": "wuye", // 自然之旅3
-  "Gd9LgTCW": "wuye", // 悠然人生1
-  "TJTmchrm": "wuye", // 悠然人生2
-  "w71BhsmT": "wuye", // 灾难降临
-  "yHBuGZk1": "wuye", // 悠然人生3
-  "tFpySPqY": "wuye", // 自然之旅1
-  "pC0EfVWW": "wuye", // 探索自然1
-  "fZSAKVSg": "cuiguzheng", // 脆骨症
-  "dL0Tbr7N": "cuiguzheng", // 脆骨症：黯光
-  "r0WJ4XSq": "grannixie", // 脆骨症：黯光
-})
+  NxtrWNas: "wuye", // 探索自然2
+  Z1Z1xI1K: "wuye", // 自然之旅3
+  Gd9LgTCW: "wuye", // 悠然人生1
+  TJTmchrm: "wuye", // 悠然人生2
+  w71BhsmT: "wuye", // 灾难降临
+  yHBuGZk1: "wuye", // 悠然人生3
+  tFpySPqY: "wuye", // 自然之旅1
+  pC0EfVWW: "wuye", // 探索自然1
+  fZSAKVSg: "cuiguzheng", // 脆骨症
+  dL0Tbr7N: "cuiguzheng", // 脆骨症：黯光
+  r0WJ4XSq: "grannixie", // 脆骨症：黯光
+});
 const compatibilityMessages = defineMessages({
   title: {
     id: "project.about.compatibility.title",

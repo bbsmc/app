@@ -110,21 +110,21 @@ export default defineNuxtComponent({
       }
     },
     async onUploadHandler(file) {
-      try{
-      const response = await useImageUpload(file, {
-        context: "project",
-        projectID: this.project.id,
-      });
-      return response.url;
-    } catch (e) {
-      data.$notify({
-        group: "main",
-        title: "发生错误",
-        text: e.data.description,
-        type: "error",
-      });
-      return "";
-    }
+      try {
+        const response = await useImageUpload(file, {
+          context: "project",
+          projectID: this.project.id,
+        });
+        return response.url;
+      } catch (e) {
+        data.$notify({
+          group: "main",
+          title: "发生错误",
+          text: e.data.description,
+          type: "error",
+        });
+        return "";
+      }
     },
   },
 });
