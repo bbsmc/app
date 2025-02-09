@@ -79,10 +79,12 @@
               version.disk_only &&
               (version.quark_disk === '' || version.quark_disk === undefined) &&
               (version.baidu_disk === '' || version.baidu_disk === undefined) &&
+              (version.modrinth === '' || version.modrinth === undefined) &&
+              (version.curseforge === '' || version.curseforge === undefined) &&
               (version.xunlei_disk === '' || version.xunlei_disk === undefined)
             "
           >
-            您选择了网盘，必须提供至少一个网盘地址
+            您选择了提供第三方链接，必须提供至少一个地址
           </li>
           <li v-if="version.game_versions.length === 0 && version.type === 'minecraft'">
             您必须选择支持的 Minecraft 版本
@@ -213,14 +215,14 @@
     <div v-if="isEditing" class="version-page__disk_url universal-card">
       <div class="adjacent-input">
         <label>
-          <span class="label__title">第三方网盘</span>
+          <span class="label__title">第三方链接(网盘)下载</span>
           <span class="label__description">
             如果您有夸克迅雷等网盘的合作，需要参与网盘的拉新激励，可选择只提供网盘链接，则无需选择要上传的文件，提供网盘下载方式后，点击下载按钮会直接跳转到网盘进行下载便可得到网盘的拉新激励。
             如果您启用网盘提供下载，如果你希望提供本站下载+网盘下载，请你在版本列表页面点击
             版本上传(文件) 按钮来创建上传页面，不然文件会被识别为附加文件
             <br />
             <br />
-            请至少提供一种网盘
+            请至少提供一种下载方式
           </span>
         </label>
         <input
@@ -236,6 +238,7 @@
         <input
           id="version-quark"
           v-model="version.quark_disk"
+          placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
           type="text"
           autocomplete="off"
           style="width: 100%"
@@ -244,6 +247,7 @@
         <input
           id="version-xunlei"
           v-model="version.xunlei_disk"
+          placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
           type="text"
           autocomplete="off"
           style="width: 100%"
@@ -252,6 +256,25 @@
         <input
           id="version-baidu"
           v-model="version.baidu_disk"
+          placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
+          type="text"
+          autocomplete="off"
+          style="width: 100%"
+        />
+        <h3>Modrinth版本页面(转载)</h3>
+        <input
+          id="version-modrinth"
+          v-model="version.modrinth"
+          placeholder="如果是转载资源，请将该地址填写成对应版本的子页面"
+          type="text"
+          autocomplete="off"
+          style="width: 100%"
+        />
+        <h3>CurseForge版本页面(转载)</h3>
+        <input
+          id="version-curseforge"
+          v-model="version.curseforge"
+          placeholder="如果是转载资源，请将该地址填写成对应版本的子页面"
           type="text"
           autocomplete="off"
           style="width: 100%"
@@ -937,8 +960,9 @@ export default defineNuxtComponent({
         baidu_disk: "",
         xunlei_disk: "",
         disk_only: false,
-        is_modpack: false,
         curseforge: "",
+        modrinth: "",
+        is_modpack: false,
         type: undefined,
       };
       // 用于从版本页面导航/上传文件提示
@@ -998,6 +1022,10 @@ export default defineNuxtComponent({
           version.xunlei_disk = url.url;
         } else if (url.platform === "quark") {
           version.quark_disk = url.url;
+        }else if (url.platform === "modrinth") {
+          version.modrinth = url.url;
+        }else if (url.platform === "curseforge") {
+          version.curseforge = url.url;
         }
       });
     }
@@ -1109,6 +1137,8 @@ export default defineNuxtComponent({
         (this.version.disk_only &&
           (this.version.quark_disk === "" || this.version.quark_disk === undefined) &&
           (this.version.xunlei_disk === "" || this.version.xunlei_disk === undefined) &&
+          (this.version.modrinth === "" || this.version.modrinth === undefined) &&
+          (this.version.curseforge === "" || this.version.curseforge === undefined) &&
           (this.version.baidu_disk === "" || this.version.baidu_disk === undefined)) ||
         (this.version.game_versions.length === 0 && this.version.type === "minecraft") ||
         (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
@@ -1311,6 +1341,18 @@ export default defineNuxtComponent({
             url: this.version.baidu_disk,
           });
         }
+        if (this.version.curseforge !== "" && this.version.curseforge !== undefined) {
+          disks.push({
+            platform: "curseforge",
+            url: this.version.curseforge,
+          });
+        }
+        if (this.version.modrinth !== "" && this.version.modrinth !== undefined) {
+          disks.push({
+            platform: "modrinth",
+            url: this.version.modrinth,
+          });
+        }
         if (this.version.xunlei_disk !== "" && this.version.xunlei_disk !== undefined) {
           disks.push({
             platform: "xunlei",
@@ -1449,6 +1491,18 @@ export default defineNuxtComponent({
         disks.push({
           platform: "baidu",
           url: version.baidu_disk,
+        });
+      }
+      if (version.curseforge !== "" && version.curseforge !== undefined) {
+        disks.push({
+          platform: "curseforge",
+          url: version.curseforge,
+        });
+      }
+      if (version.modrinth !== "" && version.modrinth !== undefined) {
+        disks.push({
+          platform: "modrinth",
+          url: version.modrinth,
         });
       }
       if (version.xunlei_disk !== "" && version.xunlei_disk !== undefined) {

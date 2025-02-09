@@ -1,5 +1,7 @@
 <template>
   <div ref="main_page" class="layout" :class="{ 'expanded-mobile-nav': isBrowseMenuOpen }">
+
+<!--    邮箱验证提示-->
     <div
       v-if="auth.user && !auth.user.email_verified && route.path !== '/auth/verify-email'"
       class="email-nag"
@@ -18,41 +20,8 @@
         </nuxt-link>
       </template>
     </div>
-    <!--    <div-->
-    <!--      v-if="-->
-    <!--        user &&-->
-    <!--        user.subscriptions &&-->
-    <!--        user.subscriptions.some((x) => x.status === 'payment-failed') &&-->
-    <!--        route.path !== '/settings/billing'-->
-    <!--      "-->
-    <!--      class="email-nag"-->
-    <!--    >-->
-    <!--      <span>{{ formatMessage(subscriptionPaymentFailedBannerMessages.title) }}</span>-->
-    <!--      <nuxt-link class="btn" to="/settings/billing">-->
-    <!--        <SettingsIcon aria-hidden="true" />-->
-    <!--        {{ formatMessage(subscriptionPaymentFailedBannerMessages.action) }}-->
-    <!--      </nuxt-link>-->
-    <!--    </div>-->
-    <!--    <div-->
-    <!--      v-if="-->
-    <!--        config.public.apiBaseUrl.startsWith('https://staging-api.modrinth.com') &&-->
-    <!--        !cosmetics.hideStagingBanner-->
-    <!--      "-->
-    <!--      class="site-banner site-banner&#45;&#45;warning [&>*]:z-[6]"-->
-    <!--    >-->
-    <!--      <div class="site-banner__title">-->
-    <!--        <IssuesIcon aria-hidden="true" />-->
-    <!--        <span>{{ formatMessage(stagingBannerMessages.title) }}</span>-->
-    <!--      </div>-->
-    <!--      <div class="site-banner__description">-->
-    <!--        {{ formatMessage(stagingBannerMessages.description) }}-->
-    <!--      </div>-->
-    <!--      <div class="site-banner__actions">-->
-    <!--        <Button transparent icon-only :action="hideStagingBanner" aria-label="Close banner"-->
-    <!--          ><XIcon aria-hidden="true"-->
-    <!--        /></Button>-->
-    <!--      </div>-->
-    <!--    </div>-->
+
+<!--    头部-->
     <header
       class="experimental-styles-within desktop-only relative z-[5] mx-auto grid max-w-[1280px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-4 lg:grid-cols-[auto_1fr_auto]"
     >
@@ -142,107 +111,6 @@
           <nuxt-link to="/forums/chat"> <MessageIcon aria-hidden="true" /> 论坛 </nuxt-link>
         </ButtonStyled>
 
-        <!--        -->
-        <!--        -->
-        <!--        <template v-else>-->
-        <!--          <ButtonStyled-->
-        <!--            type="transparent"-->
-        <!--            :highlighted="isDiscovering || isDiscoveringSubpage"-->
-        <!--            :highlighted-style="isDiscoveringSubpage ? 'main-nav-secondary' : 'main-nav-primary'"-->
-        <!--          >-->
-        <!--            <TeleportOverflowMenu-->
-        <!--              :options="[-->
-        <!--                {-->
-        <!--                  id: 'mods',-->
-        <!--                  action: '/mods',-->
-        <!--                },-->
-        <!--                {-->
-        <!--                  id: 'resourcepacks',-->
-        <!--                  action: '/resourcepacks',-->
-        <!--                },-->
-        <!--                {-->
-        <!--                  id: 'datapacks',-->
-        <!--                  action: '/datapacks',-->
-        <!--                },-->
-        <!--                {-->
-        <!--                  id: 'shaders',-->
-        <!--                  action: '/shaders',-->
-        <!--                },-->
-        <!--                {-->
-        <!--                  id: 'modpacks',-->
-        <!--                  action: '/modpacks',-->
-        <!--                },-->
-        <!--                {-->
-        <!--                  id: 'plugins',-->
-        <!--                  action: '/plugins',-->
-        <!--                },-->
-        <!--              ]"-->
-        <!--              hoverable-->
-        <!--            >-->
-        <!--              <BoxIcon-->
-        <!--                v-if="route.name === 'search-mods' || route.path.startsWith('/mod/')"-->
-        <!--                aria-hidden="true"-->
-        <!--              />-->
-        <!--              <PaintBrushIcon-->
-        <!--                v-else-if="-->
-        <!--                  route.name === 'search-resourcepacks' || route.path.startsWith('/resourcepack/')-->
-        <!--                "-->
-        <!--                aria-hidden="true"-->
-        <!--              />-->
-        <!--              <BracesIcon-->
-        <!--                v-else-if="route.name === 'search-datapacks' || route.path.startsWith('/datapack/')"-->
-        <!--                aria-hidden="true"-->
-        <!--              />-->
-        <!--              <PackageOpenIcon-->
-        <!--                v-else-if="route.name === 'search-modpacks' || route.path.startsWith('/modpack/')"-->
-        <!--                aria-hidden="true"-->
-        <!--              />-->
-        <!--              <GlassesIcon-->
-        <!--                v-else-if="route.name === 'search-shaders' || route.path.startsWith('/shader/')"-->
-        <!--                aria-hidden="true"-->
-        <!--              />-->
-        <!--              <PlugIcon-->
-        <!--                v-else-if="route.name === 'search-plugins' || route.path.startsWith('/plugin/')"-->
-        <!--                aria-hidden="true"-->
-        <!--              />-->
-        <!--              <CompassIcon v-else aria-hidden="true" />-->
-        <!--              <span class="hidden md:contents">发现内容</span>-->
-        <!--              <span class="contents md:hidden">Discover</span>-->
-        <!--              <DropdownIcon aria-hidden="true" class="h-5 w-5 text-secondary" />-->
-
-        <!--              <template #mods> <BoxIcon aria-hidden="true" /> 模组 </template>-->
-        <!--              <template #resourcepacks>-->
-        <!--                <PaintBrushIcon aria-hidden="true" /> 资源包-->
-        <!--              </template>-->
-        <!--              <template #datapacks> <BracesIcon aria-hidden="true" /> 数据包 </template>-->
-        <!--              <template #plugins> <PlugIcon aria-hidden="true" /> 插件 </template>-->
-        <!--              <template #shaders> <GlassesIcon aria-hidden="true" /> 光影 </template>-->
-        <!--              <template #modpacks> <PackageOpenIcon aria-hidden="true" /> 整合包 </template>-->
-        <!--            </TeleportOverflowMenu>-->
-        <!--          </ButtonStyled>-->
-
-        <!--&lt;!&ndash;          <ButtonStyled&ndash;&gt;-->
-        <!--&lt;!&ndash;            type="transparent"&ndash;&gt;-->
-        <!--&lt;!&ndash;            :highlighted="route.name.startsWith('servers')"&ndash;&gt;-->
-        <!--&lt;!&ndash;            :highlighted-style="&ndash;&gt;-->
-        <!--&lt;!&ndash;              route.name === 'servers' ? 'main-nav-primary' : 'main-nav-secondary'&ndash;&gt;-->
-        <!--&lt;!&ndash;            "&ndash;&gt;-->
-        <!--&lt;!&ndash;          >&ndash;&gt;-->
-        <!--&lt;!&ndash;            <nuxt-link to="/servers">&ndash;&gt;-->
-        <!--&lt;!&ndash;              <ServerIcon aria-hidden="true" />&ndash;&gt;-->
-        <!--&lt;!&ndash;              服务器租用&ndash;&gt;-->
-        <!--&lt;!&ndash;            </nuxt-link>&ndash;&gt;-->
-        <!--&lt;!&ndash;          </ButtonStyled>&ndash;&gt;-->
-        <!--&lt;!&ndash;          <ButtonStyled type="transparent" :highlighted="route.name === 'app'">&ndash;&gt;-->
-        <!--&lt;!&ndash;            <nuxt-link to="/app">&ndash;&gt;-->
-        <!--&lt;!&ndash;              <DownloadIcon aria-hidden="true" />&ndash;&gt;-->
-        <!--&lt;!&ndash;              <span class="hidden md:contents">Get Modrinth App</span>&ndash;&gt;-->
-        <!--&lt;!&ndash;              <span class="contents md:hidden">Modrinth App</span>&ndash;&gt;-->
-        <!--&lt;!&ndash;            </nuxt-link>&ndash;&gt;-->
-        <!--&lt;!&ndash;          </ButtonStyled>&ndash;&gt;-->
-        <!--        </template>-->
-        <!--        -->
-        <!--        -->
       </div>
 
       <div class="flex items-center gap-2">
