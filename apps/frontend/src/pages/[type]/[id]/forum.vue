@@ -41,6 +41,15 @@ const props = defineProps({
   },
 });
 
+const title = `${props.project.title} - 讨论区`;
+const description = `浏览 ${props.project.title} 讨论区`;
+useSeoMeta({
+  title,
+  description,
+  ogTitle: title,
+  ogDescription: description,
+});
+
 async function openForumModal() {
   try {
     const res = await useBaseFetch(`project/${route.params.id}/forum`, {

@@ -47,7 +47,7 @@
     >
       <div class="versions-grid-row">
         <div class="w-9 max-sm:hidden"></div>
-        <div class="text-sm font-bold text-contrast max-sm:hidden">名字</div>
+        <div class="text-sm font-bold text-contrast max-sm:hidden">标题</div>
         <div
           v-if="project.project_type !== 'software'"
           class="text-sm font-bold text-contrast max-sm:hidden sm:max-xl:collapse sm:max-xl:hidden"
@@ -103,8 +103,8 @@
               <div
                 class="pointer-events-none relative z-[1] flex flex-col justify-center group-hover:underline"
               >
-                <div class="font-bold text-contrast">{{ version.version_number }}</div>
-                <div class="text-xs font-medium">{{ version.name }}</div>
+                <div class="font-bold text-contrast">{{ version.name }}</div>
+                <div class="text-xs font-medium">{{ version.version_number }}</div>
               </div>
             </div>
             <div class="flex flex-col justify-center gap-2 sm:contents">
@@ -336,6 +336,10 @@ import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";
 const formatCompactNumber = useCompactNumber();
 const { formatMessage } = useVIntl();
 
+
+
+
+
 const props = defineProps({
   project: {
     type: Object,
@@ -365,6 +369,16 @@ const formatRelativeTime = useRelativeTime();
 
 const route = useNativeRoute();
 const router = useNativeRouter();
+
+
+const title = `${props.project.title} - 版本列表`;
+const description = `浏览 ${props.project.title} 的所有版本`;
+useSeoMeta({
+  title,
+  description,
+  ogTitle: title,
+  ogDescription: description,
+});
 
 const currentPage = ref(route.query.page ?? 1);
 // function onDownload(version) {
