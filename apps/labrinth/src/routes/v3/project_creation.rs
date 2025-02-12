@@ -490,6 +490,7 @@ async fn project_create_inner(
                         "只能设置一个资源",
                     )));
                 }
+                let username = current_user.username.clone();
                 // 将图标上传到 CDN
                 icon_data = Some(
                     process_icon_upload(
@@ -499,6 +500,7 @@ async fn project_create_inner(
                         file_host,
                         field,
                         redis,
+                        username,
                     )
                     .await?,
                 );
@@ -1023,6 +1025,7 @@ async fn process_icon_upload(
     file_host: &dyn FileHost,
     mut field: Field,
     redis: &RedisPool,
+    username: String,
 ) -> Result<(String, String, Option<u32>), CreateError> {
     let data =
         read_from_field(&mut field, 262144, "图标必须小于 256KB").await?;
@@ -1036,7 +1039,7 @@ async fn process_icon_upload(
         crate::util::img::UploadImagePos {
             pos: "项目图标".to_string(),
             url: format!("/project/{}", id),
-            username: "".to_string(),
+            username
         },
         redis,
     )
