@@ -313,9 +313,9 @@ pub async fn version_download(
 
         println!("{:?} 下载 {:?}", ip, id.to_string());
 
-        if version_item.disks.is_empty() {
-            return Err(ApiError::NotFound);
-        }
+        // if version_item.disks.is_empty() {
+        //     return Err(ApiError::NotFound);
+        // }
         if version_item.disks.is_empty() {
             let url = version_item.files.first().unwrap().url.clone();
             let url = url::Url::parse(&url).map_err(|_| {
@@ -604,7 +604,7 @@ pub async fn version_edit_helper(
                     .collect::<Vec<i32>>();
                 sqlx::query!(
                     "
-                    DELETE FROM version_fields 
+                    DELETE FROM version_fields
                     WHERE version_id = $1
                     AND field_id = ANY($2)
                     ",
