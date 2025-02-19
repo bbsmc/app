@@ -1380,7 +1380,9 @@ const affs = ref({
   dL0Tbr7N: "cuiguzheng", // 脆骨症：黯光
   r0WJ4XSq: "grannixie", // 群峦：重生
   hICODOh4: "luge", // 路哥[植物大战僵尸 畸变帝国]
-  tRR4pnOA: "Unknown_Entity_", // 路哥[植物大战僵尸 畸变帝国]
+  tRR4pnOA: "Unknown_Entity_", // 机械动力，无限构件
+  EIrkPpcm: "ruoling", // 龙之冒险：新征程
+  e11vzqXl: "JQKA326", // 香草纪元
 });
 const compatibilityMessages = defineMessages({
   title: {
