@@ -7,7 +7,7 @@ use crate::models::pats::Scopes;
 
 lazy_static! {
     pub static ref RE_URL_SAFE: Regex =
-        Regex::new(r#"^[a-zA-Z0-9!@$()`.+,_"-]*$"#).unwrap();
+        Regex::new(r#"^[\p{L}\p{N}!@$()`.+,_"-]*$"#).unwrap();
 }
 
 //TODO: 为了确保可读性，只打印第一个错误，这可能需要在将来扩展！
