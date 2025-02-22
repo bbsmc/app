@@ -7,7 +7,7 @@ use crate::models::pats::Scopes;
 
 lazy_static! {
     pub static ref RE_URL_SAFE: Regex =
-        Regex::new(r#"^[a-zA-Z0-9!@$()`.+,_"-]*$"#).unwrap();
+        Regex::new(r#"^[\p{L}\p{N}!@$()`.+,_"-]*$"#).unwrap();
 }
 
 //TODO: 为了确保可读性，只打印第一个错误，这可能需要在将来扩展！
@@ -57,7 +57,7 @@ pub fn validation_errors_to_string(
                             );
                         } else {
                             if field == "username" {
-                                output.push_str("用户名请不要使用中文或符号,建议使用您的Minecraft正版ID,支持使用英文和下划线");
+                                output.push_str("建议使用您的Minecraft正版ID,支持使用各类语言文字，允许：字母、数字、下划线 _、连字符 -");
                             }
                             output.push_str(
                                 &format!(

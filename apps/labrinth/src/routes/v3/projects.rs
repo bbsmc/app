@@ -1843,7 +1843,7 @@ pub async fn add_gallery_item(
             ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
-    if project_item.gallery_items.len() > 64 {
+    if project_item.gallery_items.len() > 64 && user.username.to_lowercase() != "bbsmc"{
         return Err(ApiError::CustomAuthentication(
             "您已达到上传渲染图的最大数量.".to_string(),
         ));

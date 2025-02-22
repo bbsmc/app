@@ -313,28 +313,49 @@ pub async fn version_download(
 
         println!("{:?} 下载 {:?}", ip, id.to_string());
 
+        // if version_item.disks.is_empty() {
+        //     return Err(ApiError::NotFound);
+        // }
         if version_item.disks.is_empty() {
-            return Err(ApiError::NotFound);
+            let url = version_item.files.first().unwrap().url.clone();
+            let url = url::Url::parse(&url).map_err(|_| {
+                return ApiError::InvalidInput("无效的下载URL!".to_string())
+            })?;
+            analytics_queue.add_download(Download {
+                recorded: get_current_tenths_of_ms(),
+                domain: url.host_str().unwrap_or_default().to_string(),
+                site_path: url.path().to_string(),
+                user_id,
+                project_id: id.0,
+                version_id: version_id.0,
+                ip,
+                country: "".to_string(),
+                user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
+                headers: Vec::new(),
+            });
+        }else {
+            let url = version_item.disks.first().unwrap().url.clone();
+
+            let url = url::Url::parse(&url).map_err(|_| {
+                return ApiError::InvalidInput("无效的下载URL!".to_string())
+            })?;
+
+            analytics_queue.add_download(Download {
+                recorded: get_current_tenths_of_ms(),
+                domain: url.host_str().unwrap_or_default().to_string(),
+                site_path: url.path().to_string(),
+                user_id,
+                project_id: id.0,
+                version_id: version_id.0,
+                ip,
+                country: "".to_string(),
+                user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
+                headers: Vec::new(),
+            });
+
         }
-        let url = version_item.disks.first().unwrap().url.clone();
-        let url = url::Url::parse(&url).map_err(|_| {
-            ApiError::InvalidInput("无效的下载URL!".to_string())
-        })?;
-
-        analytics_queue.add_download(Download {
-            recorded: get_current_tenths_of_ms(),
-            domain: url.host_str().unwrap_or_default().to_string(),
-            site_path: url.path().to_string(),
-            user_id,
-            project_id: id.0,
-            version_id: version_id.0,
-            ip,
-            country: "".to_string(),
-            user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
-            headers: Vec::new(),
-        });
-
         Ok(HttpResponse::NoContent().body(""))
+
     } else {
         Err(ApiError::NotFound)
     }
@@ -583,7 +604,7 @@ pub async fn version_edit_helper(
                     .collect::<Vec<i32>>();
                 sqlx::query!(
                     "
-                    DELETE FROM version_fields 
+                    DELETE FROM version_fields
                     WHERE version_id = $1
                     AND field_id = ANY($2)
                     ",
