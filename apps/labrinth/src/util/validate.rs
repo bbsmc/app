@@ -57,7 +57,7 @@ pub fn validation_errors_to_string(
                             );
                         } else {
                             if field == "username" {
-                                output.push_str("用户名请不要使用中文或符号,建议使用您的Minecraft正版ID,支持使用英文和下划线");
+                                output.push_str("建议使用您的Minecraft正版ID,支持使用各类语言文字，允许：字母、数字、下划线 _、连字符 -");
                             }
                             output.push_str(
                                 &format!(

@@ -133,7 +133,7 @@ pub async fn projects_list(
 }
 
 lazy_static! {
-    static ref RE_URL_SAFE: Regex = Regex::new(r"^[a-zA-Z0-9_-]*$").unwrap();
+    static ref RE_URL_SAFE: Regex = Regex::new(r#"^[\p{L}\p{N}!@$()`.+,_"-]*$"#).unwrap();
 }
 
 #[derive(Serialize, Deserialize, Validate)]
