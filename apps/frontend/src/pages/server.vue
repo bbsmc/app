@@ -194,6 +194,10 @@ const creaters = {
     code: '香草纪元',
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   },
+  song_5007: {
+    name: "song_5007",
+    link: "https://item.taobao.com/item.htm?ft=t&id=895854389205",
+  },
 
 };
 
