@@ -1383,6 +1383,7 @@ const affs = ref({
   tRR4pnOA: "Unknown_Entity_", // 机械动力，无限构件
   EIrkPpcm: "ruoling", // 龙之冒险：新征程
   e11vzqXl: "JQKA326", // 香草纪元
+  S5mhiSMC: "song_5007", // 香草纪元
 });
 const compatibilityMessages = defineMessages({
   title: {
