@@ -8,7 +8,7 @@ import { globIterate } from "glob";
 import { match as matchLocale } from "@formatjs/intl-localematcher";
 import { consola } from "consola";
 
-const STAGING_API_URL = "http://staging-api.bbsmc.net/v2/";
+const STAGING_API_URL = "http://api.bbsmc.net/v2/";
 
 const preloadedFonts = [
   "inter/Inter-Regular.woff2",

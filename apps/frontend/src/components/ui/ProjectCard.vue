@@ -23,7 +23,7 @@
           {{ name }}
         </h2>
       </nuxt-link>
-      <p v-if="author" class="author">
+      <p v-if="author && author !== 'BBSMC'" class="author">
         by
         <nuxt-link class="title-link" :to="'/user/' + author">
           {{ author }}

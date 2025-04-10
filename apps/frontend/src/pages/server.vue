@@ -198,6 +198,18 @@ const creaters = {
     name: "song_5007",
     link: "https://item.taobao.com/item.htm?ft=t&id=895854389205",
   },
+  Puikre: {
+    name: "Puikre",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
+  snk: {
+    name: "二十二度幻月",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
+  ZangHeRo: {
+    name: "ZangHeRo",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
 
 };
 

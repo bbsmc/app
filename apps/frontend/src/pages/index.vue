@@ -96,7 +96,7 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -125,7 +125,7 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -154,7 +154,7 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -183,7 +183,7 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -305,10 +305,17 @@ const carouselItems = ref([
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/uXcveaXY/images/3e6d50d5bc617f730cddff4c93407272443c911c.gif",
-    title: "TrMenu",
-    description: "社区维护TrMenu3.0",
-    slug: "/plugin/trmenu",
+      "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1.jpeg",
+    title: "剑与王国",
+    description: "围绕模拟殖民地与村民招募玩法的深度魔改整合包",
+    slug: "/modpack/snk",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94.png",
+    title: "龙之冒险：新征程",
+    description: "面对众多怪物的冒险之旅，你做好准备了吗？",
+    slug: "/modpack/lzmx",
   },
 ]);
 

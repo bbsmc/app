@@ -1384,6 +1384,10 @@ const affs = ref({
   EIrkPpcm: "ruoling", // 龙之冒险：新征程
   e11vzqXl: "JQKA326", // 香草纪元
   S5mhiSMC: "song_5007", // 香草纪元
+  CFqHhpsh: "Puikre", // 锻造大师
+  KGIfMlOP: "Puikre", // 赏金猎人
+  F4xIzfIX: "ZangHeRo", // 机械殖民地
+  G23dLUsP: "snk", // 剑与王国
 });
 const compatibilityMessages = defineMessages({
   title: {
