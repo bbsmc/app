@@ -40,8 +40,9 @@
           @click="scrollToPost(post.replied_to)"
         >
           <div class="reply-info">
+
             <img
-              :src="post.reply_content.user_avatar"
+              :src="post.reply_content.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : post.reply_content.user_avatar"
               :alt="post.reply_content.user_name"
               class="reply-avatar"
             />
