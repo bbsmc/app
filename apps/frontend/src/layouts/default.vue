@@ -1,7 +1,6 @@
 <template>
   <div ref="main_page" class="layout" :class="{ 'expanded-mobile-nav': isBrowseMenuOpen }">
-
-<!--    邮箱验证提示-->
+    <!--    邮箱验证提示-->
     <div
       v-if="auth.user && !auth.user.email_verified && route.path !== '/auth/verify-email'"
       class="email-nag"
@@ -21,7 +20,7 @@
       </template>
     </div>
 
-<!--    头部-->
+    <!--    头部-->
     <header
       class="experimental-styles-within desktop-only relative z-[5] mx-auto grid max-w-[1280px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-4 lg:grid-cols-[auto_1fr_auto]"
     >
@@ -110,7 +109,6 @@
         >
           <nuxt-link to="/forums/chat"> <MessageIcon aria-hidden="true" /> 论坛 </nuxt-link>
         </ButtonStyled>
-
       </div>
 
       <div class="flex items-center gap-2">

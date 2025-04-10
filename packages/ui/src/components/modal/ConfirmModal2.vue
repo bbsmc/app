@@ -14,10 +14,10 @@
             {{ proceedLabel }}
           </button>
         </ButtonStyled>
-        <ButtonStyled >
-          <button @click="hide" style="margin-left: auto">
+        <ButtonStyled>
+          <button @click="reject" style="margin-left: auto">
             <XIcon />
-            取消
+            {{ cancelLabel }}
           </button>
         </ButtonStyled>
       </div>
@@ -55,6 +55,10 @@ const props = defineProps({
     type: String,
     default: 'Proceed',
   },
+  cancelLabel: {
+    type: String,
+    default: '拒绝',
+  },
   onHide: {
     type: Function,
     default() {
@@ -77,6 +81,12 @@ function proceed() {
 }
 
 function hide() {
+  if (modal.value) {
+    modal.value.hide()
+  }
+}
+
+function reject() {
   if (modal.value) {
     modal.value.hide()
   }

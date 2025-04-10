@@ -73,8 +73,15 @@
           <MarkdownEditor v-model="forumContent" :on-image-upload="onUploadHandler" />
 
           <div style="display: flex; justify-content: space-between; align-items: center">
-            <span>使用 <a href="http://commonmark.org/help/" target="_blank" >Markdown</a> 语法编辑文本</span>
-            <div v-if="type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')">
+            <span
+              >使用
+              <a href="http://commonmark.org/help/" target="_blank">Markdown</a> 语法编辑文本</span
+            >
+            <div
+              v-if="
+                type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')
+              "
+            >
               <ButtonStyled color="green">
                 <button @click="submitForum">发布</button>
               </ButtonStyled>

@@ -9,6 +9,26 @@
       proceed-label="删除"
       @proceed="deleteVersion()"
     />
+    <ConfirmModal2
+      v-if="currentMember && version.disk_only && !version.is_modpack"
+      ref="modal_confirm_create"
+      title="这是否是整合包资源?"
+      description="您使用了第三方网盘上传，但未选择是否是整合包资源，请二次确认是否是整合包资源"
+      proceed-label="是整合包"
+      cancel-label="不是整合包"
+      @proceed="
+        () => {
+          version.is_modpack = true;
+          createVersion();
+        }
+      "
+      @reject="
+        () => {
+          version.is_modpack = false;
+          createVersion();
+        }
+      "
+    />
     <UploadModal
       ref="uploading_modal"
       title="文件上传中"
@@ -106,7 +126,14 @@
       </div>
       <div v-if="isCreating" class="input-group">
         <ButtonStyled color="brand">
-          <button :disabled="shouldPreventActions" @click="createVersion">
+          <button
+            :disabled="shouldPreventActions"
+            @click="
+              version.disk_only && !version.is_modpack
+                ? $refs.modal_confirm_create.show()
+                : createVersion()
+            "
+          >
             <PlusIcon aria-hidden="true" />
             创建
           </button>
@@ -783,6 +810,7 @@ import { ButtonStyled, ConfirmModal, MarkdownEditor, NewModal } from "@modrinth/
 import { Multiselect } from "vue-multiselect";
 import JSZip from "jszip";
 import UploadModal from "@modrinth/ui/src/components/modal/UploadModal.vue";
+import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
 import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";
 import { inferVersionInfo } from "~/helpers/infer.js";
 import { renderHighlightedString } from "~/helpers/highlight.js";
@@ -821,6 +849,7 @@ import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 
 export default defineNuxtComponent({
   components: {
+    ConfirmModal2,
     AutomaticAccordion,
     VersionSummary,
     NewModal,
@@ -1022,9 +1051,9 @@ export default defineNuxtComponent({
           version.xunlei_disk = url.url;
         } else if (url.platform === "quark") {
           version.quark_disk = url.url;
-        }else if (url.platform === "modrinth") {
+        } else if (url.platform === "modrinth") {
           version.modrinth = url.url;
-        }else if (url.platform === "curseforge") {
+        } else if (url.platform === "curseforge") {
           version.curseforge = url.url;
         }
       });

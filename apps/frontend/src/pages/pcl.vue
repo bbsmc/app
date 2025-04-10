@@ -81,10 +81,9 @@
 
 <script setup>
 import { ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { ButtonStyled } from "@modrinth/ui";
 
-const route = useRoute();
 const creaters = {
   pcl: {
     name: "PCL2",

@@ -336,10 +336,6 @@ import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";
 const formatCompactNumber = useCompactNumber();
 const { formatMessage } = useVIntl();
 
-
-
-
-
 const props = defineProps({
   project: {
     type: Object,
@@ -369,7 +365,6 @@ const formatRelativeTime = useRelativeTime();
 
 const route = useNativeRoute();
 const router = useNativeRouter();
-
 
 const title = `${props.project.title} - 版本列表`;
 const description = `浏览 ${props.project.title} 的所有版本`;

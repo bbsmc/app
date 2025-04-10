@@ -1,4 +1,5 @@
-a<template>
+a
+<template>
   <div>
     <div class="game-header">
       <div class="hero-container">
@@ -52,16 +53,16 @@ a<template>
         <h1 style="font-size: 30px; font-weight: bold; color: #e5e5e5; margin-top: 30px">
           优惠赠送
         </h1>
-        <p class="text-[15px]" v-if="cf.code">使用作者专属优惠码: <STRONG>{{ cf.code }}</STRONG></p>
-        <p class="text-[15px]">{{cf.code ? '获得' : ''}}下单赠送7天时长,带游戏内3张风景图好评再送7天</p>
+        <p v-if="cf.code" class="text-[15px]">
+          使用作者专属优惠码: <STRONG>{{ cf.code }}</STRONG>
+        </p>
+        <p class="text-[15px]">
+          {{ cf.code ? "获得" : "" }}下单赠送7天时长,带游戏内3张风景图好评再送7天
+        </p>
 
         <!-- 套餐列表 ，横着3个card -->
         <div class="resource-list flex flex-row gap-4">
-          <div
-            v-for="item in items"
-            :key="item.name"
-            class="card min-h-200 flex w-full flex-col"
-          >
+          <div v-for="item in items" :key="item.name" class="card min-h-200 flex w-full flex-col">
             <h2>{{ item.name }}</h2>
             <p class="text-[15px]">{{ item.p1 }}</p>
             <p class="text-[15px]">{{ item.p2 }}</p>
@@ -94,7 +95,6 @@ const route = useRoute();
 
 // 获取 aff 参数
 const aff = route.query.aff;
-
 
 const items = [
   {
@@ -147,39 +147,32 @@ const items = [
       },
     ],
   },
-]
-
+];
 
 const creaters = {
   wuye: {
     name: "吴也MC",
     link: "https://item.taobao.com/item.htm?ft=t&id=874809176779",
-
   },
   pcl: {
     name: "PCL2",
     link: "https://item.taobao.com/item.htm?ft=t&id=881229604563",
-
   },
   cuiguzheng: {
     name: "脆骨症",
     link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",
-
   },
   grannixie: {
     name: "浙水院Minecraft社",
     link: "https://item.taobao.com/item.htm?ft=t&id=883095512357",
-
   },
   luge: {
     name: "路哥",
     link: "https://item.taobao.com/item.htm?ft=t&id=888197357640",
-
   },
   Unknown_Entity_: {
     name: "Unknown_Entity_",
     link: "https://item.taobao.com/item.htm?ft=t&id=888196449273",
-
   },
   wutuobang: {
     name: "乌托邦",
@@ -191,7 +184,7 @@ const creaters = {
   },
   JQKA326: {
     name: "香草纪元:食旅纪行",
-    code: '香草纪元',
+    code: "香草纪元",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   },
   song_5007: {
@@ -210,7 +203,6 @@ const creaters = {
     name: "ZangHeRo",
     link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
   },
-
 };
 
 const cf = ref(creaters[aff]);

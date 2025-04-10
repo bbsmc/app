@@ -96,7 +96,9 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
+                      By {{ project.author }}
+                    </div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -125,7 +127,9 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
+                      By {{ project.author }}
+                    </div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -154,7 +158,9 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
+                      By {{ project.author }}
+                    </div>
                   </div>
                 </div>
                 <div class="modpack-footer">
@@ -183,7 +189,9 @@
                 <div class="modpack-basic-info">
                   <div class="modpack-info-top">
                     <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">By {{ project.author }}</div>
+                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
+                      By {{ project.author }}
+                    </div>
                   </div>
                 </div>
                 <div class="modpack-footer">
