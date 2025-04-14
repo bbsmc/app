@@ -349,7 +349,8 @@
         <label for="theme-selector">
           <span class="label__title">手机号</span>
           <span v-if="auth.user.has_phonenumber" class="label__description">
-            更改<template v-if="auth.user.auth_providers.length > 0">或删除</template>您账户的手机号
+<!--            更改<template v-if="auth.user.auth_providers.length > 0">或删除</template>您账户的手机号-->
+            <span style="color: rgb(217,62,93)">手机绑定系统暂时维护中,预计4月20日前恢复使用</span>
           </span>
 
           <span v-else class="label__description">
@@ -359,6 +360,7 @@
         <div>
           <button
             class="iconified-button"
+            disabled
             @click="
               () => {
                 oldPassword = '';
