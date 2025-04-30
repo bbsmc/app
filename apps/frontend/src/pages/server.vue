@@ -203,6 +203,16 @@ const creaters = {
     name: "ZangHeRo",
     link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
   },
+  lmq: {
+    name: "落幕曲",
+    code: "落幕曲",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  thefool: {
+    name: "愚者：The Fool",
+    code: "愚者",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
 };
 
 const cf = ref(creaters[aff]);

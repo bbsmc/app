@@ -1388,6 +1388,7 @@ const affs = ref({
   KGIfMlOP: "Puikre", // 赏金猎人
   F4xIzfIX: "ZangHeRo", // 机械殖民地
   G23dLUsP: "snk", // 剑与王国
+  XMUypeti: "thefool"   // 愚者
 });
 const compatibilityMessages = defineMessages({
   title: {
