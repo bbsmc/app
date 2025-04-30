@@ -349,7 +349,7 @@ pub async fn project_edit(
                         "您没有权限编辑此项目的名称！".to_string(),
                     ));
                 }
-                let risk = crate::util::risk::check_text_risk(
+                let _risk = crate::util::risk::check_text_risk(
                     name,
                     &user.username,
                     &format!(
@@ -360,11 +360,11 @@ pub async fn project_edit(
                     &redis,
                 )
                 .await?;
-                if !risk {
-                    return Err(ApiError::InvalidInput(
-                        "项目名称包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目名称".to_string(),
-                    ));
-                }
+                // if !risk {
+                //     return Err(ApiError::InvalidInput(
+                //         "项目名称包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目名称".to_string(),
+                //     ));
+                // }
 
                 sqlx::query!(
                     "
@@ -492,7 +492,7 @@ pub async fn project_edit(
                     ));
                 }
 
-                let risk = crate::util::risk::check_text_risk(
+                let _risk = crate::util::risk::check_text_risk(
                     summary,
                     &user.username,
                     &format!(
@@ -503,11 +503,11 @@ pub async fn project_edit(
                     &redis,
                 )
                 .await?;
-                if !risk {
-                    return Err(ApiError::InvalidInput(
-                        "项目摘要包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目摘要".to_string(),
-                    ));
-                }
+                // if !risk {
+                //     return Err(ApiError::InvalidInput(
+                //         "项目摘要包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目摘要".to_string(),
+                //     ));
+                // }
 
                 sqlx::query!(
                     "
@@ -997,7 +997,7 @@ pub async fn project_edit(
                         "您没有权限编辑此项目的描述!".to_string(),
                     ));
                 }
-                let risk = crate::util::risk::check_text_risk(
+                let _risk = crate::util::risk::check_text_risk(
                     description,
                     &user.username,
                     &format!(
@@ -1008,11 +1008,11 @@ pub async fn project_edit(
                     &redis,
                 )
                 .await?;
-                if !risk {
-                    return Err(ApiError::InvalidInput(
-                        "项目描述包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目描述".to_string(),
-                    ));
-                }
+                // if !risk {
+                //     return Err(ApiError::InvalidInput(
+                //         "项目描述包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的项目描述".to_string(),
+                //     ));
+                // }
 
                 sqlx::query!(
                     "
