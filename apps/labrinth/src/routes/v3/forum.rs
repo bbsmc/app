@@ -616,7 +616,6 @@ pub async fn posts_post(
             "请先绑定手机号，再进行回复".to_string(),
         ));
     }
-
     // 检查回复内容
     let risk = crate::util::risk::check_text_risk(
         &body.content,
