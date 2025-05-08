@@ -265,13 +265,13 @@
             <SettingsIcon aria-hidden="true" />
             {{ formatMessage(commonMessages.settingsLabel) }}
           </NuxtLink>
-          <!-- <button class="iconified-button" @click="changeTheme">
+           <button class="iconified-button" @click="changeTheme">
             <MoonIcon v-if="$theme.active === 'light'" class="icon" />
             <SunIcon v-else class="icon" />
             <span class="dropdown-item__text">
               {{ formatMessage(messages.changeTheme) }}
             </span>
-          </button> -->
+          </button>
         </div>
       </div>
       <div class="mobile-navbar" :class="{ expanded: isBrowseMenuOpen || isMobileMenuOpen }">
@@ -408,7 +408,7 @@
       <!--                Crowdin-->
       <!--              </a>-->
       <!--            </div>-->
-      <!-- <div class="buttons">
+       <div class="buttons">
         <button class="iconified-button raised-button" @click="changeTheme">
           <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
           <SunIcon v-else aria-hidden="true" />
@@ -418,7 +418,7 @@
           <SettingsIcon aria-hidden="true" />
           {{ formatMessage(commonMessages.settingsLabel) }}
         </nuxt-link>
-      </div> -->
+      </div>
 
       <div class="not-affiliated-notice">
         "Minecraft"以及"我的世界"为美国微软公司的商标 本站与微软公司没有从属关系
@@ -836,7 +836,7 @@ function toggleBrowseMenu() {
     isMobileMenuOpen.value = false;
   }
 }
-// const { cycle: changeTheme } = useTheme();
+const { cycle: changeTheme } = useTheme();
 </script>
 
 <style lang="scss">

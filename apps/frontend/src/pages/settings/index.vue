@@ -408,7 +408,7 @@ const systemTheme = useMountedValue((mounted): Theme => {
 });
 
 const themeOptions = computed(() => {
-  const options: ("system" | Theme)[] = ["dark", "oled"];
+  const options: ("system" | Theme)[] = ["dark", "light"];
   // const options: ("system" | Theme)[] = ["system", "light", "dark", "oled"];
   if (flags.value.developerMode || theme.preferred === "retro") {
     options.push("retro");

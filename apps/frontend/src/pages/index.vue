@@ -9,7 +9,6 @@
     <div class="game-page container">
       <div class="game-description">
         <div class="game-title">
-          <h1 class="section-title">BBSMC</h1>
           <span class="num-projects">Minecraft资源社区</span>
         </div>
       </div>
