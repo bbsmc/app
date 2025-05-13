@@ -1,28 +1,17 @@
-a
 <template>
-  <div>
-    <div class="game-header">
-      <div class="hero-container">
-        <img src="https://cdn.bbsmc.net/raw/top.jpeg" alt="header" />
-        <div class="desktop-only"></div>
-      </div>
-    </div>
-
+  <div :style="themeVars">
     <div v-if="cf" class="game-page container">
-      <div class="game-description">
+      <!-- <div class="game-description">
         <div class="game-title">
           <h1 class="section-title">联机搭建</h1>
           <span class="num-projects">BBSMC & {{ cf.name }}</span>
         </div>
-      </div>
+      </div> -->
 
       <!-- 居中样式 -->
       <div style="justify-content: center; align-items: center">
-        <h1 style="font-size: 30px; font-weight: bold; color: #e5e5e5">整合包联机面板快速部署</h1>
-        <h2
-          data-v-56edd70f=""
-          class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]"
-        >
+        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark)">整合包联机面板快速部署</h1>
+        <h2 data-v-56edd70f="" class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]">
           已支持100+ <span data-v-56edd70f="" class="font-bold"> 主流整合包</span> ，
           快速一键部署，无需繁琐上传和配置即可联机。
           <br />
@@ -31,18 +20,15 @@ a
           <span data-v-56edd70f="" class="font-bold"> {{ cf.name }}</span>
           联动合作，您的购买将会把销售收益的20%-30%的归于{{ cf.name }}所有用于创作持续性收益
         </h2>
-        <h1 style="font-size: 30px; font-weight: bold; color: #e5e5e5; margin-top: 30px">
+        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark); margin-top: 30px">
           咨询客服
         </h1>
-        <h2
-          data-v-56edd70f=""
-          class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]"
-        >
+        <h2 data-v-56edd70f="" class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]">
           下单跳转淘宝 <span data-v-56edd70f="" class="font-bold"> 咨询客服</span>
           ，在下单前，我们强烈建议先咨询淘宝店铺客服提供所想要游玩的整合包的在线人数，我们会根据在线人数推荐合适的套餐，
           <br />
         </h2>
-        <h1 style="font-size: 30px; font-weight: bold; color: #e5e5e5; margin-top: 30px">
+        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark); margin-top: 30px">
           选择合适您的套餐
         </h1>
         <p class="text-[15px]">所标注人数为推荐同时在线范围，请根据实际情况选择合适的套餐</p>
@@ -50,7 +36,7 @@ a
         <p class="text-[15px]">
           例如：我想玩乌托邦，我有五个人玩，我预算足够我购买高频88或者发烧108，我预算不够我购买高频58或发烧78
         </p>
-        <h1 style="font-size: 30px; font-weight: bold; color: #e5e5e5; margin-top: 30px">
+        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark); margin-top: 30px">
           优惠赠送
         </h1>
         <p v-if="cf.code" class="text-[15px]">
@@ -86,12 +72,29 @@ a
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ButtonStyled } from "@modrinth/ui";
+import { isDarkTheme } from "~/plugins/theme/themes";
 
 const router = useRouter();
 const route = useRoute();
+
+// 获取当前主题并设置CSS变量
+const { $theme } = useNuxtApp();
+
+// 设置主题相关CSS变量
+const themeVars = computed(() => {
+  if (isDarkTheme($theme?.active)) {
+    return {
+      '--carousel-gradient-end': 'rgba(0, 0, 0, 0.8)'
+    };
+  } else {
+    return {
+      '--carousel-gradient-end': 'rgba(255, 255, 255, 0.9)'
+    };
+  }
+});
 
 // 获取 aff 参数
 const aff = route.query.aff;
@@ -266,54 +269,13 @@ h1 {
   display: flex;
   justify-content: space-between;
   margin-bottom: 24px;
-  color: #e5e5e5;
+  color: var(--color-text-dark);
 }
 
 h2,
 p {
   line-height: 1.45;
-  color: #e5e5e5;
-}
-
-.hero-container {
-  width: 100%;
-  height: 144px;
-  position: relative;
-}
-
-.game-header img {
-  width: 100%;
-  height: 144px;
-}
-
-.game-header .hero-container {
-  height: 144px;
-  z-index: 1;
-}
-
-.game-header .hero-container img {
-  width: 100%;
-  height: 144px;
-  display: block;
-}
-
-body:has(.game-page) .game-header {
-  margin-bottom: -110px;
-  background-repeat: no-repeat;
-}
-
-body:has(.game-page) .game-header .hero-container:after {
-  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
-}
-
-.game-header .hero-container:afterfont-weight {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  background: linear-gradient(0deg, #0d0d0d, transparent);
+  color: var(--color-text);
 }
 
 .game-page {
@@ -357,7 +319,7 @@ body:has(.game-page) .game-header .hero-container:after {
 .game-description .num-projects {
   --space: 16px;
   position: relative;
-  color: #e5e5e5;
+  color: var(--color-text);
   padding-left: var(--space);
   margin-left: var(--space);
   flex-shrink: 10;
@@ -378,7 +340,7 @@ body:has(.game-page) .game-header .hero-container:after {
   content: "";
   width: 1px;
   height: 28px;
-  background: #4d4d4d;
+  background: var(--color-divider);
 }
 
 .game-description .expandable-html-block {
@@ -386,161 +348,8 @@ body:has(.game-page) .game-header .hero-container:after {
   gap: 8px;
 }
 
-.game-carousel {
-  position: relative;
-  width: 100%;
-  height: 400px;
-  overflow: hidden;
-}
-
-.carousel-items {
-  position: relative;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.carousel-item {
-  position: absolute;
-  width: 80%;
-  height: 100%;
-  left: 50%;
-  transition: all 0.5s ease;
-  visibility: hidden;
-}
-
-.carousel-item.current {
-  transform: translateX(-50%) scale(1);
-  opacity: 1;
-  z-index: 2;
-  visibility: visible;
-}
-
-.carousel-item.previous {
-  transform: translateX(-125%) scale(0.8);
-  opacity: 0.6;
-  z-index: 1;
-  visibility: visible;
-}
-
-.carousel-item.next {
-  transform: translateX(25%) scale(0.8);
-  opacity: 0.6;
-  z-index: 1;
-  visibility: visible;
-}
-
-.carousel-image-container {
-  width: 100%;
-  height: 300px;
-  overflow: hidden;
-  border-radius: 8px;
-}
-
-.carousel-image-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.carousel-bottom-container {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 20px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-  color: #e5e5e5;
-}
-
-.carousel-item-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.carousel-item-description {
-  margin-bottom: 15px;
-}
-
-.carousel-buttons {
-  position: absolute;
-  top: 50%;
-  left: 20px;
-  right: 20px;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: space-between;
-  z-index: 3;
-}
-
-.carousel-buttons button {
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  color: #e5e5e5;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  transition: background-color 0.3s;
-}
-
-.carousel-buttons button:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.carousel-dots {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  z-index: 2;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-}
-
-.dot.active {
-  background: #f1f1f1;
-}
-
-.modpacks-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-  padding: 16px;
-}
-
-/* 媒体查询：当屏幕宽度小于 768px 时 */
-@media (max-width: 768px) {
-  .modpacks-grid {
-    grid-template-columns: repeat(2, 1fr);
-    /* 两列布局 */
-  }
-}
-
-/* 媒体查询：当屏幕宽度小于 480px 时 */
-@media (max-width: 480px) {
-  .modpacks-grid {
-    grid-template-columns: 1fr;
-    /* 单列布局 */
-  }
-}
-
 .modpack-card {
-  background: rgb(16, 16, 19);
+  background: var(--color-raised-bg);
   border-radius: 8px;
   overflow: hidden;
   transition: transform 0.2s ease;
@@ -580,19 +389,19 @@ body:has(.game-page) .game-header .hero-container:after {
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 4px 0;
-  color: #e5e5e5;
+  color: var(--color-text-dark);
 }
 
 .modpack-author {
   font-size: 14px;
-  color: #888;
+  color: var(--color-secondary);
   margin-bottom: 8px;
 }
 
 .modpack-footer {
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgb(16, 16, 19);
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-raised-bg);
 }
 
 .modpack-stats {
@@ -600,7 +409,7 @@ body:has(.game-page) .game-header .hero-container:after {
   justify-content: space-between;
   align-items: center;
   font-size: 14px;
-  color: #888;
+  color: var(--color-secondary);
 }
 
 .download-count {
@@ -611,7 +420,7 @@ body:has(.game-page) .game-header .hero-container:after {
 
 .category {
   padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-button-bg);
   border-radius: 4px;
 }
 
@@ -642,19 +451,6 @@ body:has(.game-page) .game-header .hero-container:after {
   .section-title {
     padding: 0 8px;
     /* 更小的左右间距 */
-  }
-}
-
-/* 媒体查询：当屏幕宽度小于 768px 时 */
-@media (max-width: 768px) {
-  .game-carousel {
-    height: 300px;
-    /* 手机端高度设置为 300px */
-  }
-
-  .carousel-image-container {
-    height: 200px;
-    /* 手机端高度设置为 200px */
   }
 }
 </style>

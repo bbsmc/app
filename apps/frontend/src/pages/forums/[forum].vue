@@ -7,13 +7,7 @@
   <MarkdownEditor v-model="forumContent" :on-image-upload="onUploadHandler" />
 </div>
 </NewModal> -->
-  <div class="game-header">
-    <div class="hero-container">
-      <img src="https://cdn.bbsmc.net/raw/top.jpeg" alt="header" />
-      <div class="desktop-only"></div>
-    </div>
-  </div>
-  <div class="normal-page">
+  <div :style="themeVars" class="normal-page">
     <div class="normal-page__sidebar">
       <div class="universal-card">
         <h2>综合交流</h2>
@@ -31,9 +25,7 @@
     <div class="normal-page__content">
       <div style="display: flex; justify-content: space-between; align-items: center">
         <h1>{{ title }}</h1>
-        <div
-          v-if="type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')"
-        >
+        <div v-if="type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')">
           <ButtonStyled v-if="!createForumModel" color="green">
             <button @click="createForum">发帖</button>
           </ButtonStyled>
@@ -52,14 +44,7 @@
                 <span class="text-brand-red">*</span>
               </span>
             </label>
-            <input
-              id="name"
-              v-model="forumTitle"
-              type="text"
-              maxlength="64"
-              placeholder="帖子标题"
-              autocomplete="off"
-            />
+            <input id="name" v-model="forumTitle" type="text" maxlength="64" placeholder="帖子标题" autocomplete="off" />
           </div>
           <div class="flex flex-col gap-2" style="margin-bottom: 10px">
             <label for="name">
@@ -73,15 +58,11 @@
           <MarkdownEditor v-model="forumContent" :on-image-upload="onUploadHandler" />
 
           <div style="display: flex; justify-content: space-between; align-items: center">
-            <span
-              >使用
-              <a href="http://commonmark.org/help/" target="_blank">Markdown</a> 语法编辑文本</span
-            >
-            <div
-              v-if="
-                type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')
-              "
-            >
+            <span>使用
+              <a href="http://commonmark.org/help/" target="_blank">Markdown</a> 语法编辑文本</span>
+            <div v-if="
+              type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')
+            ">
               <ButtonStyled color="green">
                 <button @click="submitForum">发布</button>
               </ButtonStyled>
@@ -104,13 +85,8 @@
                 <h2 class="forum-title">{{ forum.title }}</h2>
               </a>
               <p class="forum-meta">
-                <a
-                  v-if="forum.organization_id"
-                  :href="`/organization/${forum.organization_id}`"
-                  target="_blank"
-                  class="forum-user"
-                  >{{ forum.organization }}</a
-                >
+                <a v-if="forum.organization_id" :href="`/organization/${forum.organization_id}`" target="_blank"
+                  class="forum-user">{{ forum.organization }}</a>
                 <a v-else :href="`/user/${forum.user_name}`" target="_blank" class="forum-user">{{
                   forum.user_name
                 }}</a>
@@ -127,13 +103,9 @@
           </div>
         </div>
         <div>
-          <pagination
-            :page="currentPage"
-            :count="pageCount"
-            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)"
-            class="justify-end"
-            @switch-page="onSearchChangeToTop"
-          />
+          <pagination :page="currentPage" :count="pageCount"
+            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)" class="justify-end"
+            @switch-page="onSearchChangeToTop" />
         </div>
       </div>
     </div>
@@ -146,12 +118,31 @@ import { formatDateTime } from "@modrinth/utils";
 import { Pagination, ButtonStyled, MarkdownEditor } from "@modrinth/ui";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
-
+import { computed } from "vue";
+import { isDarkTheme } from "~/plugins/theme/themes";
 import { useImageUpload } from "~/composables/image-upload.ts";
 
 const data = useNuxtApp();
 const route = useNativeRoute();
 const createForumModel = ref(false);
+
+// 获取当前主题并设置CSS变量
+const { $theme } = useNuxtApp();
+
+// 设置主题相关CSS变量
+const themeVars = computed(() => {
+  if (isDarkTheme($theme?.active)) {
+    return {
+      '--meta-color': 'var(--color-secondary)',
+      '--forum-hover-bg': 'rgba(255, 255, 255, 0.05)'
+    };
+  } else {
+    return {
+      '--meta-color': '#666',
+      '--forum-hover-bg': 'rgba(0, 0, 0, 0.03)'
+    };
+  }
+});
 
 const auth = await useAuth();
 const forums = ref([]);
@@ -383,52 +374,6 @@ await fetchForums();
 </script>
 
 <style scoped>
-.hero-container {
-  width: 100%;
-  height: 144px;
-  position: relative;
-}
-
-.game-header img {
-  width: 100%;
-  height: 144px;
-}
-
-.game-header .hero-container {
-  height: 144px;
-  z-index: 1;
-}
-
-.game-header .hero-container img {
-  width: 100%;
-  height: 144px;
-  display: block;
-}
-
-body:has(.game-page) .game-header {
-  margin-bottom: -110px;
-  background-repeat: no-repeat;
-}
-
-body:has(.game-page) .game-header .hero-container:after {
-  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
-}
-
-.game-header .hero-container:after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  background: linear-gradient(0deg, #0d0d0d, transparent);
-}
-
-body:has(.normal-page) .game-header {
-  margin-bottom: -110px;
-  background-repeat: no-repeat;
-}
-
 .normal-page__content {
   padding: 20px;
   z-index: 2;
@@ -458,17 +403,19 @@ body:has(.normal-page) .game-header {
 .forum-title {
   font-size: 1em;
   margin: 0;
+  color: var(--color-text-dark);
 }
 
 .forum-meta {
   font-size: 0.8em;
-  color: #666;
+  color: var(--meta-color);
 }
 
 .forum-content {
   margin: 10px 0;
   font-size: 0.8em;
   line-height: 1.5;
+  color: var(--color-text);
 }
 
 .forum-footer {
@@ -476,7 +423,7 @@ body:has(.normal-page) .game-header {
   justify-content: space-between;
   align-items: center;
   font-size: 0.8em;
-  color: #888;
+  color: var(--color-secondary);
 }
 
 .forum-state {
@@ -489,11 +436,26 @@ body:has(.normal-page) .game-header {
     box-shadow 0.3s,
     transform 0.3s;
   /* 添加过渡效果 */
+  background-color: var(--color-raised-bg);
 }
 
 .tf:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   transform: scale(1.02);
   /* 鼠标悬停时放大 */
+  background-color: var(--forum-hover-bg);
+}
+
+.universal-card {
+  background-color: var(--color-raised-bg);
+}
+
+.forum-user {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.forum-date {
+  color: var(--color-secondary);
 }
 </style>

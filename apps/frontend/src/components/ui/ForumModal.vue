@@ -1,5 +1,5 @@
 <template>
-  <div class="forum-container">
+  <div class="forum-container" :style="themeVars">
     <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px">
       还没有任何回复，快来回复吧！
     </div>
@@ -9,14 +9,8 @@
       <div v-if="isMobile" style="margin: 10px; text-align: center">
         <button-styled color="green" @click="showNewReply"> 发表新帖 </button-styled>
       </div>
-      <div
-        v-for="post in forum"
-        :id="`post-${post.floor_number}`"
-        :key="post.floor_number"
-        ref="postRefs"
-        :data-floor-number="post.floor_number"
-        class="card markdown-body"
-      >
+      <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
+        :data-floor-number="post.floor_number" class="card markdown-body">
         <div class="post-header">
           <!-- 用户信息区 -->
           <div class="user-info">
@@ -34,27 +28,18 @@
         </div>
 
         <!-- 如果是回复帖子，显示回复引用 -->
-        <div
-          v-if="post.reply_content"
-          class="reply-reference"
-          @click="scrollToPost(post.replied_to)"
-        >
+        <div v-if="post.reply_content" class="reply-reference" @click="scrollToPost(post.replied_to)">
           <div class="reply-info">
 
             <img
               :src="post.reply_content.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : post.reply_content.user_avatar"
-              :alt="post.reply_content.user_name"
-              class="reply-avatar"
-            />
+              :alt="post.reply_content.user_name" class="reply-avatar" />
             <div class="reply-user-info">
               <span class="reply-username">{{ post.reply_content.user_name }}</span>
               <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
-          <div
-            class="reply-quote"
-            v-html="renderHighlightedString(post.reply_content.content)"
-          ></div>
+          <div class="reply-quote" v-html="renderHighlightedString(post.reply_content.content)"></div>
         </div>
 
         <!-- 帖子内容 -->
@@ -67,14 +52,8 @@
 
         <!-- 如果有回复，显示回复链接 -->
         <div v-if="post.replies.length > 0" class="replies-info">
-          <span
-            v-for="reply in post.replies"
-            :key="reply"
-            class="reply-link"
-            @click="scrollToPost(reply.floor_number)"
-            @mouseenter="showReplyPreview(reply)"
-            @mouseleave="hideReplyPreview"
-          >
+          <span v-for="reply in post.replies" :key="reply" class="reply-link" @click="scrollToPost(reply.floor_number)"
+            @mouseenter="showReplyPreview(reply)" @mouseleave="hideReplyPreview">
             #{{ reply.floor_number }}
           </span>
         </div>
@@ -92,13 +71,8 @@
       <div class="timeline-content">
         <div class="timeline-line">
           <div class="timeline-sections">
-            <div
-              v-for="(section, index) in timelineSections"
-              :key="index"
-              class="timeline-section"
-              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`"
-              @click="jumpToSection(index)"
-            ></div>
+            <div v-for="(section, index) in timelineSections" :key="index" class="timeline-section"
+              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`" @click="jumpToSection(index)"></div>
           </div>
         </div>
         <div class="timeline-position" :style="{ top: timelinePosition + '%' }">
@@ -138,11 +112,7 @@
           <button class="close-button" @click="cancelReply">×</button>
         </div>
         <div class="reply-form-content">
-          <MarkdownEditor
-            v-model="replyContent"
-            :on-image-upload="onUploadHandler"
-            placeholder="输入回复内容..."
-          />
+          <MarkdownEditor v-model="replyContent" :on-image-upload="onUploadHandler" placeholder="输入回复内容..." />
         </div>
         <div class="reply-form-actions">
           <button class="submit-button" :disabled="!replyContent.trim()" @click="submitReply">
@@ -161,6 +131,7 @@ import { useRoute, useRouter } from "vue-router";
 import dayjs from "dayjs";
 import { MarkdownEditor } from "@modrinth/ui";
 import { renderHighlightedString } from "~/helpers/highlight.js";
+import { isDarkTheme } from "~/plugins/theme/themes";
 
 const data = useNuxtApp();
 const route = useRoute();
@@ -168,6 +139,56 @@ const router = useRouter();
 const postRefs = ref([]);
 const currentPostId = ref(null);
 const auth = await useAuth();
+
+// 获取当前主题并设置CSS变量
+const { $theme } = useNuxtApp();
+
+// 设置主题相关CSS变量
+const themeVars = computed(() => {
+  if (isDarkTheme($theme?.active)) {
+    return {
+      '--color-text-secondary': '#8f9ba8',
+      '--color-text-primary': '#edeff1',
+      '--color-bg-card': 'var(--color-raised-bg)',
+      '--color-bg-secondary': '#2d3139',
+      '--color-bg-hover': '#363b44',
+      '--color-border': '#363b44',
+      '--color-timeline': '#2d3139',
+      '--color-highlight': '#007bff',
+      '--color-highlight-reply': '#ffd700',
+      '--color-reply-bg': 'rgba(255, 255, 255, 0.12)',
+      '--color-reply-bg-hover': 'rgba(255, 255, 255, 0.2)',
+      '--color-submit-button': '#007bff',
+      '--color-submit-button-hover': '#0056b3',
+      '--color-submit-disabled': '#363b44',
+      '--color-overlay': 'rgba(0, 0, 0, 0.5)',
+      '--color-modal-bg': '#26292f',
+      '--color-scrollbar-track': '#363b44',
+      '--color-scrollbar-thumb': '#8f9ba8',
+    };
+  } else {
+    return {
+      '--color-text-secondary': '#666',
+      '--color-text-primary': 'var(--color-text-dark)',
+      '--color-bg-card': 'var(--color-raised-bg)',
+      '--color-bg-secondary': '#f0f2f5',
+      '--color-bg-hover': '#e6e8eb',
+      '--color-border': '#dfe1e5',
+      '--color-timeline': '#e0e0e0',
+      '--color-highlight': '#1a73e8',
+      '--color-highlight-reply': '#ffc107',
+      '--color-reply-bg': 'rgba(0, 0, 0, 0.05)',
+      '--color-reply-bg-hover': 'rgba(0, 0, 0, 0.08)',
+      '--color-submit-button': '#1a73e8',
+      '--color-submit-button-hover': '#1557b0',
+      '--color-submit-disabled': '#e0e0e0',
+      '--color-overlay': 'rgba(0, 0, 0, 0.3)',
+      '--color-modal-bg': '#ffffff',
+      '--color-scrollbar-track': '#f0f2f5',
+      '--color-scrollbar-thumb': '#c1c1c1',
+    };
+  }
+});
 
 // 添加一个标志来控制观者是否应该更新 URL
 const shouldUpdateUrl = ref(true);
@@ -911,14 +932,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   display: flex;
   flex-direction: column;
   font-size: 0.8em;
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   margin-right: 20px;
 }
 
 .timeline-reply-button {
-  background: #2d3139;
+  background: var(--color-bg-secondary);
   border: none;
-  color: #edeff1;
+  color: var(--color-text-primary);
   padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -929,14 +950,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .timeline-reply-button:hover {
-  background: #363b44;
+  background: var(--color-bg-hover);
 }
 
 .timeline-header,
 .timeline-footer {
   padding: 10px 0;
   text-align: center;
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   font-size: 0.9em;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -944,7 +965,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 
 .timeline-header:hover,
 .timeline-footer:hover {
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .timeline-content {
@@ -959,7 +980,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   top: 0;
   bottom: 0;
   width: 2px;
-  background-color: #2d3139;
+  background-color: var(--color-timeline);
   z-index: 0;
 }
 
@@ -1011,26 +1032,24 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .position-info {
-  background: #2d3139;
+  background: var(--color-bg-secondary);
   padding: 8px;
   border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   text-align: center;
-  border: 1px solid #363b44;
+  border: 1px solid var(--color-border);
   user-select: none;
-  /* 防止拖拽时选中文本 */
   pointer-events: none;
-  /* 防止信息框影响拖动 */
 }
 
 .post-count {
   font-weight: 500;
   margin-bottom: 4px;
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .post-date {
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   font-size: 0.9em;
 }
 
@@ -1053,7 +1072,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .post-time {
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 0.9em;
 }
 
@@ -1062,7 +1081,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .post-highlight-border {
-  border-left: 3px solid #007bff;
+  border-left: 3px solid var(--color-highlight);
 }
 
 @keyframes popEffect {
@@ -1087,7 +1106,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .post-id {
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 0.9em;
   cursor: pointer;
   padding: 4px 8px;
@@ -1096,7 +1115,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .post-id:hover {
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .markdown-body {
@@ -1112,14 +1131,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .reply-reference {
   margin: 8px 16px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-reply-bg);
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .reply-reference:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-reply-bg-hover);
 }
 
 .reply-info {
@@ -1142,18 +1161,18 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .reply-username {
-  color: #edeff1;
+  color: var(--color-text-primary);
   font-size: 0.9em;
   font-weight: 500;
 }
 
 .reply-post-id {
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   font-size: 0.9em;
 }
 
 .reply-quote {
-  color: #edeff1;
+  color: var(--color-text-primary);
   font-size: 0.95em;
   opacity: 0.8;
   overflow: hidden;
@@ -1165,8 +1184,8 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .replies-info {
   margin: 8px 16px;
   padding-top: 8px;
-  border-top: 1px solid #2d3139;
-  color: #8f9ba8;
+  border-top: 1px solid var(--color-timeline);
+  color: var(--color-text-secondary);
   font-size: 0.9em;
 }
 
@@ -1177,14 +1196,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .replies-info span:hover {
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .reply-preview {
   position: absolute;
   z-index: 1000;
-  background: #2d3139;
-  border: 1px solid #363b44;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 12px;
   min-width: 300px;
@@ -1211,19 +1230,19 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .preview-username {
-  color: #edeff1;
+  color: var(--color-text-primary);
   font-size: 0.9em;
   font-weight: 500;
 }
 
 .preview-time {
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   font-size: 0.8em;
   margin-top: 2px;
 }
 
 .preview-content {
-  color: #edeff1;
+  color: var(--color-text-primary);
   font-size: 0.95em;
   line-height: 1.5;
   max-height: 200px;
@@ -1240,11 +1259,11 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .preview-content::-webkit-scrollbar-track {
-  background: #363b44;
+  background: var(--color-scrollbar-track);
 }
 
 .preview-content::-webkit-scrollbar-thumb {
-  background: #8f9ba8;
+  background: var(--color-scrollbar-thumb);
   border-radius: 2px;
 }
 
@@ -1266,7 +1285,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .reply-button {
   background: transparent;
   border: none;
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   padding: 2px 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -1275,27 +1294,27 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .reply-button:hover {
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .replies-info {
   margin: 8px 16px;
   padding-top: 8px;
-  border-top: 1px solid #2d3139;
-  color: #8f9ba8;
+  border-top: 1px solid var(--color-timeline);
+  color: var(--color-text-secondary);
   font-size: 0.9em;
 }
 
 .reply-form {
   margin: 8px 16px;
   padding: 12px;
-  background: #2d3139;
+  background: var(--color-bg-secondary);
   border-radius: 4px;
-  border: 1px solid #363b44;
+  border: 1px solid var(--color-border);
 }
 
 .reply-form-header {
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   font-size: 0.9em;
   margin-bottom: 8px;
 }
@@ -1303,11 +1322,11 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .reply-textarea {
   width: 100%;
   min-height: 100px;
-  background: #363b44;
+  background: var(--color-bg-hover);
   border: none;
   border-radius: 4px;
   padding: 8px;
-  color: #edeff1;
+  color: var(--color-text-primary);
   font-size: 0.95em;
   resize: vertical;
   margin-bottom: 8px;
@@ -1335,27 +1354,27 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 
 .cancel-button {
   background: transparent;
-  border: 1px solid #363b44;
-  color: #8f9ba8;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
 }
 
 .cancel-button:hover {
-  background: #363b44;
-  color: #edeff1;
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
 }
 
 .submit-button {
-  background: #007bff;
+  background: var(--color-submit-button);
   border: none;
   color: white;
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--color-submit-button-hover);
 }
 
 .submit-button:disabled {
-  background: #363b44;
+  background: var(--color-submit-disabled);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -1366,7 +1385,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   left: 0;
   right: 0;
   top: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   z-index: 1000;
   display: flex;
   align-items: flex-end;
@@ -1376,7 +1395,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .reply-form-modal {
-  background: #26292f;
+  background: var(--color-modal-bg);
   width: 800px;
   /* 设置固定宽度 */
   max-width: 90%;
@@ -1396,15 +1415,15 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #2d3139;
-  color: #edeff1;
+  border-bottom: 1px solid var(--color-timeline);
+  color: var(--color-text-primary);
   font-size: 1em;
 }
 
 .close-button {
   background: transparent;
   border: none;
-  color: #8f9ba8;
+  color: var(--color-text-secondary);
   font-size: 1.5em;
   cursor: pointer;
   padding: 0 8px;
@@ -1412,7 +1431,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .close-button:hover {
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .reply-form-content {
@@ -1427,11 +1446,11 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   padding: 16px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid #2d3139;
+  border-top: 1px solid var(--color-timeline);
 }
 
 .submit-button {
-  background: #007bff;
+  background: var(--color-submit-button);
   border: none;
   color: white;
   padding: 8px 24px;
@@ -1442,11 +1461,11 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--color-submit-button-hover);
 }
 
 .submit-button:disabled {
-  background: #363b44;
+  background: var(--color-submit-disabled);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -1489,17 +1508,17 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .username {
   font-weight: 500;
   margin-right: 10px;
-  color: #edeff1;
+  color: var(--color-text-primary);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .username:hover {
-  color: #edeff1;
+  color: var(--color-text-primary);
 }
 
 .post-highlight-reply {
-  border-left: 3px solid #ffd700;
+  border-left: 3px solid var(--color-highlight-reply);
   /* 使用金色来区分被回复的帖子 */
   animation: popEffect 5s ease-out;
 }
