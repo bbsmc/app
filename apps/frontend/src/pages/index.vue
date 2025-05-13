@@ -1,38 +1,34 @@
 <template>
-  <div>
-    <div class="game-header">
+  <div :style="themeVars">
+    <!-- <div class="game-header">
       <div class="hero-container">
         <img src="https://cdn.bbsmc.net/raw/top.jpeg" alt="header" />
         <div class="desktop-only"></div>
       </div>
-    </div>
+    </div> -->
     <div class="game-page container">
-      <div class="game-description">
+      <!-- <div class="game-description">
         <div class="game-title">
           <h1 class="section-title">BBSMC</h1>
           <span class="num-projects">Minecraft资源社区</span>
         </div>
-      </div>
+      </div> -->
       <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <ul class="carousel-items">
-          <li
-            v-for="(item, index) in carouselItems"
-            :key="index"
-            :class="[
-              'carousel-item',
-              {
-                previous:
-                  currentSlide === 0
-                    ? index === carouselItems.length - 1
-                    : index === currentSlide - 1,
-                current: index === currentSlide,
-                next:
-                  currentSlide === carouselItems.length - 1
-                    ? index === 0
-                    : index === currentSlide + 1,
-              },
-            ]"
-          >
+          <li v-for="(item, index) in carouselItems" :key="index" :class="[
+            'carousel-item',
+            {
+              previous:
+                currentSlide === 0
+                  ? index === carouselItems.length - 1
+                  : index === currentSlide - 1,
+              current: index === currentSlide,
+              next:
+                currentSlide === carouselItems.length - 1
+                  ? index === 0
+                  : index === currentSlide + 1,
+            },
+          ]">
             <div class="carousel-slide">
               <div class="carousel-image-container">
                 <a v-if="index === currentSlide" :href="item.slug" target="_blank">
@@ -54,13 +50,8 @@
           <button class="btn-next" @click="nextSlide">→</button>
         </div> -->
         <div class="carousel-dots">
-          <span
-            v-for="(_, index) in carouselItems"
-            :key="index"
-            class="dot"
-            :class="{ active: currentSlide === index }"
-            @click="goToSlide(index)"
-          >
+          <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
+            @click="goToSlide(index)">
           </span>
         </div>
       </div>
@@ -227,11 +218,33 @@
 //   searchProjects.value = res.hits ?? [];
 // }
 import dayjs from "dayjs";
+import { isDarkTheme } from "~/plugins/theme/themes";
 const modpacks = ref([]);
 const newModpacks = ref([]);
 const mods = ref([]);
 const plugins = ref([]);
 const forums = ref([]);
+
+// 获取当前主题并设置CSS变量
+const { $theme } = useNuxtApp();
+const themeVars = computed(() => {
+  if (isDarkTheme($theme?.active)) {
+    return {
+      '--carousel-gradient-end': 'rgba(0, 0, 0, 0.8)',
+      '--carousel-dot-bg': 'rgba(255, 255, 255, 0.5)',
+      '--carousel-dot-active': 'var(--color-text-dark)',
+      '--carousel-text-color': 'var(--color-text-dark)'
+    };
+  } else {
+    return {
+      '--carousel-gradient-end': 'rgba(255, 255, 255, 0.9)',
+      '--carousel-dot-bg': 'rgba(100, 100, 100, 0.5)',
+      '--carousel-dot-active': 'var(--color-brand)',
+      '--carousel-text-color': 'var(--color-text)'
+    };
+  }
+});
+
 async function getProjects() {
   const [modpacksResponse, newModpacksResponse, modResponse, pluginsResponse, forumsResponse] =
     await Promise.all([
@@ -422,13 +435,13 @@ h1 {
   display: flex;
   justify-content: space-between;
   margin-bottom: 24px;
-  color: #e5e5e5;
+  color: var(--color-text-dark);
 }
 
 h2,
 p {
   line-height: 1.45;
-  color: #e5e5e5;
+  color: var(--color-text);
 }
 
 .hero-container {
@@ -459,7 +472,7 @@ body:has(.game-page) .game-header {
 }
 
 body:has(.game-page) .game-header .hero-container:after {
-  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
+  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-bg) 100%);
 }
 
 .game-header .hero-container:afterfont-weight {
@@ -469,7 +482,7 @@ body:has(.game-page) .game-header .hero-container:after {
   left: 0;
   right: 0;
   bottom: -1px;
-  background: linear-gradient(0deg, #0d0d0d, transparent);
+  background: linear-gradient(0deg, var(--color-bg), transparent);
 }
 
 .game-page {
@@ -503,7 +516,7 @@ body:has(.game-page) .game-header .hero-container:after {
 .game-description .num-projects {
   --space: 16px;
   position: relative;
-  color: #e5e5e5;
+  color: var(--color-text);
   padding-left: var(--space);
   margin-left: var(--space);
   flex-shrink: 10;
@@ -524,7 +537,7 @@ body:has(.game-page) .game-header .hero-container:after {
   content: "";
   width: 1px;
   height: 28px;
-  background: #4d4d4d;
+  background: var(--color-divider);
 }
 
 .game-description .expandable-html-block {
@@ -596,8 +609,8 @@ body:has(.game-page) .game-header .hero-container:after {
   left: 0;
   right: 0;
   padding: 20px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-  color: #e5e5e5;
+  background: linear-gradient(transparent, var(--carousel-gradient-end, rgba(0, 0, 0, 0.8)));
+  color: var(--carousel-text-color, var(--color-text-dark));
 }
 
 .carousel-item-title {
@@ -622,9 +635,9 @@ body:has(.game-page) .game-header .hero-container:after {
 }
 
 .carousel-buttons button {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-button-bg);
   border: none;
-  color: #e5e5e5;
+  color: var(--color-text-dark);
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -637,7 +650,7 @@ body:has(.game-page) .game-header .hero-container:after {
 }
 
 .carousel-buttons button:hover {
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--color-button-bg-hover);
 }
 
 .carousel-dots {
@@ -654,12 +667,12 @@ body:has(.game-page) .game-header .hero-container:after {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--carousel-dot-bg, rgba(255, 255, 255, 0.5));
   cursor: pointer;
 }
 
 .dot.active {
-  background: #f1f1f1;
+  background: var(--carousel-dot-active, var(--color-text-dark));
 }
 
 .modpacks-grid {
@@ -686,7 +699,7 @@ body:has(.game-page) .game-header .hero-container:after {
 }
 
 .modpack-card {
-  background: rgb(16, 16, 19);
+  background: var(--color-raised-bg);
   border-radius: 8px;
   overflow: hidden;
   transition: transform 0.2s ease;
@@ -726,19 +739,19 @@ body:has(.game-page) .game-header .hero-container:after {
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 4px 0;
-  color: #e5e5e5;
+  color: var(--color-text-dark);
 }
 
 .modpack-author {
   font-size: 14px;
-  color: #888;
+  color: var(--color-secondary);
   margin-bottom: 8px;
 }
 
 .modpack-footer {
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgb(16, 16, 19);
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-raised-bg);
 }
 
 .modpack-stats {
@@ -746,7 +759,7 @@ body:has(.game-page) .game-header .hero-container:after {
   justify-content: space-between;
   align-items: center;
   font-size: 14px;
-  color: #888;
+  color: var(--color-secondary);
 }
 
 .download-count {
@@ -757,7 +770,7 @@ body:has(.game-page) .game-header .hero-container:after {
 
 .category {
   padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-button-bg);
   border-radius: 4px;
 }
 
