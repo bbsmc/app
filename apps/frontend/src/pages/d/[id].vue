@@ -1,20 +1,8 @@
 <template>
-  <ConfirmModal
-    ref="modal_confirm_delete"
-    title="你确定要将该帖子删除吗?"
-    description="删除后不可撤回，数据将会被从服务器中删除"
-    proceed-label="确认"
-    @proceed="deleteForm"
-  />
+  <ConfirmModal ref="modal_confirm_delete" title="你确定要将该帖子删除吗?" description="删除后不可撤回，数据将会被从服务器中删除" proceed-label="确认"
+    @proceed="deleteForm" />
 
-  <div class="game-header">
-    <div class="hero-container">
-      <img src="https://cdn.bbsmc.net/raw/top.jpeg" alt="header" />
-      <div class="desktop-only"></div>
-    </div>
-  </div>
-
-  <div class="normal-page">
+  <div :style="themeVars" class="normal-page">
     <div class="normal-page__sidebar">
       <div class="universal-card">
         <h2>综合交流</h2>
@@ -32,15 +20,8 @@
     <div class="normal-page__content">
       <div class="card">
         <h2 v-if="!isEdit">{{ forum.title }}</h2>
-        <input
-          v-else
-          id="name"
-          v-model="forum.title"
-          type="text"
-          maxlength="64"
-          placeholder="帖子标题"
-          autocomplete="off"
-        />
+        <input v-else id="name" v-model="forum.title" type="text" maxlength="64" placeholder="帖子标题"
+          autocomplete="off" />
         <!-- 分割线 -->
         <div class="divider"></div>
         <div class="user-info">
@@ -66,11 +47,7 @@
             </ButtonStyled>
           </div>
           <div v-else>
-            <button
-              v-if="['article', 'notice'].includes(forum.category)"
-              class="delete-button"
-              @click="isEdit = true"
-            >
+            <button v-if="['article', 'notice'].includes(forum.category)" class="delete-button" @click="isEdit = true">
               编辑
             </button>
             <button class="delete-button" @click="$refs.modal_confirm_delete.show()">删除</button>
@@ -89,11 +66,31 @@ import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { useImageUpload } from "~/composables/image-upload.ts";
+import { computed } from "vue";
+import { isDarkTheme } from "~/plugins/theme/themes";
 
 const router = useNativeRouter();
 const route = useNativeRoute();
 const data = useNuxtApp();
 const auth = await useAuth();
+
+// 获取当前主题并设置CSS变量
+const { $theme } = useNuxtApp();
+
+// 设置主题相关CSS变量
+const themeVars = computed(() => {
+  if (isDarkTheme($theme?.active)) {
+    return {
+      '--divider-color': 'rgba(71, 75, 84, 0.6)',
+      '--hover-bg': 'rgba(255, 255, 255, 0.1)'
+    };
+  } else {
+    return {
+      '--divider-color': 'rgba(200, 200, 200, 0.8)',
+      '--hover-bg': 'rgba(0, 0, 0, 0.05)'
+    };
+  }
+});
 
 const forumId = route.params.id;
 const forum = ref(null);
@@ -182,52 +179,6 @@ async function onUploadHandler(file) {
 </script>
 
 <style scoped>
-.hero-container {
-  width: 100%;
-  height: 144px;
-  position: relative;
-}
-
-.game-header img {
-  width: 100%;
-  height: 144px;
-}
-
-.game-header .hero-container {
-  height: 144px;
-  z-index: 1;
-}
-
-.game-header .hero-container img {
-  width: 100%;
-  height: 144px;
-  display: block;
-}
-
-body:has(.game-page) .game-header {
-  margin-bottom: -110px;
-  background-repeat: no-repeat;
-}
-
-body:has(.game-page) .game-header .hero-container:after {
-  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-background, #0d0d0d) 100%);
-}
-
-.game-header .hero-container:after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  background: linear-gradient(0deg, #0d0d0d, transparent);
-}
-
-body:has(.normal-page) .game-header {
-  margin-bottom: -110px;
-  background-repeat: no-repeat;
-}
-
 .normal-page__content {
   padding: 20px;
   z-index: 2;
@@ -254,6 +205,7 @@ body:has(.normal-page) .game-header {
 .user-name {
   font-size: 1.2em;
   font-weight: bold;
+  color: var(--color-text-dark);
 }
 
 /* 添加 universal-card 的悬停效果 */
@@ -261,6 +213,7 @@ body:has(.normal-page) .game-header {
   transition:
     box-shadow 0.3s,
     transform 0.3s;
+  background-color: var(--color-raised-bg);
 }
 
 .universal-card:hover {
@@ -271,7 +224,7 @@ body:has(.normal-page) .game-header {
 .divider {
   width: 100%;
   height: 1px;
-  background-color: #e0e0e0;
+  background-color: var(--divider-color);
   margin: 20px 0;
 }
 
@@ -293,7 +246,7 @@ body:has(.normal-page) .game-header {
 .delete-button {
   background: transparent;
   border: none;
-  color: #8f9ba8;
+  color: var(--color-secondary);
   padding: 2px 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -302,6 +255,7 @@ body:has(.normal-page) .game-header {
 }
 
 .delete-button:hover {
-  color: #edeff1;
+  color: var(--color-text-dark);
+  background-color: var(--hover-bg);
 }
 </style>

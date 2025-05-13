@@ -1,11 +1,20 @@
 <template>
-  <img src="../../assets/logo1.png" alt="description" />
+  <img :src="logoPath" alt="BBSMC Logo" />
 </template>
 
 <script setup>
-const loading = useLoading();
+import { isDarkTheme } from "~/plugins/theme/themes";
+import logoDark from "~/assets/logo-dark.png";
+import logoLight from "~/assets/logo-light.png";
 
+const loading = useLoading();
 const config = useRuntimeConfig();
+const { $theme } = useNuxtApp();
+
+// 根据当前主题返回对应的logo路径
+const logoPath = computed(() => {
+  return isDarkTheme($theme?.active) ? logoDark : logoLight;
+});
 
 const api = computed(() => {
   const apiUrl = config.public.apiBaseUrl;
@@ -27,17 +36,21 @@ const api = computed(() => {
     transform-box: fill-box;
     animation-fill-mode: forwards;
     transition: transform 2s ease-in-out;
+
     &--large {
       animation: spin 1s ease-in-out infinite forwards;
     }
+
     &--small {
       animation: spin 2s ease-in-out infinite reverse;
     }
   }
+
   @keyframes spin {
     from {
       transform: rotate(0deg);
     }
+
     to {
       transform: rotate(360deg);
     }
