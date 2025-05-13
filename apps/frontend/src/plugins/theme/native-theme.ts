@@ -17,9 +17,8 @@ function useNativeThemeServer() {
   return computed(() => clientHint as SystemTheme);
 }
 
-// 默认主题设置位置
 function useNativeThemeClient() {
-  const lightPreference = window.matchMedia("(prefers-color-scheme: dark)");
+  const lightPreference = window.matchMedia("(prefers-color-scheme: light)");
 
   const isLight = ref(lightPreference.matches);
 
@@ -29,7 +28,6 @@ function useNativeThemeClient() {
 
   onScopeDispose(() => lightPreference.removeEventListener("change", onPreferenceChange));
 
-  // return computed<SystemTheme>(() => "dark");
   return computed<SystemTheme>(() => (isLight.value ? "light" : "dark"));
 }
 
