@@ -75,7 +75,7 @@
           </button>
         </div>
 
-        <GeetestCaptcha v-if="!token" ref="captcha" v-model="token" />
+        <TACaptcha v-if="!token" ref="captcha" v-model="token" />
 
         <p></p>
         <div class="input-group push-right">
@@ -507,7 +507,7 @@ import KeyIcon from "assets/icons/auth/key.svg";
 import GitLabIcon from "assets/icons/auth/sso-gitlab.svg";
 import ModalConfirm from "~/components/ui/ModalConfirm.vue";
 import Modal from "~/components/ui/Modal.vue";
-import GeetestCaptcha from "@/components/ui/GeetestCaptcha.vue";
+import TACaptcha from "@/components/ui/TACaptcha.vue";
 
 useHead({
   title: "Account settings - Modrinth",

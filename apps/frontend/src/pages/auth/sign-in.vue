@@ -82,7 +82,7 @@
           />
         </div>
 
-        <GeetestCaptcha ref="captcha" v-model="token" />
+        <TACaptcha ref="captcha" v-model="token" />
 
         <button
           class="btn btn-primary continue-btn centered-btn"
@@ -114,7 +114,7 @@
 
 <script setup>
 import { RightArrowIcon, KeyIcon, MailIcon } from "@modrinth/assets";
-import GeetestCaptcha from "@/components/ui/GeetestCaptcha.vue";
+import TACaptcha from "@/components/ui/TACaptcha.vue";
 
 const captcha = ref();
 const token = ref("");

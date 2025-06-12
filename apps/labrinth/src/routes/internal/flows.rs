@@ -1477,7 +1477,7 @@ pub struct NewAccount {
     pub password: String,
     #[validate(email)]
     pub email: String,
-    pub challenge: Challenge,
+    pub challenge: String,
     pub sign_up_newsletter: Option<bool>,
 }
 
@@ -1603,17 +1603,17 @@ pub async fn create_account_with_password(
 pub struct Login {
     pub username: String,
     pub password: String,
-    pub challenge: Challenge,
+    pub challenge: String,
 }
 
-#[derive(Deserialize, Validate)]
-pub struct Challenge {
-    pub captcha_id: String,
-    pub captcha_output: String,
-    pub gen_time: String,
-    pub lot_number: String,
-    pub pass_token: String,
-}
+// #[derive(Deserialize, Validate)]
+// pub struct Challenge {
+//     pub captcha_id: String,
+//     pub captcha_output: String,
+//     pub gen_time: String,
+//     pub lot_number: String,
+//     pub pass_token: String,
+// }
 
 #[post("login")]
 pub async fn login_password(
@@ -1678,7 +1678,7 @@ pub async fn login_password(
 #[derive(Deserialize, Validate)]
 pub struct PhoneNumberCode {
     pub phone_number: String,
-    pub challenge: Challenge,
+    pub challenge: String,
 }
 
 #[post("phone_number_code")]
@@ -2228,7 +2228,7 @@ pub async fn remove_2fa(
 #[derive(Deserialize)]
 pub struct ResetPassword {
     pub username: String,
-    pub challenge: Challenge,
+    pub challenge: String,
 }
 
 #[post("password/reset")]

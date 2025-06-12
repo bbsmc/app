@@ -22,7 +22,7 @@
           />
         </div>
 
-        <GeetestCaptcha ref="captcha" v-model="token" />
+        <TACaptcha ref="captcha" v-model="token" />
 
         <button class="btn btn-primary centered-btn" :disabled="!token" @click="recovery">
           <SendIcon /> {{ formatMessage(methodChoiceMessages.action) }}
@@ -68,7 +68,7 @@
 </template>
 <script setup>
 import { SendIcon, MailIcon, KeyIcon } from "@modrinth/assets";
-import GeetestCaptcha from "@/components/ui/GeetestCaptcha.vue";
+import TACaptcha from "@/components/ui/TACaptcha.vue";
 
 const { formatMessage } = useVIntl();
 

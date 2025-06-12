@@ -106,7 +106,7 @@
       <!--        </IntlFormatted>-->
       <!--      </p>-->
 
-      <GeetestCaptcha ref="captcha" v-model="token" />
+      <TACaptcha ref="captcha" v-model="token" />
 
       <button
         class="btn btn-primary continue-btn centered-btn"
@@ -130,7 +130,7 @@
 <script setup>
 import { RightArrowIcon, UserIcon, KeyIcon, MailIcon } from "@modrinth/assets";
 import { Checkbox } from "@modrinth/ui";
-import GeetestCaptcha from "@/components/ui/GeetestCaptcha.vue";
+import TACaptcha from "@/components/ui/TACaptcha.vue";
 
 const { formatMessage } = useVIntl();
 
