@@ -216,6 +216,11 @@ const creaters = {
     code: "愚者",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   },
+  skillet_man: {
+    name: "平底锅侠",
+    code: "平底锅侠",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
 };
 
 const cf = ref(creaters[aff]);
