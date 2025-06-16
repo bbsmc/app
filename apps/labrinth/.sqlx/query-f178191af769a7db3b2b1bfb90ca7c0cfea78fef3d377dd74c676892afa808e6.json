@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.id, i.mod_id, i.title, i.body, i.state, i.created_at, i.updated_at, i.closed_at,\n                            i.author_id, i.locked, i.deleted, i.deleted_at,\n                            u.username as author_name, u.avatar_url as author_avatar\n                     FROM issues i\n                     LEFT JOIN users u ON i.author_id = u.id\n                     WHERE i.id = ANY($1) AND i.deleted = false",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "mod_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "state",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "closed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "author_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "locked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "author_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "author_avatar",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "f178191af769a7db3b2b1bfb90ca7c0cfea78fef3d377dd74c676892afa808e6"
+}

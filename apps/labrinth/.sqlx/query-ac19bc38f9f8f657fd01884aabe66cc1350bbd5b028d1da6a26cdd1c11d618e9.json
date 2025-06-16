@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO issue_label_associations (issue_id, label_id) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ac19bc38f9f8f657fd01884aabe66cc1350bbd5b028d1da6a26cdd1c11d618e9"
+}

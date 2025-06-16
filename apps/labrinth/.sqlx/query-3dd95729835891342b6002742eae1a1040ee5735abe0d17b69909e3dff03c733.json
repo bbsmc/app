@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE issues SET state=$1, closed_at=$2, updated_at=$3 WHERE id=$4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3dd95729835891342b6002742eae1a1040ee5735abe0d17b69909e3dff03c733"
+}

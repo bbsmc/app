@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE issues SET locked=$1, updated_at=$2 WHERE id=$3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54eab7a9018e8121f413f1284e6bd8afa6bae2b48d9a0cbca1a637e94e695783"
+}

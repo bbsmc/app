@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT DISTINCT issue_id, ic.id as id, ic.created_at\n                    FROM issues i\n                    INNER JOIN issue_comments ic ON i.id = ic.issue_id\n                    WHERE i.id = $1 ORDER BY ic.created_at ASC\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "issue_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bdea4d96b6f1860e8872e24b115787a6354aeeaa5fe56e1c2d97b3fe13b92fcc"
+}

@@ -295,7 +295,20 @@ generate_ids!(
     "SELECT EXISTS(SELECT 1 FROM charges WHERE id=$1)",
     ChargeId
 );
-
+generate_ids!(
+    pub generate_issues_id,
+    IssuesId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM issues WHERE id=$1)",
+    IssuesId
+);
+generate_ids!(
+    pub generate_issues_comments_id,
+    IssuesCommentsId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM issue_comments WHERE id=$1)",
+    IssuesCommentsId
+);
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Type, Hash, Serialize, Deserialize,
 )]
@@ -551,6 +564,39 @@ pub struct UserSubscriptionId(pub i64);
 #[sqlx(transparent)]
 pub struct ChargeId(pub i64);
 
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Type,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+)]
+#[sqlx(transparent)]
+pub struct IssuesId(pub i64);
+
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Type,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    PartialOrd,
+    Ord,
+)]
+#[sqlx(transparent)]
+pub struct IssuesCommentsId(pub i64);
+
+
 use crate::models::ids;
 
 impl From<ids::ProjectId> for ProjectId {
@@ -777,5 +823,25 @@ impl From<ids::ChargeId> for ChargeId {
 impl From<ChargeId> for ids::ChargeId {
     fn from(id: ChargeId) -> Self {
         ids::ChargeId(id.0 as u64)
+    }
+}
+impl From<ids::IssuesId> for IssuesId {
+    fn from(id: ids::IssuesId) -> Self {
+        IssuesId(id.0 as i64)
+    }
+}
+impl From<IssuesId> for ids::IssuesId {
+    fn from(id: IssuesId) -> Self {
+        ids::IssuesId(id.0 as u64)
+    }
+}
+impl From<ids::IssuesCommentsId> for IssuesCommentsId {
+    fn from(id: ids::IssuesCommentsId) -> Self {
+        IssuesCommentsId(id.0 as i64)
+    }
+}
+impl From<IssuesCommentsId> for ids::IssuesCommentsId {
+    fn from(id: IssuesCommentsId) -> Self {
+        ids::IssuesCommentsId(id.0 as u64)
     }
 }

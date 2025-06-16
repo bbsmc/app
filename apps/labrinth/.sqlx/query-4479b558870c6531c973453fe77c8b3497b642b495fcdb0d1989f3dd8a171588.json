@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO issue_comments (id, issue_id, author_id, body, comment_type, reply_to_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Varchar",
+        "Varchar",
+        "Int8",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4479b558870c6531c973453fe77c8b3497b642b495fcdb0d1989f3dd8a171588"
+}

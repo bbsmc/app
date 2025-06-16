@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ic.author_id, ic.issue_id FROM issue_comments ic WHERE ic.id = $1 AND ic.deleted = false",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "author_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "3810b48baec8e0c01405358ca3c88455444876c6652ae8625e2ac3d4258b1e6f"
+}

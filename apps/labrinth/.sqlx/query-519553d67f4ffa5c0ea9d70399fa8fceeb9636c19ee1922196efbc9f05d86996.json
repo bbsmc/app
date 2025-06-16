@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE issue_comments SET deleted=$1, deleted_at=$2 WHERE id=$3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "519553d67f4ffa5c0ea9d70399fa8fceeb9636c19ee1922196efbc9f05d86996"
+}

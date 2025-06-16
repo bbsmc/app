@@ -22,6 +22,7 @@ pub mod version_creation;
 pub mod version_file;
 pub mod versions;
 
+pub mod issues;
 pub mod oauth_clients;
 mod wikis;
 
@@ -45,7 +46,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .configure(version_file::config)
             .configure(payouts::config)
             .configure(versions::config)
-            .configure(forum::config),
+            .configure(forum::config)
+            .configure(issues::config),
     );
 }
 

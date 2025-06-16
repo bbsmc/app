@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ia.issue_id, ia.user_id, ia.assigned_at, ia.assigned_by,\n                            u.username as user_name, u.avatar_url as user_avatar\n                     FROM issue_assignees ia\n                     JOIN users u ON ia.user_id = u.id\n                     WHERE ia.issue_id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "issue_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "assigned_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "assigned_by",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "user_avatar",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "12983b7f3e498b00ff056334c21a331940d38ebc673b8aa5010aece1a8173640"
+}

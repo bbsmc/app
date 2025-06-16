@@ -1010,6 +1010,50 @@ impl Project {
             .await?;
         Ok(())
     }
+
+    // 获取项目的所有用户
+    pub async fn get_all_users<'a, E>(
+        &self,
+        exec: E,
+        redis: &RedisPool,
+    ) -> Result<Vec<UserId>, DatabaseError>
+    where
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
+    {
+        let mut exec = exec.acquire().await?;
+        let mut team_ids = vec![self.team_id];
+        if self.organization_id.is_some() {
+            let organization_id = self.organization_id.unwrap();
+            let organization = models::Organization::get_id(
+                organization_id,
+                &mut *exec,
+                redis,
+            )
+            .await?;
+            if organization.is_some() {
+                let team_id = organization.unwrap().team_id;
+                team_ids.push(team_id);
+            }
+        }
+
+        // 直接查询 user_id 而不是获取完整的 TeamMember
+        let team_ids_i64: Vec<i64> = team_ids.iter().map(|x| x.0).collect();
+        let user_ids = sqlx::query!(
+            "
+            SELECT DISTINCT user_id
+            FROM team_members
+            WHERE team_id = ANY($1) AND accepted = TRUE
+            ORDER BY user_id
+            ",
+            &team_ids_i64
+        )
+        .fetch(&mut *exec)
+        .map_ok(|row| UserId(row.user_id))
+        .try_collect::<Vec<UserId>>()
+        .await?;
+
+        Ok(user_ids)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

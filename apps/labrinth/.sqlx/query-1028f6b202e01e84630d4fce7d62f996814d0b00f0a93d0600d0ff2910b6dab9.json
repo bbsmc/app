@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM issue_label_associations WHERE issue_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1028f6b202e01e84630d4fce7d62f996814d0b00f0a93d0600d0ff2910b6dab9"
+}

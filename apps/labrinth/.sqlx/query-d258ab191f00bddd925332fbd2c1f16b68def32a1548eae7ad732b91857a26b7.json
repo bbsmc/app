@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        SELECT ic.*, u.username as author_name, u.avatar_url as author_avatar\n                        FROM issue_comments ic\n                        LEFT JOIN users u ON ic.author_id = u.id\n                        WHERE ic.reply_to_id = $1\n                        AND ic.issue_id = $2\n                        AND ic.deleted = false\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "author_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "comment_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "reply_to_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "author_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "author_avatar",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "d258ab191f00bddd925332fbd2c1f16b68def32a1548eae7ad732b91857a26b7"
+}

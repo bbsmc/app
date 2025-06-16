@@ -8,6 +8,7 @@ pub use super::organizations::OrganizationId;
 pub use super::pats::PatId;
 pub use super::payouts::PayoutId;
 pub use super::projects::{ProjectId, VersionId, WikiId};
+pub use super::issues::{IssuesId,IssuesCommentsId};
 pub use super::reports::ReportId;
 pub use super::sessions::SessionId;
 pub use super::teams::TeamId;
@@ -147,6 +148,8 @@ base62_id_impl!(ProductId, ProductId);
 base62_id_impl!(ProductPriceId, ProductPriceId);
 base62_id_impl!(UserSubscriptionId, UserSubscriptionId);
 base62_id_impl!(ChargeId, ChargeId);
+base62_id_impl!(IssuesId, IssuesId);
+base62_id_impl!(IssuesCommentsId, IssuesCommentsId);
 
 pub mod base62_impl {
     use serde::de::{self, Deserializer, Visitor};

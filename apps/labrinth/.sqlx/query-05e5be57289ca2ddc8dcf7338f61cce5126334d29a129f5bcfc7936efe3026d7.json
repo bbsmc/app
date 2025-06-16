@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE issue_comments SET body=$1, updated_at=$2 WHERE id=$3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "05e5be57289ca2ddc8dcf7338f61cce5126334d29a129f5bcfc7936efe3026d7"
+}

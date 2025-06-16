@@ -28,6 +28,7 @@ pub mod version_item;
 pub mod wiki_item;
 
 pub mod wiki_cache_item;
+pub mod issues;
 
 pub use collection_item::Collection;
 pub use forum::Discussion;
