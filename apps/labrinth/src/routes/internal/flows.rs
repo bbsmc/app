@@ -2441,7 +2441,6 @@ pub async fn set_email(
     redis: Data<RedisPool>,
     email: web::Json<SetEmail>,
     session_queue: Data<AuthQueue>,
-    stripe_client: Data<stripe::Client>,
 ) -> Result<HttpResponse, ApiError> {
     email.0.validate().map_err(|err| {
         ApiError::InvalidInput(validation_errors_to_string(err, None))
@@ -2479,22 +2478,6 @@ pub async fn set_email(
             "如果不是您进行的更改，请立即通过我们的电子邮件 (support@bbsmc.net) 联系我们。",
             None,
         )?;
-    }
-
-    if let Some(customer_id) = user
-        .stripe_customer_id
-        .as_ref()
-        .and_then(|x| stripe::CustomerId::from_str(x).ok())
-    {
-        stripe::Customer::update(
-            &stripe_client,
-            &customer_id,
-            stripe::UpdateCustomer {
-                email: Some(&email.email),
-                ..Default::default()
-            },
-        )
-        .await?;
     }
 
     let flow = Flow::ConfirmEmail {
