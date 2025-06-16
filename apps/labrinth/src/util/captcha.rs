@@ -8,7 +8,7 @@ pub async fn check_hcaptcha(challenge: &String) -> Result<bool, ApiError> {
     struct Response {
         code: i32,
         msg: String,
-        data: Option<serde_json::Value>,
+        // data: Option<serde_json::Value>,
         success: bool,
     }
 
@@ -16,7 +16,6 @@ pub async fn check_hcaptcha(challenge: &String) -> Result<bool, ApiError> {
 
     // 拼接 url 和 challenge
     let url_challenge = format!("{}{}", url, challenge);
-    println!("Checking {}", url_challenge);
     let val: Response = client
         .post(url_challenge)
         .send()
