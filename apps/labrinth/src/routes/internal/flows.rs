@@ -32,7 +32,6 @@ use reqwest::header::AUTHORIZATION;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use validator::Validate;
