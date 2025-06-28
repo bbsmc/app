@@ -1492,7 +1492,7 @@ export default defineNuxtComponent({
         const part = new Blob([this.newFiles[i]]);
         const zipReader = new JSZip();
         const zip = await zipReader.loadAsync(part);
-        if (zip.file("manifest.json")) {
+        if (zip.file("manifest.json") || zip.file("modrinth.index.json") ) {
           curse = true;
         }
       }
@@ -1501,7 +1501,7 @@ export default defineNuxtComponent({
         const part = new Blob([this.replaceFile]);
         const zipReader = new JSZip();
         const zip = await zipReader.loadAsync(part);
-        if (zip.file("manifest.json")) {
+        if (zip.file("manifest.json") || zip.file("modrinth.index.json")) {
           curse = true;
         }
       }
@@ -1588,10 +1588,10 @@ export default defineNuxtComponent({
         const part = new Blob([this.newFiles[i]]);
         const zipReader = new JSZip();
         const zip = await zipReader.loadAsync(part);
-        if (zip.file("manifest.json")) {
-          const manifest = await zip.file("manifest.json").async("string");
-          console.log(manifest);
-        }
+        // if (zip.file("manifest.json")) {
+        //   const manifest = await zip.file("manifest.json").async("string");
+        //   console.log(manifest);
+        // }
       }
       this.$refs.uploading_modal.show();
 
