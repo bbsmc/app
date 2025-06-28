@@ -1389,7 +1389,14 @@ const affs = ref({
   F4xIzfIX: "ZangHeRo", // 机械殖民地
   G23dLUsP: "snk", // 剑与王国
   XMUypeti: "thefool",   // 愚者
-  YgvldBV8: "skillet_man"   // 平底锅侠
+  YgvldBV8: "skillet_man",   // 平底锅侠
+  aa8zTitm: "Latxx",   // 沉浸战斗
+  k5OmCs1S: "Karashok_Leo",   // 咒次元
+  KgeSn4uG: "Lovin",   // 勇者之章
+  OIIWCwpQ: "JasonQ",   // 齿轮盛宴
+  FkZiwq64: "Altnoir",   // 空中厕所2
+  UJBwwyq3: "wuwei",   // 真实地球
+  "2cDBzlDs": "martyredroad"   // 真实地球
 });
 const compatibilityMessages = defineMessages({
   title: {

@@ -169,10 +169,6 @@ const creaters = {
     name: "浙水院Minecraft社",
     link: "https://item.taobao.com/item.htm?ft=t&id=883095512357",
   },
-  luge: {
-    name: "路哥",
-    link: "https://item.taobao.com/item.htm?ft=t&id=888197357640",
-  },
   Unknown_Entity_: {
     name: "Unknown_Entity_",
     link: "https://item.taobao.com/item.htm?ft=t&id=888196449273",
@@ -202,6 +198,22 @@ const creaters = {
     name: "二十二度幻月",
     link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
   },
+  Karashok_Leo: {
+    name: "咒次元",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
+  Lovin: {
+    name: "勇者之章",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
+  JasonQ: {
+    name: "齿轮盛宴",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
+  Altnoir: {
+    name: "空中厕所2",
+    link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
+  },
   ZangHeRo: {
     name: "ZangHeRo",
     link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
@@ -219,6 +231,21 @@ const creaters = {
   skillet_man: {
     name: "平底锅侠",
     code: "平底锅侠",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  Latxx: {
+    name: "辣某人",
+    code: "沉浸战斗",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  wuwei: {
+    name: "无畏灬大魔王",
+    code: "真实地球",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  martyredroad: {
+    name: "殉道之路",
+    code: "殉道之路",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   },
 };
