@@ -528,7 +528,7 @@
         />
         <ButtonStyled v-if="isEditing">
           <button
-            :disabled="primaryFile.hashes.sha1 === file.hashes.sha1"
+            :disabled="version.files.length + newFiles.length - 1 === deleteFiles.length"
             @click="
               () => {
                 deleteFiles.push(file.hashes.sha1);
@@ -1492,7 +1492,7 @@ export default defineNuxtComponent({
         const part = new Blob([this.newFiles[i]]);
         const zipReader = new JSZip();
         const zip = await zipReader.loadAsync(part);
-        if (zip.file("manifest.json") || zip.file("modrinth.index.json") ) {
+        if (zip.file("manifest.json") || zip.file("modrinth.index.json")) {
           curse = true;
         }
       }
@@ -1585,9 +1585,9 @@ export default defineNuxtComponent({
           new Blob([this.newFiles[i]]),
           this.newFiles[i].name,
         );
-        const part = new Blob([this.newFiles[i]]);
-        const zipReader = new JSZip();
-        const zip = await zipReader.loadAsync(part);
+        // const part = new Blob([this.newFiles[i]]);
+        // const zipReader = new JSZip();
+        // const zip = await zipReader.loadAsync(part);
         // if (zip.file("manifest.json")) {
         //   const manifest = await zip.file("manifest.json").async("string");
         //   console.log(manifest);
