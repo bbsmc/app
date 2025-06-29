@@ -1,6 +1,11 @@
 <template>
-  <ConfirmModal ref="modal_confirm_delete" title="你确定要将该帖子删除吗?" description="删除后不可撤回，数据将会被从服务器中删除" proceed-label="确认"
-    @proceed="deleteForm" />
+  <ConfirmModal
+    ref="modal_confirm_delete"
+    title="你确定要将该帖子删除吗?"
+    description="删除后不可撤回，数据将会被从服务器中删除"
+    proceed-label="确认"
+    @proceed="deleteForm"
+  />
 
   <div :style="themeVars" class="normal-page">
     <div class="normal-page__sidebar">
@@ -20,8 +25,15 @@
     <div class="normal-page__content">
       <div class="card">
         <h2 v-if="!isEdit">{{ forum.title }}</h2>
-        <input v-else id="name" v-model="forum.title" type="text" maxlength="64" placeholder="帖子标题"
-          autocomplete="off" />
+        <input
+          v-else
+          id="name"
+          v-model="forum.title"
+          type="text"
+          maxlength="64"
+          placeholder="帖子标题"
+          autocomplete="off"
+        />
         <!-- 分割线 -->
         <div class="divider"></div>
         <div class="user-info">
@@ -47,7 +59,11 @@
             </ButtonStyled>
           </div>
           <div v-else>
-            <button v-if="['article', 'notice'].includes(forum.category)" class="delete-button" @click="isEdit = true">
+            <button
+              v-if="['article', 'notice'].includes(forum.category)"
+              class="delete-button"
+              @click="isEdit = true"
+            >
               编辑
             </button>
             <button class="delete-button" @click="$refs.modal_confirm_delete.show()">删除</button>
@@ -61,12 +77,12 @@
 
 <script setup>
 import { ButtonStyled, ConfirmModal, MarkdownEditor } from "@modrinth/ui";
+import { computed } from "vue";
 import ForumModal from "~/components/ui/ForumModal.vue";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { useImageUpload } from "~/composables/image-upload.ts";
-import { computed } from "vue";
 import { isDarkTheme } from "~/plugins/theme/themes";
 
 const router = useNativeRouter();
@@ -81,13 +97,13 @@ const { $theme } = useNuxtApp();
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--divider-color': 'rgba(71, 75, 84, 0.6)',
-      '--hover-bg': 'rgba(255, 255, 255, 0.1)'
+      "--divider-color": "rgba(71, 75, 84, 0.6)",
+      "--hover-bg": "rgba(255, 255, 255, 0.1)",
     };
   } else {
     return {
-      '--divider-color': 'rgba(200, 200, 200, 0.8)',
-      '--hover-bg': 'rgba(0, 0, 0, 0.05)'
+      "--divider-color": "rgba(200, 200, 200, 0.8)",
+      "--hover-bg": "rgba(0, 0, 0, 0.05)",
     };
   }
 });

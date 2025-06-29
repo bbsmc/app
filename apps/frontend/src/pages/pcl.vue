@@ -3,21 +3,43 @@
     <div v-if="cf && cf.items && cf.items.length > 0" class="game-page container">
       <!-- 居中样式 -->
       <div style="justify-content: center; align-items: center">
-        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark)">整合包联机面板快速部署</h1>
-        <h2 data-v-56edd70f="" class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]">
+        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark)">
+          整合包联机面板快速部署
+        </h1>
+        <h2
+          data-v-56edd70f=""
+          class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]"
+        >
           已支持100+ <span data-v-56edd70f="" class="font-bold"> 主流整合包</span> ，
           快速一键部署，无需繁琐上传和配置即可联机。
           <br />
         </h2>
-        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark); margin-top: 30px">
+        <h1
+          style="
+            font-size: 30px;
+            font-weight: bold;
+            color: var(--color-text-dark);
+            margin-top: 30px;
+          "
+        >
           咨询客服
         </h1>
-        <h2 data-v-56edd70f="" class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]">
+        <h2
+          data-v-56edd70f=""
+          class="relative m-0 text-base font-normal leading-[155%] text-secondary md:text-[18px]"
+        >
           下单跳转淘宝 <span data-v-56edd70f="" class="font-bold"> 咨询客服</span>
           ，在下单前，我们强烈建议先咨询淘宝店铺客服提供所想要游玩的整合包的在线人数，我们会根据在线人数推荐合适的套餐，
           <br />
         </h2>
-        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark); margin-top: 30px">
+        <h1
+          style="
+            font-size: 30px;
+            font-weight: bold;
+            color: var(--color-text-dark);
+            margin-top: 30px;
+          "
+        >
           选择合适您的套餐
         </h1>
         <p class="text-[15px]">所标注人数为推荐同时在线范围，请根据实际情况选择合适的套餐</p>
@@ -25,14 +47,25 @@
         <p class="text-[15px]">
           例如：我想玩乌托邦，我有五个人玩，我预算足够我购买高频88或者发烧108，我预算不够我购买高频58或发烧78
         </p>
-        <h1 style="font-size: 30px; font-weight: bold; color: var(--color-text-dark); margin-top: 30px">
+        <h1
+          style="
+            font-size: 30px;
+            font-weight: bold;
+            color: var(--color-text-dark);
+            margin-top: 30px;
+          "
+        >
           优惠赠送
         </h1>
         <p class="text-[15px]">下单赠送7天时长,带游戏内3张风景图好评再送7天</p>
 
         <!-- 套餐列表 ，横着3个card -->
         <div class="resource-list flex flex-row gap-4">
-          <div v-for="item in cf.items" :key="item.name" class="card min-h-200 flex w-full flex-col">
+          <div
+            v-for="item in cf.items"
+            :key="item.name"
+            class="card min-h-200 flex w-full flex-col"
+          >
             <h2>{{ item.name }}</h2>
             <p class="text-[15px]">{{ item.p1 }}</p>
             <p class="text-[15px]">{{ item.p2 }}</p>
@@ -57,7 +90,6 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import { useRoute } from "vue-router";
 import { ButtonStyled } from "@modrinth/ui";
 import { isDarkTheme } from "~/plugins/theme/themes";
 
@@ -68,11 +100,11 @@ const { $theme } = useNuxtApp();
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--carousel-gradient-end': 'rgba(0, 0, 0, 0.8)'
+      "--carousel-gradient-end": "rgba(0, 0, 0, 0.8)",
     };
   } else {
     return {
-      '--carousel-gradient-end': 'rgba(255, 255, 255, 0.9)'
+      "--carousel-gradient-end": "rgba(255, 255, 255, 0.9)",
     };
   }
 });

@@ -265,7 +265,7 @@
             <SettingsIcon aria-hidden="true" />
             {{ formatMessage(commonMessages.settingsLabel) }}
           </NuxtLink>
-           <button class="iconified-button" @click="changeTheme">
+          <button class="iconified-button" @click="changeTheme">
             <MoonIcon v-if="$theme.active === 'light'" class="icon" />
             <SunIcon v-else class="icon" />
             <span class="dropdown-item__text">
@@ -408,7 +408,7 @@
       <!--                Crowdin-->
       <!--              </a>-->
       <!--            </div>-->
-       <div class="buttons">
+      <div class="buttons">
         <button class="iconified-button raised-button" @click="changeTheme">
           <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
           <SunIcon v-else aria-hidden="true" />

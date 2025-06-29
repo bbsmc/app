@@ -15,20 +15,24 @@
       </div> -->
       <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <ul class="carousel-items">
-          <li v-for="(item, index) in carouselItems" :key="index" :class="[
-            'carousel-item',
-            {
-              previous:
-                currentSlide === 0
-                  ? index === carouselItems.length - 1
-                  : index === currentSlide - 1,
-              current: index === currentSlide,
-              next:
-                currentSlide === carouselItems.length - 1
-                  ? index === 0
-                  : index === currentSlide + 1,
-            },
-          ]">
+          <li
+            v-for="(item, index) in carouselItems"
+            :key="index"
+            :class="[
+              'carousel-item',
+              {
+                previous:
+                  currentSlide === 0
+                    ? index === carouselItems.length - 1
+                    : index === currentSlide - 1,
+                current: index === currentSlide,
+                next:
+                  currentSlide === carouselItems.length - 1
+                    ? index === 0
+                    : index === currentSlide + 1,
+              },
+            ]"
+          >
             <div class="carousel-slide">
               <div class="carousel-image-container">
                 <a v-if="index === currentSlide" :href="item.slug" target="_blank">
@@ -50,8 +54,13 @@
           <button class="btn-next" @click="nextSlide">→</button>
         </div> -->
         <div class="carousel-dots">
-          <span v-for="(_, index) in carouselItems" :key="index" class="dot" :class="{ active: currentSlide === index }"
-            @click="goToSlide(index)">
+          <span
+            v-for="(_, index) in carouselItems"
+            :key="index"
+            class="dot"
+            :class="{ active: currentSlide === index }"
+            @click="goToSlide(index)"
+          >
           </span>
         </div>
       </div>
@@ -230,17 +239,17 @@ const { $theme } = useNuxtApp();
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--carousel-gradient-end': 'rgba(0, 0, 0, 0.8)',
-      '--carousel-dot-bg': 'rgba(255, 255, 255, 0.5)',
-      '--carousel-dot-active': 'var(--color-text-dark)',
-      '--carousel-text-color': 'var(--color-text-dark)'
+      "--carousel-gradient-end": "rgba(0, 0, 0, 0.8)",
+      "--carousel-dot-bg": "rgba(255, 255, 255, 0.5)",
+      "--carousel-dot-active": "var(--color-text-dark)",
+      "--carousel-text-color": "var(--color-text-dark)",
     };
   } else {
     return {
-      '--carousel-gradient-end': 'rgba(255, 255, 255, 0.9)',
-      '--carousel-dot-bg': 'rgba(100, 100, 100, 0.5)',
-      '--carousel-dot-active': 'var(--color-brand)',
-      '--carousel-text-color': 'var(--color-text)'
+      "--carousel-gradient-end": "rgba(255, 255, 255, 0.9)",
+      "--carousel-dot-bg": "rgba(100, 100, 100, 0.5)",
+      "--carousel-dot-active": "var(--color-brand)",
+      "--carousel-text-color": "var(--color-text)",
     };
   }
 });

@@ -25,7 +25,9 @@
     <div class="normal-page__content">
       <div style="display: flex; justify-content: space-between; align-items: center">
         <h1>{{ title }}</h1>
-        <div v-if="type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')">
+        <div
+          v-if="type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')"
+        >
           <ButtonStyled v-if="!createForumModel" color="green">
             <button @click="createForum">发帖</button>
           </ButtonStyled>
@@ -44,7 +46,14 @@
                 <span class="text-brand-red">*</span>
               </span>
             </label>
-            <input id="name" v-model="forumTitle" type="text" maxlength="64" placeholder="帖子标题" autocomplete="off" />
+            <input
+              id="name"
+              v-model="forumTitle"
+              type="text"
+              maxlength="64"
+              placeholder="帖子标题"
+              autocomplete="off"
+            />
           </div>
           <div class="flex flex-col gap-2" style="margin-bottom: 10px">
             <label for="name">
@@ -58,11 +67,15 @@
           <MarkdownEditor v-model="forumContent" :on-image-upload="onUploadHandler" />
 
           <div style="display: flex; justify-content: space-between; align-items: center">
-            <span>使用
-              <a href="http://commonmark.org/help/" target="_blank">Markdown</a> 语法编辑文本</span>
-            <div v-if="
-              type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')
-            ">
+            <span
+              >使用
+              <a href="http://commonmark.org/help/" target="_blank">Markdown</a> 语法编辑文本</span
+            >
+            <div
+              v-if="
+                type === 'chat' || type === 'article' || (auth.user && auth.user.role === 'admin')
+              "
+            >
               <ButtonStyled color="green">
                 <button @click="submitForum">发布</button>
               </ButtonStyled>
@@ -85,8 +98,13 @@
                 <h2 class="forum-title">{{ forum.title }}</h2>
               </a>
               <p class="forum-meta">
-                <a v-if="forum.organization_id" :href="`/organization/${forum.organization_id}`" target="_blank"
-                  class="forum-user">{{ forum.organization }}</a>
+                <a
+                  v-if="forum.organization_id"
+                  :href="`/organization/${forum.organization_id}`"
+                  target="_blank"
+                  class="forum-user"
+                  >{{ forum.organization }}</a
+                >
                 <a v-else :href="`/user/${forum.user_name}`" target="_blank" class="forum-user">{{
                   forum.user_name
                 }}</a>
@@ -103,9 +121,13 @@
           </div>
         </div>
         <div>
-          <pagination :page="currentPage" :count="pageCount"
-            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)" class="justify-end"
-            @switch-page="onSearchChangeToTop" />
+          <pagination
+            :page="currentPage"
+            :count="pageCount"
+            :link-function="(x) => getSearchUrl(x <= 1 ? 0 : (x - 1) * maxResults)"
+            class="justify-end"
+            @switch-page="onSearchChangeToTop"
+          />
         </div>
       </div>
     </div>
@@ -116,9 +138,9 @@
 import dayjs from "dayjs";
 import { formatDateTime } from "@modrinth/utils";
 import { Pagination, ButtonStyled, MarkdownEditor } from "@modrinth/ui";
+import { computed } from "vue";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
-import { computed } from "vue";
 import { isDarkTheme } from "~/plugins/theme/themes";
 import { useImageUpload } from "~/composables/image-upload.ts";
 
@@ -133,13 +155,13 @@ const { $theme } = useNuxtApp();
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--meta-color': 'var(--color-secondary)',
-      '--forum-hover-bg': 'rgba(255, 255, 255, 0.05)'
+      "--meta-color": "var(--color-secondary)",
+      "--forum-hover-bg": "rgba(255, 255, 255, 0.05)",
     };
   } else {
     return {
-      '--meta-color': '#666',
-      '--forum-hover-bg': 'rgba(0, 0, 0, 0.03)'
+      "--meta-color": "#666",
+      "--forum-hover-bg": "rgba(0, 0, 0, 0.03)",
     };
   }
 });

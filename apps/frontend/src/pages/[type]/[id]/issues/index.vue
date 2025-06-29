@@ -24,7 +24,12 @@
           <span class="notice-icon">🔗</span>
           <div class="notice-text">
             <span>该项目已设置了站外反馈问题的地址，请前往</span>
-            <a :href="project.issues_url" target="_blank" rel="noopener noreferrer" class="external-link">
+            <a
+              :href="project.issues_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
               {{ project.issues_url }}
             </a>
             <span>提交问题反馈</span>
@@ -35,13 +40,25 @@
       <!-- 过滤器 -->
       <div v-if="!project.issues_url" class="filter-bar">
         <div class="filter-tabs">
-          <button class="filter-tab" :class="{ active: stateFilter === 'all' }" @click="setFilter('all')">
+          <button
+            class="filter-tab"
+            :class="{ active: stateFilter === 'all' }"
+            @click="setFilter('all')"
+          >
             全部
           </button>
-          <button class="filter-tab" :class="{ active: stateFilter === 'open' }" @click="setFilter('open')">
+          <button
+            class="filter-tab"
+            :class="{ active: stateFilter === 'open' }"
+            @click="setFilter('open')"
+          >
             开放中
           </button>
-          <button class="filter-tab" :class="{ active: stateFilter === 'closed' }" @click="setFilter('closed')">
+          <button
+            class="filter-tab"
+            :class="{ active: stateFilter === 'closed' }"
+            @click="setFilter('closed')"
+          >
             已关闭
           </button>
         </div>
@@ -57,12 +74,19 @@
 
           <div class="issue-content">
             <div class="issue-title-row">
-              <NuxtLink :to="`/${route.params.type}/${route.params.id}/issues/${issue.id}`" class="issue-title-link">
+              <NuxtLink
+                :to="`/${route.params.type}/${route.params.id}/issues/${issue.id}`"
+                class="issue-title-link"
+              >
                 {{ issue.title }}
               </NuxtLink>
               <div v-if="issue.labels && issue.labels.length > 0" class="issue-labels">
-                <span v-for="label in issue.labels" :key="label.id" class="issue-label"
-                  :style="{ backgroundColor: label.color }">
+                <span
+                  v-for="label in issue.labels"
+                  :key="label.id"
+                  class="issue-label"
+                  :style="{ backgroundColor: label.color }"
+                >
                   {{ label.name }}
                 </span>
               </div>
@@ -90,8 +114,15 @@
       </div>
 
       <!-- 分页控制 -->
-      <div v-if="!project.issues_url && pagination && pagination.total > pageSize" class="pagination-controls">
-        <button-styled v-if="currentPage > 1" @click="changePage(currentPage - 1)" :disabled="pending">
+      <div
+        v-if="!project.issues_url && pagination && pagination.total > pageSize"
+        class="pagination-controls"
+      >
+        <button-styled
+          v-if="currentPage > 1"
+          :disabled="pending"
+          @click="changePage(currentPage - 1)"
+        >
           上一页
         </button-styled>
 
@@ -99,20 +130,24 @@
           <span class="page-numbers">
             第 {{ currentPage }} 页，共 {{ Math.ceil(pagination.total / pageSize) }} 页
           </span>
-          <span class="total-count">
-            共 {{ pagination.total }} 个问题
-          </span>
+          <span class="total-count"> 共 {{ pagination.total }} 个问题 </span>
         </div>
 
-        <button-styled v-if="currentPage < Math.ceil(pagination.total / pageSize)" @click="changePage(currentPage + 1)"
-          :disabled="pending">
+        <button-styled
+          v-if="currentPage < Math.ceil(pagination.total / pageSize)"
+          :disabled="pending"
+          @click="changePage(currentPage + 1)"
+        >
           下一页
         </button-styled>
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-if="!project.issues_url && !pending && (!issues || issues.length === 0)" class="empty-state">
+    <div
+      v-if="!project.issues_url && !pending && (!issues || issues.length === 0)"
+      class="empty-state"
+    >
       <div class="empty-content">
         <h3>还没有问题</h3>
         <p>这个项目还没有创建任何问题。</p>
@@ -145,7 +180,13 @@
               <span class="label-title">标题</span>
               <span class="label-description">简短描述问题</span>
             </label>
-            <input v-model="newIssue.title" type="text" placeholder="请输入问题标题" maxlength="300" class="form-input" />
+            <input
+              v-model="newIssue.title"
+              type="text"
+              placeholder="请输入问题标题"
+              maxlength="300"
+              class="form-input"
+            />
           </div>
 
           <div class="form-group">
@@ -153,18 +194,23 @@
               <span class="label-title">描述</span>
               <span class="label-description">详细描述问题</span>
             </label>
-            <MarkdownEditor v-model="newIssue.body" :on-image-upload="onUploadHandler" placeholder="请详细描述问题..." />
+            <MarkdownEditor
+              v-model="newIssue.body"
+              :on-image-upload="onUploadHandler"
+              placeholder="请详细描述问题..."
+            />
           </div>
         </div>
 
         <div class="modal-actions">
-          <button-styled color="red" @click="closeCreateModal">
-            取消
-          </button-styled>
-          <button-styled color="green" :disabled="!newIssue.title.trim() || !newIssue.body.trim() || isCreating"
-            @click="createIssue">
+          <button-styled color="red" @click="closeCreateModal"> 取消 </button-styled>
+          <button-styled
+            color="green"
+            :disabled="!newIssue.title.trim() || !newIssue.body.trim() || isCreating"
+            @click="createIssue"
+          >
             <PlusIcon aria-hidden="true" />
-            {{ isCreating ? '创建中...' : '创建问题' }}
+            {{ isCreating ? "创建中..." : "创建问题" }}
           </button-styled>
         </div>
       </div>
@@ -173,8 +219,8 @@
 </template>
 
 <script setup>
-import { ButtonStyled } from "@modrinth/ui";
-import { MarkdownEditor } from "@modrinth/ui";
+import { ButtonStyled, MarkdownEditor } from "@modrinth/ui";
+
 import { PlusIcon } from "@modrinth/assets";
 import dayjs from "dayjs";
 import { isDarkTheme } from "~/plugins/theme/themes";
@@ -208,33 +254,33 @@ const { $theme } = useNuxtApp();
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--color-text-secondary': '#8f9ba8',
-      '--color-text-primary': '#edeff1',
-      '--color-bg-card': 'var(--color-raised-bg)',
-      '--color-bg-secondary': '#2d3139',
-      '--color-bg-hover': '#363b44',
-      '--color-border': '#363b44',
-      '--color-highlight': '#007bff',
-      '--color-success': '#28a745',
-      '--color-closed': '#6f42c1',
-      '--color-overlay': 'rgba(0, 0, 0, 0.5)',
-      '--color-modal-bg': '#26292f',
-      '--color-notice-bg': 'linear-gradient(135deg, #1e3a8a 0%, #581c87 100%)',
+      "--color-text-secondary": "#8f9ba8",
+      "--color-text-primary": "#edeff1",
+      "--color-bg-card": "var(--color-raised-bg)",
+      "--color-bg-secondary": "#2d3139",
+      "--color-bg-hover": "#363b44",
+      "--color-border": "#363b44",
+      "--color-highlight": "#007bff",
+      "--color-success": "#28a745",
+      "--color-closed": "#6f42c1",
+      "--color-overlay": "rgba(0, 0, 0, 0.5)",
+      "--color-modal-bg": "#26292f",
+      "--color-notice-bg": "linear-gradient(135deg, #1e3a8a 0%, #581c87 100%)",
     };
   } else {
     return {
-      '--color-text-secondary': '#666',
-      '--color-text-primary': 'var(--color-text-dark)',
-      '--color-bg-card': 'var(--color-raised-bg)',
-      '--color-bg-secondary': '#f0f2f5',
-      '--color-bg-hover': '#e6e8eb',
-      '--color-border': '#dfe1e5',
-      '--color-highlight': '#1a73e8',
-      '--color-success': '#28a745',
-      '--color-closed': '#6f42c1',
-      '--color-overlay': 'rgba(0, 0, 0, 0.3)',
-      '--color-modal-bg': '#ffffff',
-      '--color-notice-bg': 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)',
+      "--color-text-secondary": "#666",
+      "--color-text-primary": "var(--color-text-dark)",
+      "--color-bg-card": "var(--color-raised-bg)",
+      "--color-bg-secondary": "#f0f2f5",
+      "--color-bg-hover": "#e6e8eb",
+      "--color-border": "#dfe1e5",
+      "--color-highlight": "#1a73e8",
+      "--color-success": "#28a745",
+      "--color-closed": "#6f42c1",
+      "--color-overlay": "rgba(0, 0, 0, 0.3)",
+      "--color-modal-bg": "#ffffff",
+      "--color-notice-bg": "linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)",
     };
   }
 });
@@ -255,13 +301,13 @@ const pagination = ref(null);
 const pending = ref(true);
 const currentPage = ref(1);
 const pageSize = ref(20);
-const stateFilter = ref('all');
+const stateFilter = ref("all");
 
 const showCreateModal = ref(false);
 const isCreating = ref(false);
 const newIssue = ref({
-  title: '',
-  body: ''
+  title: "",
+  body: "",
 });
 
 // 加载Issues列表
@@ -274,7 +320,7 @@ async function loadIssues() {
     };
 
     // 只有当不是'all'时才添加state参数
-    if (stateFilter.value !== 'all') {
+    if (stateFilter.value !== "all") {
       params.state = stateFilter.value;
     }
 
@@ -286,7 +332,7 @@ async function loadIssues() {
     issues.value = response.issues || [];
     pagination.value = response.pagination || null;
   } catch (err) {
-    console.error('加载Issues失败:', err);
+    console.error("加载Issues失败:", err);
     data.$notify({
       group: "main",
       title: "加载失败",
@@ -313,7 +359,7 @@ function changePage(page) {
 
 // 打开创建Issue模态框
 function openCreateIssue() {
-  newIssue.value = { title: '', body: '' };
+  newIssue.value = { title: "", body: "" };
   showCreateModal.value = true;
 }
 
@@ -349,7 +395,7 @@ async function createIssue() {
     closeCreateModal();
     router.push(`/${route.params.type}/${route.params.id}/issues/${response.issue}`);
   } catch (err) {
-    console.error('创建问题失败:', err);
+    console.error("创建问题失败:", err);
     data.$notify({
       group: "main",
       title: "创建失败",

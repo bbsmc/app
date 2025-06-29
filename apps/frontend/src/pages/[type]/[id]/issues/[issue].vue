@@ -16,18 +16,21 @@
             <div class="issue-status" :class="{ closed: issue.state === 'closed' }">
               <span v-if="issue.state === 'open'" class="status-icon open">●</span>
               <span v-else class="status-icon closed">✓</span>
-              <span>{{ issue.state === 'open' ? '开放' : '已关闭' }}</span>
+              <span>{{ issue.state === "open" ? "开放" : "已关闭" }}</span>
             </div>
           </div>
         </div>
-
       </div>
 
       <!-- Issue 标签和操作按钮 -->
       <div class="labels-actions-section">
         <div class="labels-container">
-          <span v-for="label in issue.labels" :key="label.id" class="issue-label"
-            :style="{ backgroundColor: label.color }">
+          <span
+            v-for="label in issue.labels"
+            :key="label.id"
+            class="issue-label"
+            :style="{ backgroundColor: label.color }"
+          >
             {{ label.name }}
           </span>
         </div>
@@ -35,15 +38,23 @@
         <!-- 操作按钮 -->
         <div class="issue-actions">
           <!-- 关闭问题按钮：管理员或创建者 -->
-          <button v-if="issue.state === 'open' && canCloseIssue" class="iconified-button" :disabled="isUpdatingState"
-            @click="closeIssueModal.show()">
+          <button
+            v-if="issue.state === 'open' && canCloseIssue"
+            class="iconified-button"
+            :disabled="isUpdatingState"
+            @click="closeIssueModal.show()"
+          >
             <LockIcon />
             关闭问题
           </button>
 
           <!-- 重新打开问题按钮：只有管理员 -->
-          <button v-if="issue.state === 'closed' && canReopenIssue" class="iconified-button" :disabled="isUpdatingState"
-            @click="reopenIssueModal.show()">
+          <button
+            v-if="issue.state === 'closed' && canReopenIssue"
+            class="iconified-button"
+            :disabled="isUpdatingState"
+            @click="reopenIssueModal.show()"
+          >
             <PlayIcon />
             重新打开问题
           </button>
@@ -71,8 +82,12 @@
       <div class="issue-author-card card">
         <div class="author-header">
           <div class="author-info">
-            <img v-if="issue.author.avatar" :src="issue.author.avatar" :alt="issue.author.username"
-              class="author-avatar" />
+            <img
+              v-if="issue.author.avatar"
+              :src="issue.author.avatar"
+              :alt="issue.author.username"
+              class="author-avatar"
+            />
             <div class="author-details">
               <NuxtLink :to="`/user/${issue.author.username}`" class="author-name">
                 {{ issue.author.username }}
@@ -103,12 +118,20 @@
 
         <!-- 回复列表 -->
         <div v-if="comments.length > 0" class="comments-list">
-          <div v-for="comment in comments" :key="comment.id" :id="`comment-${comment.floor_number}`"
-            class="card comment-card">
+          <div
+            v-for="comment in comments"
+            :id="`comment-${comment.floor_number}`"
+            :key="comment.id"
+            class="card comment-card"
+          >
             <div class="comment-header">
               <div class="comment-author-info">
-                <img v-if="comment.author.avatar" :src="comment.author.avatar" :alt="comment.author.username"
-                  class="comment-avatar" />
+                <img
+                  v-if="comment.author.avatar"
+                  :src="comment.author.avatar"
+                  :alt="comment.author.username"
+                  class="comment-avatar"
+                />
                 <div class="comment-author-details">
                   <NuxtLink :to="`/user/${comment.author.username}`" class="comment-author-name">
                     {{ comment.author.username }}
@@ -119,18 +142,23 @@
               </div>
 
               <div v-if="canEditComment(comment) && !comment.deleted" class="comment-actions">
-                <button @click="editComment(comment)" class="action-btn">编辑</button>
-                <button @click="deleteComment(comment)" class="action-btn delete">删除</button>
+                <button class="action-btn" @click="editComment(comment)">编辑</button>
+                <button class="action-btn delete" @click="deleteComment(comment)">删除</button>
               </div>
             </div>
 
             <!-- 如果是回复，显示回复引用 -->
-            <div v-if="comment.reply_to_floor" class="reply-reference"
+            <div
+              v-if="comment.reply_to_floor"
+              class="reply-reference"
               :class="{ 'deleted-reply': isRepliedCommentDeleted(comment) }"
-              @click="!isRepliedCommentDeleted(comment) && scrollToComment(comment.reply_to_floor)">
+              @click="!isRepliedCommentDeleted(comment) && scrollToComment(comment.reply_to_floor)"
+            >
               <div class="reply-info">
                 <span class="reply-text">回复</span>
-                <span v-if="!isRepliedCommentDeleted(comment)" class="reply-floor">#{{ comment.reply_to_floor }}</span>
+                <span v-if="!isRepliedCommentDeleted(comment)" class="reply-floor"
+                  >#{{ comment.reply_to_floor }}</span
+                >
                 <span v-else class="reply-deleted">已被删除的回复</span>
               </div>
             </div>
@@ -143,7 +171,7 @@
             </div>
 
             <div v-if="!comment.deleted" class="comment-footer">
-              <button @click="replyToComment(comment)" class="reply-btn">
+              <button class="reply-btn" @click="replyToComment(comment)">
                 回复 #{{ comment.floor_number }}
               </button>
             </div>
@@ -154,16 +182,24 @@
         <div v-if="isAuth && issue.state === 'open'" class="create-comment-section">
           <div v-if="replyingTo" class="replying-info card">
             <span>回复 #{{ replyingTo.floor_number }}</span>
-            <button @click="cancelReply" class="cancel-reply">取消</button>
+            <button class="cancel-reply" @click="cancelReply">取消</button>
           </div>
 
           <div class="comment-form card">
-            <h4>{{ replyingTo ? `回复 #${replyingTo.floor_number}` : '添加回复' }}</h4>
-            <MarkdownEditor v-model="newComment.body" :on-image-upload="onUploadHandler" placeholder="写下你的回复..." />
+            <h4>{{ replyingTo ? `回复 #${replyingTo.floor_number}` : "添加回复" }}</h4>
+            <MarkdownEditor
+              v-model="newComment.body"
+              :on-image-upload="onUploadHandler"
+              placeholder="写下你的回复..."
+            />
 
             <div class="comment-form-actions">
-              <button-styled color="green" :disabled="!newComment.body.trim() || isCommenting" @click="createComment">
-                {{ isCommenting ? '发送中...' : '发送回复' }}
+              <button-styled
+                color="green"
+                :disabled="!newComment.body.trim() || isCommenting"
+                @click="createComment"
+              >
+                {{ isCommenting ? "发送中..." : "发送回复" }}
               </button-styled>
             </div>
           </div>
@@ -204,65 +240,83 @@
           <div class="current-labels">
             <h4>当前标签</h4>
             <div v-if="issue.labels && issue.labels.length > 0" class="labels-list">
-              <span v-for="label in issue.labels" :key="label.id" class="current-label"
-                :style="{ backgroundColor: label.color }">
+              <span
+                v-for="label in issue.labels"
+                :key="label.id"
+                class="current-label"
+                :style="{ backgroundColor: label.color }"
+              >
                 {{ label.name }}
-                <button @click="removeLabel(label)" class="remove-label-btn">×</button>
+                <button class="remove-label-btn" @click="removeLabel(label)">×</button>
               </span>
             </div>
-            <div v-else class="no-labels">
-              暂无标签
-            </div>
+            <div v-else class="no-labels">暂无标签</div>
           </div>
 
           <div class="available-labels">
             <h4>可用标签</h4>
             <div v-if="availableLabels.length > 0" class="labels-list">
-              <button v-for="label in availableLabels" :key="label.id" @click="addLabel(label)"
-                :disabled="isLabelSelected(label)" class="available-label" :class="{ disabled: isLabelSelected(label) }"
-                :style="{ backgroundColor: label.color }">
+              <button
+                v-for="label in availableLabels"
+                :key="label.id"
+                :disabled="isLabelSelected(label)"
+                class="available-label"
+                :class="{ disabled: isLabelSelected(label) }"
+                :style="{ backgroundColor: label.color }"
+                @click="addLabel(label)"
+              >
                 {{ label.name }}
               </button>
             </div>
-            <div v-else class="no-labels">
-              暂无可用标签
-            </div>
+            <div v-else class="no-labels">暂无可用标签</div>
           </div>
         </div>
 
         <div class="modal-actions">
-          <button-styled @click="closeLabelModal">
-            完成
-          </button-styled>
+          <button-styled @click="closeLabelModal"> 完成 </button-styled>
         </div>
       </div>
     </div>
 
     <!-- 关闭Issue确认模态框 -->
-    <ConfirmModal ref="closeIssueModal" title="关闭问题" description="关闭后，此问题将被标记为已解决，不再接受新的回复。" proceed-label="确认关闭"
-      @proceed="confirmCloseIssue" />
+    <ConfirmModal
+      ref="closeIssueModal"
+      title="关闭问题"
+      description="关闭后，此问题将被标记为已解决，不再接受新的回复。"
+      proceed-label="确认关闭"
+      @proceed="confirmCloseIssue"
+    />
 
     <!-- 重新打开Issue确认模态框 -->
-    <ConfirmModal2 ref="reopenIssueModal" title="重新打开问题" description="重新打开后，此问题将重新接受回复和讨论。" proceed-label="确认打开"
-      @proceed="confirmReopenIssue" />
+    <ConfirmModal2
+      ref="reopenIssueModal"
+      title="重新打开问题"
+      description="重新打开后，此问题将重新接受回复和讨论。"
+      proceed-label="确认打开"
+      @proceed="confirmReopenIssue"
+    />
 
     <!-- 删除回复确认模态框 -->
-    <ConfirmModal ref="deleteCommentModal" title="删除回复" description="删除后无法恢复，确定要删除这条回复吗？" proceed-label="确认删除"
-      @proceed="confirmDeleteComment" />
+    <ConfirmModal
+      ref="deleteCommentModal"
+      title="删除回复"
+      description="删除后无法恢复，确定要删除这条回复吗？"
+      proceed-label="确认删除"
+      @proceed="confirmDeleteComment"
+    />
   </div>
 </template>
 
 <script setup>
-import { ButtonStyled, ConfirmModal } from "@modrinth/ui";
-import { MarkdownEditor } from "@modrinth/ui";
+import { ButtonStyled, ConfirmModal, MarkdownEditor } from "@modrinth/ui";
+
 import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
 import dayjs from "dayjs";
+import { TagIcon, LockIcon, PlayIcon, ClipboardCopyIcon } from "@modrinth/assets";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { isDarkTheme } from "~/plugins/theme/themes";
-import { TagIcon, EditIcon, LockIcon, PlayIcon, ClipboardCopyIcon } from "@modrinth/assets";
 
 const data = useNuxtApp();
-const router = useNativeRouter();
 const route = useNativeRoute();
 const auth = await useAuth();
 
@@ -286,31 +340,31 @@ const { $theme } = useNuxtApp();
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--color-text-secondary': '#8f9ba8',
-      '--color-text-primary': '#edeff1',
-      '--color-bg-card': 'var(--color-raised-bg)',
-      '--color-bg-secondary': '#2d3139',
-      '--color-bg-hover': '#363b44',
-      '--color-border': '#363b44',
-      '--color-highlight': '#007bff',
-      '--color-success': '#28a745',
-      '--color-closed': '#6f42c1',
-      '--color-reply-bg': 'rgba(255, 255, 255, 0.12)',
-      '--color-reply-bg-hover': 'rgba(255, 255, 255, 0.2)',
+      "--color-text-secondary": "#8f9ba8",
+      "--color-text-primary": "#edeff1",
+      "--color-bg-card": "var(--color-raised-bg)",
+      "--color-bg-secondary": "#2d3139",
+      "--color-bg-hover": "#363b44",
+      "--color-border": "#363b44",
+      "--color-highlight": "#007bff",
+      "--color-success": "#28a745",
+      "--color-closed": "#6f42c1",
+      "--color-reply-bg": "rgba(255, 255, 255, 0.12)",
+      "--color-reply-bg-hover": "rgba(255, 255, 255, 0.2)",
     };
   } else {
     return {
-      '--color-text-secondary': '#666',
-      '--color-text-primary': 'var(--color-text-dark)',
-      '--color-bg-card': 'var(--color-raised-bg)',
-      '--color-bg-secondary': '#f0f2f5',
-      '--color-bg-hover': '#e6e8eb',
-      '--color-border': '#dfe1e5',
-      '--color-highlight': '#1a73e8',
-      '--color-success': '#28a745',
-      '--color-closed': '#6f42c1',
-      '--color-reply-bg': 'rgba(0, 0, 0, 0.05)',
-      '--color-reply-bg-hover': 'rgba(0, 0, 0, 0.08)',
+      "--color-text-secondary": "#666",
+      "--color-text-primary": "var(--color-text-dark)",
+      "--color-bg-card": "var(--color-raised-bg)",
+      "--color-bg-secondary": "#f0f2f5",
+      "--color-bg-hover": "#e6e8eb",
+      "--color-border": "#dfe1e5",
+      "--color-highlight": "#1a73e8",
+      "--color-success": "#28a745",
+      "--color-closed": "#6f42c1",
+      "--color-reply-bg": "rgba(0, 0, 0, 0.05)",
+      "--color-reply-bg-hover": "rgba(0, 0, 0, 0.08)",
     };
   }
 });
@@ -333,14 +387,13 @@ const reopenIssueModal = ref();
 const deleteCommentModal = ref();
 
 const newComment = ref({
-  body: '',
-  reply_to_id: null
+  body: "",
+  reply_to_id: null,
 });
 
 const isAuth = computed(() => {
   return !!auth.value.user;
 });
-
 
 // 计算属性
 const hasPermission = computed(() => {
@@ -357,7 +410,9 @@ const canEdit = computed(() => {
 // 关闭问题权限：管理员或问题创建者
 const canCloseIssue = computed(() => {
   if (!issue.value || !auth.value.user) return false;
-  return (props.currentMember && hasPermission.value) || issue.value.author.id === auth.value.user.id;
+  return (
+    (props.currentMember && hasPermission.value) || issue.value.author.id === auth.value.user.id
+  );
 });
 
 // 重新打开问题权限：只有管理员
@@ -387,7 +442,7 @@ async function loadIssue() {
     issue.value = response;
     await loadComments();
   } catch (err) {
-    console.error('加载Issue失败:', err);
+    console.error("加载Issue失败:", err);
     data.$notify({
       group: "main",
       title: "加载失败",
@@ -408,7 +463,7 @@ async function loadComments() {
 
     comments.value = response.comments || [];
   } catch (err) {
-    console.error('加载回复失败:', err);
+    console.error("加载回复失败:", err);
   }
 }
 
@@ -434,11 +489,11 @@ async function createComment() {
       type: "success",
     });
 
-    newComment.value.body = '';
+    newComment.value.body = "";
     replyingTo.value = null;
     await loadComments();
   } catch (err) {
-    console.error('创建回复失败:', err);
+    console.error("创建回复失败:", err);
     data.$notify({
       group: "main",
       title: "回复失败",
@@ -457,9 +512,9 @@ function replyToComment(comment) {
 
   // 滚动到回复表单
   nextTick(() => {
-    const commentForm = document.querySelector('.comment-form');
+    const commentForm = document.querySelector(".comment-form");
     if (commentForm) {
-      commentForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      commentForm.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
 }
@@ -474,10 +529,10 @@ function cancelReply() {
 function scrollToComment(floorNumber) {
   const element = document.getElementById(`comment-${floorNumber}`);
   if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    element.classList.add('comment-highlight');
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    element.classList.add("comment-highlight");
     setTimeout(() => {
-      element.classList.remove('comment-highlight');
+      element.classList.remove("comment-highlight");
     }, 3000);
   }
 }
@@ -489,7 +544,7 @@ async function confirmCloseIssue() {
     await useBaseFetch(`issues/${route.params.issue}`, {
       apiVersion: 3,
       method: "PATCH",
-      body: { state: 'closed' },
+      body: { state: "closed" },
     });
 
     data.$notify({
@@ -499,9 +554,9 @@ async function confirmCloseIssue() {
       type: "success",
     });
 
-    issue.value.state = 'closed';
+    issue.value.state = "closed";
   } catch (err) {
-    console.error('关闭Issue失败:', err);
+    console.error("关闭Issue失败:", err);
     data.$notify({
       group: "main",
       title: "操作失败",
@@ -520,7 +575,7 @@ async function confirmReopenIssue() {
     await useBaseFetch(`issues/${route.params.issue}`, {
       apiVersion: 3,
       method: "PATCH",
-      body: { state: 'open' },
+      body: { state: "open" },
     });
 
     data.$notify({
@@ -530,9 +585,9 @@ async function confirmReopenIssue() {
       type: "success",
     });
 
-    issue.value.state = 'open';
+    issue.value.state = "open";
   } catch (err) {
-    console.error('重新打开Issue失败:', err);
+    console.error("重新打开Issue失败:", err);
     data.$notify({
       group: "main",
       title: "操作失败",
@@ -547,13 +602,13 @@ async function confirmReopenIssue() {
 // 打开标签管理模态框
 async function openLabelModal() {
   try {
-    const response = await useBaseFetch('issues/labels', {
+    const response = await useBaseFetch("issues/labels", {
       apiVersion: 3,
     });
     availableLabels.value = response.labels || [];
     showLabelModal.value = true;
   } catch (err) {
-    console.error('加载标签失败:', err);
+    console.error("加载标签失败:", err);
     data.$notify({
       group: "main",
       title: "加载失败",
@@ -570,7 +625,7 @@ function closeLabelModal() {
 
 // 检查标签是否已选中
 function isLabelSelected(label) {
-  return issue.value.labels?.some(l => l.id === label.id) || false;
+  return issue.value.labels?.some((l) => l.id === label.id) || false;
 }
 
 // 添加标签
@@ -585,7 +640,7 @@ async function addLabel(label) {
     }
 
     const newLabels = [...issue.value.labels, label];
-    const labelIds = newLabels.map(l => l.id);
+    const labelIds = newLabels.map((l) => l.id);
 
     await useBaseFetch(`issues/${route.params.issue}`, {
       apiVersion: 3,
@@ -602,7 +657,7 @@ async function addLabel(label) {
       type: "success",
     });
   } catch (err) {
-    console.error('添加标签失败:', err);
+    console.error("添加标签失败:", err);
     data.$notify({
       group: "main",
       title: "操作失败",
@@ -618,8 +673,8 @@ async function addLabel(label) {
 async function removeLabel(label) {
   isUpdatingLabels.value = true;
   try {
-    const newLabels = (issue.value.labels || []).filter(l => l.id !== label.id);
-    const labelIds = newLabels.map(l => l.id);
+    const newLabels = (issue.value.labels || []).filter((l) => l.id !== label.id);
+    const labelIds = newLabels.map((l) => l.id);
 
     await useBaseFetch(`issues/${route.params.issue}`, {
       apiVersion: 3,
@@ -636,7 +691,7 @@ async function removeLabel(label) {
       type: "success",
     });
   } catch (err) {
-    console.error('移除标签失败:', err);
+    console.error("移除标签失败:", err);
     data.$notify({
       group: "main",
       title: "操作失败",
@@ -649,15 +704,15 @@ async function removeLabel(label) {
 }
 
 // 编辑Issue (占位符)
-function editIssue() {
-  // TODO: 实现Issue编辑功能
-  data.$notify({
-    group: "main",
-    title: "功能开发中",
-    text: "Issue编辑功能正在开发中",
-    type: "info",
-  });
-}
+// function editIssue() {
+//   // TODO: 实现Issue编辑功能
+//   data.$notify({
+//     group: "main",
+//     title: "功能开发中",
+//     text: "Issue编辑功能正在开发中",
+//     type: "info",
+//   });
+// }
 
 // 编辑回复 (占位符)
 function editComment(comment) {
@@ -689,7 +744,7 @@ async function copyIssueLink() {
       type: "success",
     });
   } catch (err) {
-    console.error('复制链接失败:', err);
+    console.error("复制链接失败:", err);
     data.$notify({
       group: "main",
       title: "复制失败",
@@ -718,7 +773,7 @@ async function confirmDeleteComment() {
 
     await loadComments();
   } catch (err) {
-    console.error('删除回复失败:', err);
+    console.error("删除回复失败:", err);
     data.$notify({
       group: "main",
       title: "删除失败",
@@ -927,7 +982,7 @@ onMounted(() => {
 }
 
 .assignee:not(:last-child)::after {
-  content: ', ';
+  content: ", ";
 }
 
 .assignee a {
@@ -1100,8 +1155,6 @@ onMounted(() => {
   font-style: italic;
   font-size: 14px;
 }
-
-
 
 .comment-footer {
   padding: 12px 20px;
@@ -1339,7 +1392,9 @@ onMounted(() => {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.1s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.1s ease;
 }
 
 .available-label:hover:not(.disabled) {
@@ -1365,8 +1420,6 @@ onMounted(() => {
   padding: 20px;
   border-top: 1px solid var(--color-border);
 }
-
-
 
 @media (max-width: 768px) {
   .issue-detail-wrapper {
