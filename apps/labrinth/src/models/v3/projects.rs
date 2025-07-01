@@ -114,6 +114,7 @@ pub struct Project {
     pub wiki_open: bool,
 
     pub default_type: String,
+    pub issues_type: i32,
     pub default_game_version: Vec<String>,
     pub default_game_loaders: Vec<String>,
 
@@ -264,6 +265,7 @@ impl From<QueryProject> for Project {
             thread_id: data.thread_id.into(),
             monetization_status: m.monetization_status,
             default_type: m.default_type,
+            issues_type: m.issues_type,
             default_game_version: m.default_game_version,
             default_game_loaders: m.default_game_loaders,
             fields,

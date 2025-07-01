@@ -928,6 +928,7 @@ async fn project_create_inner(
             fields: HashMap::new(), // Fields instantiate to empty
             wiki_open: false,
             default_type: "project".to_string(),
+            issues_type: 0,
             default_game_loaders: vec![],
             default_game_version: vec![],
             forum: None,

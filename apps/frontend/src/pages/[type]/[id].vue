@@ -2320,7 +2320,7 @@ const navLinks = computed(() => {
       subpages: [`${projectUrl}/wiki/`],
     },
     {
-      label: "问题",
+      label: "反馈",
       href: `${projectUrl}/issues`,
       subpages: [`${projectUrl}/issues/`],
     },

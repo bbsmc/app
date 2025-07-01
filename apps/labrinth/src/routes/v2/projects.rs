@@ -419,6 +419,8 @@ pub struct EditProject {
         custom(function = "crate::util::validate::validate_name")
     )]
     pub default_type: Option<String>,
+    #[validate(range(min = 0, max = 3))]
+    pub issues_type: Option<i32>,
 }
 
 #[patch("{id}")]
@@ -528,6 +530,7 @@ pub async fn project_edit(
         moderation_message_body: v2_new_project.moderation_message_body,
         monetization_status: v2_new_project.monetization_status,
         wiki_open: v2_new_project.wiki_open,
+        issues_type: v2_new_project.issues_type,
         default_type: v2_new_project.default_type,
         default_game_version: v2_new_project.default_game_version,
         default_game_loaders: v2_new_project.default_game_loaders,

@@ -294,6 +294,9 @@ pub struct EditProject {
         custom(function = "crate::util::validate::validate_name")
     )]
     pub default_type: Option<String>,
+
+    #[validate(range(min = 0, max = 3))]
+    pub issues_type: Option<i32>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1054,6 +1057,25 @@ pub async fn project_edit(
                     WHERE (id = $2)
                     ",
                     monetization_status.as_str(),
+                    id as db_ids::ProjectId,
+                )
+                .execute(&mut *transaction)
+                .await?;
+            }
+
+            if let Some(issues_type) = &new_project.issues_type {
+                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
+                    return Err(ApiError::CustomAuthentication(
+                        "您没有权限编辑此项目的许可证 URL!".to_string(),
+                    ));
+                }
+                sqlx::query!(
+                    "
+                    UPDATE mods
+                    SET issues_type = $1
+                    WHERE (id = $2)
+                    ",
+                    *issues_type,
                     id as db_ids::ProjectId,
                 )
                 .execute(&mut *transaction)
@@ -1843,7 +1865,9 @@ pub async fn add_gallery_item(
             ApiError::InvalidInput("指定的项目不存在!".to_string())
         })?;
 
-    if project_item.gallery_items.len() > 64 && user.username.to_lowercase() != "bbsmc"{
+    if project_item.gallery_items.len() > 64
+        && user.username.to_lowercase() != "bbsmc"
+    {
         return Err(ApiError::CustomAuthentication(
             "您已达到上传渲染图的最大数量.".to_string(),
         ));

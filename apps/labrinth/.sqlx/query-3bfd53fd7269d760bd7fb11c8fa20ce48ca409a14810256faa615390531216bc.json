@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                                    SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,\n                                    m.icon_url icon_url, m.raw_icon_url raw_icon_url, m.description description, m.published published,\n                                    m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,\n                                    m.license_url license_url,\n                                    m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,\n                                    m.webhook_sent, m.color, m.wiki_open,m.default_type,\n                                    t.id thread_id, m.monetization_status monetization_status,\n                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,\n                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories\n                                    FROM mods m\n                                    INNER JOIN threads t ON t.mod_id = m.id\n                                    LEFT JOIN mods_categories mc ON mc.joining_mod_id = m.id\n                                    LEFT JOIN categories c ON mc.joining_category_id = c.id\n                                    WHERE m.id = ANY($1)\n                                    GROUP BY t.id, m.id;\n                                    ",
+  "query": "\n                    SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,\n                    m.icon_url icon_url, m.raw_icon_url raw_icon_url, m.description description, m.published published,\n                    m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,\n                    m.license_url license_url, m.issues_type as issues_type,\n                    m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,\n                    m.webhook_sent, m.color, m.wiki_open,m.default_type,m.default_game_loaders,m.default_game_version, m.forum,\n                    t.id thread_id, m.monetization_status monetization_status,\n                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,\n                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories\n                    FROM mods m\n                    INNER JOIN threads t ON t.mod_id = m.id\n                    LEFT JOIN mods_categories mc ON mc.joining_mod_id = m.id\n                    LEFT JOIN categories c ON mc.joining_category_id = c.id\n                    WHERE m.id = ANY($1) OR m.slug = ANY($2)\n                    GROUP BY t.id, m.id;\n                    ",
   "describe": {
     "columns": [
       {
@@ -80,78 +80,99 @@
       },
       {
         "ordinal": 15,
+        "name": "issues_type",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
         "name": "team_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "organization_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "license",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "slug",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "moderation_message",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "moderation_message_body",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "webhook_sent",
         "type_info": "Bool"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "color",
         "type_info": "Int4"
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "wiki_open",
         "type_info": "Bool"
       },
       {
-        "ordinal": 24,
+        "ordinal": 25,
         "name": "default_type",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 25,
-        "name": "thread_id",
-        "type_info": "Int8"
-      },
-      {
         "ordinal": 26,
-        "name": "monetization_status",
+        "name": "default_game_loaders",
         "type_info": "Varchar"
       },
       {
         "ordinal": 27,
+        "name": "default_game_version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 28,
+        "name": "forum",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 29,
+        "name": "thread_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 30,
+        "name": "monetization_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 31,
         "name": "categories",
         "type_info": "VarcharArray"
       },
       {
-        "ordinal": 28,
+        "ordinal": 32,
         "name": "additional_categories",
         "type_info": "VarcharArray"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8Array"
+        "Int8Array",
+        "TextArray"
       ]
     },
     "nullable": [
@@ -171,20 +192,24 @@
       true,
       true,
       false,
-      true,
-      false,
-      true,
-      true,
-      true,
       false,
       true,
       false,
+      true,
+      true,
+      true,
       false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
       false,
       false,
       null,
       null
     ]
   },
-  "hash": "56396ff07c87d2ac929ecbb850788ee757a18082674886118a4849fa1050e95d"
+  "hash": "3bfd53fd7269d760bd7fb11c8fa20ce48ca409a14810256faa615390531216bc"
 }

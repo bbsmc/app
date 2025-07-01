@@ -278,7 +278,7 @@ pub fn app_setup(
                                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                                     m.license_url license_url,
                                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                                    m.webhook_sent, m.color, m.wiki_open,m.default_type,
+                                    m.webhook_sent, m.color, m.wiki_open,m.default_type,m.issues_type issues_type,
                                     t.id thread_id, m.monetization_status monetization_status,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -327,6 +327,7 @@ pub fn app_setup(
                                             ),
                                             loaders: vec![],
                                             default_type: m.default_type.clone(),
+                                            issues_type: m.issues_type,
                                             default_game_version: vec![],
                                             default_game_loaders: vec![],
                                             forum: None
