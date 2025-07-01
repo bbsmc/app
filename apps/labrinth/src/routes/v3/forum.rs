@@ -27,6 +27,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("forum")
             .route("", web::get().to(forums))
             .route("", web::post().to(forum_create))
+            .service(
+                web::scope("posts")
+                    .route("{id}", web::delete().to(post_delete)),
+            )
             .route("{id}", web::get().to(forum_get))
             .route("{id}", web::delete().to(forum_delete))
             .route("{id}", web::patch().to(forum_edit))
@@ -66,6 +70,7 @@ pub struct PostRequest {
 pub struct ForumsQueryParams {
     pub page: Option<i32>,
     pub page_size: Option<i32>,
+    pub sort: Option<String>,
 }
 
 pub async fn forum_get(
@@ -76,7 +81,7 @@ pub async fn forum_get(
 ) -> Result<HttpResponse, ApiError> {
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
-        DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
+        DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         &**pool,
@@ -170,14 +175,15 @@ pub async fn posts_get(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-    let discussion_id: String = info.into_inner().0;
-    let params = query.into_inner().clone();
+    let discussion_id_str: String = info.into_inner().0;
+    let params = query.into_inner();
     let page_size = params.page_size.unwrap_or(20) as i64;
     let page = params.page.unwrap_or(1) as i64;
+    let sort = params.sort.unwrap_or("floor_asc".to_string());
     let mut exec = pool.acquire().await?;
     let exec_ref = &mut *exec;
     let discussion_id =
-        DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
+        DiscussionId(parse_base62(&discussion_id_str).unwrap() as i64);
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         exec_ref,
@@ -189,8 +195,13 @@ pub async fn posts_get(
     }
     let mut forum_floor_numbers: Vec<PostIndex> = discussion.unwrap().posts;
 
-    // 对forum_floor_numbers进行排序
-    forum_floor_numbers.sort_by(|a, b| a.floor_number.cmp(&b.floor_number));
+    // 根据排序参数进行排序
+    match sort.as_str() {
+        "floor_desc" => forum_floor_numbers
+            .sort_by(|a, b| b.floor_number.cmp(&a.floor_number)),
+        _ => forum_floor_numbers
+            .sort_by(|a, b| a.floor_number.cmp(&b.floor_number)),
+    }
 
     // 在使用前克隆一份
     let forum_floor_numbers_clone: Vec<PostIndex> = forum_floor_numbers.clone();
@@ -221,8 +232,13 @@ pub async fn posts_get(
         .map(|x| x.into())
         .collect::<Vec<PostResponse>>();
 
-    // 对 posts 进行排序
-    posts.sort_by(|a, b| a.floor_number.cmp(&b.floor_number));
+    // 对 posts 进行最终排序
+    match sort.as_str() {
+        "floor_desc" => {
+            posts.sort_by(|a, b| b.floor_number.cmp(&a.floor_number))
+        }
+        _ => posts.sort_by(|a, b| a.floor_number.cmp(&b.floor_number)),
+    }
 
     Ok(HttpResponse::Ok().json(json!({
         "posts": posts,
@@ -262,7 +278,7 @@ pub async fn forum_edit(
 
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
-        DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
+        DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         &**pool,
@@ -285,8 +301,7 @@ pub async fn forum_edit(
         ));
     }
 
-    if !["article", "notice"].contains(&discussion.inner.category.as_str())
-    {
+    if !["article", "notice"].contains(&discussion.inner.category.as_str()) {
         return Err(ApiError::InvalidInput(
             "此帖子所处板块不允许修改主题".to_string(),
         ));
@@ -376,7 +391,7 @@ pub async fn forum_delete(
 
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
-        DiscussionId(parse_base62(&discussion_id.to_string()).unwrap() as i64);
+        DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         &**pool,
@@ -694,4 +709,78 @@ pub async fn posts_post(
     Ok(HttpResponse::Ok().json(json!({
         "post": posts.first().unwrap()
     })))
+}
+
+pub async fn post_delete(
+    req: HttpRequest,
+    info: web::Path<(String,)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+
+    if user_option.is_none() {
+        return Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ));
+    }
+    let user = user_option.unwrap();
+
+    let post_id: String = info.into_inner().0;
+    let post_id = match parse_base62(&post_id) {
+        Ok(id) => PostId(id as i64),
+        Err(_) => {
+            return Err(ApiError::InvalidInput("无效的帖子ID".to_string()));
+        }
+    };
+
+    // 查询回复信息
+    let post_info = sqlx::query!(
+        "SELECT id, discussion_id, user_id FROM posts WHERE id = $1 AND deleted = false",
+        post_id.0
+    )
+    .fetch_optional(&**pool)
+    .await?;
+
+    if post_info.is_none() {
+        return Err(ApiError::NotFound);
+    }
+    let post_info = post_info.unwrap();
+
+    // 检查权限：只有回复发布者和管理员能删除
+    if post_info.user_id != UserId::from(user.id).0 && !user.role.is_admin() {
+        return Err(ApiError::InvalidInput("您没有权限删除此回复".to_string()));
+    }
+
+    let mut transaction = pool.begin().await?;
+
+    // 软删除回复
+    sqlx::query!(
+        "UPDATE posts SET deleted = true, deleted_at = NOW() WHERE id = $1",
+        post_id.0
+    )
+    .execute(&mut *transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    // 清理缓存
+    let discussion_id = DiscussionId(post_info.discussion_id);
+    Discussion::clear_cache(&[discussion_id], &redis).await?;
+
+    // 清理帖子缓存
+    crate::database::models::forum::PostQuery::clear_cache(&[post_id], &redis)
+        .await?;
+
+    Ok(HttpResponse::NoContent().finish())
 }

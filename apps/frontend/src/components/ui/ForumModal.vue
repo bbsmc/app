@@ -1,36 +1,52 @@
 <template>
   <div class="forum-container" :style="themeVars">
+    <!-- 顶部操作栏 -->
+    <div class="forum-header">
+      <div class="forum-controls">
+        <div class="sort-controls">
+          <label>排序方式：</label>
+          <select v-model="sortType" @change="changeSortAndReload" class="sort-select">
+            <option value="floor_asc">楼层 ↑</option>
+            <option value="floor_desc">楼层 ↓</option>
+          </select>
+        </div>
+        <div class="reply-controls">
+          <button-styled color="green" @click="showNewReply">发表回复</button-styled>
+        </div>
+      </div>
+    </div>
+
     <div v-if="forum.length == 0" style="text-align: center; margin-top: 20px">
       还没有任何回复，快来回复吧！
     </div>
 
     <!-- 帖子列表 -->
     <div class="posts-wrapper">
-      <div v-if="isMobile" style="margin: 10px; text-align: center">
-        <button-styled color="green" @click="showNewReply"> 发表新帖 </button-styled>
-      </div>
       <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
         :data-floor-number="post.floor_number" class="card markdown-body">
         <div class="post-header">
           <!-- 用户信息区 -->
           <div class="user-info">
             <a :href="`/user/${post.user_name}`" target="_blank" class="user-avatar-link">
-              <img :src="post.user_avatar" :alt="post.user_name" class="avatar" />
+              <img :src="post.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : post.user_avatar"
+                :alt="post.user_name" class="avatar" />
             </a>
             <a :href="`/user/${post.user_name}`" target="_blank" class="username">
               {{ post.user_name }}
             </a>
             <span class="post-time">{{ formatRelativeTime(post.created_at) }}</span>
           </div>
-          <div class="post-id" :title="'点击复制链接'" @click="copyPostUrl(post.floor_number)">
-            #{{ post.floor_number }}
+          <div class="post-actions">
+            <div class="post-id" :title="'点击复制链接'" @click="copyPostUrl(post.floor_number)">
+              #{{ post.floor_number }}
+            </div>
           </div>
         </div>
 
         <!-- 如果是回复帖子，显示回复引用 -->
-        <div v-if="post.reply_content" class="reply-reference" @click="scrollToPost(post.replied_to)">
+        <div v-if="post.reply_content && !isRepliedToDeleted(post)" class="reply-reference"
+          @click="scrollToPost(post.replied_to)">
           <div class="reply-info">
-
             <img
               :src="post.reply_content.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : post.reply_content.user_avatar"
               :alt="post.reply_content.user_name" class="reply-avatar" />
@@ -42,61 +58,98 @@
           <div class="reply-quote" v-html="renderHighlightedString(post.reply_content.content)"></div>
         </div>
 
+        <!-- 如果回复的帖子被删除了，显示删除提示 -->
+        <div v-if="post.reply_content && isRepliedToDeleted(post)" class="reply-reference deleted-reply">
+          <div class="reply-info">
+            <div class="reply-user-info">
+              <span class="reply-text">回复</span>
+              <span class="reply-deleted">已被删除的回复</span>
+            </div>
+          </div>
+        </div>
+
         <!-- 帖子内容 -->
-        <div class="markdown-body" v-html="renderHighlightedString(post.content)" />
+        <div class="post-content">
+          <div v-if="post.deleted" class="deleted-post">
+            <span class="deleted-text">该回复已被删除</span>
+          </div>
+          <div v-else class="markdown-body" v-html="renderHighlightedString(post.content)" />
+        </div>
 
         <!-- 添加底部操作区 -->
-        <div class="post-footer">
+        <div v-if="!post.deleted" class="post-footer">
+          <!-- 删除按钮：只有发布者和管理员能看到 -->
+          <button v-if="canDeletePost(post)" class="delete-button" @click="deletePost(post)" title="删除回复">
+            删除
+          </button>
           <button class="reply-button" @click="showReplyForm(post)">回复</button>
         </div>
 
         <!-- 如果有回复，显示回复链接 -->
         <div v-if="post.replies.length > 0" class="replies-info">
-          <span v-for="reply in post.replies" :key="reply" class="reply-link" @click="scrollToPost(reply.floor_number)"
-            @mouseenter="showReplyPreview(reply)" @mouseleave="hideReplyPreview">
+          <span v-for="reply in post.replies" :key="reply.floor_number" class="reply-link"
+            @click="scrollToPost(reply.floor_number)" @mouseenter="showReplyPreview(reply)"
+            @mouseleave="hideReplyPreview">
             #{{ reply.floor_number }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- 时间线 -->
-    <div v-if="!isMobile" class="timeline-indicator">
-      <button class="timeline-reply-button" @click="showNewReply">
-        <span>发表回复</span>
-      </button>
-      <div class="timeline-header" @click="scrollToFirst">
-        <span>{{ formatMonthCN(firstPostDate) }}</span>
-      </div>
-      <div class="timeline-content">
-        <div class="timeline-line">
-          <div class="timeline-sections">
-            <div v-for="(section, index) in timelineSections" :key="index" class="timeline-section"
-              :title="`跳转到第 ${section.start + 1} - ${section.end + 1} 条`" @click="jumpToSection(index)"></div>
-          </div>
+    <!-- 翻页控制 -->
+    <div v-if="totalPages > 1" class="pagination-controls">
+      <div class="pagination-nav">
+        <!-- Previous按钮 -->
+        <button class="nav-button prev-next" :disabled="currentPage <= 1" @click="loadPage(currentPage - 1)">
+          ← 上一页
+        </button>
+
+        <!-- 页码按钮 -->
+        <div class="page-numbers">
+          <!-- 第一页 -->
+          <button v-if="showFirstPage" class="page-button" :class="{ active: currentPage === 1 }" @click="loadPage(1)">
+            1
+          </button>
+
+          <!-- 前省略号 -->
+          <span v-if="showStartEllipsis" class="ellipsis">...</span>
+
+          <!-- 中间页码 -->
+          <button v-for="page in visiblePages" :key="page" class="page-button" :class="{ active: currentPage === page }"
+            @click="loadPage(page)">
+            {{ page }}
+          </button>
+
+          <!-- 后省略号 -->
+          <span v-if="showEndEllipsis" class="ellipsis">...</span>
+
+          <!-- 最后一页 -->
+          <button v-if="showLastPage" class="page-button" :class="{ active: currentPage === totalPages }"
+            @click="loadPage(totalPages)">
+            {{ totalPages }}
+          </button>
         </div>
-        <div class="timeline-position" :style="{ top: timelinePosition + '%' }">
-          <div class="position-info">
-            <div class="post-count">{{ currentPostNumber }}</div>
-            <div class="post-date">{{ formatMonthCN(currentPost?.created_at) }}</div>
-          </div>
-        </div>
+
+        <!-- Next按钮 -->
+        <button class="nav-button prev-next" :disabled="currentPage >= totalPages" @click="loadPage(currentPage + 1)">
+          下一页 →
+        </button>
       </div>
-      <div class="timeline-footer" @click="scrollToLast">
-        <span>{{ formatMonthCN(lastPostDate) }}</span>
+
+      <!-- 简化的信息显示 -->
+      <div class="pagination-info">
+        共 {{ totalPosts }} 条回复
       </div>
-    </div>
-    <div v-else>
-      <!-- 手机上隐藏时间线部分 -->
     </div>
 
     <!-- 添加悬浮提示框 -->
     <div v-if="previewPost" class="reply-preview" :style="previewPosition">
       <div class="preview-header">
-        <img :src="previewPost.user_avatar" :alt="previewPost.user_name" class="preview-avatar" />
+        <img
+          :src="previewPost.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : previewPost.user_avatar"
+          :alt="previewPost.user_name" class="preview-avatar" />
         <div class="preview-user-info">
           <span class="preview-username">{{ previewPost.user_name }}</span>
-          <!-- <span class="preview-time">{{ formatRelativeTime(previewPost.created_at) }}</span> -->
         </div>
       </div>
       <div class="preview-content" v-html="renderHighlightedString(previewPost.content)"></div>
@@ -121,358 +174,30 @@
         </div>
       </div>
     </div>
+
+    <!-- 删除确认模态框 -->
+    <ConfirmModal ref="deletePostModal" title="删除回复" description="删除后无法恢复，确定要删除这条回复吗？" proceed-label="确认删除"
+      @proceed="confirmDeletePost" />
   </div>
 </template>
 
 <script setup>
-import { debounce } from "lodash-es";
-import { onMounted, ref, onUnmounted, computed, nextTick } from "vue";
+import { onMounted, ref, computed, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import dayjs from "dayjs";
-import { MarkdownEditor } from "@modrinth/ui";
+import { MarkdownEditor, ConfirmModal } from "@modrinth/ui";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { isDarkTheme } from "~/plugins/theme/themes";
 
 const data = useNuxtApp();
 const route = useRoute();
 const router = useRouter();
-const postRefs = ref([]);
-const currentPostId = ref(null);
 const auth = await useAuth();
 
 // 获取当前主题并设置CSS变量
 const { $theme } = useNuxtApp();
 
-// 设置主题相关CSS变量
-const themeVars = computed(() => {
-  if (isDarkTheme($theme?.active)) {
-    return {
-      '--color-text-secondary': '#8f9ba8',
-      '--color-text-primary': '#edeff1',
-      '--color-bg-card': 'var(--color-raised-bg)',
-      '--color-bg-secondary': '#2d3139',
-      '--color-bg-hover': '#363b44',
-      '--color-border': '#363b44',
-      '--color-timeline': '#2d3139',
-      '--color-highlight': '#007bff',
-      '--color-highlight-reply': '#ffd700',
-      '--color-reply-bg': 'rgba(255, 255, 255, 0.12)',
-      '--color-reply-bg-hover': 'rgba(255, 255, 255, 0.2)',
-      '--color-submit-button': '#007bff',
-      '--color-submit-button-hover': '#0056b3',
-      '--color-submit-disabled': '#363b44',
-      '--color-overlay': 'rgba(0, 0, 0, 0.5)',
-      '--color-modal-bg': '#26292f',
-      '--color-scrollbar-track': '#363b44',
-      '--color-scrollbar-thumb': '#8f9ba8',
-    };
-  } else {
-    return {
-      '--color-text-secondary': '#666',
-      '--color-text-primary': 'var(--color-text-dark)',
-      '--color-bg-card': 'var(--color-raised-bg)',
-      '--color-bg-secondary': '#f0f2f5',
-      '--color-bg-hover': '#e6e8eb',
-      '--color-border': '#dfe1e5',
-      '--color-timeline': '#e0e0e0',
-      '--color-highlight': '#1a73e8',
-      '--color-highlight-reply': '#ffc107',
-      '--color-reply-bg': 'rgba(0, 0, 0, 0.05)',
-      '--color-reply-bg-hover': 'rgba(0, 0, 0, 0.08)',
-      '--color-submit-button': '#1a73e8',
-      '--color-submit-button-hover': '#1557b0',
-      '--color-submit-disabled': '#e0e0e0',
-      '--color-overlay': 'rgba(0, 0, 0, 0.3)',
-      '--color-modal-bg': '#ffffff',
-      '--color-scrollbar-track': '#f0f2f5',
-      '--color-scrollbar-thumb': '#c1c1c1',
-    };
-  }
-});
-
-// 添加一个标志来控制观者是否应该更新 URL
-const shouldUpdateUrl = ref(true);
-
-// 添加一个变量来控制高亮状态
-const highlightedPostId = ref(null);
-
-// 添加一个变量来存储始的高亮定时器
-let originalHighlightTimer = null;
-
-// 添加一个函数来移除高亮效果
-const removeHighlight = (postId) => {
-  const element = document.getElementById(`post-${postId}`);
-  if (element) {
-    element.classList.remove("post-highlight");
-    element.classList.remove("post-highlight-border");
-  }
-  highlightedPostId.value = null;
-  window.removeEventListener("scroll", handleScroll);
-
-  // 清定时器
-  if (originalHighlightTimer) {
-    clearTimeout(originalHighlightTimer);
-    originalHighlightTimer = null;
-  }
-};
-
-// 添加 isMobile 变量
-const isMobile = ref(false); // 添加 isMobile 属性
-
-const checkIfMobile = () => {
-  isMobile.value = window.innerWidth <= 768; // 根据屏幕宽度判断是否为手机
-};
-
-// 修改滚动事件监听器
-const handleScroll = () => {
-  // 不再在滚动时重新设置定时器
-  // 让原始时器继续运行直到结束
-};
-
-// 修改 createUrlObserver 函数
-const createUrlObserver = () => {
-  const options = {
-    root: null,
-    rootMargin: "-20% 0px -20% 0px",
-    threshold: [0.5],
-  };
-
-  const observer = new IntersectionObserver((entries) => {
-    if (!shouldUpdateUrl.value) return;
-
-    const visibleEntries = entries
-      .filter((entry) => entry.isIntersecting)
-      .sort((a, b) => {
-        const rectA = a.boundingClientRect;
-        const rectB = b.boundingClientRect;
-        const centerA = Math.abs(rectA.top + rectA.height / 2 - window.innerHeight / 2);
-        const centerB = Math.abs(rectB.top + rectB.height / 2 - window.innerHeight / 2);
-        return centerA - centerB;
-      });
-
-    if (visibleEntries.length > 0) {
-      const floorNumber = visibleEntries[0].target.getAttribute("data-floor-number");
-      if (floorNumber && route.query.id !== floorNumber) {
-        router
-          .replace({
-            query: { ...route.query, id: floorNumber },
-          })
-          .catch((err) => console.error("Failed to update URL:", err));
-
-        // 只更新 currentPostId，不触发其他操作
-        const post = displayedPosts.value.find(
-          (post) => post.floor_number.toString() === floorNumber,
-        );
-        if (post) {
-          currentPostId.value = post.floor_number;
-        }
-      }
-    }
-  }, options);
-
-  return observer;
-};
-
-let urlObserver = null;
-
-// 添加响应式状态
-const isLoading = ref(false);
-const lastScrollPosition = ref(0);
-const displayedPosts = ref([]);
-const postsPerPage = 20;
-
-// 添加一个变量来跟踪是否已加载所有数据
-const allLoaded = ref({
-  up: false,
-  down: false,
-});
-
-// 修改 fetchPosts 函数
-const fetchPosts = async (page) => {
-  try {
-    const pageNumber = parseInt(page) || 1;
-    const params = new URLSearchParams({
-      page_size: postsPerPage.toString(),
-      page: pageNumber.toString(),
-      // sort: 'floor_number' // 移除排序参数
-    });
-
-    const data = await useBaseFetch(`forum/${props.discussionId}/posts?${params}`, {
-      apiVersion: 3,
-      method: "GET",
-    });
-
-    // 确保返回的帖子按楼层号排序
-    if (data?.posts) {
-      data.posts.sort((a, b) => a.floor_number - b.floor_number);
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Failed to fetch posts:", error);
-    return null;
-  }
-};
-
-// 修改初始化显示的帖子函数
-const initDisplayPosts = async (targetId = null) => {
-  allLoaded.value = { up: false, down: false };
-
-  if (targetId) {
-    // 如果有目标楼层号，计算对应的页码
-    const targetPage = Math.ceil(parseInt(targetId) / postsPerPage);
-    const data = await fetchPosts(targetPage);
-    if (data) {
-      displayedPosts.value = data.posts;
-      totalPosts.value = data.pagination.total;
-
-      // 更新当前帖子ID
-      currentPostId.value = parseInt(targetId);
-
-      // 滚动到目标楼层
-      nextTick(() => {
-        const element = document.querySelector(`[data-floor-number="${targetId}"]`);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      });
-    }
-  } else {
-    // 没有目标楼层，加载第一页
-    const data = await fetchPosts(1);
-    if (data) {
-      displayedPosts.value = data.posts;
-      totalPosts.value = data.pagination.total;
-      // 设置第一个帖子为当前帖子
-      if (data.posts.length > 0) {
-        currentPostId.value = data.posts[0].floor_number;
-      }
-    }
-  }
-};
-
-// 添加观察新加载的帖子的函数
-const observeNewPosts = () => {
-  if (urlObserver) {
-    const posts = document.querySelectorAll("[data-floor-number]");
-    posts.forEach((post) => {
-      urlObserver.observe(post);
-    });
-  }
-};
-
-// 修改加载更多帖子的函数
-const loadMorePosts = async (direction = "down") => {
-  if (isLoading.value) return;
-  isLoading.value = true;
-
-  try {
-    const currentFloorNumber =
-      direction === "down"
-        ? displayedPosts.value[displayedPosts.value.length - 1].floor_number
-        : displayedPosts.value[0].floor_number;
-
-    const targetPage =
-      direction === "down"
-        ? Math.ceil((currentFloorNumber + 1) / postsPerPage)
-        : Math.max(1, Math.floor((currentFloorNumber - 1) / postsPerPage));
-
-    if (targetPage < 1 || targetPage > Math.ceil(totalPosts.value / postsPerPage)) {
-      isLoading.value = false;
-      return;
-    }
-
-    const data = await fetchPosts(targetPage);
-    if (data?.posts.length > 0) {
-      const oldHeight = document.documentElement.scrollHeight;
-      const oldScrollTop = window.scrollY;
-
-      const allPosts = [...displayedPosts.value];
-      const newPosts = data.posts.filter(
-        (post) => !allPosts.some((p) => p.floor_number === post.floor_number),
-      );
-
-      allPosts.push(...newPosts);
-      displayedPosts.value = allPosts.sort((a, b) => a.floor_number - b.floor_number);
-
-      // 向上加载时保持滚动位置
-      nextTick(() => {
-        if (direction === "up") {
-          const newHeight = document.documentElement.scrollHeight;
-          const heightDiff = newHeight - oldHeight;
-          window.scrollTo(0, oldScrollTop + heightDiff);
-        }
-        // 重新观察新加载的帖子
-        observeNewPosts();
-      });
-    }
-  } finally {
-    setTimeout(() => {
-      isLoading.value = false;
-    }, 200);
-  }
-};
-
-onMounted(() => {
-  const postId = route.query.id;
-
-  // 初始化显示的帖子
-  initDisplayPosts(postId).then(() => {
-    if (postId) {
-      shouldUpdateUrl.value = false; // 暂时禁用 URL 更新
-      highlightPost(postId);
-
-      // 如果是回复，也高亮被回复的帖子
-      const targetPost = displayedPosts.value.find((post) => post.floor_number === postId);
-      if (targetPost?.replied_to) {
-        const replyToElement = document.getElementById(`post-${targetPost.replied_to}`);
-        if (replyToElement) {
-          replyToElement.classList.add("post-highlight-reply");
-          setTimeout(() => {
-            replyToElement.classList.remove("post-highlight-reply");
-          }, 5000);
-        }
-      }
-
-      // 1秒后启用 URL 更新
-      setTimeout(() => {
-        shouldUpdateUrl.value = true;
-      }, 1000);
-    } else {
-      shouldUpdateUrl.value = true; // 如果没有指定帖子 ID，直接启用 URL 更新
-    }
-
-    // 观察所有帖子
-    nextTick(() => {
-      observeNewPosts();
-    });
-
-    // 检查是否为手机
-    checkIfMobile(); // 添加检查手机的函数
-  });
-
-  // 添加滚动监听
-  window.addEventListener("scroll", debouncedScroll);
-
-  // 初始化 URL 观察
-  urlObserver = createUrlObserver();
-});
-
-onUnmounted(() => {
-  // 移除滚动监听
-  window.removeEventListener("scroll", debouncedScroll);
-  window.removeEventListener("scroll", handleScroll);
-  if (urlObserver) {
-    urlObserver.disconnect();
-  }
-  if (originalHighlightTimer) {
-    clearTimeout(originalHighlightTimer);
-  }
-});
-
-// 修改模中的 forum 绑定
-const forum = computed(() => displayedPosts.value);
-
+// Props
 const props = defineProps({
   discussionId: {
     type: String,
@@ -480,193 +205,21 @@ const props = defineProps({
   },
 });
 
-// 添加复制链接功能
-const copyPostUrl = (postId) => {
-  const currentUrl = new URL(window.location.href);
-  currentUrl.searchParams.set("id", postId);
-  const url = currentUrl.toString();
+// 响应式数据
+const displayedPosts = ref([]);
+const totalPosts = ref(0);
+const currentPage = ref(1);
+const pageSize = 20;
+const sortType = ref("floor_asc");
 
-  navigator.clipboard
-    .writeText(url)
-    .then(() => {
-      // 可以添加个提示，表示复制成功
-      // alert('链接已复制到剪贴板')
-      data.$notify({
-        group: "main",
-        title: "成功",
-        text: "</br>链接已复制到剪贴板",
-        type: "success",
-      });
-    })
-    .catch((err) => {
-      console.error("复制失败:", err);
-    });
-};
+const postToDelete = ref(null);
 
-// 添加计算属性
-const currentPost = computed(() => {
-  if (!currentPostId.value) return null;
-  return forum.value.find((post) => post.floor_number === currentPostId.value);
-});
+// Modal refs
+const deletePostModal = ref();
 
-const currentPostNumber = computed(() => {
-  const currentNumber = currentPostId.value;
-  const currentPage = Math.ceil(currentNumber / postsPerPage);
-  const totalPages = Math.ceil(totalPosts.value / postsPerPage);
-  return `${currentPage} / ${totalPages}`;
-});
-
-const timelinePosition = computed(() => {
-  const currentNumber = currentPostId.value;
-  const currentPage = Math.ceil(currentNumber / postsPerPage);
-  const totalPages = Math.ceil(totalPosts.value / postsPerPage);
-  return ((currentPage - 1) / (totalPages - 1)) * 100;
-});
-
-// 格式化份
-const formatMonthCN = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
-};
-
-// 添加相对时间格式化函数
-const formatRelativeTime = (dateString) => {
-  if (!dateString) return "";
-  return dayjs(dateString).fromNow();
-};
-
-// 添加计算属性获取第一个和最后一个帖子的日期
-const firstPostDate = computed(() => displayedPosts.value[0]?.created_at);
-const lastPostDate = computed(
-  () => displayedPosts.value[displayedPosts.value.length - 1]?.created_at,
-);
-
-// 修改其他函数使用 loadPage
-const scrollToFirst = async () => {
-  const data = await fetchPosts(1);
-
-  if (data?.posts.length > 0) {
-    displayedPosts.value = data.posts;
-    nextTick(() => {
-      const firstPost = data.posts[0];
-      // 更新当前帖子ID，这会触发时间线位置的更新
-      currentPostId.value = firstPost.floor_number;
-
-      const element = document.getElementById(`post-${firstPost.floor_number}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        router.replace({
-          query: { ...route.query, id: firstPost.floor_number.toString() },
-        });
-      }
-    });
-  }
-};
-
-const scrollToLast = async () => {
-  const lastPage = Math.ceil(totalPosts.value / postsPerPage);
-  const data = await fetchPosts(lastPage);
-
-  if (data?.posts.length > 0) {
-    displayedPosts.value = data.posts;
-    nextTick(() => {
-      const lastPost = data.posts[data.posts.length - 1];
-      // 更新当前帖子ID，这会触发时间线位置的更新
-      currentPostId.value = lastPost.floor_number;
-
-      const element = document.getElementById(`post-${lastPost.floor_number}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        router.replace({
-          query: { ...route.query, id: lastPost.floor_number.toString() },
-        });
-      }
-    });
-  }
-};
-
-const jumpToSection = (sectionIndex) => {
-  const section = timelineSections.value[sectionIndex];
-  const targetFloorNumber = Math.floor((section.start + section.end) / 2);
-  const targetPage = Math.ceil(targetFloorNumber / postsPerPage);
-
-  // 暂时禁用 URL 更新
-  shouldUpdateUrl.value = false;
-
-  fetchPosts(targetPage).then((data) => {
-    if (data?.posts.length > 0) {
-      displayedPosts.value = data.posts;
-      nextTick(() => {
-        const targetPost = data.posts.reduce((prev, curr) => {
-          return Math.abs(curr.floor_number - targetFloorNumber) <
-            Math.abs(prev.floor_number - targetFloorNumber)
-            ? curr
-            : prev;
-        });
-        const element = document.getElementById(`post-${targetPost.floor_number}`);
-        if (element) {
-          // 更新当前帖子ID，这会触发时间线位置的更新
-          currentPostId.value = targetPost.floor_number;
-
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-          router.replace({
-            query: { ...route.query, id: targetPost.floor_number.toString() },
-          });
-
-          // 重新初始化观察器
-          if (urlObserver) {
-            urlObserver.disconnect();
-          }
-          urlObserver = createUrlObserver();
-          observeNewPosts();
-
-          // 延迟重新启用 URL 更新
-          setTimeout(() => {
-            shouldUpdateUrl.value = true;
-          }, 1000);
-        }
-      });
-    }
-  });
-};
-
-const scrollToPost = async (postId) => {
-  hideReplyPreview();
-  const targetPost = displayedPosts.value.find((p) => p.id === postId);
-
-  if (targetPost) {
-    // 如果目标帖子在当前显示的帖子中，直接滚动
-    const element = document.getElementById(`post-${postId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-      router.replace({
-        query: { ...route.query, id: targetPost.floor_number.toString() },
-      });
-      highlightPost(postId);
-    }
-  } else {
-    // 如果不在当前显示的帖子中，计算页码并加载
-    const targetPage = Math.ceil(parseInt(postId) / postsPerPage);
-    const data = await fetchPosts(targetPage);
-    if (data?.posts) {
-      displayedPosts.value = data.posts;
-      nextTick(() => {
-        const element = document.getElementById(`post-${postId}`);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-          const post = data.posts.find((p) => p.id === postId);
-          if (post) {
-            router.replace({
-              query: { ...route.query, id: post.floor_number.toString() },
-            });
-          }
-          highlightPost(postId);
-        }
-      });
-    }
-  }
-};
+// 添加回复相关的状态
+const replyingTo = ref(null);
+const replyContent = ref("");
 
 // 添加预览相关的状态
 const previewPost = ref(null);
@@ -675,17 +228,315 @@ const previewPosition = ref({
   left: "0px",
 });
 
+// 设置主题相关CSS变量
+const themeVars = computed(() => {
+  if (isDarkTheme($theme?.active)) {
+    return {
+      '--color-text-secondary': '#8f9ba8',
+      '--color-text-primary': '#edeff1',
+      '--color-bg-card': 'rgba(45, 49, 57, 0.8)',
+      '--color-bg-secondary': 'rgba(54, 59, 68, 0.6)',
+      '--color-bg-hover': 'rgba(255, 255, 255, 0.08)',
+      '--color-border': '#363b44',
+      '--color-timeline': '#2d3139',
+      '--color-highlight': '#007aff',
+      '--color-highlight-reply': '#ffd700',
+      '--color-reply-bg': 'rgba(255, 255, 255, 0.12)',
+      '--color-reply-bg-hover': 'rgba(255, 255, 255, 0.2)',
+      '--color-submit-button': '#007aff',
+      '--color-submit-button-hover': '#0056cc',
+      '--color-submit-disabled': '#363b44',
+      '--color-overlay': 'rgba(0, 0, 0, 0.5)',
+      '--color-modal-bg': '#26292f',
+      '--color-scrollbar-track': '#363b44',
+      '--color-scrollbar-thumb': '#8f9ba8',
+      '--color-delete-hover': '#ff3b30',
+    };
+  } else {
+    return {
+      '--color-text-secondary': '#8e8e93',
+      '--color-text-primary': 'var(--color-text-dark)',
+      '--color-bg-card': 'rgba(255, 255, 255, 0.8)',
+      '--color-bg-secondary': 'rgba(242, 242, 247, 0.8)',
+      '--color-bg-hover': 'rgba(0, 0, 0, 0.04)',
+      '--color-border': '#d1d1d6',
+      '--color-timeline': '#e0e0e0',
+      '--color-highlight': '#007aff',
+      '--color-highlight-reply': '#ff9500',
+      '--color-reply-bg': 'rgba(0, 0, 0, 0.05)',
+      '--color-reply-bg-hover': 'rgba(0, 0, 0, 0.08)',
+      '--color-submit-button': '#007aff',
+      '--color-submit-button-hover': '#0056cc',
+      '--color-submit-disabled': '#d1d1d6',
+      '--color-overlay': 'rgba(0, 0, 0, 0.3)',
+      '--color-modal-bg': '#ffffff',
+      '--color-scrollbar-track': '#f2f2f7',
+      '--color-scrollbar-thumb': '#c7c7cc',
+      '--color-delete-hover': '#ff3b30',
+    };
+  }
+});
+
+// 计算属性
+const forum = computed(() => displayedPosts.value);
+
+const totalPages = computed(() => {
+  return Math.ceil(totalPosts.value / pageSize);
+});
+
+// 计算可见的页码
+const visiblePages = computed(() => {
+  const current = currentPage.value;
+  const total = totalPages.value;
+  const delta = 2; // 当前页左右显示的页数
+
+  let start = Math.max(1, current - delta);
+  let end = Math.min(total, current + delta);
+
+  // 调整范围以确保显示足够的页码
+  if (end - start < delta * 2) {
+    if (start === 1) {
+      end = Math.min(total, start + delta * 2);
+    } else if (end === total) {
+      start = Math.max(1, end - delta * 2);
+    }
+  }
+
+  const pages = [];
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+});
+
+// 是否显示第一页
+const showFirstPage = computed(() => {
+  return !visiblePages.value.includes(1);
+});
+
+// 是否显示最后一页
+const showLastPage = computed(() => {
+  return !visiblePages.value.includes(totalPages.value);
+});
+
+// 是否显示开始省略号
+const showStartEllipsis = computed(() => {
+  return visiblePages.value[0] > 2;
+});
+
+// 是否显示结束省略号
+const showEndEllipsis = computed(() => {
+  return visiblePages.value[visiblePages.value.length - 1] < totalPages.value - 1;
+});
+
+// 检查是否有删除权限
+const canDeletePost = (post) => {
+  if (!auth.value.user) return false;
+  return auth.value.user.role === 'admin' || post.user_name === auth.value.user.username;
+};
+
+// 检查被回复的帖子是否被删除
+const isRepliedToDeleted = (post) => {
+  // 如果有回复内容但在当前显示的帖子中找不到对应的帖子，说明被删除了
+  if (!post.replied_to || !post.reply_content) return false;
+  const referencedPost = displayedPosts.value.find(p => p.floor_number === post.replied_to);
+  return !referencedPost || referencedPost.deleted;
+};
+
+// 获取帖子数据
+async function fetchPosts(page = 1, sort = "floor_asc") {
+  try {
+    if (!props.discussionId) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      page_size: pageSize.toString(),
+      page: page.toString(),
+      sort: sort,
+    });
+
+    const data = await useBaseFetch(`forum/${props.discussionId}/posts?${params}`, {
+      apiVersion: 3,
+      method: "GET",
+    });
+
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch posts:", error);
+    return null;
+  }
+}
+
+// 加载指定页的数据
+async function loadPage(page) {
+  if (page < 1 || page > totalPages.value && totalPages.value > 0) {
+    return;
+  }
+
+  const data = await fetchPosts(page, sortType.value);
+
+  if (data) {
+    displayedPosts.value = data.posts || [];
+    totalPosts.value = data.pagination ? data.pagination.total : 0;
+    currentPage.value = page;
+
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+// 改变排序并重新加载
+async function changeSortAndReload() {
+  await loadPage(1);
+}
+
+
+
+// 初始化加载
+async function initLoad() {
+  const targetId = route.query.id;
+  let targetPage = 1;
+
+  if (targetId) {
+    // 如果有目标楼层号，计算对应的页码
+    targetPage = Math.ceil(parseInt(targetId) / pageSize);
+  }
+
+  await loadPage(targetPage);
+
+  if (targetId) {
+    // 滚动到目标楼层并高亮
+    nextTick(() => {
+      const element = document.querySelector(`[data-floor-number="${targetId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        highlightPost(targetId);
+      }
+    });
+  }
+}
+
+// 删除帖子
+function deletePost(post) {
+  postToDelete.value = post;
+  deletePostModal.value.show();
+}
+
+// 确认删除帖子
+async function confirmDeletePost() {
+  if (!postToDelete.value) return;
+
+  try {
+    await useBaseFetch(`forum/posts/${postToDelete.value.post_id}`, {
+      apiVersion: 3,
+      method: "DELETE",
+    });
+
+    data.$notify({
+      group: "main",
+      title: "删除成功",
+      text: "回复已删除",
+      type: "success",
+    });
+
+    // 前端直接更新：将该回复标记为已删除
+    const postIndex = displayedPosts.value.findIndex(
+      post => post.post_id === postToDelete.value.post_id
+    );
+
+    if (postIndex !== -1) {
+      // 直接修改当前显示的帖子列表
+      displayedPosts.value[postIndex] = {
+        ...displayedPosts.value[postIndex],
+        deleted: true,
+        content: "", // 清空内容
+      };
+    }
+
+  } catch (err) {
+    console.error("删除回复失败:", err);
+    data.$notify({
+      group: "main",
+      title: "删除失败",
+      text: err.data?.description || "无法删除回复",
+      type: "error",
+    });
+  } finally {
+    postToDelete.value = null;
+  }
+}
+
+// 复制帖子链接
+const copyPostUrl = (floorNumber) => {
+  const currentUrl = new URL(window.location.href);
+  currentUrl.searchParams.set("id", floorNumber);
+  const url = currentUrl.toString();
+
+  navigator.clipboard
+    .writeText(url)
+    .then(() => {
+      data.$notify({
+        group: "main",
+        title: "成功",
+        text: "链接已复制到剪贴板",
+        type: "success",
+      });
+    })
+    .catch((err) => {
+      console.error("复制失败:", err);
+    });
+};
+
+// 滚动到指定帖子
+async function scrollToPost(floorNumber) {
+  hideReplyPreview();
+
+  // 查找帖子是否在当前页
+  const targetPost = displayedPosts.value.find(p => p.floor_number === floorNumber);
+
+  if (targetPost) {
+    // 在当前页，直接滚动
+    const element = document.getElementById(`post-${floorNumber}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      highlightPost(floorNumber);
+    }
+  } else {
+    // 不在当前页，计算页码并跳转
+    const targetPage = Math.ceil(floorNumber / pageSize);
+    await loadPage(targetPage);
+
+    nextTick(() => {
+      const element = document.getElementById(`post-${floorNumber}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        highlightPost(floorNumber);
+      }
+    });
+  }
+}
+
+// 高亮帖子
+function highlightPost(floorNumber) {
+  const element = document.getElementById(`post-${floorNumber}`);
+  if (element) {
+    element.classList.add("post-highlight");
+    setTimeout(() => {
+      element.classList.remove("post-highlight");
+    }, 3000);
+  }
+}
+
 // 显示回复预览
 const showReplyPreview = (reply) => {
   previewPost.value = reply;
-  // 在下一个事件循环中更新位置，确保 DOM 已更新
   nextTick(() => {
     const target = event.target;
     const rect = target.getBoundingClientRect();
     const preview = document.querySelector(".reply-preview");
     if (preview) {
       const previewRect = preview.getBoundingClientRect();
-      // 计算位置，确保预览框不会超出视口
       const left = Math.min(rect.left, window.innerWidth - previewRect.width - 20);
       const top = rect.bottom + window.scrollY + 10;
       previewPosition.value = {
@@ -701,17 +552,13 @@ const hideReplyPreview = () => {
   previewPost.value = null;
 };
 
-// 添加回复相关的状态
-const replyingTo = ref(null);
-const replyContent = ref("");
-
 // 显示回复表单
 const showReplyForm = (post) => {
   if (!auth.value.user) {
     data.$notify({
       group: "main",
       title: "未登录",
-      text: "</br>请先登录或创建账号",
+      text: "请先登录或创建账号",
       type: "error",
     });
     router.push(`/auth/sign-in`);
@@ -722,7 +569,7 @@ const showReplyForm = (post) => {
     data.$notify({
       group: "main",
       title: "未绑定手机号",
-      text: "</br>根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
+      text: "根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
       type: "error",
     });
     router.push(`/settings/account`);
@@ -739,13 +586,13 @@ const cancelReply = () => {
   replyContent.value = "";
 };
 
-// 修改发表新回复的函数
+// 发表新回复
 const showNewReply = () => {
   if (!auth.value.user) {
     data.$notify({
       group: "main",
       title: "未登录",
-      text: "</br>请先登录或创建账号",
+      text: "请先登录或创建账号",
       type: "error",
     });
     router.push(`/auth/sign-in`);
@@ -756,34 +603,31 @@ const showNewReply = () => {
     data.$notify({
       group: "main",
       title: "未绑定手机号",
-      text: "</br>根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
+      text: "根据《互联网论坛社区服务管理规定》第八条，您需要绑定手机号后才可以发布信息",
       type: "error",
     });
     router.push(`/settings/account`);
     return;
   }
 
-  // 直接显示回复表单，不设置 replyingTo
-  replyingTo.value = { id: "new" }; // 设置一个特殊值表示新帖子
+  replyingTo.value = { id: "new" };
   replyContent.value = "";
 };
 
-// 修改提交回复函数，处理新帖子和回复两种情况
+// 提交回复
 const submitReply = async () => {
   if (!replyContent.value.trim()) return;
   if (!auth.value.user) {
     data.$notify({
       group: "main",
       title: "未登录",
-      text: "</br>请先登录或创建账号",
+      text: "请先登录或创建账号",
       type: "error",
     });
     router.push(`/auth/sign-in`);
     return;
   }
 
-  // 创建新帖子
-  let newPost = null;
   try {
     const res = await useBaseFetch(`forum/${props.discussionId}/post`, {
       apiVersion: 3,
@@ -793,54 +637,53 @@ const submitReply = async () => {
         replied_to: replyingTo.value.id === "new" ? null : replyingTo.value.post_id,
       },
     });
-    newPost = res.post;
+
+    data.$notify({
+      group: "main",
+      title: "回复成功",
+      text: "回复已发布",
+      type: "success",
+    });
+
+    cancelReply();
+
+    // 根据新回复的楼层号和排序方式，计算其所在页面
+    const newPost = res.post;
+    if (newPost) {
+      let targetPage;
+
+      if (sortType.value === "floor_desc") {
+        // 楼层倒序：新回复（楼层号最大）在第一页
+        targetPage = 1;
+      } else {
+        // 楼层正序：新回复在最后一页
+        targetPage = Math.ceil(newPost.floor_number / pageSize);
+      }
+
+      // 跳转到新回复所在页面
+      await loadPage(targetPage);
+
+      // 滚动到新回复
+      nextTick(() => {
+        const element = document.getElementById(`post-${newPost.floor_number}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          highlightPost(newPost.floor_number);
+        }
+      });
+    }
   } catch (err) {
     console.log(err);
     data.$notify({
       group: "main",
       title: "发生错误",
-      text: err.data.description,
+      text: err.data?.description || "回复发送失败",
       type: "error",
     });
   }
-  cancelReply();
-  scrollToPost(newPost.floor_number);
-  return;
-
-  // 如果是回复帖子，更新被回复帖子的 replies 数组
-  if (replyingTo.value.id !== "new") {
-    const targetPost = displayedPosts.value.find(
-      (post) => post.floor_number === replyingTo.value.id,
-    );
-    if (targetPost) {
-      targetPost.replies.push(newPost.floor_number);
-    }
-  }
-
-  // 添加新帖子到显示列表
-  displayedPosts.value.push(newPost);
-  totalPosts.value++;
-
-  // 清除回复表单
-  cancelReply();
-
-  // 更新当前帖子ID和URL
-  currentPostId.value = newPost.floor_number;
-  router.replace({
-    query: { id: newPost.floor_number },
-  });
-
-  // 滚动到新帖子
-  nextTick(() => {
-    const element = document.getElementById(`post-${newPost.floor_number}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-      highlightPost(newPost.floor_number);
-    }
-  });
 };
 
-// 添加图片上传处理函数
+// 图片上传处理函数
 const onUploadHandler = async (file) => {
   const response = await useImageUpload(file, {
     context: "project",
@@ -849,208 +692,88 @@ const onUploadHandler = async (file) => {
   return response.url;
 };
 
-// 计算时间线区间
-const timelineSections = computed(() => {
-  const sectionCount = 10;
-  const sectionSize = Math.ceil(totalPosts.value / sectionCount);
+// 格式化相对时间
+const formatRelativeTime = (dateString) => {
+  return dayjs(dateString).fromNow();
+};
 
-  return Array.from({ length: sectionCount }, (_, index) => ({
-    start: index * sectionSize + 1,
-    end: Math.min((index + 1) * sectionSize, totalPosts.value),
-  }));
+// 初始化
+onMounted(() => {
+  initLoad();
 });
 
-// 添加高亮函数
-const highlightPost = (postId, duration = 5000) => {
-  const element = document.getElementById(`post-${postId}`);
-  if (element) {
-    // 移除旧的高亮
-    if (highlightedPostId.value) {
-      removeHighlight(highlightedPostId.value);
-    }
-
-    // 添加新的高亮
-    highlightedPostId.value = postId;
-    element.classList.add("post-highlight");
-    element.classList.add("post-highlight-border");
-
-    // 滚动到元素
-    element.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    // 设置高亮移除定时器
-    if (originalHighlightTimer) {
-      clearTimeout(originalHighlightTimer);
-    }
-    originalHighlightTimer = setTimeout(() => {
-      removeHighlight(postId);
-    }, duration);
+// 监听 discussionId 变化
+watch(() => props.discussionId, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    initLoad();
   }
-};
-
-// 添加总帖子数和当前页码的响应式引用
-const totalPosts = ref(0);
-// 添加无限滚动处理函数
-const handleInfiniteScroll = () => {
-  if (isLoading.value) return;
-
-  const scrollTop = window.scrollY;
-  const windowHeight = window.innerHeight;
-  const documentHeight = document.documentElement.scrollHeight;
-
-  // 向下滚动检测 - 距离底部100px时加载
-  if (documentHeight - (scrollTop + windowHeight) < 100 && !allLoaded.value.down) {
-    loadMorePosts("down");
-  }
-  // 向上滚动检测 - 当滚动到顶部附近时加载
-  else if (scrollTop < 800 && !allLoaded.value.up) {
-    // 增加阈值到800px
-    loadMorePosts("up");
-  }
-
-  lastScrollPosition.value = scrollTop;
-};
-
-// 使用防抖包装滚动处理函数
-const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50ms
+});
 </script>
 
 <style scoped>
 .forum-container {
   display: flex;
+  flex-direction: column;
   gap: 20px;
+}
+
+/* 顶部操作栏样式 */
+.forum-header {
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+}
+
+.forum-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-controls label {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sort-select {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--color-highlight);
+}
+
+.reply-controls {
+  flex-shrink: 0;
 }
 
 .posts-wrapper {
   flex: 1;
 }
 
-.timeline-indicator {
-  position: sticky;
-  top: 20px;
-  height: calc(100vh - 120px);
-  width: 100px;
+/* 帖子样式 */
+.post-header {
   display: flex;
-  flex-direction: column;
-  font-size: 0.8em;
-  color: var(--color-text-secondary);
-  margin-right: 20px;
-}
-
-.timeline-reply-button {
-  background: var(--color-bg-secondary);
-  border: none;
-  color: var(--color-text-primary);
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em;
-  margin-bottom: 12px;
-  transition: background-color 0.2s ease;
-  width: 100%;
-}
-
-.timeline-reply-button:hover {
-  background: var(--color-bg-hover);
-}
-
-.timeline-header,
-.timeline-footer {
-  padding: 10px 0;
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 0.9em;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.timeline-header:hover,
-.timeline-footer:hover {
-  color: var(--color-text-primary);
-}
-
-.timeline-content {
-  flex: 1;
-  position: relative;
-  cursor: default;
-}
-
-.timeline-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background-color: var(--color-timeline);
-  z-index: 0;
-}
-
-.timeline-sections {
-  position: absolute;
-  left: -10px;
-  right: -10px;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  z-index: 1;
-}
-
-.timeline-section {
-  flex: 1;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  position: relative;
-}
-
-.timeline-section:hover::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-.timeline-section:active::after {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.timeline-position {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  transform: translateY(-50%);
-  transition: none;
-  cursor: move;
-  z-index: 2;
-}
-
-.timeline-position.is-dragging {
-  cursor: move;
-}
-
-.position-info {
-  background: var(--color-bg-secondary);
-  padding: 8px;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  border: 1px solid var(--color-border);
-  user-select: none;
-  pointer-events: none;
-}
-
-.post-count {
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: var(--color-text-primary);
-}
-
-.post-date {
-  color: var(--color-text-secondary);
-  font-size: 0.9em;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
 }
 
 .user-info {
@@ -1069,6 +792,13 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 .username {
   font-weight: 500;
   margin-right: 10px;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.username:hover {
+  color: var(--color-highlight);
 }
 
 .post-time {
@@ -1076,33 +806,10 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   font-size: 0.9em;
 }
 
-.post-highlight {
-  animation: popEffect 5s ease-out;
-}
-
-.post-highlight-border {
-  border-left: 3px solid var(--color-highlight);
-}
-
-@keyframes popEffect {
-  0% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.02);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-.post-header {
+.post-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  gap: 8px;
 }
 
 .post-id {
@@ -1118,16 +825,9 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   color: var(--color-text-primary);
 }
 
-.markdown-body {
-  padding: 16px;
-}
 
-/* 添加拖拽时的视觉反馈 */
-.timeline-content:hover .timeline-line::before,
-.timeline-content:active .timeline-line::before {
-  display: none;
-}
 
+/* 回复引用样式 */
 .reply-reference {
   margin: 8px 16px;
   padding: 8px 12px;
@@ -1139,6 +839,15 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 
 .reply-reference:hover {
   background: var(--color-reply-bg-hover);
+}
+
+.reply-reference.deleted-reply {
+  opacity: 0.7;
+  cursor: default !important;
+}
+
+.reply-reference.deleted-reply:hover {
+  background: var(--color-reply-bg) !important;
 }
 
 .reply-info {
@@ -1171,6 +880,17 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   font-size: 0.9em;
 }
 
+.reply-text {
+  color: var(--color-text-secondary);
+  font-size: 0.9em;
+}
+
+.reply-deleted {
+  color: var(--color-text-secondary);
+  font-size: 0.9em;
+  font-style: italic;
+}
+
 .reply-quote {
   color: var(--color-text-primary);
   font-size: 0.95em;
@@ -1178,27 +898,235 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   overflow: hidden;
   max-height: 100px;
   margin-left: 32px;
-  /* 与头像对齐 */
 }
 
+/* 帖子内容样式 */
+.post-content {
+  padding: 16px;
+}
+
+.deleted-post {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: var(--color-bg-secondary);
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+}
+
+.deleted-text {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.markdown-body {
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+
+/* 帖子底部操作 */
+.post-footer {
+  padding: 4px 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: -8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.card:hover .post-footer {
+  opacity: 1;
+}
+
+.reply-button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 2px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: color 0.2s ease;
+}
+
+.reply-button:hover {
+  color: var(--color-text-primary);
+}
+
+.delete-button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 2px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: color 0.2s ease;
+}
+
+.delete-button:hover {
+  color: var(--color-delete-hover);
+}
+
+/* 回复信息 */
 .replies-info {
   margin: 8px 16px;
   padding-top: 8px;
-  border-top: 1px solid var(--color-timeline);
+  border-top: 1px solid var(--color-border);
   color: var(--color-text-secondary);
   font-size: 0.9em;
 }
 
-.replies-info span {
+.reply-link {
   cursor: pointer;
   margin-right: 8px;
   transition: color 0.2s ease;
+  position: relative;
 }
 
-.replies-info span:hover {
+.reply-link:hover {
   color: var(--color-text-primary);
 }
 
+/* 翻页控制样式 - 宽布局风格 */
+.pagination-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  width: 100%;
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.prev-next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  min-width: 100px;
+}
+
+.prev-next:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-highlight);
+}
+
+.prev-next:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--color-text-secondary);
+}
+
+.page-numbers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.page-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.page-button:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-highlight);
+}
+
+.page-button.active {
+  background: var(--color-highlight);
+  color: white;
+  border-color: var(--color-highlight);
+  font-weight: 600;
+}
+
+.page-button.active:hover {
+  background: var(--color-highlight);
+  color: white;
+}
+
+.ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.pagination-info {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: center;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+/* 高亮效果 */
+.post-highlight {
+  animation: popEffect 3s ease-out;
+  border-left: 3px solid var(--color-highlight);
+}
+
+@keyframes popEffect {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(26, 115, 232, 0.3);
+  }
+
+  50% {
+    transform: scale(1.01);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+/* 预览样式 */
 .reply-preview {
   position: absolute;
   z-index: 1000;
@@ -1235,12 +1163,6 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   font-weight: 500;
 }
 
-.preview-time {
-  color: var(--color-text-secondary);
-  font-size: 0.8em;
-  margin-top: 2px;
-}
-
 .preview-content {
   color: var(--color-text-primary);
   font-size: 0.95em;
@@ -1249,11 +1171,6 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   overflow-y: auto;
 }
 
-.reply-link {
-  position: relative;
-}
-
-/* 优化滚动条样式 */
 .preview-content::-webkit-scrollbar {
   width: 4px;
 }
@@ -1267,118 +1184,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   border-radius: 2px;
 }
 
-.post-footer {
-  padding: 4px 16px;
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -8px;
-  opacity: 0;
-  /* 默认隐藏 */
-  transition: opacity 0.2s ease;
-}
-
-/* 当鼠标悬停在帖子卡片上时显示回复按钮 */
-.card:hover .post-footer {
-  opacity: 1;
-}
-
-.reply-button {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  padding: 2px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: color 0.2s ease;
-}
-
-.reply-button:hover {
-  color: var(--color-text-primary);
-}
-
-.replies-info {
-  margin: 8px 16px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-timeline);
-  color: var(--color-text-secondary);
-  font-size: 0.9em;
-}
-
-.reply-form {
-  margin: 8px 16px;
-  padding: 12px;
-  background: var(--color-bg-secondary);
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-}
-
-.reply-form-header {
-  color: var(--color-text-secondary);
-  font-size: 0.9em;
-  margin-bottom: 8px;
-}
-
-.reply-textarea {
-  width: 100%;
-  min-height: 100px;
-  background: var(--color-bg-hover);
-  border: none;
-  border-radius: 4px;
-  padding: 8px;
-  color: var(--color-text-primary);
-  font-size: 0.95em;
-  resize: vertical;
-  margin-bottom: 8px;
-}
-
-.reply-textarea:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.reply-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.cancel-button,
-.submit-button {
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: all 0.2s ease;
-}
-
-.cancel-button {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-}
-
-.cancel-button:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
-}
-
-.submit-button {
-  background: var(--color-submit-button);
-  border: none;
-  color: white;
-}
-
-.submit-button:hover:not(:disabled) {
-  background: var(--color-submit-button-hover);
-}
-
-.submit-button:disabled {
-  background: var(--color-submit-disabled);
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
+/* 回复表单样式 */
 .reply-form-overlay {
   position: fixed;
   bottom: 0;
@@ -1390,18 +1196,14 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  /* 水平居中 */
   animation: fadeIn 0.2s ease;
 }
 
 .reply-form-modal {
   background: var(--color-modal-bg);
   width: 800px;
-  /* 设置固定宽度 */
   max-width: 90%;
-  /* 在小屏幕上自适应 */
   margin: 0 auto;
-  /* 水平居中 */
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -1415,7 +1217,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid var(--color-timeline);
+  border-bottom: 1px solid var(--color-border);
   color: var(--color-text-primary);
   font-size: 1em;
 }
@@ -1446,7 +1248,7 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   padding: 16px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid var(--color-timeline);
+  border-top: 1px solid var(--color-border);
 }
 
 .submit-button {
@@ -1490,9 +1292,73 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
   }
 }
 
-/* 移除旧的回复表单样式 */
-.reply-form {
-  display: none;
+/* 响应式样式 */
+@media (max-width: 768px) {
+  .forum-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .sort-controls {
+    justify-content: center;
+  }
+
+  .reply-controls {
+    display: flex;
+    justify-content: center;
+  }
+
+  .pagination-controls {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .pagination-nav {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .prev-next {
+    width: 100%;
+    min-width: auto;
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+
+  .page-numbers {
+    justify-content: center;
+    gap: 2px;
+    flex-wrap: wrap;
+  }
+
+  .page-button {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .ellipsis {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .pagination-info {
+    font-size: 12px;
+  }
+
+  .reply-form-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .post-actions {
+    flex-wrap: wrap;
+  }
 }
 
 .user-avatar-link {
@@ -1503,23 +1369,5 @@ const debouncedScroll = debounce(handleInfiniteScroll, 50); // 从100ms改为50m
 
 .user-avatar-link:hover {
   opacity: 0.8;
-}
-
-.username {
-  font-weight: 500;
-  margin-right: 10px;
-  color: var(--color-text-primary);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.username:hover {
-  color: var(--color-text-primary);
-}
-
-.post-highlight-reply {
-  border-left: 3px solid var(--color-highlight-reply);
-  /* 使用金色来区分被回复的帖子 */
-  animation: popEffect 5s ease-out;
 }
 </style>

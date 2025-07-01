@@ -24,6 +24,7 @@ pub struct PostQuery {
     pub replied_to: Option<i64>,
     pub reply_content: Option<ReplayContent>,
     pub replies: Vec<Replay>,
+    pub deleted: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -290,7 +291,8 @@ impl Discussion {
                      SELECT DISTINCT discussion_id, p.id as id, p.created_at
                     FROM discussions d
                     INNER JOIN posts p ON d.id = p.discussion_id
-                    WHERE d.deleted = false and d.id = ANY($1) ORDER BY p.created_at ASC
+                    WHERE d.deleted = false and d.id = ANY($1) 
+                    ORDER BY p.created_at ASC
                     ",
                     &ids.clone()
                 )
@@ -444,6 +446,17 @@ impl PostBuilder {
     }
 }
 impl PostQuery {
+    pub async fn clear_cache(
+        ids: &[PostId],
+        redis: &RedisPool,
+    ) -> Result<(), DatabaseError> {
+        let mut redis = redis.connect().await?;
+        redis
+            .delete_many(ids.iter().map(|id| ("post", Some(id.0.to_string()))))
+            .await?;
+        Ok(())
+    }
+
     pub async fn get_many<'a, E>(
         ids: &[i64],
         discussion_id: &DiscussionId,
@@ -587,6 +600,7 @@ impl PostQuery {
                             replied_to,
                             replies,
                             reply_content,
+                            deleted: w.deleted,
                         },
                     );
                 }

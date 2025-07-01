@@ -18,6 +18,7 @@ pub struct PostId(pub u64);
 pub struct PostsQueryParams {
     pub page: Option<i32>,
     pub page_size: Option<i32>,
+    pub sort: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,6 +34,7 @@ pub struct PostResponse {
     pub replied_to: Option<i64>,
     pub reply_content: Option<ReplayContent>,
     pub replies: Vec<Replay>,
+    pub deleted: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -93,6 +95,7 @@ impl From<PostQuery> for PostResponse {
             replied_to: post.replied_to,
             reply_content: post.reply_content,
             replies: post.replies,
+            deleted: post.deleted,
         }
     }
 }
