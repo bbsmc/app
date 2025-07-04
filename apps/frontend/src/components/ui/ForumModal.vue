@@ -161,7 +161,7 @@
         <div class="reply-form-header">
           <span>{{
             replyingTo.id === "new" ? "发表新帖" : `回复 #${replyingTo.floor_number}`
-          }}</span>
+            }}</span>
           <button class="close-button" @click="cancelReply">×</button>
         </div>
         <div class="reply-form-content">
@@ -753,6 +753,7 @@ watch(() => props.discussionId, (newId, oldId) => {
   color: var(--color-text-primary);
   font-size: 14px;
   min-width: 120px;
+  cursor: pointer;
 }
 
 .sort-select:focus {
@@ -762,6 +763,10 @@ watch(() => props.discussionId, (newId, oldId) => {
 
 .reply-controls {
   flex-shrink: 0;
+}
+
+.reply-controls button-styled {
+  cursor: pointer;
 }
 
 .posts-wrapper {
@@ -794,6 +799,7 @@ watch(() => props.discussionId, (newId, oldId) => {
   margin-right: 10px;
   color: var(--color-text-primary);
   text-decoration: none;
+  cursor: pointer;
   transition: color 0.2s ease;
 }
 
@@ -1308,6 +1314,13 @@ watch(() => props.discussionId, (newId, oldId) => {
     display: flex;
     justify-content: center;
   }
+
+  .reply-controls button-styled {
+    cursor: pointer !important;
+    display: inline-flex !important;
+  }
+
+
 
   .pagination-controls {
     padding: 16px;
