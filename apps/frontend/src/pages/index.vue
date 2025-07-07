@@ -347,6 +347,13 @@ const carouselItems = ref([
     description: "面对众多怪物的冒险之旅，你做好准备了吗？",
     slug: "/modpack/lzmx",
   },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94.png",
+    title: "机械动力:齿轮盛宴",
+    description: "欢迎来到齿轮盛宴的世界,欢迎来到齿轮盛宴的世界,也能体验到沉浸式做菜的欢乐,更能体验到丰富的世界之旅，怪物、美景层出不穷，美不胜收,愿齿轮盛宴能给你带来盛宴一般的感受.",
+    slug: "/modpack/create-delight",
+  },
 ]);
 
 const currentSlide = ref(0);
