@@ -314,42 +314,42 @@ const carouselItems = ref([
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426.jpeg",
+      "https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426_350.webp",
     title: "乌托邦探险之旅",
     description: "乌托邦探险之旅",
     slug: "/modpack/utopia-journey",
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/NxtrWNas/images/329b6261d797271622386b146078d7130a5438c0.jpeg",
+      "https://cdn.bbsmc.net/bbsmc/data/NxtrWNas/images/329b6261d797271622386b146078d7130a5438c0_350.webp",
     title: "探索自然2",
     description: "通过探索，种田来发展经济，提升实力，面临不断增强的怪物",
     slug: "/modpack/tansuoziran2",
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/dL0Tbr7N/images/19f25c62f6bcc1d068c9b35e4e603e81991754f9.jpeg",
+      "https://cdn.bbsmc.net/bbsmc/data/dL0Tbr7N/images/19f25c62f6bcc1d068c9b35e4e603e81991754f9_350.webp",
     title: "脆骨症：黯光",
     description: "脆骨症的维度分支，引入了大量的新维度作为内容的补充。",
     slug: "/modpack/no-flesh-within-chest-dim",
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1.jpeg",
+      "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1_350.webp",
     title: "剑与王国",
     description: "围绕模拟殖民地与村民招募玩法的深度魔改整合包",
     slug: "/modpack/snk",
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94.png",
+      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94_350.webp",
     title: "龙之冒险：新征程",
     description: "面对众多怪物的冒险之旅，你做好准备了吗？",
     slug: "/modpack/lzmx",
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94.png",
+      "https://cdn.bbsmc.net/bbsmc/data/OIIWCwpQ/images/fce31aca660ea4b6cf77ce8e51468d4e6585c0d8_350.webp",
     title: "机械动力:齿轮盛宴",
     description: "欢迎来到齿轮盛宴的世界,欢迎来到齿轮盛宴的世界,也能体验到沉浸式做菜的欢乐,更能体验到丰富的世界之旅，怪物、美景层出不穷，美不胜收,愿齿轮盛宴能给你带来盛宴一般的感受.",
     slug: "/modpack/create-delight",
