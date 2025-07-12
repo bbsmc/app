@@ -319,7 +319,7 @@ pub async fn version_download(
         if version_item.disks.is_empty() {
             let url = version_item.files.first().unwrap().url.clone();
             let url = url::Url::parse(&url).map_err(|_| {
-                return ApiError::InvalidInput("无效的下载URL!".to_string())
+                return ApiError::InvalidInput("无效的下载URL!".to_string());
             })?;
             analytics_queue.add_download(Download {
                 recorded: get_current_tenths_of_ms(),
@@ -330,14 +330,17 @@ pub async fn version_download(
                 version_id: version_id.0,
                 ip,
                 country: "".to_string(),
-                user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
+                user_agent: headers
+                    .get("user-agent")
+                    .cloned()
+                    .unwrap_or_default(),
                 headers: Vec::new(),
             });
-        }else {
+        } else {
             let url = version_item.disks.first().unwrap().url.clone();
 
             let url = url::Url::parse(&url).map_err(|_| {
-                return ApiError::InvalidInput("无效的下载URL!".to_string())
+                return ApiError::InvalidInput("无效的下载URL!".to_string());
             })?;
 
             analytics_queue.add_download(Download {
@@ -349,13 +352,14 @@ pub async fn version_download(
                 version_id: version_id.0,
                 ip,
                 country: "".to_string(),
-                user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
+                user_agent: headers
+                    .get("user-agent")
+                    .cloned()
+                    .unwrap_or_default(),
                 headers: Vec::new(),
             });
-
         }
         Ok(HttpResponse::NoContent().body(""))
-
     } else {
         Err(ApiError::NotFound)
     }

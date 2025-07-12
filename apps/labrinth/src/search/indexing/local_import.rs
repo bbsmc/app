@@ -38,14 +38,12 @@ pub async fn index_local(
         slug: Option<String>,
         color: Option<i32>,
         license: String,
-        default_type: String,
-        default_game_loaders: String,
     }
 
     let db_projects = sqlx::query!(
         "
         SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,
-        m.icon_url icon_url, m.updated updated, m.approved approved, m.published, m.license license, m.slug slug, m.color, m.default_type default_type, m.default_game_loaders default_game_loaders
+        m.icon_url icon_url, m.updated updated, m.approved approved, m.published, m.license license, m.slug slug, m.color
         FROM mods m
         WHERE m.status = ANY($1)
         GROUP BY m.id;
@@ -69,8 +67,6 @@ pub async fn index_local(
                 slug: m.slug,
                 color: m.color,
                 license: m.license,
-                default_type: m.default_type,
-                default_game_loaders: m.default_game_loaders,
             }
         })
         .try_collect::<Vec<PartialProject>>()
@@ -273,7 +269,7 @@ pub async fn index_local(
                 (None, vec![])
             };
 
-        let (mut categories, display_categories) =
+        let (categories, display_categories) =
             if let Some((_, categories)) = categories.remove(&project.id) {
                 let mut vals = Vec::new();
                 let mut featured_vals = Vec::new();
@@ -325,11 +321,7 @@ pub async fn index_local(
                     .collect();
                 let mut loader_fields =
                     from_duplicate_version_fields(version_fields);
-                let mut project_types = version.project_types;
-                if project_types.is_empty() {
-                    project_types.push(project.default_type.clone());
-                }
-
+                let project_types = version.project_types;
                 let mut version_loaders = version.loaders;
 
                 // Uses version loaders, not project loaders.
@@ -395,9 +387,6 @@ pub async fn index_local(
                         .insert("server_side".to_string(), vec![server_side]);
                 }
 
-                // if project_types.is_empty() {
-                //     project_types.push(project.default_type.clone());
-                // }
                 let usp = UploadSearchProject {
                     version_id: crate::models::ids::VersionId::from(version.id)
                         .to_string(),
@@ -431,53 +420,6 @@ pub async fn index_local(
 
                 uploads.push(usp);
             }
-        } else {
-            let mut default_game_loaders = vec![];
-            project
-                .default_game_loaders
-                .clone()
-                .split(" ")
-                .for_each(|x| {
-                    if !x.is_empty() {
-                        default_game_loaders.push(x.to_string());
-                    }
-                });
-            for x in &default_game_loaders {
-                if !categories.contains(x) {
-                    categories.push(x.clone());
-                }
-            }
-
-            let project_types = vec![project.default_type.clone()];
-            let usp = UploadSearchProject {
-                version_id: crate::models::ids::ProjectId::from(project.id)
-                    .to_string(),
-                project_id: crate::models::ids::ProjectId::from(project.id)
-                    .to_string(),
-                project_types,
-                slug: project.slug.clone(),
-                author: owner.clone(),
-                name: project.name.clone(),
-                summary: project.summary.clone(),
-                categories: categories.clone(),
-                display_categories: display_categories.clone(),
-                follows: project.follows,
-                downloads: project.downloads,
-                icon_url: project.icon_url.clone(),
-                license,
-                gallery,
-                featured_gallery,
-                date_created: project.approved,
-                created_timestamp: project.approved.timestamp(),
-                date_modified: project.updated,
-                modified_timestamp: project.updated.timestamp(),
-                open_source,
-                color: project.color.map(|x| x as u32),
-                loaders: default_game_loaders,
-                project_loader_fields: Default::default(),
-                loader_fields: Default::default(),
-            };
-            uploads.push(usp);
         }
     }
 

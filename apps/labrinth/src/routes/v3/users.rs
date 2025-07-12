@@ -296,7 +296,8 @@ pub async fn orgs_list(
 }
 
 lazy_static! {
-    static ref RE_URL_SAFE: Regex = Regex::new(r#"^[\p{L}\p{N}!@$()`.+,_"-]*$"#).unwrap();
+    static ref RE_URL_SAFE: Regex =
+        Regex::new(r#"^[\p{L}\p{N}!@$()`.+,_"-]*$"#).unwrap();
 }
 
 #[derive(Serialize, Deserialize, Validate)]

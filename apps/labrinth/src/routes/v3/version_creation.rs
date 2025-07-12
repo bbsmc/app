@@ -796,7 +796,7 @@ async fn upload_file_to_version_inner(
                 version.files.iter().map(|x| x.filename.clone()).collect(),
                 transaction,
                 &redis,
-                user.username.clone()
+                user.username.clone(),
             )
             .await?;
 
@@ -850,7 +850,7 @@ pub async fn upload_file(
     other_file_names: Vec<String>,
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     redis: &RedisPool,
-    username: String
+    username: String,
 ) -> Result<(), CreateError> {
     let (file_name, file_extension) = get_name_ext(content_disposition)?;
 
@@ -894,7 +894,7 @@ pub async fn upload_file(
     .exists
     .unwrap_or(false);
 
-    if exists && username.to_lowercase() != "bbsmc"{
+    if exists && username.to_lowercase() != "bbsmc" {
         println!("已存在 {}", hash);
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到BBSMC过,无法重复上传2".to_string(),

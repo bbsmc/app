@@ -1,5 +1,5 @@
 use crate::database::models::{
-    DatabaseError, IssuesId, IssuesCommentsId, ProjectId, UserId,
+    DatabaseError, IssuesCommentsId, IssuesId, ProjectId, UserId,
 };
 use crate::database::redis::RedisPool;
 use chrono::{DateTime, Utc};
@@ -195,8 +195,12 @@ impl Issue {
         state: String,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> Result<(), sqlx::Error> {
-        let closed_at = if state == "closed" { Some(Utc::now()) } else { None };
-        
+        let closed_at = if state == "closed" {
+            Some(Utc::now())
+        } else {
+            None
+        };
+
         sqlx::query!(
             "UPDATE issues SET state=$1, closed_at=$2, updated_at=$3 WHERE id=$4",
             state,
@@ -292,9 +296,13 @@ impl Issue {
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
-        let cache_key = format!("project_{}_{}", project_id.0, state.as_deref().unwrap_or("all"));
+        let cache_key = format!(
+            "project_{}_{}",
+            project_id.0,
+            state.as_deref().unwrap_or("all")
+        );
         println!("Debug: Cache key = {}", cache_key);
-        
+
         let issues = redis.get_cached_key(ISSUE_NAMESPACE, cache_key, || async move {
             let mut exec = exec.acquire().await?;
             println!("Debug: Acquired database connection");
@@ -308,7 +316,6 @@ impl Issue {
                 )
                 .fetch_all(&mut *exec)
                 .await;
-                
                 match query_result {
                     Ok(rows) => {
                         println!("Debug: Query executed successfully, found {} rows", rows.len());
@@ -330,7 +337,6 @@ impl Issue {
                 )
                 .fetch_all(&mut *exec)
                 .await;
-                
                 match query_result {
                     Ok(rows) => {
                         println!("Debug: Query executed successfully, found {} rows", rows.len());
@@ -379,7 +385,6 @@ impl Issue {
         let val = redis
             .get_cached_keys(ISSUE_NAMESPACE, keys, |ids| async move {
                 let mut exec = exec.acquire().await?;
-                
                 // 获取评论索引 - 包含已删除的评论来保持楼层号连续性
                 let comments_index: DashMap<i64, Vec<IssueCommentIndex>> = sqlx::query!(
                     "
@@ -595,7 +600,6 @@ impl IssueCommentQuery {
             ids,
             |keys| async move {
                 let mut executor = pool.acquire().await?;
-                
                 // 获取评论索引（楼层号）- 包含已删除的评论来保持楼层号连续性
                 let comments_index: DashMap<i64, Vec<IssueCommentIndex>> = sqlx::query!(
                     "
@@ -699,7 +703,6 @@ impl IssueCommentQuery {
                                 .await?
                                 .map(|row| row.deleted)
                                 .unwrap_or(false);
-                                
                                 (Some(p.floor_number), reply_deleted)
                             } else {
                                 (None, false)
@@ -755,7 +758,9 @@ impl IssueCommentQuery {
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres> + Clone,
     {
-        let comments = IssueCommentQuery::get_many(&[comment_id.0], issue_id, exec, redis).await?;
+        let comments =
+            IssueCommentQuery::get_many(&[comment_id.0], issue_id, exec, redis)
+                .await?;
         Ok(comments.into_iter().next())
     }
 
@@ -783,7 +788,7 @@ impl IssueCommentQuery {
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> Result<(), sqlx::Error> {
         let now = Utc::now();
-        
+
         // 软删除评论，保留原始内容和 reply_to_id 关系
         // 前端根据 deleted 字段来控制显示方式
         sqlx::query!(

@@ -113,10 +113,7 @@ pub struct Project {
 
     pub wiki_open: bool,
 
-    pub default_type: String,
     pub issues_type: i32,
-    pub default_game_version: Vec<String>,
-    pub default_game_loaders: Vec<String>,
 
     pub forum: Option<DiscussionId>,
 }
@@ -171,30 +168,11 @@ impl From<QueryProject> for Project {
             from_duplicate_version_fields(data.aggregate_version_fields);
         let m = data.inner;
 
-        let mut games = vec![];
-        for v in data.games {
-            games.push(v);
-        }
-        if games.is_empty() {
-            m.default_game_version
-                .iter()
-                .for_each(|v| games.push(v.clone()));
-        }
-        let mut loaders = vec![];
-        for v in m.loaders {
-            loaders.push(v);
-        }
-        if loaders.is_empty() {
-            m.default_game_loaders
-                .iter()
-                .for_each(|v| loaders.push(v.clone()));
-        }
-
         Self {
             id: m.id.into(),
             slug: m.slug,
             project_types: data.project_types,
-            games,
+            games: data.games,
             team_id: m.team_id.into(),
             organization: m.organization_id.map(|i| i.into()),
             name: m.name,
@@ -239,7 +217,7 @@ impl From<QueryProject> for Project {
             followers: m.follows as u32,
             categories: data.categories,
             additional_categories: data.additional_categories,
-            loaders,
+            loaders: m.loaders,
             versions: data.versions.into_iter().map(|v| v.into()).collect(),
             icon_url: m.icon_url,
             wiki_open: m.wiki_open,
@@ -264,10 +242,7 @@ impl From<QueryProject> for Project {
             color: m.color,
             thread_id: data.thread_id.into(),
             monetization_status: m.monetization_status,
-            default_type: m.default_type,
             issues_type: m.issues_type,
-            default_game_version: m.default_game_version,
-            default_game_loaders: m.default_game_loaders,
             fields,
             forum: m.forum.map(|x| x.into()),
         }

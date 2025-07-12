@@ -2004,9 +2004,7 @@ async function createWiki() {
     resData.father_id = createWikiFather.value.id;
   }
 
-  // console.log(wikis.value.cache.cache.value)
   for (const wiki of wikis.value.cache.cache) {
-    // console.log(wiki);
     if (wiki.slug === resData.slug) {
       data.$notify({
         group: "main",
@@ -2034,15 +2032,12 @@ async function createWiki() {
   );
   wikis.value.cache.cache.push(newWiki);
   wikis.value = newWiki.value;
-  // console.log('接收')
-  // console.log(wikis.value)
   createWikiModal.value.hide();
   createWikiFather.value = null;
   createWikiTitle.value = "";
   createWikiSort.value = 0;
   createWikiSlug.value = "";
 
-  // console.log(wikis.value)
 }
 
 const preSortReview = ref([]);
@@ -2051,7 +2046,6 @@ const preADDReview = ref([]);
 const preREMOVEReview = ref([]);
 const preIndexSetReview = ref([]);
 function submitForReview() {
-  // console.log('提交审核')
   // 开始计算和之前有哪些变动
 
   submitWikiCacheMsg.value = "";
@@ -2188,8 +2182,6 @@ function submitForReview() {
   }
   preReviewWiki.value.show();
 
-  // console.log('wikiNew ' + wikiNewId)
-  // console.log('wikiOld ' + wikiOldId)
 
   // 第二部，获取所有被修改过的WIKI
 

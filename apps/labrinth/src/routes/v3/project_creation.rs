@@ -602,7 +602,7 @@ async fn project_create_inner(
                 existing_file_names,
                 transaction,
                 redis,
-                current_user.username.clone()
+                current_user.username.clone(),
             )
             .await?;
 
@@ -927,10 +927,7 @@ async fn project_create_inner(
             monetization_status: MonetizationStatus::Monetized,
             fields: HashMap::new(), // Fields instantiate to empty
             wiki_open: false,
-            default_type: "project".to_string(),
             issues_type: 0,
-            default_game_loaders: vec![],
-            default_game_version: vec![],
             forum: None,
         };
 
@@ -1029,15 +1026,13 @@ async fn process_icon_upload(
     redis: &RedisPool,
     username: String,
 ) -> Result<(String, String, Option<u32>), CreateError> {
-
     let mut cap = 262144;
 
     if username.to_lowercase() == "bbsmc" {
         cap = 2621440
     }
 
-    let data =
-        read_from_field(&mut field, cap, "图标必须小于 256KB").await?;
+    let data = read_from_field(&mut field, cap, "图标必须小于 256KB").await?;
     let upload_result = crate::util::img::upload_image_optimized(
         &format!("data/{}", to_base62(id)),
         data.freeze(),
@@ -1048,7 +1043,7 @@ async fn process_icon_upload(
         crate::util::img::UploadImagePos {
             pos: "项目图标".to_string(),
             url: format!("/project/{}", id),
-            username
+            username,
         },
         redis,
     )

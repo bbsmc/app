@@ -596,7 +596,6 @@ pub struct IssuesId(pub i64);
 #[sqlx(transparent)]
 pub struct IssuesCommentsId(pub i64);
 
-
 use crate::models::ids;
 
 impl From<ids::ProjectId> for ProjectId {

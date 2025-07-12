@@ -69,10 +69,7 @@ pub struct LegacyProject {
     pub thread_id: ThreadId,
     pub monetization_status: MonetizationStatus,
     pub wiki_open: bool,
-    pub default_type: String,
     pub issues_type: i32,
-    pub default_game_loaders: Vec<String>,
-    pub default_game_version: Vec<String>,
     pub forum: Option<DiscussionId>,
 }
 
@@ -129,26 +126,14 @@ impl LegacyProject {
 
         let mut loaders = data.loaders;
 
-        let game_versions = if data
+        let game_versions = data
             .fields
             .get("game_versions")
             .unwrap_or(&Vec::new())
-            .is_empty()
-        {
-            let mut game_versions = vec![];
-            data.default_game_version
-                .iter()
-                .for_each(|v| game_versions.push(v.to_string()));
-            game_versions
-        } else {
-            data.fields
-                .get("game_versions")
-                .unwrap_or(&Vec::new())
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|v| v.to_string())
-                .collect()
-        };
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|v| v.to_string())
+            .collect();
 
         if let Some(versions_item) = versions_item {
             // Extract side types from remaining fields (singleplayer, client_only, etc)
@@ -213,9 +198,6 @@ impl LegacyProject {
                 }
             }
         }
-        if loaders.is_empty() {
-            loaders = data.default_game_loaders.clone();
-        }
 
         let issues_url = data.link_urls.get("issues").map(|l| l.url.clone());
         let source_url = data.link_urls.get("source").map(|l| l.url.clone());
@@ -268,10 +250,7 @@ impl LegacyProject {
             color: data.color,
             thread_id: data.thread_id,
             monetization_status: data.monetization_status,
-            default_type: data.default_type,
             issues_type: data.issues_type,
-            default_game_version: data.default_game_version,
-            default_game_loaders: data.default_game_loaders,
             client_side,
             server_side,
             game_versions,

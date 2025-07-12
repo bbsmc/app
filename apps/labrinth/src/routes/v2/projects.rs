@@ -408,17 +408,7 @@ pub struct EditProject {
     #[validate(length(max = 65536))]
     pub moderation_message_body: Option<Option<String>>,
     pub monetization_status: Option<MonetizationStatus>,
-
     pub wiki_open: Option<bool>,
-
-    pub default_game_loaders: Option<Vec<String>>,
-    pub default_game_version: Option<Vec<String>>,
-
-    #[validate(
-        length(min = 3, max = 64),
-        custom(function = "crate::util::validate::validate_name")
-    )]
-    pub default_type: Option<String>,
     #[validate(range(min = 0, max = 3))]
     pub issues_type: Option<i32>,
 }
@@ -531,9 +521,6 @@ pub async fn project_edit(
         monetization_status: v2_new_project.monetization_status,
         wiki_open: v2_new_project.wiki_open,
         issues_type: v2_new_project.issues_type,
-        default_type: v2_new_project.default_type,
-        default_game_version: v2_new_project.default_game_version,
-        default_game_loaders: v2_new_project.default_game_loaders,
     };
 
     // 这返回 204 或失败，所以我们不需要对其做任何处理

@@ -285,16 +285,6 @@ pub struct EditProject {
 
     pub wiki_open: Option<bool>,
 
-    pub default_game_loaders: Option<Vec<String>>,
-
-    pub default_game_version: Option<Vec<String>>,
-
-    #[validate(
-        length(min = 3, max = 64),
-        custom(function = "crate::util::validate::validate_name")
-    )]
-    pub default_type: Option<String>,
-
     #[validate(range(min = 0, max = 3))]
     pub issues_type: Option<i32>,
 }
@@ -396,92 +386,6 @@ pub async fn project_edit(
                     WHERE (id = $2)
                     ",
                     wiki_open,
-                    id as db_ids::ProjectId,
-                )
-                .execute(&mut *transaction)
-                .await?;
-            }
-            if let Some(default_type) = &new_project.default_type {
-                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
-                    return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!".to_string(),
-                    ));
-                }
-
-                let default_types = [
-                    "project", "modpack", "mod", "datapack", "shader",
-                    "plugin", "software",
-                ];
-
-                if !default_types.contains(&default_type.as_str()) {
-                    return Err(ApiError::CustomAuthentication(
-                        "无效的默认类型".to_string(),
-                    ));
-                }
-
-                sqlx::query!(
-                    "
-                    UPDATE mods
-                    SET default_type = $1
-                    WHERE (id = $2)
-                    ",
-                    default_type,
-                    id as db_ids::ProjectId,
-                )
-                .execute(&mut *transaction)
-                .await?;
-            }
-            if let Some(default_game_version) =
-                &new_project.default_game_version
-            {
-                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
-                    return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!".to_string(),
-                    ));
-                }
-
-                let mut v_str = "".to_string();
-
-                for (i, v) in default_game_version.iter().enumerate() {
-                    v_str.push_str(v);
-                    if i < default_game_version.len() - 1 {
-                        v_str.push(' ');
-                    }
-                }
-                sqlx::query!(
-                    "
-                    UPDATE mods
-                    SET default_game_version = $1
-                    WHERE (id = $2)
-                    ",
-                    v_str,
-                    id as db_ids::ProjectId,
-                )
-                .execute(&mut *transaction)
-                .await?;
-            }
-            if let Some(default_game_loaders) =
-                &new_project.default_game_loaders
-            {
-                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
-                    return Err(ApiError::CustomAuthentication(
-                        "您没有权限编辑此项目的该分类!".to_string(),
-                    ));
-                }
-                let mut v_str = "".to_string();
-                for (i, v) in default_game_loaders.iter().enumerate() {
-                    v_str.push_str(v.as_str());
-                    if i < default_game_loaders.len() - 1 {
-                        v_str.push(' ');
-                    }
-                }
-                sqlx::query!(
-                    "
-                    UPDATE mods
-                    SET default_game_loaders = $1
-                    WHERE (id = $2)
-                    ",
-                    v_str,
                     id as db_ids::ProjectId,
                 )
                 .execute(&mut *transaction)
