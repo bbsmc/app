@@ -48,6 +48,11 @@ export const useTags = () =>
         id: "software",
         display: "软件资源",
       },
+      {
+        actual: "language",
+        id: "language",
+        display: "汉化板",
+      },
     ],
     forumTypes: [
       {

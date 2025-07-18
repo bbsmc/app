@@ -100,6 +100,15 @@
         </ButtonStyled>
         <ButtonStyled
           type="transparent"
+          :highlighted="route.name === 'search-languages' || route.path.startsWith('/language/')"
+          :highlighted-style="
+            route.name === 'search-languagesd' ? 'main-nav-primary' : 'main-nav-secondary'
+          "
+        >
+          <nuxt-link to="/languages"> <GridIcon aria-hidden="true" /> 汉化板 </nuxt-link>
+        </ButtonStyled>
+        <ButtonStyled
+          type="transparent"
           :highlighted="route.path.startsWith('/forums/') || route.path.startsWith('/d/')"
           :highlighted-style="
             route.path.startsWith('/forums/') || route.path.startsWith('/d/')
@@ -665,6 +674,10 @@ const navRoutes = computed(() => [
   {
     label: formatMessage(getProjectTypeMessage("software", true)),
     href: "/softwares",
+  },
+  {
+    label: formatMessage(getProjectTypeMessage("language", true)),
+    href: "/languages",
   },
 ]);
 

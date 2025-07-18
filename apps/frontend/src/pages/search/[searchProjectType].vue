@@ -850,7 +850,7 @@ const filters = computed(() => {
   }
 
   if (
-    !["resourcepack", "plugin", "shader", "datapack", "software"].includes(projectType.value.id)
+    !["resourcepack", "plugin", "shader", "datapack", "software","language"].includes(projectType.value.id)
   ) {
     filters.environment = [
       { name: "客户端", type: "env" },
@@ -894,6 +894,12 @@ const filters = computed(() => {
   if (projectType.value.id === "software") {
     return {
       loaders: filteredObj.loaders || [],
+    };
+  }
+
+  if (projectType.value.id === "language") {
+    return {
+      "汉化方式": filteredObj.汉化方式 || [],
     };
   }
 

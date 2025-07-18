@@ -28,6 +28,8 @@ export const acceptFileFromProjectType = (projectType) => {
       return ".mrpack,application/x-modrinth-modpack+zip,application/zip";
     case "software":
       return ".zip,application/zip";
+    case "language":
+      return ".zip,application/zip";
     default:
       return "*";
   }
