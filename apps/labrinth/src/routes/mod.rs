@@ -5,7 +5,7 @@ use crate::util::env::parse_strings_from_var;
 use actix_cors::Cors;
 use actix_files::Files;
 use actix_web::http::StatusCode;
-use actix_web::{web, HttpResponse};
+use actix_web::{HttpResponse, web};
 use futures::FutureExt;
 
 pub mod internal;
@@ -138,15 +138,21 @@ pub enum ApiError {
     NotFound,
     #[error("已存在")]
     ISExists,
-    #[error("该资源正在被 {0} 修改百科页面，请等待其他用户修改完并且被审核完成后再进行提交修改")]
+    #[error(
+        "该资源正在被 {0} 修改百科页面，请等待其他用户修改完并且被审核完成后再进行提交修改"
+    )]
     ISConflict(String),
     #[error("您已被限速。请等待 {0} 毫秒。0/{1} 剩余。")]
     RateLimitError(u128, u32),
     #[error("与支付处理器交互时出错: {0}")]
     Stripe(#[from] stripe::StripeError),
+    #[error("阿里云短信服务错误: {0}")]
+    AliyunSms(#[from] alibaba_cloud_sdk_rust::error::AliyunSDKError),
     #[error("您已达到上传图片的限制 ({0}/{1})")]
     ImageLimit(u32, u32),
-    #[error("由于您多次上传文本被识别为风险违规，您已达到上传文本/图片的限制，解除时间: {0}")]
+    #[error(
+        "由于您多次上传文本被识别为风险违规，您已达到上传文本/图片的限制，解除时间: {0}"
+    )]
     RiskLimit(String),
 }
 
@@ -184,6 +190,7 @@ impl ApiError {
                 ApiError::Io(..) => "io_error",
                 ApiError::RateLimitError(..) => "ratelimit_error",
                 ApiError::Stripe(..) => "stripe_error",
+                ApiError::AliyunSms(..) => "aliyun_sms_error",
                 ApiError::ImageLimit(..) => "image_limit",
                 ApiError::RiskLimit(..) => "risk_limit",
             },
@@ -224,6 +231,7 @@ impl actix_web::ResponseError for ApiError {
             ApiError::Io(..) => StatusCode::BAD_REQUEST,
             ApiError::RateLimitError(..) => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Stripe(..) => StatusCode::FAILED_DEPENDENCY,
+            ApiError::AliyunSms(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::WikiBan(..) => StatusCode::BAD_REQUEST,
             ApiError::ImageLimit(..) => StatusCode::BAD_REQUEST,
             ApiError::RiskLimit(..) => StatusCode::BAD_REQUEST,

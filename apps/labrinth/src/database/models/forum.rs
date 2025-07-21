@@ -343,7 +343,7 @@ impl Discussion {
                     DashMap::new(),
                     |acc: DashMap<i64, QueryDiscussion>, m| {
                         // let id: i64 = m.id.clone();
-                        let id = DiscussionId(m.id.unwrap());
+                        let id = DiscussionId(m.id);
                         let posts: Vec<PostIndex> = posts_index
                             .get(&id.0)
                             .map(|v| v.clone())
@@ -358,21 +358,21 @@ impl Discussion {
                                 posts,
                                 inner: Discussion {
                                     id,
-                                    title: m.title.unwrap(),
-                                    content: m.content.unwrap(),
-                                    category: m.category.unwrap(),
-                                    created_at: m.created_at.unwrap(),
+                                    title: m.title,
+                                    content: m.content,
+                                    category: m.category,
+                                    created_at: m.created_at,
                                     updated_at: m.updated_at,
-                                    user_id: UserId(m.user_id.unwrap()),
-                                    user_name: m.user_name,
+                                    user_id: UserId(m.user_id),
+                                    user_name: m.user_name.unwrap_or_default(),
                                     avatar: m.avatar_url,
                                     organization: None,
                                     organization_id: None,
-                                    state: m.state.unwrap(),
-                                    pinned: m.pinned.unwrap(),
-                                    deleted: m.deleted.unwrap(),
+                                    state: m.state,
+                                    pinned: m.pinned,
+                                    deleted: m.deleted,
                                     deleted_at: m.deleted_at,
-                                    last_post_time: m.last_post_time.unwrap(),
+                                    last_post_time: m.last_post_time.unwrap_or_else(|| chrono::Utc::now()),
                                     project_id,
                                 },
                             },

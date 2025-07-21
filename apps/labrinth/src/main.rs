@@ -37,7 +37,10 @@ async fn main() -> std::io::Result<()> {
     });
     if sentry.is_enabled() {
         info!("启用 Sentry 集成");
-        std::env::set_var("RUST_BACKTRACE", "1");
+        // SAFETY: Setting RUST_BACKTRACE environment variable is safe in this context
+        unsafe {
+            std::env::set_var("RUST_BACKTRACE", "1");
+        }
     }
 
     info!("启动 Labrinth 于 {}", dotenvy::var("BIND_ADDR").unwrap());

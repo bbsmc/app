@@ -427,7 +427,7 @@ impl Issue {
                 .try_fold(
                     DashMap::new(),
                     |acc: DashMap<i64, QueryIssue>, m| {
-                        let id = IssuesId(m.id.unwrap_or_default());
+                        let id = IssuesId(m.id);
                         let comments: Vec<IssueCommentIndex> = comments_index
                             .get(&id.0)
                             .map(|v| v.clone())
@@ -439,18 +439,18 @@ impl Issue {
                                 comments,
                                 inner: Issue {
                                     id,
-                                    mod_id: ProjectId(m.mod_id.unwrap_or_default()),
-                                    title: m.title.unwrap_or_default(),
-                                    body: m.body.unwrap_or_default(),
-                                    state: m.state.unwrap_or_default(),
-                                    created_at: m.created_at.unwrap_or_else(|| Utc::now()),
-                                    updated_at: m.updated_at.unwrap_or_else(|| Utc::now()),
+                                    mod_id: ProjectId(m.mod_id),
+                                    title: m.title,
+                                    body: m.body,
+                                    state: m.state,
+                                    created_at: m.created_at,
+                                    updated_at: m.updated_at,
                                     closed_at: m.closed_at,
-                                    author_id: UserId(m.author_id.unwrap_or_default()),
-                                    author_name: m.author_name,
+                                    author_id: UserId(m.author_id),
+                                    author_name: m.author_name.unwrap_or_default(),
                                     author_avatar: m.author_avatar,
-                                    locked: m.locked.unwrap_or_default(),
-                                    deleted: m.deleted.unwrap_or_default(),
+                                    locked: m.locked,
+                                    deleted: m.deleted,
                                     deleted_at: m.deleted_at,
                                     labels: Vec::new(), // 稍后填充
                                     assignees: Vec::new(), // 稍后填充
