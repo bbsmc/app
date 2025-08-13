@@ -119,7 +119,13 @@
           >
             您必须要有一个上传的文件
           </li>
-          <li v-if="version.loaders.length === 0 && project.project_type !== 'resourcepack'">
+          <li
+            v-if="
+              version.loaders.length === 0 &&
+              project.project_type !== 'resourcepack' &&
+              version.type !== 'language'
+            "
+          >
             您的版本必须选择资源的运行环境
           </li>
         </ul>
@@ -239,7 +245,67 @@
         v-html="version.changelog ? renderHighlightedString(version.changelog) : '无'"
       />
     </div>
-    <div v-if="isEditing" class="version-page__disk_url universal-card">
+    
+    <!-- 翻译该版本的资源列表 -->
+    <div
+      v-if="translationVersions.length > 0 || translationVersionsLoading"
+      class="version-page__translations universal-card"
+    >
+      <h3>汉化包</h3>
+      
+      <!-- 加载指示器 -->
+      <div v-if="translationVersionsLoading" class="loading-indicator">
+        <span>正在加载翻译版本信息...</span>
+      </div>
+      
+      <!-- 翻译版本列表（每个项目只显示最新版本） -->
+      <div
+        v-for="(translation, index) in translationVersions"
+        v-show="!translationVersionsLoading"
+        :key="index"
+        class="translation-item button-transparent"
+        @click="$router.push(translation.link)"
+      >
+        <Avatar
+          :src="translation.project ? translation.project.icon_url : null"
+          alt="translation-icon"
+          size="sm"
+        />
+        <nuxt-link :to="translation.link" class="info">
+          <span class="project-title">
+            {{ translation.project ? translation.project.title : "加载中..." }}
+          </span>
+          <span class="translation-details">
+            <span class="version-info">
+              v{{ translation.version_number }}
+            </span>
+            <span class="separator">·</span>
+            <span class="language-info">
+              {{ translation.language_code === "zh_CN" ? "简体中文" : 
+                 translation.language_code === "zh_TW" ? "繁体中文" :
+                 translation.language_code === "en_US" ? "英语" :
+                 translation.language_code === "ja_JP" ? "日语" :
+                 translation.language_code === "ko_KR" ? "韩语" :
+                 translation.language_code }}
+            </span>
+            <span class="separator">·</span>
+            <span class="date-info" v-tooltip="formatDateTime(translation.date_published)">
+              {{ fromNow(translation.date_published) }}
+            </span>
+          </span>
+        </nuxt-link>
+      </div>
+      
+      <div v-if="translationVersions.length === 0 && !translationVersionsLoading" class="no-translations">
+        <InfoIcon aria-hidden="true" />
+        <span>暂无翻译版本</span>
+      </div>
+    </div>
+    
+    <div
+      v-if="isEditing && version.type !== 'language'"
+      class="version-page__disk_url universal-card"
+    >
       <div class="adjacent-input">
         <label>
           <span class="label__title">第三方链接(网盘)下载</span>
@@ -322,8 +388,12 @@
         </div>
       </div>
     </div>
+    
     <div
-      v-if="deps.length > 0 || (isEditing && project.project_type !== 'modpack')"
+      v-if="
+        deps.length > 0 ||
+        (isEditing && project.project_type !== 'modpack' && version.type !== 'language')
+      "
       class="version-page__dependencies universal-card"
     >
       <h3>依赖项目</h3>
@@ -446,6 +516,270 @@
             <button @click="addDependency(dependencyAddMode, newDependencyId, newDependencyType)">
               <PlusIcon aria-hidden="true" />
               添加依赖
+            </button>
+          </ButtonStyled>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 版本链接部分（仅用于语言类型） -->
+    <!-- 版本链接卡片：只在有链接数据（且已加载）或编辑/创建模式时显示 -->
+    <div
+      v-if="
+        (version.type === 'language' && (
+          (versionLinks.length > 0 && versionLinks.some(link => link.originalVersion)) || 
+          isEditing || 
+          versionLinksLoading
+        )) ||
+        (isCreating && version.type === 'language')
+      "
+      class="version-page__version-links universal-card"
+    >
+      <h3>目标翻译资源版本</h3>
+      <!-- 只显示已加载完成的版本链接，或在编辑模式下显示所有 -->
+      <template v-for="(link, index) in versionLinks" :key="index">
+        <div
+          v-show="link.originalVersion || isEditing"
+          class="version-link"
+          :class="{ 'button-transparent': !isEditing }"
+          @click="!isEditing && link.originalVersion ? $router.push(link.originalVersion.link) : {}"
+        >
+        <Avatar
+          :src="link.originalVersion ? link.originalVersion.project.icon_url : null"
+          alt="version-link-icon"
+          size="sm"
+        />
+        <nuxt-link
+          v-if="!isEditing && link.originalVersion"
+          :to="link.originalVersion.link"
+          class="info"
+        >
+          <span class="project-title">
+            {{ link.originalVersion.project.title }}
+          </span>
+          <span class="link-details">
+            版本 {{ link.originalVersion.version_number }} -
+            {{ link.language_code === "zh_CN" ? "简体中文" : link.language_code }}
+          </span>
+        </nuxt-link>
+        <!-- 审核状态标签（仅对项目成员显示） -->
+        <span
+          v-if="!isEditing && currentMember && link.approval_status"
+          class="approval-status-tag"
+          :class="{
+            'status-approved': link.approval_status === 'approved' || link.approval_status?.toLowerCase() === 'approved',
+            'status-pending': link.approval_status === 'pending' || link.approval_status?.toLowerCase() === 'pending',
+            'status-rejected': link.approval_status === 'rejected' || link.approval_status?.toLowerCase() === 'rejected'
+          }"
+          :title="`审核状态: ${link.approval_status}`"
+        >
+          {{ getApprovalStatusLabel(link.approval_status) }}
+        </span>
+        <div v-else-if="isEditing" class="info">
+          <span class="project-title">
+            {{ link.originalVersion ? link.originalVersion.project.title : "加载中..." }}
+          </span>
+          <span class="link-details">
+            版本
+            {{
+              link.originalVersion ? link.originalVersion.version_number : link.joining_version_id
+            }}
+            - {{ link.language_code === "zh_CN" ? "简体中文" : link.language_code }}
+          </span>
+        </div>
+        <!-- 审核状态标签（编辑模式下也显示） -->
+        <span
+          v-if="isEditing && currentMember && link.approval_status"
+          class="approval-status-tag"
+          :class="{
+            'status-approved': link.approval_status === 'approved' || link.approval_status?.toLowerCase() === 'approved',
+            'status-pending': link.approval_status === 'pending' || link.approval_status?.toLowerCase() === 'pending',
+            'status-rejected': link.approval_status === 'rejected' || link.approval_status?.toLowerCase() === 'rejected'
+          }"
+          :title="`审核状态: ${link.approval_status}`"
+        >
+          {{ getApprovalStatusLabel(link.approval_status) }}
+        </span>
+        <ButtonStyled v-if="isEditing">
+          <button @click="removeVersionLink(index)">
+            <TrashIcon aria-hidden="true" />
+            移除
+          </button>
+        </ButtonStyled>
+        <!-- 消息按钮（非编辑模式下显示，即使没有thread_id也显示） -->
+        <button
+          v-if="!isEditing"
+          class="btn btn-secondary btn-small message-toggle"
+          @click.stop="toggleThread(link)"
+        >
+          <MessageIcon aria-hidden="true" />
+          {{ expandedThreads.includes(getLinkId(link)) ? '隐藏' : '显示' }}消息
+        </button>
+        </div>
+        
+        <!-- Thread 消息区域 -->
+        <div
+          v-show="!isEditing && expandedThreads.includes(getLinkId(link))"
+          class="thread-section"
+          @click.stop
+        >
+        <div class="thread-header">
+          <h5>审核消息</h5>
+          <span class="thread-description">与审核者的对话记录</span>
+        </div>
+        <div v-if="threads[getLinkId(link)]" class="thread-messages">
+          <div v-if="threads[getLinkId(link)].messages && threads[getLinkId(link)].messages.length > 0" class="messages-list">
+            <div
+              v-for="message in threads[getLinkId(link)].messages"
+              :key="message.id"
+              class="message-item"
+              :class="{ 'mod-message': message.author_id && isStaff(getMessageAuthor(message, threads[getLinkId(link)])) }"
+            >
+              <div class="message-header">
+                <div class="message-author">
+                  <Avatar
+                    v-if="getMessageAuthor(message, threads[getLinkId(link)])"
+                    :src="getMessageAuthor(message, threads[getLinkId(link)]).avatar_url"
+                    :alt="getMessageAuthor(message, threads[getLinkId(link)]).username"
+                    size="xs"
+                    circle
+                  />
+                  <span>{{ getMessageAuthor(message, threads[getLinkId(link)])?.username || '系统' }}</span>
+                </div>
+                <span class="message-time">{{ fromNow(message.created) }}</span>
+              </div>
+              <div class="message-body">
+                <template v-if="message.body.type === 'text'">
+                  <div class="message-text" v-html="renderMarkdown(message.body.body)"></div>
+                  <span v-if="message.body.private" class="private-badge">内部消息</span>
+                </template>
+                <template v-else-if="message.body.type === 'status_change'">
+                  <div class="status-change">
+                    状态变更: {{ formatApprovalStatus(message.body.old_status) }} → {{ formatApprovalStatus(message.body.new_status) }}
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div v-else class="no-messages">
+            <InfoIcon aria-hidden="true" />
+            <p>{{ threads[getLinkId(link)].noThreadMessage || '暂无消息记录' }}</p>
+          </div>
+          
+          <!-- 发送消息区域（仅当前用户是项目成员时显示，且有thread_id） -->
+          <div v-if="currentMember && link.thread_id" class="send-message">
+            <textarea
+              v-model="messageTexts[getLinkId(link)]"
+              class="message-input"
+              placeholder="输入消息..."
+              rows="3"
+              @click.stop
+            ></textarea>
+            <div class="message-actions">
+              <button
+                class="btn btn-primary btn-small"
+                :disabled="!messageTexts[getLinkId(link)] || sendingMessage[getLinkId(link)]"
+                @click.stop="sendMessage(link, false)"
+              >
+                <SendIcon aria-hidden="true" />
+                发送
+              </button>
+              <button
+                v-if="auth.user?.role === 'admin' || auth.user?.role === 'moderator'"
+                class="btn btn-secondary btn-small"
+                :disabled="!messageTexts[getLinkId(link)] || sendingMessage[getLinkId(link)]"
+                @click.stop="sendMessage(link, true)"
+              >
+                <LockIcon aria-hidden="true" />
+                内部备注
+              </button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="loading-thread">
+          <UpdatedIcon aria-hidden="true" class="animate-spin" />
+          <span>加载消息中...</span>
+        </div>
+        </div>
+      </template>
+      <!-- 加载指示器 -->
+      <div v-if="!isEditing && versionLinksLoading" class="loading-indicator">
+        <span>正在加载版本链接信息...</span>
+      </div>
+      
+      <div v-if="isEditing && versionLinks.length > 0" class="version-link-notice">
+        <div class="notice-box">
+          <InfoIcon aria-hidden="true" />
+          <span>一个翻译版本只能绑定一个原版本。如需更改，请先移除当前绑定。</span>
+        </div>
+      </div>
+
+      <div v-if="isEditing && versionLinks.length === 0" class="add-version-link">
+        <!-- 审核说明 -->
+        <div class="approval-info-box">
+          <InfoIcon aria-hidden="true" />
+          <div class="approval-info-content">
+            <p><strong>版本链接审核说明：</strong></p>
+            <p>以下情况将<span class="highlight-green">自动通过审核</span>，无需等待：</p>
+            <ul>
+              <li>您是<strong>平台管理员</strong>或<strong>版主</strong></li>
+              <li>您是<strong>目标项目的团队成员</strong>（拥有上传版本权限）</li>
+              <li>您是<strong>目标项目所属组织的成员</strong>（拥有上传版本权限）</li>
+            </ul>
+            <p>其他情况需要<span class="highlight-orange">等待审核</span>。审核将由<strong>目标项目的团队成员</strong>（拥有审核权限）或<strong>平台管理员/版主</strong>进行处理，通过后您的翻译才会在目标版本显示。</p>
+          </div>
+        </div>
+        <h4>绑定原版本（被翻译的版本）</h4>
+        <div class="input-group">
+
+          <input
+            v-model="linkTargetId"
+            type="text"
+            placeholder="请输入版本 ID"
+            @keyup.enter="addVersionLink('version', linkTargetId)"
+          />
+        </div>
+
+        <div class="input-group">
+          <label for="link-language-code">
+            <span class="label__title">翻译语言</span>
+          </label>
+          <Multiselect
+            id="link-language-code"
+            v-model="linkLanguageCode"
+            :options="[
+              { value: 'zh_CN', label: '简体中文' },
+              { value: 'zh_TW', label: '繁体中文' },
+              { value: 'en_US', label: '英语' },
+              { value: 'ja_JP', label: '日语' },
+              { value: 'ko_KR', label: '韩语' },
+            ]"
+            :custom-label="(o) => (o ? o.label : '')"
+            track-by="value"
+            placeholder="选择翻译语言..."
+            :searchable="false"
+            :close-on-select="true"
+            :show-labels="false"
+          />
+        </div>
+
+        <div class="input-group">
+          <label for="link-description">
+            <span class="label__title">说明（可选）</span>
+          </label>
+          <input
+            id="link-description"
+            v-model="linkDescription"
+            type="text"
+            placeholder="翻译说明..."
+          />
+        </div>
+
+        <div class="input-group">
+          <ButtonStyled color="brand">
+            <button @click="addVersionLink('version', linkTargetId)">
+              <PlusIcon aria-hidden="true" />
+              添加绑定
             </button>
           </ButtonStyled>
         </div>
@@ -636,16 +970,31 @@
             v-model="version.type"
             class="input"
             placeholder="选择"
-            :options="['software', 'minecraft']"
-            :custom-label="(value) => (value === 'software' ? '软件资源' : '我的世界资源')"
+            :options="['software', 'minecraft', 'language']"
+            :custom-label="
+              (value) =>
+                value === 'software'
+                  ? '软件资源'
+                  : value === 'minecraft'
+                    ? '我的世界资源'
+                    : '汉化包'
+            "
             :searchable="false"
             :close-on-select="true"
             :show-labels="false"
             :allow-empty="false"
+            @select="
+              (newValue) => {
+                if (newValue === 'language') {
+                  version.disk_only = false;
+                }
+              }
+            "
           />
           <template v-else>
             <span v-if="version.type === 'software'">软件资源</span>
             <span v-else-if="version.type === 'minecraft'">Minecraft资源</span>
+            <span v-else-if="version.type === 'language'">汉化包</span>
           </template>
         </div>
         <div>
@@ -698,9 +1047,8 @@
           </div>
           <span v-else>{{ version.version_number }}</span>
         </div>
-        <div v-if="project.project_type !== 'resourcepack'">
+        <div v-if="project.project_type !== 'resourcepack' && version.type !== 'language'">
           <h4>运行环境</h4>
-          <!--          {{tags.loaders}}-->
           <Multiselect
             v-if="isEditing"
             v-model="version.loaders"
@@ -805,7 +1153,7 @@
   </div>
 </template>
 <script>
-import { formatProjectRelease } from "@modrinth/utils";
+import { formatProjectRelease, renderString } from "@modrinth/utils";
 import { ButtonStyled, ConfirmModal, MarkdownEditor, NewModal } from "@modrinth/ui";
 import { Multiselect } from "vue-multiselect";
 import JSZip from "jszip";
@@ -841,6 +1189,11 @@ import UploadIcon from "~/assets/images/utils/upload.svg?component";
 import BackIcon from "~/assets/images/utils/left-arrow.svg?component";
 import BoxIcon from "~/assets/images/utils/box.svg?component";
 import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
+import InfoIcon from "~/assets/images/utils/info.svg?component";
+import MessageIcon from "~/assets/images/utils/message.svg?component";
+import SendIcon from "~/assets/images/utils/send.svg?component";
+import LockIcon from "~/assets/images/utils/lock.svg?component";
+import UpdatedIcon from "~/assets/images/utils/updated.svg?component";
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
 import { useBaseFetchFile } from "~/composables/fetch.js";
@@ -881,6 +1234,7 @@ export default defineNuxtComponent({
     Multiselect,
     BoxIcon,
     RightArrowIcon,
+    InfoIcon,
     ConfirmModal,
     ButtonStyled,
   },
@@ -960,6 +1314,12 @@ export default defineNuxtComponent({
     let alternateFile = {};
 
     let replaceFile = null;
+    
+    // 提前声明 versionLinks 变量，供创建模式使用
+    let versionLinks = [];
+    let translationVersions = [];
+    let versionLinksLoading = false;
+    let translationVersionsLoading = false;
 
     if (mode === "edit") {
       isEditing = true;
@@ -1010,13 +1370,63 @@ export default defineNuxtComponent({
             ...version,
             ...inferredData,
           };
+          
+          // 如果推断数据包含目标版本信息，自动创建版本链接
+          if (inferredData.targetVersion) {
+            try {
+              // 获取目标版本信息
+              const targetVersionResponse = await useBaseFetch(`version/${inferredData.targetVersion}`);
+              
+              if (targetVersionResponse && targetVersionResponse.project_id) {
+                // 获取项目信息
+                const projectResponse = await useBaseFetch(`project/${targetVersionResponse.project_id}`);
+                
+                if (projectResponse) {
+                  const projectType = projectResponse.project_type || projectResponse.project_types?.[0] || 'mod';
+                  
+                  versionLinks = [{
+                    joining_version_id: inferredData.targetVersion,
+                    link_type: 'translation',
+                    language_code: inferredData.languageCode || 'zh_CN',
+                    description: inferredData.linkDescription || '',
+                    originalVersion: {
+                      ...targetVersionResponse,
+                      project: projectResponse,
+                      link: `/${projectType}/${projectResponse.slug || projectResponse.id}/version/${encodeURI(targetVersionResponse.version_number)}`
+                    }
+                  }];
+                }
+              }
+            } catch (error) {
+              console.error("加载目标版本信息失败:", inferredData.targetVersion, error);
+              // 即使加载失败，仍然创建基本的版本链接
+              versionLinks = [{
+                joining_version_id: inferredData.targetVersion,
+                link_type: 'translation',
+                language_code: inferredData.languageCode || 'zh_CN',
+                description: inferredData.linkDescription || '',
+                originalVersion: null
+              }];
+            }
+            
+            // 设置版本类型为语言类型
+            version.type = 'language';
+            
+            // 删除临时字段，避免发送到后端
+            delete version.targetVersion;
+            delete version.languageCode;
+            delete version.linkDescription;
+          }
         } catch (err) {
           console.error("解析版本文件数据时出错", err);
         }
       } else {
         version.disk_only = true;
       }
-      version.type = null;
+      // 只在没有设置type的情况下才设为null
+      if (version.type === undefined) {
+        version.type = null;
+      }
     } else if (route.params.version === "latest") {
       let versionList = props.versions;
       if (route.query.loader) {
@@ -1043,6 +1453,7 @@ export default defineNuxtComponent({
     }
 
     version = JSON.parse(JSON.stringify(version));
+    
     if (version.disk_only && version.disk_urls && version.disk_urls.length > 0) {
       version.disk_urls.forEach((url) => {
         if (url.platform === "baidu") {
@@ -1065,6 +1476,8 @@ export default defineNuxtComponent({
         version.loaders.includes("macos")
       ) {
         version.type = "software";
+      } else if (version.loaders.includes("language")) {
+        version.type = "language";
       } else {
         version.type = "minecraft";
       }
@@ -1096,6 +1509,106 @@ export default defineNuxtComponent({
             dependency.version ? `/version/${encodeURI(dependency.version.version_number)}` : ""
           }`
         : "";
+    }
+    
+    // 初始化版本链接数据（与依赖项目初始化方式一致）
+    // 注意：versionLinks等变量已在前面声明，这里只处理非创建模式的情况
+    if (!isCreating && version.version_links && version.version_links.length > 0) {
+      versionLinksLoading = true;
+      versionLinks = await Promise.all(
+        version.version_links.map(async (link) => {
+          try {
+            const versionResponse = await useBaseFetch(`version/${link.joining_version_id}`);
+            
+            if (versionResponse && versionResponse.project_id) {
+              const projectResponse = await useBaseFetch(`project/${versionResponse.project_id}`);
+              
+              if (projectResponse) {
+                const projectType = projectResponse.project_type || projectResponse.project_types?.[0] || 'mod';
+                
+                return {
+                  ...link,
+                  originalVersion: {
+                    ...versionResponse,
+                    project: projectResponse,
+                    link: `/${projectType}/${projectResponse.slug || projectResponse.id}/version/${encodeURI(versionResponse.version_number)}`
+                  }
+                };
+              }
+            }
+          } catch (error) {
+            console.error("加载版本链接详情失败:", link.joining_version_id, error);
+          }
+          
+          return {
+            ...link,
+            originalVersion: null
+          };
+        })
+      );
+      versionLinksLoading = false;
+    }
+    
+    // 初始化翻译版本数据（与依赖项目初始化方式一致）
+    if (version.translated_by && version.translated_by.length > 0) {
+      translationVersionsLoading = true;
+      
+      // 获取所有翻译版本的详细信息
+      const allTranslations = await Promise.all(
+        version.translated_by.map(async (link) => {
+          try {
+            const versionResponse = await useBaseFetch(`version/${link.joining_version_id}`);
+            
+            if (versionResponse && versionResponse.project_id) {
+              const projectResponse = await useBaseFetch(`project/${versionResponse.project_id}`);
+              
+              if (projectResponse) {
+                const projectType = projectResponse.project_type || projectResponse.project_types?.[0] || 'mod';
+                
+                return {
+                  ...link,
+                  project: projectResponse,
+                  version: versionResponse,
+                  version_number: versionResponse.version_number,
+                  date_published: versionResponse.date_published,
+                  link: `/${projectType}/${projectResponse.slug || projectResponse.id}/version/${encodeURI(versionResponse.version_number)}`
+                };
+              }
+            }
+          } catch (error) {
+            console.error("加载翻译版本详情失败:", link.joining_version_id, error);
+          }
+          
+          return null;
+        })
+      );
+      
+      // 过滤掉加载失败的版本
+      const validTranslations = allTranslations.filter(t => t && t.project);
+      
+      // 按项目分组，每个项目只保留最新的版本
+      const projectMap = new Map();
+      
+      for (const translation of validTranslations) {
+        const projectId = translation.project.id;
+        
+        if (!projectMap.has(projectId)) {
+          projectMap.set(projectId, translation);
+        } else {
+          const existing = projectMap.get(projectId);
+          // 比较发布日期，保留更新的版本
+          if (new Date(translation.date_published) > new Date(existing.date_published)) {
+            projectMap.set(projectId, translation);
+          }
+        }
+      }
+      
+      // 转换为数组并按发布日期降序排序
+      translationVersions = Array.from(projectMap.values()).sort((a, b) => 
+        new Date(b.date_published) - new Date(a.date_published)
+      );
+      
+      translationVersionsLoading = false;
     }
 
     oldFileTypes = version.files.map((x) => fileTypes.find((y) => y.value === x.file_type));
@@ -1137,6 +1650,12 @@ export default defineNuxtComponent({
       alternateFile: ref(alternateFile),
       replaceFile: ref(replaceFile),
       uploadedImageIds: ref([]),
+      
+      // 版本链接和翻译版本数据
+      versionLinks: ref(versionLinks),
+      versionLinksLoading: ref(versionLinksLoading),
+      translationVersions: ref(translationVersions),
+      translationVersionsLoading: ref(translationVersionsLoading),
     };
   },
   data() {
@@ -1157,6 +1676,17 @@ export default defineNuxtComponent({
 
       showKnownErrors: false,
       shouldPreventActions: false,
+
+      // 版本链接编辑相关数据
+      linkTargetId: "",
+      linkLanguageCode: { value: "zh_CN", label: "简体中文" },
+      linkDescription: "",
+      
+      // Thread相关数据
+      expandedThreads: [],
+      threads: {},
+      messageTexts: {},
+      sendingMessage: {},
     };
   },
   computed: {
@@ -1170,7 +1700,9 @@ export default defineNuxtComponent({
           (this.version.curseforge === "" || this.version.curseforge === undefined) &&
           (this.version.baidu_disk === "" || this.version.baidu_disk === undefined)) ||
         (this.version.game_versions.length === 0 && this.version.type === "minecraft") ||
-        (this.version.loaders.length === 0 && this.project.project_type !== "resourcepack") ||
+        (this.version.loaders.length === 0 &&
+          this.project.project_type !== "resourcepack" &&
+          this.version.type !== "language") ||
         (this.newFiles.length === 0 &&
           this.version.files.length === 0 &&
           !this.replaceFile &&
@@ -1192,7 +1724,114 @@ export default defineNuxtComponent({
       this.isEditing = mode === "edit" || this.$route.params.version === "create";
     },
   },
+  mounted() {
+    // 数据已在setup中初始化，无需重复操作
+  },
   methods: {
+    formatDateTime(date) {
+      return this.$dayjs(date).format("YYYY-MM-DD HH:mm");
+    },
+    fromNow(date) {
+      return this.$dayjs(date).fromNow();
+    },
+    getApprovalStatusLabel(status) {
+      const normalizedStatus = (status || '').toLowerCase();
+      if (normalizedStatus === 'approved') {
+        return '已审核';
+      } else if (normalizedStatus === 'rejected') {
+        return '已拒绝';
+      } else if (normalizedStatus === 'pending') {
+        return '审核中';
+      }
+      return status;
+    },
+    async loadVersionLinkDetails() {
+      // 设置加载状态
+      this.versionLinksLoading = true;
+      
+      for (let i = 0; i < this.versionLinks.length; i++) {
+        const link = this.versionLinks[i];
+        
+        try {
+          // 使用正确的 API 路径获取版本信息
+          const versionResponse = await useBaseFetch(`version/${link.joining_version_id}`);
+          
+          if (versionResponse && versionResponse.project_id) {
+            // 获取项目信息
+            const projectResponse = await useBaseFetch(`project/${versionResponse.project_id}`);
+            
+            if (projectResponse) {
+              // 处理项目类型（兼容 v2 和 v3 API）
+              const projectType = projectResponse.project_type || projectResponse.project_types?.[0] || 'mod';
+              
+              // 构造 originalVersion 对象，与 addVersionLink 方法保持一致
+              const originalVersionData = {
+                ...versionResponse,
+                project: projectResponse,
+                link: `/${projectType}/${projectResponse.slug || projectResponse.id}/version/${encodeURI(versionResponse.version_number)}`
+              };
+              
+              // 在 Vue 3 中，需要重新赋值整个数组元素以触发响应式更新
+              this.versionLinks[i] = {
+                ...this.versionLinks[i],
+                originalVersion: originalVersionData
+              };
+            } else {
+              console.warn("找不到项目信息:", versionResponse.project_id);
+            }
+          } else {
+            console.warn("版本信息不完整或不存在:", link.joining_version_id);
+          }
+        } catch (error) {
+          console.error("加载版本链接详情失败:", link.joining_version_id, error);
+        }
+      }
+      
+      // 加载完成，关闭加载状态
+      this.versionLinksLoading = false;
+      
+      // 强制触发视图更新
+      this.$forceUpdate();
+    },
+    async loadTranslationVersionDetails() {
+      // 设置加载状态
+      this.translationVersionsLoading = true;
+      
+      for (let i = 0; i < this.translationVersions.length; i++) {
+        const link = this.translationVersions[i];
+        
+        try {
+          // 使用joining_version_id获取翻译版本的信息
+          const versionResponse = await useBaseFetch(`version/${link.joining_version_id}`);
+          
+          if (versionResponse && versionResponse.project_id) {
+            // 获取项目信息
+            const projectResponse = await useBaseFetch(`project/${versionResponse.project_id}`);
+            
+            if (projectResponse) {
+              // 处理项目类型（兼容 v2 和 v3 API）
+              const projectType = projectResponse.project_type || projectResponse.project_types?.[0] || 'mod';
+              
+              // 更新翻译版本数据
+              this.translationVersions[i] = {
+                ...this.translationVersions[i],
+                project: projectResponse,
+                version_number: versionResponse.version_number,
+                link: `/${projectType}/${projectResponse.slug || projectResponse.id}/version/${encodeURI(versionResponse.version_number)}`
+              };
+            }
+          }
+        } catch (error) {
+          console.error("加载翻译版本详情失败:", link.joining_version_id, error);
+        }
+      }
+      
+      // 加载完成，关闭加载状态
+      this.translationVersionsLoading = false;
+      
+      // 强制触发视图更新
+      this.$forceUpdate();
+    },
     formatProjectRelease() {
       return formatProjectRelease;
     },
@@ -1388,6 +2027,9 @@ export default defineNuxtComponent({
             url: this.version.xunlei_disk,
           });
         }
+        // 如果版本类型是language，强制设置loaders为language
+        const loaders = this.version.type === "language" ? ["language"] : this.version.loaders;
+        
         const body = {
           name: this.version.name || this.version.version_number,
           version_number: this.version.version_number,
@@ -1395,7 +2037,7 @@ export default defineNuxtComponent({
           version_type: this.version.version_type,
           dependencies: this.version.dependencies,
 
-          loaders: this.version.loaders,
+          loaders: loaders,
           disk_urls: this.version.disk_only ? disks : null,
           disk_only: this.version.disk_only,
           primary_file: this.version.disk_only ? [] : ["sha1", this.primaryFile.hashes.sha1],
@@ -1410,12 +2052,29 @@ export default defineNuxtComponent({
                 };
               }),
         };
-        if (this.version.type === "minecraft") {
+        
+        // 始终包含game_versions字段（如果存在），避免后端flatten导致字段被清空
+        if (this.version.game_versions) {
           body.game_versions = this.version.game_versions;
         }
 
         if (this.project.project_type === "modpack") {
           delete body.dependencies;
+        }
+
+        // 添加版本链接数据（仅限语言类型项目）
+        if (this.version.type === "language") {
+          if (this.versionLinks.length > 0) {
+            body.version_links = this.versionLinks.map((link) => ({
+              joining_version_id: link.joining_version_id,
+              link_type: link.link_type || "translation",
+              language_code: link.language_code,
+              description: link.description,
+            }));
+          } else {
+            // 如果清空了所有链接，也需要更新
+            body.version_links = [];
+          }
         }
 
         await useBaseFetch(`version/${this.version.id}`, {
@@ -1454,6 +2113,7 @@ export default defineNuxtComponent({
 
       startLoading();
       if (this.fieldErrors) {
+        console.log("fieldErrors");
         this.showKnownErrors = true;
         this.shouldPreventActions = false;
 
@@ -1486,6 +2146,13 @@ export default defineNuxtComponent({
 
       if (this.project.project_type === "resourcepack") {
         version.loaders = ["minecraft"];
+      }
+      if (this.project.project_type === "language") {
+        version.loaders = ["language"];
+      }
+      // 如果版本类型是language，强制设置loaders为language
+      if (version.type === "language") {
+        version.loaders = ["language"];
       }
       let curse = false;
       for (let i = 0; i < this.newFiles.length; i++) {
@@ -1544,6 +2211,7 @@ export default defineNuxtComponent({
         project_id: version.project_id,
         curse,
         software: version.type === "software",
+        language: version.type === "language",
         file_parts: fileParts,
         version_number: version.version_number,
         version_title: version.name || version.version_number,
@@ -1569,6 +2237,16 @@ export default defineNuxtComponent({
         newVersion.game_versions = this.version.game_versions;
       }
 
+      // 添加版本链接数据（仅限语言类型项目）
+      if (this.version.type === "language" && this.versionLinks.length > 0) {
+        newVersion.version_links = this.versionLinks.map((link) => ({
+          joining_version_id: link.joining_version_id,
+          link_type: link.link_type || "translation",
+          language_code: link.language_code,
+          description: link.description,
+        }));
+      }
+
       formData.append("data", JSON.stringify(newVersion));
 
       if (this.replaceFile) {
@@ -1585,13 +2263,6 @@ export default defineNuxtComponent({
           new Blob([this.newFiles[i]]),
           this.newFiles[i].name,
         );
-        // const part = new Blob([this.newFiles[i]]);
-        // const zipReader = new JSZip();
-        // const zip = await zipReader.loadAsync(part);
-        // if (zip.file("manifest.json")) {
-        //   const manifest = await zip.file("manifest.json").async("string");
-        //   console.log(manifest);
-        // }
       }
       this.$refs.uploading_modal.show();
 
@@ -1656,11 +2327,297 @@ export default defineNuxtComponent({
       return newCreatedVersions;
     },
 
+    // 版本链接相关方法
+
+    async addVersionLink(mode, targetId) {
+      // 如果没有传入targetId，使用组件的状态
+      if (!targetId) {
+        targetId = this.linkTargetId;
+      }
+      
+      if (!targetId) {
+        this.$notify({
+          group: "main",
+          title: "缺少必要信息",
+          text: "请输入版本 ID",
+          type: "error",
+        });
+        return;
+      }
+      
+      if (!this.linkLanguageCode || !this.linkLanguageCode.value) {
+        this.$notify({
+          group: "main",
+          title: "缺少必要信息",
+          text: "请选择翻译语言",
+          type: "error",
+        });
+        return;
+      }
+      
+      // 检查是否已经绑定了版本（只能绑定一个）
+      if (this.versionLinks.length > 0) {
+        this.$notify({
+          group: "main",
+          title: "绑定限制",
+          text: "一个翻译版本只能绑定一个原版本，请先移除现有绑定",
+          type: "error",
+        });
+        return;
+      }
+
+      try {
+        // 直接通过版本ID添加
+        const targetVersion = await useBaseFetch(`version/${targetId}`);
+        
+        if (!targetVersion || !targetVersion.project_id) {
+          this.$notify({
+            group: "main",
+            title: "版本无效",
+            text: "找不到指定的版本或版本数据不完整",
+            type: "error",
+          });
+          return;
+        }
+        
+        const targetProject = await useBaseFetch(`project/${targetVersion.project_id}`);
+        
+        if (!targetProject) {
+          this.$notify({
+            group: "main",
+            title: "项目无效",
+            text: "找不到版本对应的项目",
+            type: "error",
+          });
+          return;
+        }
+        
+        // 检查是否已存在相同的链接
+        const exists = this.versionLinks.some(
+          (link) => link.joining_version_id === targetVersion.id,
+        );
+
+        if (exists) {
+          this.$notify({
+            group: "main",
+            title: "链接已存在",
+            text: "该版本已经被链接",
+            type: "error",
+          });
+          return;
+        }
+
+        // 处理项目类型（兼容 v2 和 v3 API）
+        const projectType = targetProject.project_type || targetProject.project_types?.[0] || 'mod';
+
+        // 添加到本地列表
+        this.versionLinks.push({
+          joining_version_id: targetVersion.id,
+          link_type: "translation",
+          language_code: this.linkLanguageCode.value,
+          description: this.linkDescription,
+          // 用于显示的额外信息
+          originalVersion: {
+            project: targetProject,
+            ...targetVersion,
+            link: `/${projectType}/${targetProject.slug || targetProject.id}/version/${encodeURI(targetVersion.version_number)}`
+          }
+        });
+
+        // 如果不是创建模式，也更新 version 对象
+        if (!this.isCreating && this.version.version_links) {
+          this.version.version_links.push({
+            joining_version_id: targetVersion.id,
+            link_type: "translation",
+            language_code: this.linkLanguageCode.value,
+            description: this.linkDescription,
+          });
+        }
+
+        // 清空输入
+        this.linkTargetId = "";
+        this.linkDescription = "";
+        
+        this.$notify({
+          group: "main",
+          title: "添加成功",
+          text: `已绑定版本: ${targetVersion.name} (${targetVersion.version_number})`,
+          type: "success",
+        });
+        
+      } catch (error) {
+        this.$notify({
+          group: "main",
+          title: "添加失败",
+          text: "找不到指定的版本",
+          type: "error",
+        });
+      }
+    },
+
+    removeVersionLink(index) {
+      this.versionLinks.splice(index, 1);
+
+      // 如果不是编辑模式，也更新 version 对象
+      if (!this.isCreating && this.version.version_links) {
+        this.version.version_links.splice(index, 1);
+      }
+
+      this.$notify({
+        group: "main",
+        title: "删除成功",
+        text: "版本链接已删除",
+        type: "success",
+      });
+    },
+
     onDownload(version) {
       useBaseFetch(`version/${version}/download`, {
         method: "PATCH",
         apiVersion: 3,
       });
+    },
+    
+    // Thread相关方法
+    toggleThread(link) {
+      const linkId = this.getLinkId(link);
+      console.log('toggleThread - linkId:', linkId, 'link:', link); // 调试信息
+      if (!linkId) return;
+      
+      const index = this.expandedThreads.indexOf(linkId);
+      if (index === -1) {
+        this.expandedThreads.push(linkId);
+        console.log('展开thread, expandedThreads:', this.expandedThreads); // 调试信息
+        // 如果还没有thread，尝试获取或创建
+        if (!this.threads[linkId]) {
+          if (link.thread_id) {
+            this.fetchThread(link);
+          } else {
+            // 如果没有thread_id，创建一个虚拟thread用于显示提示信息
+            this.$set(this.threads, linkId, {
+              id: null,
+              messages: [],
+              members: [],
+              noThreadMessage: '该翻译链接暂未启用消息功能。消息功能需要后端支持。'
+            });
+            console.log('创建虚拟thread:', this.threads[linkId]); // 调试信息
+          }
+        }
+      } else {
+        this.expandedThreads.splice(index, 1);
+        console.log('隐藏thread, expandedThreads:', this.expandedThreads); // 调试信息
+      }
+      // 强制更新视图
+      this.$forceUpdate();
+    },
+    
+    async fetchThread(link) {
+      if (!link || !link.thread_id) return;
+      
+      const linkId = this.getLinkId(link);
+      if (!linkId) return;
+      
+      try {
+        const thread = await useBaseFetch(`thread/${link.thread_id}`);
+        this.threads[linkId] = thread;
+      } catch (error) {
+        console.error('获取thread失败:', error);
+        // 创建空thread作为后备
+        this.threads[linkId] = {
+          id: link.thread_id,
+          messages: [],
+          members: [],
+        };
+      }
+    },
+    
+    async sendMessage(link, isPrivate = false) {
+      const linkId = this.getLinkId(link);
+      if (!linkId) return;
+      
+      const messageText = this.messageTexts[linkId];
+      if (!messageText || this.sendingMessage[linkId]) return;
+      
+      // 如果没有thread_id，需要先在后端创建thread
+      if (!link.thread_id) {
+        this.$notify({
+          group: 'main',
+          title: '提示',
+          text: '此翻译链接暂不支持消息功能',
+          type: 'info',
+        });
+        return;
+      }
+      
+      this.sendingMessage[linkId] = true;
+      try {
+        await useBaseFetch(`thread/${link.thread_id}`, {
+          method: 'POST',
+          body: {
+            body: {
+              type: 'text',
+              body: messageText,
+              private: isPrivate,
+            },
+          },
+        });
+        
+        // 清空输入框
+        this.messageTexts[linkId] = '';
+        
+        // 重新获取thread以显示新消息
+        await this.fetchThread(link);
+        
+        this.$notify({
+          group: 'main',
+          title: '成功',
+          text: '消息已发送',
+          type: 'success',
+        });
+      } catch (error) {
+        console.error('发送消息失败:', error);
+        this.$notify({
+          group: 'main',
+          title: '错误',
+          text: '发送消息失败',
+          type: 'error',
+        });
+      } finally {
+        this.sendingMessage[linkId] = false;
+      }
+    },
+    
+    getMessageAuthor(message, thread) {
+      if (!message.author_id) return null;
+      return thread.members?.find(m => m.id === message.author_id);
+    },
+    
+    isStaff(user) {
+      return user?.role === 'admin' || user?.role === 'moderator';
+    },
+    
+    renderMarkdown(text) {
+      return renderString(text);
+    },
+    
+    formatApprovalStatus(status) {
+      const statusMap = {
+        'approved': '已批准',
+        'pending': '待审核',
+        'rejected': '已拒绝',
+      };
+      return statusMap[status] || status;
+    },
+    
+    // 获取链接的唯一ID
+    getLinkId(link) {
+      if (!link) return null;
+      // 优先使用joining_version_id，如果没有则使用一个稳定的索引或其他字段
+      const id = link.joining_version_id || link.id || link.version_id || 
+                 link.target_version_id || link.originalVersion?.id || 
+                 `link_${this.versionLinks.indexOf(link)}`;
+      console.log('getLinkId返回:', id, 'for link:', link); // 调试信息
+      return id;
     },
   },
 });
@@ -1678,6 +2635,7 @@ export default defineNuxtComponent({
     "title" auto
     "disk_url" auto
     "changelog" auto
+    "translations" auto
     "dependencies" auto
     "metadata" auto
     "files" auto
@@ -1688,6 +2646,7 @@ export default defineNuxtComponent({
       "title title" auto
       "disk_url metadata" auto
       "changelog metadata" auto
+      "translations metadata" auto
       "dependencies metadata" auto
       "files metadata" auto
       "dummy metadata" 1fr
@@ -1749,6 +2708,107 @@ export default defineNuxtComponent({
   .version-page__disk_url {
     grid-area: disk_url;
     overflow-x: hidden;
+  }
+
+  .version-page__translations {
+    grid-area: translations;
+    
+    .translation-item {
+      align-items: center;
+      display: flex;
+      gap: var(--spacing-card-sm);
+      padding: var(--spacing-card-sm);
+      
+      .info {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-card-xs);
+        
+        .project-title {
+          font-weight: bold;
+        }
+        
+        .translation-details {
+          color: var(--color-text-secondary);
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          
+          .separator {
+            color: var(--color-text-disabled);
+          }
+          
+          .version-info {
+            font-weight: 500;
+          }
+          
+          .date-info {
+            font-size: 0.825rem;
+          }
+        }
+      }
+    }
+    
+    .no-translations {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-card-sm);
+      padding: var(--spacing-card-sm);
+      color: var(--color-text-secondary);
+    }
+    
+    .loading-indicator {
+      padding: var(--spacing-card-sm);
+      color: var(--color-text-secondary);
+    }
+  }
+  
+  .version-page__translations {
+    grid-area: translations;
+    
+    .translation-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-card-sm);
+      padding: var(--spacing-card-xs) var(--spacing-card-sm);
+      margin: 0 calc(var(--spacing-card-sm) * -1);
+      border-radius: var(--size-rounded-sm);
+      
+      .info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        
+        .project-title {
+          font-weight: 600;
+          color: var(--color-text);
+        }
+        
+        .translation-details {
+          font-size: 0.875rem;
+          color: var(--color-text-secondary);
+        }
+      }
+      
+      &:hover {
+        background-color: var(--color-raised-bg);
+      }
+    }
+    
+    .no-translations {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-card-sm);
+      padding: var(--spacing-card-sm);
+      color: var(--color-text-secondary);
+    }
+    
+    .loading-indicator {
+      padding: var(--spacing-card-sm);
+      color: var(--color-text-secondary);
+    }
   }
 
   .version-page__dependencies {
@@ -1920,6 +2980,206 @@ export default defineNuxtComponent({
   margin: var(--spacing-card-sm) 0;
 }
 
+.version-page__version-links {
+  grid-area: dependencies;
+
+  .version-link {
+    align-items: center;
+    display: flex;
+    gap: var(--spacing-card-sm);
+    padding: var(--spacing-card-sm);
+    border-bottom: 1px solid var(--color-divider);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-card-xs);
+      flex-grow: 1;
+
+      .project-title {
+        font-weight: bold;
+      }
+
+      .version-info {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-sm);
+      }
+
+      .language-badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        background: var(--color-raised-bg);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-sm);
+        margin-right: 0.5rem;
+      }
+    }
+
+    button {
+      margin-left: auto;
+    }
+  }
+
+  .add-version-link {
+    h4 {
+      margin-bottom: var(--spacing-card-sm);
+    }
+
+    .approval-info-box {
+      display: flex;
+      gap: var(--spacing-card-sm);
+      padding: var(--spacing-card-md);
+      background: var(--color-bg-raised);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-card-md);
+      
+      svg {
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+        color: var(--color-brand);
+        margin-top: 2px;
+      }
+      
+      .approval-info-content {
+        flex: 1;
+        
+        p {
+          margin: 0 0 var(--spacing-card-xs) 0;
+          color: var(--color-text);
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+          
+          strong {
+            font-weight: 600;
+          }
+        }
+        
+        ul {
+          margin: var(--spacing-card-xs) 0;
+          padding-left: 1.5rem;
+          list-style: disc;
+          
+          li {
+            margin: var(--spacing-card-xs) 0;
+            color: var(--color-text-secondary);
+            
+            strong {
+              color: var(--color-text);
+              font-weight: 600;
+            }
+          }
+        }
+        
+        .highlight-green {
+          color: var(--color-green);
+          font-weight: 600;
+          margin: 0 0.25rem;
+        }
+        
+        .highlight-orange {
+          color: var(--color-orange);
+          font-weight: 600;
+          margin: 0 0.25rem;
+        }
+      }
+    }
+
+    .input-group {
+      &:not(:last-child) {
+        margin-bottom: var(--spacing-card-sm);
+      }
+
+      .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: var(--color-raised-bg);
+        border: 1px solid var(--color-divider);
+        border-radius: var(--radius-sm);
+        margin-top: 0.25rem;
+        z-index: 10;
+
+        .search-result {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem;
+          cursor: pointer;
+
+          &:hover {
+            background: var(--color-button-bg-hover);
+          }
+        }
+      }
+
+      .multiselect {
+        width: 100%;
+      }
+    }
+
+    .version-preview {
+      margin-bottom: var(--spacing-card-sm);
+
+      .selected-version-card {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-card-sm);
+        padding: var(--spacing-card-sm);
+        background: var(--color-raised-bg);
+        border: 1px solid var(--color-divider);
+        border-radius: var(--radius-sm);
+
+        .info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+
+          .project-title {
+            font-weight: 600;
+          }
+
+          .version-info {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+          }
+        }
+      }
+    }
+    
+    .version-link-notice {
+      margin-bottom: var(--spacing-card-sm);
+      
+      .notice-box {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-card-sm);
+        padding: var(--spacing-card-sm);
+        background: var(--color-brand-bg);
+        border: 1px solid var(--color-brand);
+        border-radius: var(--radius-sm);
+        color: var(--color-brand);
+        
+        svg {
+          flex-shrink: 0;
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+      }
+    }
+  }
+}
+
 .modal-package-mod {
   padding: var(--spacing-card-bg);
   display: flex;
@@ -1932,5 +3192,294 @@ export default defineNuxtComponent({
   .multiselect {
     max-width: 20rem;
   }
+}
+
+/* 审核状态标签样式 */
+.approval-status-tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  margin-left: 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+
+  &.status-approved {
+    background-color: var(--color-green-bg);
+    color: var(--color-green);
+    border: 1px solid var(--color-green);
+  }
+
+  &.status-pending {
+    background-color: var(--color-orange-bg);
+    color: var(--color-orange);
+    border: 1px solid var(--color-orange);
+  }
+
+  &.status-rejected {
+    background-color: var(--color-red-bg);
+    color: var(--color-red);
+    border: 1px solid var(--color-red);
+  }
+}
+
+/* 在版本链接中的样式调整 */
+.version-link {
+  display: flex;
+  align-items: center;
+  
+  .info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 0.25rem;
+
+    .project-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+  
+  /* 审核状态标签放在信息右侧，垂直居中 */
+  .approval-status-tag {
+    margin-left: auto;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+}
+
+// Thread相关样式
+.message-toggle {
+  margin-left: auto;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.thread-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-divider);
+}
+
+.thread-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-divider);
+  
+  h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+  }
+  
+  .thread-description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+}
+
+.thread-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.message-item {
+  padding: 0.75rem;
+  background: var(--color-raised-bg);
+  border-radius: var(--radius-md);
+  
+  &.mod-message {
+    background: var(--color-primary-bg);
+    border: 1px solid var(--color-primary);
+  }
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.message-author {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.message-time {
+  font-size: 0.875rem;
+  color: var(--color-text-disabled);
+}
+
+.message-body {
+  position: relative;
+}
+
+.message-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  
+  :deep(p) {
+    margin: 0.5rem 0;
+    
+    &:first-child {
+      margin-top: 0;
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.private-badge {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-change {
+  padding: 0.5rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.no-messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--color-text-secondary);
+  
+  svg {
+    width: 2rem;
+    height: 2rem;
+    opacity: 0.5;
+    margin-bottom: 0.5rem;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+}
+
+.send-message {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-divider);
+}
+
+.message-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--color-raised-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 60px;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+}
+
+.message-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.loading-thread {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 0.75rem;
+  color: var(--color-text-secondary);
+  
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+.btn-secondary {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-divider);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  
+  &:hover:not(:disabled) {
+    background: var(--color-raised-bg);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

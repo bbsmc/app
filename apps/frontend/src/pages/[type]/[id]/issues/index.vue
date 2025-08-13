@@ -17,8 +17,14 @@
               设置
             </button-styled>
           </div>
-          <div v-if="isAuth && ((!project.issues_url || project.issues_type !== 0) && project.issues_type !== 2)"
-            class="create-button">
+          <div
+            v-if="
+              isAuth &&
+              (!project.issues_url || project.issues_type !== 0) &&
+              project.issues_type !== 2
+            "
+            class="create-button"
+          >
             <button-styled color="green" @click="openCreateIssue">
               <PlusIcon aria-hidden="true" />
               创建问题
@@ -33,7 +39,12 @@
           <span class="notice-icon">🔗</span>
           <div class="notice-text">
             <span>该项目已设置了站外反馈问题的地址，请前往</span>
-            <a :href="project.issues_url" target="_blank" rel="noopener noreferrer" class="external-link">
+            <a
+              :href="project.issues_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
               {{ project.issues_url }}
             </a>
             <span>提交问题反馈</span>
@@ -46,7 +57,12 @@
           <span class="notice-icon">🔗</span>
           <div class="notice-text">
             <span>该项目同时设置了站外反馈问题的地址，请优先前往</span>
-            <a :href="project.issues_url" target="_blank" rel="noopener noreferrer" class="external-link">
+            <a
+              :href="project.issues_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
               {{ project.issues_url }}
             </a>
             <span>提交问题反馈</span>
@@ -62,19 +78,33 @@
         </div>
       </div>
 
-
       <!-- 过滤器 -->
       <!--      1.  project.issues_url 和 project.issues_type === 0 的时候 不显示-->
       <!--      2.  project.issues_type === 2 的时候 不显示-->
-      <div v-if="(!project.issues_url || project.issues_type !== 0) && project.issues_type !== 2" class="filter-bar">
+      <div
+        v-if="(!project.issues_url || project.issues_type !== 0) && project.issues_type !== 2"
+        class="filter-bar"
+      >
         <div class="filter-tabs">
-          <button class="filter-tab" :class="{ active: stateFilter === 'all' }" @click="setFilter('all')">
+          <button
+            class="filter-tab"
+            :class="{ active: stateFilter === 'all' }"
+            @click="setFilter('all')"
+          >
             全部
           </button>
-          <button class="filter-tab" :class="{ active: stateFilter === 'open' }" @click="setFilter('open')">
+          <button
+            class="filter-tab"
+            :class="{ active: stateFilter === 'open' }"
+            @click="setFilter('open')"
+          >
             开放中
           </button>
-          <button class="filter-tab" :class="{ active: stateFilter === 'closed' }" @click="setFilter('closed')">
+          <button
+            class="filter-tab"
+            :class="{ active: stateFilter === 'closed' }"
+            @click="setFilter('closed')"
+          >
             已关闭
           </button>
         </div>
@@ -82,8 +112,14 @@
 
       <!-- Issues列表 -->
       <div
-        v-if="((!project.issues_url || project.issues_type !== 0) && project.issues_type !== 2) && issues && issues.length > 0"
-        class="issues-list">
+        v-if="
+          (!project.issues_url || project.issues_type !== 0) &&
+          project.issues_type !== 2 &&
+          issues &&
+          issues.length > 0
+        "
+        class="issues-list"
+      >
         <div v-for="issue in issues" :key="issue.id" class="card issue-card">
           <div class="issue-status-indicator" :class="{ closed: issue.state === 'closed' }">
             <span v-if="issue.state === 'open'" class="status-icon open">●</span>
@@ -92,12 +128,19 @@
 
           <div class="issue-content">
             <div class="issue-title-row">
-              <NuxtLink :to="`/${route.params.type}/${route.params.id}/issues/${issue.id}`" class="issue-title-link">
+              <NuxtLink
+                :to="`/${route.params.type}/${route.params.id}/issues/${issue.id}`"
+                class="issue-title-link"
+              >
                 {{ issue.title }}
               </NuxtLink>
               <div v-if="issue.labels && issue.labels.length > 0" class="issue-labels">
-                <span v-for="label in issue.labels" :key="label.id" class="issue-label"
-                  :style="{ backgroundColor: label.color }">
+                <span
+                  v-for="label in issue.labels"
+                  :key="label.id"
+                  class="issue-label"
+                  :style="{ backgroundColor: label.color }"
+                >
                   {{ label.name }}
                 </span>
               </div>
@@ -125,8 +168,15 @@
       </div>
 
       <!-- 分页控制 -->
-      <div v-if="!project.issues_url && pagination && pagination.total > pageSize" class="pagination-controls">
-        <button-styled v-if="currentPage > 1" :disabled="pending" @click="changePage(currentPage - 1)">
+      <div
+        v-if="!project.issues_url && pagination && pagination.total > pageSize"
+        class="pagination-controls"
+      >
+        <button-styled
+          v-if="currentPage > 1"
+          :disabled="pending"
+          @click="changePage(currentPage - 1)"
+        >
           上一页
         </button-styled>
 
@@ -137,15 +187,21 @@
           <span class="total-count"> 共 {{ pagination.total }} 个问题 </span>
         </div>
 
-        <button-styled v-if="currentPage < Math.ceil(pagination.total / pageSize)" :disabled="pending"
-          @click="changePage(currentPage + 1)">
+        <button-styled
+          v-if="currentPage < Math.ceil(pagination.total / pageSize)"
+          :disabled="pending"
+          @click="changePage(currentPage + 1)"
+        >
           下一页
         </button-styled>
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-if="!project.issues_url && !pending && (!issues || issues.length === 0)" class="empty-state">
+    <div
+      v-if="!project.issues_url && !pending && (!issues || issues.length === 0)"
+      class="empty-state"
+    >
       <div class="empty-content">
         <h3>还没有问题</h3>
         <p>这个项目还没有创建任何问题。</p>
@@ -178,7 +234,13 @@
               <span class="label-title">标题</span>
               <span class="label-description">简短描述问题</span>
             </label>
-            <input v-model="newIssue.title" type="text" placeholder="请输入问题标题" maxlength="300" class="form-input" />
+            <input
+              v-model="newIssue.title"
+              type="text"
+              placeholder="请输入问题标题"
+              maxlength="300"
+              class="form-input"
+            />
           </div>
 
           <div class="form-group">
@@ -186,14 +248,21 @@
               <span class="label-title">描述</span>
               <span class="label-description">详细描述问题</span>
             </label>
-            <MarkdownEditor v-model="newIssue.body" :on-image-upload="onUploadHandler" placeholder="请详细描述问题..." />
+            <MarkdownEditor
+              v-model="newIssue.body"
+              :on-image-upload="onUploadHandler"
+              placeholder="请详细描述问题..."
+            />
           </div>
         </div>
 
         <div class="modal-actions">
           <button-styled color="red" @click="closeCreateModal"> 取消 </button-styled>
-          <button-styled color="green" :disabled="!newIssue.title.trim() || !newIssue.body.trim() || isCreating"
-            @click="createIssue">
+          <button-styled
+            color="green"
+            :disabled="!newIssue.title.trim() || !newIssue.body.trim() || isCreating"
+            @click="createIssue"
+          >
             <PlusIcon aria-hidden="true" />
             {{ isCreating ? "创建中..." : "创建问题" }}
           </button-styled>
@@ -218,23 +287,45 @@
 
             <div class="radio-group">
               <label class="radio-option">
-                <input v-model="tempIssuesType" type="radio" :value="0" name="issuesType" class="radio-input" />
+                <input
+                  v-model="tempIssuesType"
+                  type="radio"
+                  :value="0"
+                  name="issuesType"
+                  class="radio-input"
+                />
                 <div class="radio-content">
                   <span class="radio-title">仅使用外部反馈地址</span>
-                  <span class="radio-description">若设置了项目链接的反馈地址则不显示站内反馈功能，引导至链接的反馈地址</span>
+                  <span class="radio-description"
+                    >若设置了项目链接的反馈地址则不显示站内反馈功能，引导至链接的反馈地址</span
+                  >
                 </div>
               </label>
 
               <label class="radio-option">
-                <input v-model="tempIssuesType" type="radio" :value="1" name="issuesType" class="radio-input" />
+                <input
+                  v-model="tempIssuesType"
+                  type="radio"
+                  :value="1"
+                  name="issuesType"
+                  class="radio-input"
+                />
                 <div class="radio-content">
                   <span class="radio-title">外部反馈地址和站内反馈并存</span>
-                  <span class="radio-description">链接反馈地址和站内反馈同时存在，用户可以选择使用哪种方式</span>
+                  <span class="radio-description"
+                    >链接反馈地址和站内反馈同时存在，用户可以选择使用哪种方式</span
+                  >
                 </div>
               </label>
 
               <label class="radio-option">
-                <input v-model="tempIssuesType" type="radio" :value="2" name="issuesType" class="radio-input" />
+                <input
+                  v-model="tempIssuesType"
+                  type="radio"
+                  :value="2"
+                  name="issuesType"
+                  class="radio-input"
+                />
                 <div class="radio-content">
                   <span class="radio-title">完全关闭反馈功能</span>
                   <span class="radio-description">完全关闭站内反馈功能，不显示反馈相关内容</span>
@@ -246,7 +337,11 @@
 
         <div class="modal-actions">
           <button-styled color="red" @click="closeSettingsModal"> 取消 </button-styled>
-          <button-styled color="green" :disabled="!hasSettingsChanges || isSavingSettings" @click="saveIssuesSettings">
+          <button-styled
+            color="green"
+            :disabled="!hasSettingsChanges || isSavingSettings"
+            @click="saveIssuesSettings"
+          >
             <SaveIcon aria-hidden="true" />
             {{ isSavingSettings ? "保存中..." : "保存设置" }}
           </button-styled>
@@ -260,9 +355,9 @@
 import { ButtonStyled, MarkdownEditor } from "@modrinth/ui";
 
 import { PlusIcon } from "@modrinth/assets";
+import dayjs from "dayjs";
 import SettingsIcon from "~/assets/images/utils/settings.svg?component";
 import SaveIcon from "~/assets/images/utils/save.svg?component";
-import dayjs from "dayjs";
 import { isDarkTheme } from "~/plugins/theme/themes";
 const auth = await useAuth();
 

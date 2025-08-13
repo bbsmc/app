@@ -1004,6 +1004,7 @@ async fn create_initial_version(
         changelog: version_data.version_body.clone().unwrap_or_default(),
         files: Vec::new(),
         dependencies,
+        version_links: Vec::new(),
         loaders,
         version_fields,
         featured: version_data.featured,

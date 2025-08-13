@@ -17,7 +17,7 @@ use crate::models::pats::Scopes;
 use crate::models::projects::{skip_nulls, DependencyType, ProjectStatus};
 use crate::models::projects::{
     Dependency, FileType, Loader, ProjectId, Version, VersionFile, VersionId,
-    VersionStatus, VersionType,
+    VersionLink, VersionStatus, VersionType,
 };
 use crate::models::teams::ProjectPermissions;
 use crate::queue::moderation::AutomatedModerationQueue;
@@ -66,6 +66,8 @@ pub struct InitialVersionData {
         custom(function = "crate::util::validate::validate_deps")
     )]
     pub dependencies: Vec<Dependency>,
+    #[validate(length(min = 0, max = 256))]
+    pub version_links: Option<Vec<VersionLink>>,
     #[serde(alias = "version_type")]
     pub release_channel: VersionType,
     #[validate(length(min = 1))]
@@ -314,6 +316,96 @@ async fn version_create_inner(
                     })
                     .collect::<Vec<_>>();
 
+                // 处理版本链接
+                let mut version_links = Vec::new();
+                
+                if let Some(links) = &version_create_data.version_links {
+                    for link in links {
+                        // 获取被翻译版本的信息
+                        let target_version_id: models::VersionId = link.joining_version_id.into();
+                        let target_version = models::Version::get(target_version_id, &mut **transaction, redis).await?;
+                        
+                        let mut auto_approve = false;
+                        
+                        if let Some(target_version) = target_version {
+                            // 获取目标项目的团队成员信息
+                            let target_project_id = target_version.inner.project_id;
+                            let target_team = models::TeamMember::get_from_user_id_project(
+                                target_project_id,
+                                user.id.into(),
+                                false,  // allow_pending
+                                &mut **transaction,
+                            ).await?;
+                            
+                            // 获取目标项目的组织团队成员信息（如果有）
+                            let target_project = models::Project::get_id(target_project_id, &mut **transaction, redis).await?;
+                            let target_org_team = if let Some(target_project) = target_project {
+                                if let Some(org_id) = target_project.inner.organization_id {
+                                    models::TeamMember::get_from_user_id_organization(
+                                        org_id,
+                                        user.id.into(),
+                                        false,  // allow_pending
+                                        &mut **transaction,
+                                    ).await?
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            
+                            // 判断是否需要自动审核通过
+                            if user.role.is_admin() {
+                                log::info!(
+                                    "Version link auto-approved for translation version {} targeting version {} in project {}: User {} is an ADMIN",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else if user.role.is_mod() {
+                                log::info!(
+                                    "Version link auto-approved for translation version {} targeting version {} in project {}: User {} is a MODERATOR",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else if target_team.as_ref().map_or(false, |m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
+                                log::info!(
+                                    "Version link auto-approved for translation version {} targeting version {} in project {}: User {} is a TARGET PROJECT TEAM MEMBER with UPLOAD_VERSION permission",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else if target_org_team.as_ref().map_or(false, |m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
+                                log::info!(
+                                    "Version link auto-approved for translation version {} targeting version {} in project {}: User {} is a TARGET ORGANIZATION TEAM MEMBER with UPLOAD_VERSION permission",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else {
+                                log::info!(
+                                    "Version link requires approval for translation version {} targeting version {} in project {}: User {} does not have auto-approval permissions in the target project",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                            }
+                        } else {
+                            log::warn!(
+                                "Target version {} not found for version link from version {}",
+                                target_version_id.0, version_id
+                            );
+                        }
+                        
+                        version_links.push(models::version_item::VersionLinkBuilder {
+                            joining_version_id: link.joining_version_id.into(),
+                            link_type: link.link_type.clone(),
+                            language_code: link.language_code.clone(),
+                            description: link.description.clone(),
+                            approval_status: if auto_approve { 
+                                "approved".to_string() 
+                            } else { 
+                                "pending".to_string() 
+                            },
+                        });
+                    }
+                }
+
                 // let disk_url = None;
                 // if version_create_data.disk_only && version_create_data.disk_urls.is_some(){
                 //     disk_url = version_create_data.disk_urls.clone().unwrap();
@@ -327,6 +419,7 @@ async fn version_create_inner(
                     changelog: version_create_data.version_body.clone().unwrap_or_default(),
                     files: Vec::new(),
                     dependencies,
+                    version_links,
                     loaders: loader_ids,
                     version_fields,
                     version_type: version_create_data.release_channel.to_string(),
@@ -497,6 +590,13 @@ async fn version_create_inner(
             file_type: None,
         });
     }
+    
+    // 在移动 version_links 之前先收集需要清除缓存的目标版本ID
+    let target_version_ids_to_clear: Vec<models::ids::VersionId> = version_data.version_links
+        .as_ref()
+        .map(|links| links.iter().map(|link| link.joining_version_id.into()).collect())
+        .unwrap_or_default();
+    
     let response = Version {
         id: builder.version_id.into(),
         project_id: builder.project_id.into(),
@@ -515,6 +615,8 @@ async fn version_create_inner(
         ordering: builder.ordering,
         files,
         dependencies: version_data.dependencies,
+        version_links: version_data.version_links.unwrap_or_default(),
+        translated_by: Vec::new(), // 新创建的版本没有翻译
         loaders: version_data.loaders,
         fields: version_data.fields,
         disk_urls,
@@ -523,6 +625,17 @@ async fn version_create_inner(
 
     let project_id = builder.project_id;
     builder.insert(transaction).await?;
+    
+    // 清除版本链接目标版本的缓存（新建版本时）
+    for target_version_id in target_version_ids_to_clear {
+        if let Some(target_version) = models::Version::get(
+            target_version_id,
+            &mut **transaction,
+            redis,
+        ).await? {
+            models::Version::clear_cache(&target_version, redis).await?;
+        }
+    }
 
     for image_id in version_data.uploaded_images {
         if let Some(db_image) =

@@ -90,6 +90,53 @@ pub async fn is_authorized_thread(
             }
         }
         ThreadType::DirectMessage => thread.members.contains(&user_id),
+        ThreadType::VersionLink => {
+            // 获取版本链接信息
+            let link_info = sqlx::query!(
+                r#"
+                SELECT vlv.version_id, vlv.joining_version_id, v1.mod_id as translation_project_id, v2.mod_id as original_project_id
+                FROM version_link_version vlv
+                INNER JOIN versions v1 ON v1.id = vlv.version_id
+                INNER JOIN versions v2 ON v2.id = vlv.joining_version_id
+                WHERE vlv.thread_id = $1
+                "#,
+                thread.id.0
+            )
+            .fetch_optional(pool)
+            .await?;
+
+            if let Some(link) = link_info {
+                // 检查用户是否是翻译项目的成员
+                let translation_member = sqlx::query!(
+                    "SELECT EXISTS(SELECT 1 FROM mods m INNER JOIN team_members tm ON tm.team_id = m.team_id AND tm.user_id = $2 WHERE m.id = $1)",
+                    link.translation_project_id,
+                    user_id as database::models::ids::UserId,
+                )
+                .fetch_one(pool)
+                .await?
+                .exists
+                .unwrap_or(false);
+
+                if translation_member {
+                    return Ok(true);
+                }
+
+                // 检查用户是否是原项目的成员
+                let original_member = sqlx::query!(
+                    "SELECT EXISTS(SELECT 1 FROM mods m INNER JOIN team_members tm ON tm.team_id = m.team_id AND tm.user_id = $2 WHERE m.id = $1)",
+                    link.original_project_id,
+                    user_id as database::models::ids::UserId,
+                )
+                .fetch_one(pool)
+                .await?
+                .exists
+                .unwrap_or(false);
+
+                original_member
+            } else {
+                false
+            }
+        }
     })
 }
 

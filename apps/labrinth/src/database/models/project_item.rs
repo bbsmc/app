@@ -379,7 +379,26 @@ impl Project {
             .execute(&mut **transaction)
             .await?;
 
+            // 先删除主线程
             models::Thread::remove_full(project.thread_id, transaction).await?;
+
+            // 再删除所有引用该项目的其他线程（如果有）
+            // 注意：这些线程的 mod_id 字段引用了 mods 表
+            let thread_ids: Vec<i64> = sqlx::query!(
+                "
+                SELECT id FROM threads WHERE mod_id = $1
+                ",
+                id as ProjectId,
+            )
+            .fetch_all(&mut **transaction)
+            .await?
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
+
+            for thread_id in thread_ids {
+                models::Thread::remove_full(ThreadId(thread_id), transaction).await?;
+            }
 
             sqlx::query!(
                 "
@@ -412,11 +431,96 @@ impl Project {
             .execute(&mut **transaction)
             .await?;
 
-            for version in project.versions {
-                super::Version::remove_full(version, redis, transaction)
-                    .await?;
+            // 删除collections中的项目引用
+            sqlx::query!(
+                "
+                DELETE FROM collections_mods
+                WHERE mod_id = $1
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            // 删除与项目相关的wiki和wiki_cache
+            sqlx::query!(
+                "
+                DELETE FROM wiki_cache
+                WHERE mod_id = $1
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM wikis
+                WHERE mod_id = $1
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            // 删除与项目相关的所有issues及其评论
+            sqlx::query!(
+                "
+                DELETE FROM issue_comments
+                WHERE issue_id IN (SELECT id FROM issues WHERE mod_id = $1)
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM issue_label_associations
+                WHERE issue_id IN (SELECT id FROM issues WHERE mod_id = $1)
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM issue_assignees
+                WHERE issue_id IN (SELECT id FROM issues WHERE mod_id = $1)
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM issues
+                WHERE mod_id = $1
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            // 删除所有与该项目版本相关的版本链接
+            // 包括该项目版本作为翻译版本和作为目标版本的情况
+            if !project.versions.is_empty() {
+                let version_ids: Vec<i64> = project.versions.iter().map(|v| v.0).collect();
+                
+                sqlx::query!(
+                    "
+                    DELETE FROM version_link_version
+                    WHERE version_id = ANY($1) OR joining_version_id = ANY($1)
+                    ",
+                    &version_ids[..]
+                )
+                .execute(&mut **transaction)
+                .await?;
             }
 
+            // 删除与项目相关的dependencies
             sqlx::query!(
                 "
                 DELETE FROM dependencies WHERE mod_dependency_id = $1
@@ -425,6 +529,16 @@ impl Project {
             )
             .execute(&mut **transaction)
             .await?;
+
+            // 最后删除所有版本 - 必须在删除其他引用之后
+            log::info!("准备删除项目 {} 的 {} 个版本", id.0, project.versions.len());
+            for version in project.versions {
+                log::info!("正在删除版本 {}", version.0);
+                super::Version::remove_full(version, redis, transaction)
+                    .await?;
+                log::info!("版本 {} 删除成功", version.0);
+            }
+            log::info!("所有版本删除完成");
 
             sqlx::query!(
                 "

@@ -8,7 +8,7 @@ use crate::database::models::loader_fields::{
     self, LoaderField, LoaderFieldEnumValue, VersionField,
 };
 use crate::database::models::version_item::{
-    DependencyBuilder, LoaderVersion, QueryDisk,
+    DependencyBuilder, LoaderVersion, QueryDisk, VersionLinkBuilder,
 };
 use crate::database::models::{image_item, Organization};
 use crate::database::redis::RedisPool;
@@ -20,7 +20,7 @@ use crate::models::images::ImageContext;
 use crate::models::pats::Scopes;
 use crate::models::projects::{skip_nulls, Loader};
 use crate::models::projects::{
-    Dependency, FileType, VersionStatus, VersionType,
+    Dependency, FileType, VersionLink, VersionStatus, VersionType,
 };
 use crate::models::teams::ProjectPermissions;
 use crate::queue::analytics::AnalyticsQueue;
@@ -39,6 +39,8 @@ use std::net::Ipv4Addr;
 use std::sync::Arc;
 use validator::Validate;
 
+pub mod version_link_thread;
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route(
         "version",
@@ -55,6 +57,22 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route(
                 "{version_id}/file",
                 web::post().to(super::version_creation::upload_file_to_version),
+            )
+            .route(
+                "{version_id}/link/{target_version_id}/approve",
+                web::post().to(approve_version_link),
+            )
+            .route(
+                "{version_id}/link/{target_version_id}/reject",
+                web::post().to(reject_version_link),
+            )
+            .route(
+                "{version_id}/link/{target_version_id}/revoke",
+                web::post().to(revoke_version_link),
+            )
+            .route(
+                "{version_id}/link/{target_version_id}/thread",
+                web::post().to(version_link_thread::send_version_link_message),
             ),
     );
 }
@@ -114,8 +132,8 @@ pub async fn version_project_get_helper(
             if is_visible_version(&version.inner, &user_option, &pool, &redis)
                 .await?
             {
-                return Ok(HttpResponse::Ok()
-                    .json(models::projects::Version::from(version)));
+                let version_response = models::projects::Version::from(version);
+                return Ok(HttpResponse::Ok().json(version_response));
             }
         }
     }
@@ -180,8 +198,9 @@ pub async fn version_get_helper(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
+    let db_version_id: database::models::ids::VersionId = id.into();
     let version_data =
-        database::models::Version::get(id.into(), &**pool, &redis).await?;
+        database::models::Version::get(db_version_id, &**pool, &redis).await?;
 
     let user_option = get_user_from_headers(
         &req,
@@ -196,9 +215,8 @@ pub async fn version_get_helper(
 
     if let Some(data) = version_data {
         if is_visible_version(&data.inner, &user_option, &pool, &redis).await? {
-            return Ok(
-                HttpResponse::Ok().json(models::projects::Version::from(data))
-            );
+            let version = models::projects::Version::from(data);
+            return Ok(HttpResponse::Ok().json(version));
         }
     }
 
@@ -225,6 +243,8 @@ pub struct EditVersion {
         custom(function = "crate::util::validate::validate_deps")
     )]
     pub dependencies: Option<Vec<Dependency>>,
+    #[validate(length(min = 0, max = 256))]
+    pub version_links: Option<Vec<VersionLink>>,
     pub loaders: Option<Vec<Loader>>,
     pub featured: Option<bool>,
     pub downloads: Option<u32>,
@@ -571,6 +591,184 @@ pub async fn version_edit_helper(
                 .await?;
             }
 
+            if let Some(version_links) = &new_version.version_links {
+                // 先获取旧的版本链接及其审批状态，以便比较和清除缓存
+                let old_version_links = sqlx::query!(
+                    "
+                    SELECT joining_version_id, link_type, language_code, description, approval_status 
+                    FROM version_link_version 
+                    WHERE version_id = $1
+                    ",
+                    id as database::models::ids::VersionId,
+                )
+                .fetch_all(&mut *transaction)
+                .await?;
+                
+                // 创建一个映射来快速查找旧的链接信息  
+                let mut old_links_map = std::collections::HashMap::new();
+                for old_link in &old_version_links {
+                    // 直接使用字段值，它们应该都是 NOT NULL
+                    let key = (old_link.joining_version_id, 
+                              old_link.link_type.clone(), 
+                              old_link.language_code.clone());
+                    old_links_map.insert(key, old_link.approval_status.clone());
+                }
+                
+                // 收集所有需要清除缓存的版本ID（旧的和新的）
+                let mut versions_to_clear_cache = std::collections::HashSet::new();
+                
+                // 添加旧的目标版本
+                for link in &old_version_links {
+                    versions_to_clear_cache.insert(link.joining_version_id);
+                }
+                
+                // 添加新的目标版本
+                for link in version_links {
+                    let joining_id: database::models::ids::VersionId = link.joining_version_id.into();
+                    versions_to_clear_cache.insert(joining_id.0);
+                }
+                
+                // 删除现有的版本链接
+                sqlx::query!(
+                    "
+                    DELETE FROM version_link_version WHERE version_id = $1
+                    ",
+                    id as database::models::ids::VersionId,
+                )
+                .execute(&mut *transaction)
+                .await?;
+
+                // 处理每个版本链接，判断是否需要重新审核
+                let mut builders = Vec::new();
+                
+                for link in version_links {
+                    let target_version_id: database::models::ids::VersionId = link.joining_version_id.into();
+                    
+                    // 检查这个链接是否已存在且未改变
+                    let key = (target_version_id.0, link.link_type.clone(), link.language_code.clone());
+                    let existing_status = old_links_map.get(&key);
+                    
+                    // 如果链接已存在且目标版本未改变，保留原有的审批状态
+                    let approval_status = if let Some(status) = existing_status {
+                        // existing_status 是 &String（HashMap 存储的是 String）
+                        log::info!(
+                            "Version link for version {} targeting version {} unchanged, keeping approval status: {}",
+                            version_id, target_version_id.0, status
+                        );
+                        status.clone()
+                    } else {
+                        // 这是新增或修改的链接，需要进行权限检查
+                        log::info!(
+                            "Version link for version {} targeting version {} is new or modified, checking permissions",
+                            version_id, target_version_id.0
+                        );
+                        
+                        let target_version = database::models::Version::get(target_version_id, &mut *transaction, &redis).await?;
+                        
+                        let mut auto_approve = false;
+                        
+                        if let Some(target_version) = target_version {
+                            // 获取目标项目的团队成员信息
+                            let target_project_id = target_version.inner.project_id;
+                            let target_team = database::models::TeamMember::get_from_user_id_project(
+                                target_project_id,
+                                user.id.into(),
+                                false,  // allow_pending
+                                &mut *transaction,
+                            ).await?;
+                            
+                            // 获取目标项目的组织团队成员信息（如果有）
+                            let target_project = database::models::Project::get_id(target_project_id, &mut *transaction, &redis).await?;
+                            let target_org_team = if let Some(target_project) = target_project {
+                                if let Some(org_id) = target_project.inner.organization_id {
+                                    database::models::TeamMember::get_from_user_id_organization(
+                                        org_id,
+                                        user.id.into(),
+                                        false,  // allow_pending
+                                        &mut *transaction,
+                                    ).await?
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            
+                            // 判断是否需要自动审核通过
+                            if user.role.is_admin() {
+                                log::info!(
+                                    "Version link auto-approved for version {} edit targeting version {} in project {}: User {} is an ADMIN",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else if user.role.is_mod() {
+                                log::info!(
+                                    "Version link auto-approved for version {} edit targeting version {} in project {}: User {} is a MODERATOR",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else if target_team.as_ref().map_or(false, |m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
+                                log::info!(
+                                    "Version link auto-approved for version {} edit targeting version {} in project {}: User {} is a TARGET PROJECT TEAM MEMBER with UPLOAD_VERSION permission",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else if target_org_team.as_ref().map_or(false, |m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
+                                log::info!(
+                                    "Version link auto-approved for version {} edit targeting version {} in project {}: User {} is a TARGET ORGANIZATION TEAM MEMBER with UPLOAD_VERSION permission",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                                auto_approve = true;
+                            } else {
+                                log::info!(
+                                    "Version link requires approval for version {} edit targeting version {} in project {}: User {} does not have auto-approval permissions in the target project",
+                                    version_id, target_version_id.0, target_project_id.0, user.username
+                                );
+                            }
+                        } else {
+                            log::warn!(
+                                "Target version {} not found for version link from version {} during edit",
+                                target_version_id.0, version_id
+                            );
+                        }
+                        
+                        if auto_approve {
+                            "approved".to_string()
+                        } else {
+                            "pending".to_string()
+                        }
+                    };
+                    
+                    builders.push(VersionLinkBuilder {
+                        joining_version_id: link.joining_version_id.into(),
+                        link_type: link.link_type.clone(),
+                        language_code: link.language_code.clone(),
+                        description: link.description.clone(),
+                        approval_status,
+                    });
+                }
+
+                VersionLinkBuilder::insert_many(
+                    builders,
+                    version_item.inner.id,
+                    &mut transaction,
+                )
+                .await?;
+                
+                // 清除所有受影响的目标版本缓存
+                for version_id in versions_to_clear_cache {
+                    if let Some(target_version) = database::models::Version::get(
+                        database::models::ids::VersionId(version_id),
+                        &mut *transaction,
+                        &redis,
+                    )
+                    .await?
+                    {
+                        database::models::Version::clear_cache(&target_version, &redis).await?;
+                    }
+                }
+            }
+
             if !new_version.fields.is_empty() {
                 let version_fields_names = new_version
                     .fields
@@ -769,6 +967,27 @@ pub async fn version_edit_helper(
                 )
                 .execute(&mut *transaction)
                 .await?;
+                
+                // 如果状态发生变化，且这个版本是汉化包，清除所有目标版本的缓存
+                let version_links = sqlx::query!(
+                    "
+                    SELECT joining_version_id FROM version_link_version WHERE version_id = $1
+                    ",
+                    id as database::models::ids::VersionId,
+                )
+                .fetch_all(&mut *transaction)
+                .await?;
+                
+                for link in version_links {
+                    let target_version_id = database::models::ids::VersionId(link.joining_version_id);
+                    if let Some(target_version) = database::models::Version::get(
+                        target_version_id,
+                        &mut *transaction,
+                        &redis,
+                    ).await? {
+                        database::models::Version::clear_cache(&target_version, &redis).await?;
+                    }
+                }
             }
 
             if let Some(file_types) = &new_version.file_types {
@@ -1125,4 +1344,484 @@ pub async fn version_delete(
     } else {
         Err(ApiError::NotFound)
     }
+}
+
+// 批准版本链接
+pub async fn approve_version_link(
+    req: HttpRequest,
+    info: web::Path<(VersionId, VersionId)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let (translation_version_id, target_version_id) = info.into_inner();
+    
+    let user = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::VERSION_WRITE]),
+    )
+    .await?
+    .1;
+
+    // 获取目标版本（被翻译的版本）
+    let target_version = database::models::Version::get(
+        target_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or_else(|| ApiError::NotFound)?;
+
+    // 检查用户是否有权限管理目标项目的版本
+    let target_project_id = target_version.inner.project_id;
+    let team_member = database::models::TeamMember::get_from_user_id_project(
+        target_project_id,
+        user.id.into(),
+        false,
+        &**pool,
+    )
+    .await?;
+
+    let organization = database::models::Organization::get_associated_organization_project_id(
+        target_project_id,
+        &**pool,
+    )
+    .await?;
+
+    let organization_team_member = if let Some(organization) = &organization {
+        database::models::TeamMember::get_from_user_id(
+            organization.team_id,
+            user.id.into(),
+            &**pool,
+        )
+        .await?
+    } else {
+        None
+    };
+
+    let permissions = ProjectPermissions::get_permissions_by_role(
+        &user.role,
+        &team_member,
+        &organization_team_member,
+    );
+
+    if let Some(perms) = permissions {
+        if !perms.contains(ProjectPermissions::UPLOAD_VERSION) {
+            return Err(ApiError::CustomAuthentication(
+                "您没有权限管理此项目的翻译链接".to_string(),
+            ));
+        }
+    } else {
+        return Err(ApiError::CustomAuthentication(
+            "您没有权限管理此项目的翻译链接".to_string(),
+        ));
+    }
+
+    // 获取翻译版本
+    let translation_version = database::models::Version::get(
+        translation_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+
+    // 更新链接状态为已批准
+    let mut transaction = pool.begin().await?;
+    
+    // 先获取当前链接信息，看是否有thread_id
+    let link_info = sqlx::query!(
+        "SELECT thread_id FROM version_link_version WHERE version_id = $1 AND joining_version_id = $2",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    
+    sqlx::query!(
+        "
+        UPDATE version_link_version
+        SET approval_status = 'approved'
+        WHERE version_id = $1 AND joining_version_id = $2
+        ",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .execute(&mut *transaction)
+    .await?;
+    
+    // 创建或获取thread，然后添加批准消息
+    if let Some(link) = link_info {
+        use crate::database::models::thread_item::{ThreadBuilder, ThreadMessageBuilder};
+        use crate::models::threads::{MessageBody, ThreadType};
+        
+        let thread_id = if let Some(existing_thread_id) = link.thread_id {
+            database::models::ids::ThreadId(existing_thread_id)
+        } else {
+            // 如果没有thread，先创建一个
+            let new_thread_id = ThreadBuilder {
+                type_: ThreadType::VersionLink,
+                members: vec![],
+                project_id: None,
+                report_id: None,
+            }
+            .insert(&mut transaction)
+            .await?;
+            
+            // 更新version_link_version表中的thread_id
+            sqlx::query!(
+                "UPDATE version_link_version SET thread_id = $1 WHERE version_id = $2 AND joining_version_id = $3",
+                new_thread_id.0,
+                translation_version_id.0 as i64,
+                target_version_id.0 as i64,
+            )
+            .execute(&mut *transaction)
+            .await?;
+            
+            new_thread_id
+        };
+        
+        // 创建系统消息表示链接已批准
+        ThreadMessageBuilder {
+            author_id: Some(user.id.into()),
+            body: MessageBody::Text {
+                body: "✅ 翻译链接已批准".to_string(),
+                replying_to: None,
+                private: false,
+                associated_images: vec![],
+            },
+            thread_id,
+            hide_identity: false,
+        }
+        .insert(&mut transaction)
+        .await?;
+    }
+    
+    transaction.commit().await?;
+    
+    // 清除两个版本的缓存，确保 translated_by 和 version_links 都更新
+    database::models::Version::clear_cache(&target_version, &redis).await?;
+    database::models::Version::clear_cache(&translation_version, &redis).await?;
+    
+    // 清除两个项目的缓存，因为项目可能缓存了版本列表
+    database::models::Project::clear_cache(
+        target_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    database::models::Project::clear_cache(
+        translation_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    
+    Ok(HttpResponse::NoContent().body(""))
+}
+
+// 拒绝版本链接
+pub async fn reject_version_link(
+    req: HttpRequest,
+    info: web::Path<(VersionId, VersionId)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let (translation_version_id, target_version_id) = info.into_inner();
+    
+    let user = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::VERSION_WRITE]),
+    )
+    .await?
+    .1;
+
+    // 获取目标版本（被翻译的版本）
+    let target_version = database::models::Version::get(
+        target_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or_else(|| ApiError::NotFound)?;
+
+    // 检查用户是否有权限管理目标项目的版本
+    let target_project_id = target_version.inner.project_id;
+    let team_member = database::models::TeamMember::get_from_user_id_project(
+        target_project_id,
+        user.id.into(),
+        false,
+        &**pool,
+    )
+    .await?;
+
+    let organization = database::models::Organization::get_associated_organization_project_id(
+        target_project_id,
+        &**pool,
+    )
+    .await?;
+
+    let organization_team_member = if let Some(organization) = &organization {
+        database::models::TeamMember::get_from_user_id(
+            organization.team_id,
+            user.id.into(),
+            &**pool,
+        )
+        .await?
+    } else {
+        None
+    };
+
+    let permissions = ProjectPermissions::get_permissions_by_role(
+        &user.role,
+        &team_member,
+        &organization_team_member,
+    );
+
+    if let Some(perms) = permissions {
+        if !perms.contains(ProjectPermissions::UPLOAD_VERSION) {
+            return Err(ApiError::CustomAuthentication(
+                "您没有权限管理此项目的翻译链接".to_string(),
+            ));
+        }
+    } else {
+        return Err(ApiError::CustomAuthentication(
+            "您没有权限管理此项目的翻译链接".to_string(),
+        ));
+    }
+
+    // 获取翻译版本
+    let translation_version = database::models::Version::get(
+        translation_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+
+    // 更新链接状态为已拒绝（不删除，保留thread）
+    let mut transaction = pool.begin().await?;
+    
+    // 先获取当前链接信息，看是否有thread_id
+    let link_info = sqlx::query!(
+        "SELECT thread_id FROM version_link_version WHERE version_id = $1 AND joining_version_id = $2",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    
+    sqlx::query!(
+        "
+        UPDATE version_link_version
+        SET approval_status = 'rejected'
+        WHERE version_id = $1 AND joining_version_id = $2
+        ",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .execute(&mut *transaction)
+    .await?;
+    
+    // 创建或获取thread，然后添加拒绝消息
+    if let Some(link) = link_info {
+        use crate::database::models::thread_item::{ThreadBuilder, ThreadMessageBuilder};
+        use crate::models::threads::{MessageBody, ThreadType};
+        
+        let thread_id = if let Some(existing_thread_id) = link.thread_id {
+            database::models::ids::ThreadId(existing_thread_id)
+        } else {
+            // 如果没有thread，先创建一个
+            let new_thread_id = ThreadBuilder {
+                type_: ThreadType::VersionLink,
+                members: vec![],
+                project_id: None,
+                report_id: None,
+            }
+            .insert(&mut transaction)
+            .await?;
+            
+            // 更新version_link_version表中的thread_id
+            sqlx::query!(
+                "UPDATE version_link_version SET thread_id = $1 WHERE version_id = $2 AND joining_version_id = $3",
+                new_thread_id.0,
+                translation_version_id.0 as i64,
+                target_version_id.0 as i64,
+            )
+            .execute(&mut *transaction)
+            .await?;
+            
+            new_thread_id
+        };
+        
+        // 创建系统消息表示链接已拒绝
+        ThreadMessageBuilder {
+            author_id: Some(user.id.into()),
+            body: MessageBody::Text {
+                body: "❌ 翻译链接已拒绝".to_string(),
+                replying_to: None,
+                private: false,
+                associated_images: vec![],
+            },
+            thread_id,
+            hide_identity: false,
+        }
+        .insert(&mut transaction)
+        .await?;
+    }
+    
+    transaction.commit().await?;
+    
+    // 清除两个版本的缓存
+    database::models::Version::clear_cache(&target_version, &redis).await?;
+    database::models::Version::clear_cache(&translation_version, &redis).await?;
+    
+    // 清除两个项目的缓存
+    database::models::Project::clear_cache(
+        target_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    database::models::Project::clear_cache(
+        translation_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    
+    Ok(HttpResponse::NoContent().body(""))
+}
+
+// 撤销已批准的版本链接
+pub async fn revoke_version_link(
+    req: HttpRequest,
+    info: web::Path<(VersionId, VersionId)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let (translation_version_id, target_version_id) = info.into_inner();
+    
+    let user = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::VERSION_WRITE]),
+    )
+    .await?
+    .1;
+
+    // 获取目标版本（被翻译的版本）
+    let target_version = database::models::Version::get(
+        target_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or_else(|| ApiError::NotFound)?;
+
+    // 检查用户是否有权限管理目标项目的版本
+    let target_project_id = target_version.inner.project_id;
+    let team_member = database::models::TeamMember::get_from_user_id_project(
+        target_project_id,
+        user.id.into(),
+        false,
+        &**pool,
+    )
+    .await?;
+
+    let organization = database::models::Organization::get_associated_organization_project_id(
+        target_project_id,
+        &**pool,
+    )
+    .await?;
+
+    let organization_team_member = if let Some(organization) = &organization {
+        database::models::TeamMember::get_from_user_id(
+            organization.team_id,
+            user.id.into(),
+            &**pool,
+        )
+        .await?
+    } else {
+        None
+    };
+
+    let permissions = ProjectPermissions::get_permissions_by_role(
+        &user.role,
+        &team_member,
+        &organization_team_member,
+    );
+
+    if let Some(perms) = permissions {
+        if !perms.contains(ProjectPermissions::UPLOAD_VERSION) {
+            return Err(ApiError::CustomAuthentication(
+                "您没有权限管理此项目的翻译链接".to_string(),
+            ));
+        }
+    } else {
+        return Err(ApiError::CustomAuthentication(
+            "您没有权限管理此项目的翻译链接".to_string(),
+        ));
+    }
+
+    // 获取翻译版本
+    let translation_version = database::models::Version::get(
+        translation_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+
+    // 删除链接（撤销）
+    let mut transaction = pool.begin().await?;
+    
+    sqlx::query!(
+        "
+        DELETE FROM version_link_version
+        WHERE version_id = $1 AND joining_version_id = $2
+        ",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .execute(&mut *transaction)
+    .await?;
+    
+    transaction.commit().await?;
+    
+    // 清除两个版本的缓存
+    database::models::Version::clear_cache(&target_version, &redis).await?;
+    database::models::Version::clear_cache(&translation_version, &redis).await?;
+    
+    // 清除两个项目的缓存
+    database::models::Project::clear_cache(
+        target_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    database::models::Project::clear_cache(
+        translation_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    
+    Ok(HttpResponse::NoContent().body(""))
 }

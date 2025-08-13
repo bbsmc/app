@@ -5,7 +5,7 @@ use crate::models::users::{User, UserId};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[serde(from = "Base62Id")]
 #[serde(into = "Base62Id")]
 pub struct ThreadId(pub u64);
@@ -64,6 +64,7 @@ pub enum ThreadType {
     Report,
     Project,
     DirectMessage,
+    VersionLink,
 }
 
 impl std::fmt::Display for ThreadType {
@@ -79,6 +80,7 @@ impl ThreadType {
             ThreadType::Report => "report",
             ThreadType::Project => "project",
             ThreadType::DirectMessage => "direct_message",
+            ThreadType::VersionLink => "version_link",
         }
     }
 
@@ -87,6 +89,7 @@ impl ThreadType {
             "report" => ThreadType::Report,
             "project" => ThreadType::Project,
             "direct_message" => ThreadType::DirectMessage,
+            "version_link" => ThreadType::VersionLink,
             _ => ThreadType::DirectMessage,
         }
     }

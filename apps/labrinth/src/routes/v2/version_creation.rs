@@ -5,7 +5,7 @@ use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::ids::ImageId;
 use crate::models::projects::{
-    Dependency, FileType, Loader, ProjectId, Version, VersionId, VersionStatus,
+    Dependency, FileType, Loader, ProjectId, Version, VersionId, VersionLink, VersionStatus,
     VersionType,
 };
 use crate::models::v2::projects::LegacyVersion;
@@ -54,6 +54,8 @@ pub struct InitialVersionData {
         custom(function = "crate::util::validate::validate_deps")
     )]
     pub dependencies: Vec<Dependency>, // 依赖项
+    #[validate(length(min = 0, max = 256))]
+    pub version_links: Option<Vec<VersionLink>>, // 版本链接
     #[validate(length(min = 1))]
     pub game_versions: Option<Vec<String>>, // 游戏版本
     #[serde(alias = "version_type")]
@@ -263,6 +265,7 @@ pub async fn version_create(
                     version_title: legacy_create.version_title,
                     version_body: legacy_create.version_body,
                     dependencies: legacy_create.dependencies,
+                    version_links: legacy_create.version_links,
                     release_channel: legacy_create.release_channel,
                     loaders,
                     featured: legacy_create.featured,

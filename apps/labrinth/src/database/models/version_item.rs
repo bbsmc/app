@@ -29,6 +29,7 @@ pub struct VersionBuilder {
     pub changelog: String,
     pub files: Vec<VersionFileBuilder>,
     pub dependencies: Vec<DependencyBuilder>,
+    pub version_links: Vec<VersionLinkBuilder>,
     pub loaders: Vec<LoaderId>,
     pub version_fields: Vec<VersionField>,
     pub version_type: String,
@@ -45,6 +46,15 @@ pub struct DependencyBuilder {
     pub version_id: Option<VersionId>,
     pub file_name: Option<String>,
     pub dependency_type: String,
+}
+
+#[derive(Clone)]
+pub struct VersionLinkBuilder {
+    pub joining_version_id: VersionId,  // 原版本ID（被汉化的版本）
+    pub link_type: String,              // 链接类型
+    pub language_code: String,          // 语言代码
+    pub description: Option<String>,    // 描述
+    pub approval_status: String,        // 审核状态
 }
 
 impl DependencyBuilder {
@@ -115,6 +125,55 @@ impl DependencyBuilder {
         } else {
             None
         })
+    }
+}
+
+impl VersionLinkBuilder {
+    pub async fn insert_many(
+        builders: Vec<Self>,
+        version_id: VersionId,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<(), DatabaseError> {
+        if builders.is_empty() {
+            return Ok(());
+        }
+
+        // 检查该版本是否已经有链接（一个翻译版本只能绑定一个原版本）
+        let existing_count = sqlx::query!(
+            "SELECT COUNT(*) as count FROM version_link_version WHERE version_id = $1",
+            version_id.0
+        )
+        .fetch_one(&mut **transaction)
+        .await?;
+
+        if existing_count.count.unwrap_or(0) > 0 {
+            return Err(DatabaseError::Database2(
+                "一个翻译版本只能绑定一个原版本".to_string()
+            ));
+        }
+
+        // 只取第一个链接（强制只能有一个）
+        let builder = builders.into_iter().next().unwrap();
+
+        sqlx::query!(
+            "
+            INSERT INTO version_link_version (
+                version_id, joining_version_id, link_type, language_code, description, approval_status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (version_id, joining_version_id) DO NOTHING
+            ",
+            version_id.0,
+            builder.joining_version_id.0,
+            builder.link_type,
+            builder.language_code,
+            builder.description,
+            builder.approval_status,
+        )
+        .execute(&mut **transaction)
+        .await?;
+
+        Ok(())
     }
 }
 
@@ -212,6 +271,7 @@ impl VersionBuilder {
 
         let VersionBuilder {
             dependencies,
+            version_links,
             loaders,
             files,
             version_id,
@@ -229,6 +289,13 @@ impl VersionBuilder {
         }
         DependencyBuilder::insert_many(
             dependencies,
+            self.version_id,
+            transaction,
+        )
+        .await?;
+        
+        VersionLinkBuilder::insert_many(
+            version_links,
             self.version_id,
             transaction,
         )
@@ -464,6 +531,17 @@ impl Version {
         sqlx::query!(
             "
             DELETE FROM dependencies WHERE dependent_id = $1
+            ",
+            id as VersionId,
+        )
+        .execute(&mut **transaction)
+        .await?;
+
+        // 删除版本链接关系
+        sqlx::query!(
+            "
+            DELETE FROM version_link_version
+            WHERE version_id = $1 OR joining_version_id = $1
             ",
             id as VersionId,
         )
@@ -763,6 +841,61 @@ impl Version {
                     }
                     ).await?;
 
+                let version_links : DashMap<VersionId, Vec<QueryVersionLink>> = sqlx::query!(
+                    "
+                    SELECT DISTINCT version_id, joining_version_id, link_type, language_code, description, approval_status, thread_id
+                    FROM version_link_version
+                    WHERE version_id = ANY($1)
+                    ",
+                    &version_ids
+                ).fetch(&mut *exec)
+                    .try_fold(DashMap::new(), |acc : DashMap<_,Vec<QueryVersionLink>>, m| {
+                        let link = QueryVersionLink {
+                            joining_version_id: VersionId(m.joining_version_id),
+                            link_type: m.link_type,
+                            language_code: m.language_code,
+                            description: m.description,
+                            approval_status: Some(m.approval_status),
+                            thread_id: m.thread_id.map(ThreadId),
+                        };
+
+                        acc.entry(VersionId(m.version_id))
+                            .or_default()
+                            .push(link);
+                        async move { Ok(acc) }
+                    }
+                    ).await?;
+
+                // 查询翻译当前版本的其他版本（反向查询）
+                // 只包含可见的翻译版本（排除draft、scheduled、unknown状态）
+                let translated_by : DashMap<VersionId, Vec<QueryVersionLink>> = sqlx::query!(
+                    "
+                    SELECT DISTINCT vlv.version_id, vlv.joining_version_id, vlv.link_type, vlv.language_code, vlv.description, vlv.approval_status, vlv.thread_id
+                    FROM version_link_version vlv
+                    INNER JOIN versions v ON v.id = vlv.version_id
+                    WHERE vlv.joining_version_id = ANY($1)
+                    AND v.status NOT IN ('draft', 'scheduled', 'unknown')
+                    AND vlv.approval_status = 'approved'
+                    ",
+                    &version_ids
+                ).fetch(&mut *exec)
+                    .try_fold(DashMap::new(), |acc : DashMap<_,Vec<QueryVersionLink>>, m| {
+                        let link = QueryVersionLink {
+                            joining_version_id: VersionId(m.version_id),  // 注意这里是version_id，表示翻译版本
+                            link_type: m.link_type,
+                            language_code: m.language_code,
+                            description: m.description,
+                            approval_status: Some(m.approval_status),
+                            thread_id: m.thread_id.map(ThreadId),
+                        };
+
+                        acc.entry(VersionId(m.joining_version_id))  // 按原版本ID分组
+                            .or_default()
+                            .push(link);
+                        async move { Ok(acc) }
+                    }
+                    ).await?;
+
                 let res = sqlx::query!(
                     "
                     SELECT v.id id, v.mod_id mod_id, v.author_id author_id, v.name version_name, v.version_number version_number,
@@ -787,6 +920,7 @@ impl Version {
                         let hashes = hashes.remove(&version_id).map(|x|x.1).unwrap_or_default();
                         let version_fields = version_fields.remove(&version_id).map(|x|x.1).unwrap_or_default();
                         let dependencies = dependencies.remove(&version_id).map(|x|x.1).unwrap_or_default();
+                        let version_links = version_links.remove(&version_id).map(|x|x.1).unwrap_or_default();
 
                         let loader_fields = loader_fields.iter()
                             .filter(|x| loader_loader_field_ids.contains(&x.id))
@@ -863,6 +997,8 @@ impl Version {
                             project_types,
                             games,
                             dependencies,
+                            version_links,
+                            translated_by: translated_by.get(&VersionId(v.id)).map(|v| v.clone()).unwrap_or_default(),
                         };
 
                         acc.insert(v.id, query_version);
@@ -1006,6 +1142,8 @@ pub struct QueryVersion {
     pub project_types: Vec<String>,
     pub games: Vec<String>,
     pub dependencies: Vec<QueryDependency>,
+    pub version_links: Vec<QueryVersionLink>,
+    pub translated_by: Vec<QueryVersionLink>,  // 翻译该版本的其他版本
     pub disks: Vec<QueryDisk>,
 }
 
@@ -1015,6 +1153,16 @@ pub struct QueryDependency {
     pub version_id: Option<VersionId>,
     pub file_name: Option<String>,
     pub dependency_type: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct QueryVersionLink {
+    pub joining_version_id: VersionId,  // 原版本ID（被汉化的版本）
+    pub link_type: String,              // 链接类型
+    pub language_code: String,          // 语言代码
+    pub description: Option<String>,    // 描述
+    pub approval_status: Option<String>,// 审核状态
+    pub thread_id: Option<ThreadId>,    // 消息线程ID
 }
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Validate)]
 pub struct QueryDisk {

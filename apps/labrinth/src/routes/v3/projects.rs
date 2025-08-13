@@ -113,7 +113,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                         "version/{slug}",
                         web::get().to(super::versions::version_project_get),
                     )
-                    .route("dependencies", web::get().to(dependency_list)),
+                    .route("dependencies", web::get().to(dependency_list))
+                    .route("translation_links", web::get().to(get_translation_links)),
             ),
     );
 }
@@ -586,6 +587,41 @@ pub async fn project_edit(
                 .execute(&mut *transaction)
                 .await?;
 
+                // 如果这是个汉化包项目且状态发生变化，清除所有目标版本的缓存
+                // 获取该项目的所有版本
+                let version_ids = sqlx::query!(
+                    "
+                    SELECT id FROM versions WHERE mod_id = $1
+                    ",
+                    id as db_ids::ProjectId,
+                )
+                .fetch_all(&mut *transaction)
+                .await?;
+                
+                // 获取所有版本链接的目标版本
+                for version_id in version_ids {
+                    let version_links = sqlx::query!(
+                        "
+                        SELECT joining_version_id FROM version_link_version WHERE version_id = $1
+                        ",
+                        db_ids::VersionId(version_id.id).0,
+                    )
+                    .fetch_all(&mut *transaction)
+                    .await?;
+                    
+                    // 清除所有目标版本的缓存
+                    for link in version_links {
+                        let target_version_id = db_ids::VersionId(link.joining_version_id);
+                        if let Some(target_version) = db_models::Version::get(
+                            target_version_id,
+                            &mut *transaction,
+                            &redis,
+                        ).await? {
+                            db_models::Version::clear_cache(&target_version, &redis).await?;
+                        }
+                    }
+                }
+
                 if project_item.inner.status.is_searchable()
                     && !status.is_searchable()
                 {
@@ -628,6 +664,41 @@ pub async fn project_edit(
                 )
                 .execute(&mut *transaction)
                 .await?;
+                
+                // 如果这是个汉化包项目且请求状态发生变化，清除所有目标版本的缓存
+                // 获取该项目的所有版本
+                let version_ids = sqlx::query!(
+                    "
+                    SELECT id FROM versions WHERE mod_id = $1
+                    ",
+                    id as db_ids::ProjectId,
+                )
+                .fetch_all(&mut *transaction)
+                .await?;
+                
+                // 获取所有版本链接的目标版本
+                for version_id in version_ids {
+                    let version_links = sqlx::query!(
+                        "
+                        SELECT joining_version_id FROM version_link_version WHERE version_id = $1
+                        ",
+                        db_ids::VersionId(version_id.id).0,
+                    )
+                    .fetch_all(&mut *transaction)
+                    .await?;
+                    
+                    // 清除所有目标版本的缓存
+                    for link in version_links {
+                        let target_version_id = db_ids::VersionId(link.joining_version_id);
+                        if let Some(target_version) = db_models::Version::get(
+                            target_version_id,
+                            &mut *transaction,
+                            &redis,
+                        ).await? {
+                            db_models::Version::clear_cache(&target_version, &redis).await?;
+                        }
+                    }
+                }
             }
 
             if perms.contains(ProjectPermissions::EDIT_DETAILS) {
@@ -2659,6 +2730,169 @@ pub async fn project_forum_create(
         Ok(HttpResponse::Ok().json(json!({
             "id": id_
         })))
+    } else {
+        Err(ApiError::NotFound)
+    }
+}
+
+#[derive(Serialize)]
+pub struct TranslationLinkResponse {
+    pub joining_version_id: String,
+    pub target_version_id: String,
+    pub target_version_number: String,
+    pub link_type: String,
+    pub language_code: String,
+    pub description: Option<String>,
+    pub approval_status: String,
+    pub thread_id: Option<String>,
+    pub project_id: String,
+    pub project_title: String,
+    pub project_slug: Option<String>,
+    pub project_icon: Option<String>,
+    pub version_number: String,
+    pub submitter_id: String,
+    pub submitter_username: String,
+    pub submitter_avatar: Option<String>,
+    pub date_published: chrono::DateTime<Utc>,
+}
+
+pub async fn get_translation_links(
+    req: HttpRequest,
+    info: web::Path<(String,)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    auth_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let project_id = info.into_inner().0;
+    
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &auth_queue,
+        Some(&[Scopes::PROJECT_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+    
+    let project = db_models::Project::get(
+        &project_id,
+        &**pool,
+        &redis,
+    )
+    .await?;
+    
+    if let Some(project) = project {
+        // 检查用户是否有权限查看翻译链接（需要是团队成员）
+        let team_member = if let Some(user) = &user_option {
+            TeamMember::get_from_user_id_project(
+                project.inner.id,
+                user.id.into(),
+                false,
+                &**pool,
+            )
+            .await?
+        } else {
+            None
+        };
+        
+        // 只有团队成员或管理员可以查看所有翻译链接（包括待审核的）
+        if team_member.is_none() && !user_option.as_ref().map_or(false, |u| u.role.is_admin() || u.role.is_mod()) {
+            return Err(ApiError::CustomAuthentication(
+                "您需要是项目团队成员才能查看翻译链接审核信息".to_string(),
+            ));
+        }
+        
+        // 获取项目的所有版本
+        let versions = database::models::Version::get_many(
+            &project.versions,
+            &**pool,
+            &redis,
+        )
+        .await?;
+        
+        let mut all_links = Vec::new();
+        
+        // 获取每个版本的所有翻译链接（包括待审核的）
+        for version in versions {
+            // 直接查询数据库获取所有链接，不管审批状态
+            let links = sqlx::query!(
+                r#"
+                SELECT vlv.version_id, vlv.joining_version_id, vlv.link_type, 
+                       vlv.language_code, vlv.description, vlv.approval_status, vlv.thread_id
+                FROM version_link_version vlv
+                WHERE vlv.joining_version_id = $1
+                "#,
+                version.inner.id.0
+            )
+            .fetch_all(&**pool)
+            .await?;
+            
+            for link in links {
+                // 获取翻译版本的详细信息
+                let translation_version = database::models::Version::get(
+                    db_ids::VersionId(link.version_id),
+                    &**pool,
+                    &redis,
+                )
+                .await?;
+                
+                if let Some(trans_ver) = translation_version {
+                    // 获取翻译项目的信息
+                    let trans_project = db_models::Project::get_id(
+                        trans_ver.inner.project_id,
+                        &**pool,
+                        &redis,
+                    )
+                    .await?;
+                    
+                    if let Some(trans_proj) = trans_project {
+                        // 获取提交者信息
+                        let submitter = database::models::User::get_id(
+                            trans_ver.inner.author_id,
+                            &**pool,
+                            &redis,
+                        )
+                        .await?;
+                        
+                        if let Some(user) = submitter {
+                            // 转换ID到API格式
+                            let api_version_id: models::ids::VersionId = 
+                                db_ids::VersionId(link.version_id).into();
+                            let api_target_version_id: models::ids::VersionId = 
+                                version.inner.id.into();
+                            let api_project_id: models::ids::ProjectId = 
+                                trans_proj.inner.id.into();
+                            let api_user_id: models::ids::UserId = 
+                                user.id.into();
+                            
+                            all_links.push(TranslationLinkResponse {
+                                joining_version_id: api_version_id.to_string(),
+                                target_version_id: api_target_version_id.to_string(),
+                                target_version_number: version.inner.version_number.clone(),
+                                link_type: link.link_type,
+                                language_code: link.language_code,
+                                description: link.description,
+                                approval_status: link.approval_status,
+                                thread_id: link.thread_id.map(|id| crate::models::ids::ThreadId(id as u64).to_string()),
+                                project_id: api_project_id.to_string(),
+                                project_title: trans_proj.inner.name,
+                                project_slug: trans_proj.inner.slug,
+                                project_icon: trans_proj.inner.icon_url,
+                                version_number: trans_ver.inner.version_number,
+                                submitter_id: api_user_id.to_string(),
+                                submitter_username: user.username,
+                                submitter_avatar: user.avatar_url,
+                                date_published: trans_ver.inner.date_published,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(HttpResponse::Ok().json(all_links))
     } else {
         Err(ApiError::NotFound)
     }

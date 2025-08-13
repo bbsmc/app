@@ -5,8 +5,9 @@ use crate::database::models::version_item::QueryDisk;
 use crate::database::redis::RedisPool;
 use crate::models;
 use crate::models::ids::VersionId;
+use crate::models::ids::base62_impl::parse_base62;
 use crate::models::projects::{
-    Dependency, FileType, Version, VersionStatus, VersionType,
+    Dependency, FileType, Version, VersionLink, VersionStatus, VersionType,
 };
 use crate::models::v2::projects::LegacyVersion;
 use crate::queue::session::AuthQueue;
@@ -26,7 +27,11 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(version_get)
             .service(version_delete)
             .service(version_edit)
-            .service(super::version_creation::upload_file_to_version),
+            .service(super::version_creation::upload_file_to_version)
+            .route("{id}/link/{target_id}/approve", web::post().to(approve_version_link))
+            .route("{id}/link/{target_id}/reject", web::post().to(reject_version_link))
+            .route("{id}/link/{target_id}/revoke", web::post().to(revoke_version_link))
+            .route("{id}/link/{target_id}/thread", web::post().to(send_version_link_message)),
     );
 }
 
@@ -231,6 +236,8 @@ pub struct EditVersion {
         custom(function = "crate::util::validate::validate_deps")
     )]
     pub dependencies: Option<Vec<Dependency>>,
+    #[validate(length(min = 0, max = 256))]
+    pub version_links: Option<Vec<VersionLink>>,
     pub game_versions: Option<Vec<String>>,
     pub loaders: Option<Vec<models::projects::Loader>>,
     pub featured: Option<bool>,
@@ -312,6 +319,7 @@ pub async fn version_edit(
         changelog: new_version.changelog,
         version_type: new_version.version_type,
         dependencies: new_version.dependencies,
+        version_links: new_version.version_links,
         loaders,
         featured: new_version.featured,
         downloads: new_version.downloads,
@@ -361,6 +369,113 @@ pub async fn version_delete(
         redis,
         session_queue,
         search_config,
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)
+}
+
+pub async fn approve_version_link(
+    req: HttpRequest,
+    info: web::Path<(String, String)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    // 解析字符串为 VersionId
+    let (version_id_str, target_id_str) = info.into_inner();
+    let version_id = VersionId(parse_base62(&version_id_str)?);
+    let target_id = VersionId(parse_base62(&target_id_str)?);
+    
+    // 直接调用 v3 的函数
+    v3::versions::approve_version_link(
+        req, 
+        web::Path::from((version_id, target_id)), 
+        pool, 
+        redis, 
+        session_queue
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)
+}
+
+pub async fn reject_version_link(
+    req: HttpRequest,
+    info: web::Path<(String, String)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    // 解析字符串为 VersionId
+    let (version_id_str, target_id_str) = info.into_inner();
+    let version_id = VersionId(parse_base62(&version_id_str)?);
+    let target_id = VersionId(parse_base62(&target_id_str)?);
+    
+    // 直接调用 v3 的函数
+    v3::versions::reject_version_link(
+        req,
+        web::Path::from((version_id, target_id)),
+        pool,
+        redis,
+        session_queue
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)
+}
+
+pub async fn revoke_version_link(
+    req: HttpRequest,
+    info: web::Path<(String, String)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    // 解析字符串为 VersionId
+    let (version_id_str, target_id_str) = info.into_inner();
+    let version_id = VersionId(parse_base62(&version_id_str)?);
+    let target_id = VersionId(parse_base62(&target_id_str)?);
+    
+    // 直接调用 v3 的函数
+    v3::versions::revoke_version_link(
+        req,
+        web::Path::from((version_id, target_id)),
+        pool,
+        redis,
+        session_queue
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)
+}
+
+#[derive(Deserialize)]
+pub struct SendVersionLinkMessage {
+    pub body: String,
+}
+
+pub async fn send_version_link_message(
+    req: HttpRequest,
+    info: web::Path<(String, String)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+    message_body: web::Json<SendVersionLinkMessage>,
+) -> Result<HttpResponse, ApiError> {
+    // 转换字符串ID为VersionId
+    let version_id_str = &info.0;
+    let target_id_str = &info.1;
+    
+    let version_id = VersionId(parse_base62(version_id_str)?);
+    let target_id = VersionId(parse_base62(target_id_str)?);
+    
+    // 调用v3版本的实现
+    v3::versions::version_link_thread::send_version_link_message(
+        req,
+        web::Path::from((version_id, target_id)),
+        pool,
+        redis,
+        session_queue,
+        web::Json(v3::versions::version_link_thread::SendVersionLinkMessage {
+            body: message_body.body.clone(),
+        })
     )
     .await
     .or_else(v2_reroute::flatten_404_error)

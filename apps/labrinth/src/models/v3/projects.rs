@@ -660,6 +660,10 @@ pub struct Version {
     pub files: Vec<VersionFile>,
     /// A list of projects that this version depends on.
     pub dependencies: Vec<Dependency>,
+    /// A list of version language links (for translations/localizations)
+    pub version_links: Vec<VersionLink>,
+    /// A list of versions that translate this version (reverse links)
+    pub translated_by: Vec<VersionLink>,
 
     /// The loaders that this version works on
     pub loaders: Vec<Loader>,
@@ -734,6 +738,34 @@ impl From<QueryVersion> for Version {
                     dependency_type: DependencyType::from_string(
                         d.dependency_type.as_str(),
                     ),
+                })
+                .collect(),
+            version_links: data
+                .version_links
+                .into_iter()
+                .map(|l| VersionLink {
+                    joining_version_id: VersionId(l.joining_version_id.0 as u64),
+                    link_type: l.link_type,
+                    language_code: l.language_code,
+                    description: l.description,
+                    approval_status: l.approval_status
+                        .and_then(|s| LinkApprovalStatus::from_str(&s))
+                        .unwrap_or_default(),
+                    thread_id: l.thread_id.map(|id| ThreadId(id.0 as u64)),
+                })
+                .collect(),
+            translated_by: data
+                .translated_by
+                .into_iter()
+                .map(|l| VersionLink {
+                    joining_version_id: VersionId(l.joining_version_id.0 as u64),
+                    link_type: l.link_type,
+                    language_code: l.language_code,
+                    description: l.description,
+                    approval_status: l.approval_status
+                        .and_then(|s| LinkApprovalStatus::from_str(&s))
+                        .unwrap_or_default(),
+                    thread_id: l.thread_id.map(|id| ThreadId(id.0 as u64)),
                 })
                 .collect(),
             loaders: data.loaders.into_iter().map(Loader).collect(),
@@ -869,6 +901,61 @@ pub struct Dependency {
     pub file_name: Option<String>,
     /// The type of the dependency
     pub dependency_type: DependencyType,
+}
+
+/// Approval status for version links
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum LinkApprovalStatus {
+    /// Link is pending approval
+    Pending,
+    /// Link has been approved
+    Approved,
+    /// Link has been rejected
+    Rejected,
+}
+
+impl LinkApprovalStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LinkApprovalStatus::Pending => "pending",
+            LinkApprovalStatus::Approved => "approved",
+            LinkApprovalStatus::Rejected => "rejected",
+        }
+    }
+    
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "pending" => Some(LinkApprovalStatus::Pending),
+            "approved" => Some(LinkApprovalStatus::Approved),
+            "rejected" => Some(LinkApprovalStatus::Rejected),
+            _ => None,
+        }
+    }
+}
+
+impl Default for LinkApprovalStatus {
+    fn default() -> Self {
+        LinkApprovalStatus::Pending
+    }
+}
+
+/// A version link which describes a relationship between versions (e.g., translations)
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct VersionLink {
+    /// The specific version id that this version is linked to (e.g., the original version being translated)
+    pub joining_version_id: VersionId,
+    /// The type of link (e.g., "translation", "resource_pack", "addon")
+    pub link_type: String,
+    /// The language code for translations (e.g., "zh_CN", "zh_TW")
+    pub language_code: String,
+    /// Optional description of the link relationship
+    pub description: Option<String>,
+    /// Approval status of the link
+    #[serde(default)]
+    pub approval_status: LinkApprovalStatus,
+    /// The thread ID for communication between translators and original authors
+    pub thread_id: Option<crate::models::ids::ThreadId>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Debug)]

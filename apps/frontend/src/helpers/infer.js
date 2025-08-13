@@ -435,11 +435,29 @@ export const inferVersionInfo = async function (rawFile, project, gameVersions) 
           default:
         }
       }
-
       return {
         loaders,
         game_versions: newGameVersions,
       };
+    },
+    "language.json": (file) => {
+      const metadata = JSON.parse(file);
+      const loaders = ['language'];
+      const result = {
+        name: metadata.name ? `${metadata.name} ${metadata.version || ''}` : `Language Pack ${metadata.version || '1.0.0'}`,
+        version_number: metadata.version || '1.0.0',
+        version_type: versionType(metadata.version || '1.0.0'),
+        loaders,
+      };
+      
+      // 如果有目标版本信息，添加到结果中
+      if (metadata.targetVersion) {
+        result.targetVersion = metadata.targetVersion;
+        result.languageCode = metadata.languageCode || 'zh_CN';
+        result.linkDescription = metadata.linkDescription || '';
+      }
+      
+      return result;
     },
   };
 
