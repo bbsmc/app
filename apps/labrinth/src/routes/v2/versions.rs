@@ -31,7 +31,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("{id}/link/{target_id}/approve", web::post().to(approve_version_link))
             .route("{id}/link/{target_id}/reject", web::post().to(reject_version_link))
             .route("{id}/link/{target_id}/revoke", web::post().to(revoke_version_link))
-            .route("{id}/link/{target_id}/thread", web::post().to(send_version_link_message)),
+            .route("{id}/link/{target_id}/thread", web::post().to(send_version_link_message))
+            .route("{id}/link/{target_id}/resubmit", web::post().to(resubmit_version_link)),
     );
 }
 
@@ -476,6 +477,35 @@ pub async fn send_version_link_message(
         web::Json(v3::versions::version_link_thread::SendVersionLinkMessage {
             body: message_body.body.clone(),
         })
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)
+}
+
+// 重新提交被拒绝的版本链接
+pub async fn resubmit_version_link(
+    req: HttpRequest,
+    info: web::Path<(String, String)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+    body: web::Json<serde_json::Value>,
+) -> Result<HttpResponse, ApiError> {
+    // 转换字符串ID为VersionId
+    let version_id_str = &info.0;
+    let target_id_str = &info.1;
+    
+    let version_id = VersionId(parse_base62(version_id_str)?);
+    let target_id = VersionId(parse_base62(target_id_str)?);
+    
+    // 调用v3版本的实现
+    v3::versions::resubmit_version_link(
+        req,
+        web::Path::from((version_id, target_id)),
+        pool,
+        redis,
+        session_queue,
+        body,
     )
     .await
     .or_else(v2_reroute::flatten_404_error)

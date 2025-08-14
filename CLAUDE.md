@@ -160,7 +160,72 @@ await useBaseFetch(`thread/${link.thread_id}`, {
 
 > **开发要求**：遇到任何技术问题和解决方案都要简短记录在此，作为未来参考
 
+### 前端图标文件检查
+**问题**：使用不存在的SVG图标文件导致编译错误
+**解决**：使用前先检查 `apps/frontend/src/assets/images/utils/` 目录确认图标存在
+```bash
+ls apps/frontend/src/assets/images/utils/ | grep refresh
+# 如果不存在，查找类似功能的图标：undo, update, sync等
+```
+
+### Thread系统延迟初始化
+**原则**：Thread不需要预先创建，在第一次发送消息时自动创建
+**实现**：
+```rust
+let thread_id = if let Some(existing_thread_id) = link.thread_id {
+    database::models::ids::ThreadId(existing_thread_id)
+} else {
+    // 创建新thread
+    let new_thread_id = ThreadBuilder {
+        type_: ThreadType::VersionLink,
+        members: vec![],  // Version link threads不需要固定成员
+        project_id: None,
+        report_id: None,
+    }.insert(&mut transaction).await?;
+    
+    // 更新关联表的thread_id
+    sqlx::query!("UPDATE ... SET thread_id = $1 ...", new_thread_id.0)
+        .execute(&mut *transaction).await?;
+    
+    new_thread_id
+};
+```
+
+### 版本链接重新提交功能完整实现
+**需求**：被拒绝的翻译链接可以修改后重新提交审核
+**实现要点**：
+1. 状态检查：只有rejected状态可以重新提交
+2. 权限检查：只有翻译项目成员可以重新提交
+3. 状态更新：rejected → pending
+4. 消息记录：自动在thread中添加重新提交原因
+5. 缓存清理：清除两个版本和两个项目的缓存
+
 ## 技术问题与解决方案记录
+
+### 开发流程问题总结（2024-08-14）
+
+#### 1. API版本遗漏问题
+**错误**：只在v3添加了新端点，忘记在v2中添加
+**影响**：前端默认使用v2 API，导致404错误
+**教训**：
+- 开发前先确认前端使用的API版本（查看 `nuxt.config.ts` 中的 `STAGING_API_URL`）
+- 新功能必须同时在v2和v3中实现
+- v2实现应该调用v3的逻辑，避免重复代码
+
+#### 2. 前端资源文件未确认
+**错误**：直接import不存在的SVG文件
+**影响**：编译失败
+**教训**：使用任何静态资源前先确认文件存在
+
+#### 3. 权限检查位置错误
+**错误**：检查翻译项目权限而不是目标项目权限
+**影响**：权限控制失效
+**教训**：审核类功能应该检查被审核资源的权限，不是提交者的权限
+
+#### 4. Thread创建时机
+**错误**：试图预先创建thread
+**正确**：延迟创建，第一次使用时自动创建
+**教训**：遵循按需创建原则，减少不必要的数据库操作
 
 ### ID 类型转换问题
 **问题**：数据库查询返回空，但数据存在  
@@ -181,6 +246,44 @@ sqlx::query!("...", db_id.0)
 ### API版本兼容
 **问题**：前端使用v2 API，后端只改了v3  
 **解决**：同时更新 `v2/` 和 `v3/` 的结构体（如 LegacyVersion）
+
+**重要规则**：
+1. **添加新API端点时必须同时在v2和v3中添加**
+2. v2端点实现模式：
+```rust
+// v2/versions.rs
+pub async fn new_endpoint(
+    req: HttpRequest,
+    info: web::Path<(String, String)>,  // v2使用String参数
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+    body: web::Json<serde_json::Value>,
+) -> Result<HttpResponse, ApiError> {
+    // 转换字符串ID为类型化ID
+    let id = VersionId(parse_base62(&info.0)?);
+    let target_id = VersionId(parse_base62(&info.1)?);
+    
+    // 调用v3版本的实现
+    v3::versions::new_endpoint(
+        req,
+        web::Path::from((id, target_id)),  // 使用Path::from构造
+        pool,
+        redis,
+        session_queue,
+        body,
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)
+}
+```
+3. 路由配置必须同步添加：
+```rust
+// v2/versions.rs config函数
+.route("{id}/link/{target_id}/new", web::post().to(new_endpoint))
+// v3/versions.rs config函数  
+.route("{id}/link/{target_id}/new", web::post().to(new_endpoint))
+```
 
 ### Vue3响应式不更新
 **问题**：修改数组元素属性后视图不更新  

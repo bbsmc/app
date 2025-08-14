@@ -71,6 +71,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                 web::post().to(revoke_version_link),
             )
             .route(
+                "{version_id}/link/{target_version_id}/resubmit",
+                web::post().to(resubmit_version_link),
+            )
+            .route(
                 "{version_id}/link/{target_version_id}/thread",
                 web::post().to(version_link_thread::send_version_link_message),
             ),
@@ -1800,6 +1804,217 @@ pub async fn revoke_version_link(
     )
     .execute(&mut *transaction)
     .await?;
+    
+    transaction.commit().await?;
+    
+    // 清除两个版本的缓存
+    database::models::Version::clear_cache(&target_version, &redis).await?;
+    database::models::Version::clear_cache(&translation_version, &redis).await?;
+    
+    // 清除两个项目的缓存
+    database::models::Project::clear_cache(
+        target_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    database::models::Project::clear_cache(
+        translation_version.inner.project_id,
+        None,
+        Some(true),
+        &redis,
+    )
+    .await?;
+    
+    Ok(HttpResponse::NoContent().body(""))
+}
+
+// 重新提交被拒绝的版本链接
+pub async fn resubmit_version_link(
+    req: HttpRequest,
+    info: web::Path<(VersionId, VersionId)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+    body: web::Json<serde_json::Value>,
+) -> Result<HttpResponse, ApiError> {
+    let (translation_version_id, target_version_id) = info.into_inner();
+    
+    // 从body中获取重新提交的原因
+    let reason = body
+        .get("reason")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ApiError::InvalidInput("需要提供重新提交的原因".to_string()))?;
+    
+    let user = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::VERSION_WRITE]),
+    )
+    .await?
+    .1;
+
+    // 获取翻译版本
+    let translation_version = database::models::Version::get(
+        translation_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+    
+    // 获取目标版本
+    let target_version = database::models::Version::get(
+        target_version_id.into(),
+        &**pool,
+        &redis,
+    )
+    .await?
+    .ok_or(ApiError::NotFound)?;
+
+    // 检查用户是否是翻译项目的成员
+    let translation_project_id = translation_version.inner.project_id;
+    let team_member = database::models::TeamMember::get_from_user_id_project(
+        translation_project_id,
+        user.id.into(),
+        false,
+        &**pool,
+    )
+    .await?;
+
+    let organization = database::models::Organization::get_associated_organization_project_id(
+        translation_project_id,
+        &**pool,
+    )
+    .await?;
+
+    let organization_team_member = if let Some(organization) = &organization {
+        database::models::TeamMember::get_from_user_id(
+            organization.team_id,
+            user.id.into(),
+            &**pool,
+        )
+        .await?
+    } else {
+        None
+    };
+
+    let permissions = ProjectPermissions::get_permissions_by_role(
+        &user.role,
+        &team_member,
+        &organization_team_member,
+    );
+
+    if let Some(perms) = permissions {
+        if !perms.contains(ProjectPermissions::UPLOAD_VERSION) {
+            return Err(ApiError::CustomAuthentication(
+                "您没有权限重新提交此版本链接".to_string(),
+            ));
+        }
+    } else {
+        return Err(ApiError::CustomAuthentication(
+            "您没有权限重新提交此版本链接".to_string(),
+        ));
+    }
+
+    let mut transaction = pool.begin().await?;
+    
+    // 检查链接是否存在且状态为rejected
+    let link_info = sqlx::query!(
+        "SELECT thread_id, approval_status FROM version_link_version WHERE version_id = $1 AND joining_version_id = $2",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    
+    let link = link_info.ok_or_else(|| {
+        ApiError::InvalidInput("版本链接不存在".to_string())
+    })?;
+    
+    // 只有被拒绝的链接才能重新提交
+    if link.approval_status != "rejected" {
+        return Err(ApiError::InvalidInput(
+            "只有被拒绝的链接才能重新提交审核".to_string(),
+        ));
+    }
+    
+    // 更新链接状态为pending
+    sqlx::query!(
+        "
+        UPDATE version_link_version
+        SET approval_status = 'pending'
+        WHERE version_id = $1 AND joining_version_id = $2
+        ",
+        translation_version_id.0 as i64,
+        target_version_id.0 as i64,
+    )
+    .execute(&mut *transaction)
+    .await?;
+    
+    // 如果有thread，添加重新提交的消息
+    if let Some(thread_id) = link.thread_id {
+        use crate::database::models::thread_item::ThreadMessageBuilder;
+        use crate::models::threads::MessageBody;
+        
+        let thread_id = database::models::ids::ThreadId(thread_id);
+        
+        // 创建系统消息表示链接已重新提交
+        ThreadMessageBuilder {
+            author_id: Some(user.id.into()),
+            body: MessageBody::Text {
+                body: format!("📝 重新提交审核\n\n重新提交原因：\n{}", reason),
+                replying_to: None,
+                private: false,
+                associated_images: vec![],
+            },
+            thread_id,
+            hide_identity: false,
+        }
+        .insert(&mut transaction)
+        .await?;
+    } else {
+        // 如果没有thread，创建一个并添加消息
+        use crate::database::models::thread_item::{ThreadBuilder, ThreadMessageBuilder};
+        use crate::models::threads::{MessageBody, ThreadType};
+        
+        let new_thread_id = ThreadBuilder {
+            type_: ThreadType::VersionLink,
+            members: vec![],
+            project_id: None,
+            report_id: None,
+        }
+        .insert(&mut transaction)
+        .await?;
+        
+        // 更新version_link_version表中的thread_id
+        sqlx::query!(
+            "UPDATE version_link_version SET thread_id = $1 WHERE version_id = $2 AND joining_version_id = $3",
+            new_thread_id.0,
+            translation_version_id.0 as i64,
+            target_version_id.0 as i64,
+        )
+        .execute(&mut *transaction)
+        .await?;
+        
+        // 创建重新提交消息
+        ThreadMessageBuilder {
+            author_id: Some(user.id.into()),
+            body: MessageBody::Text {
+                body: format!("📝 重新提交审核\n\n重新提交原因：\n{}", reason),
+                replying_to: None,
+                private: false,
+                associated_images: vec![],
+            },
+            thread_id: new_thread_id,
+            hide_identity: false,
+        }
+        .insert(&mut transaction)
+        .await?;
+    }
     
     transaction.commit().await?;
     

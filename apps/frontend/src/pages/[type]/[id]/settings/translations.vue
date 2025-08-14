@@ -1,5 +1,48 @@
 <template>
   <div>
+    <!-- 撤销确认弹窗 -->
+    <ConfirmModal
+      ref="modalConfirmRevoke"
+      title="确认撤销翻译链接"
+      :description="`您确定要撤销该翻译链接吗？撤销后该链接将重新进入待审核状态。`"
+      proceed-label="确认撤销"
+      :has-to-type="false"
+      @proceed="confirmRevoke"
+    />
+    
+    <!-- 拒绝原因弹窗 -->
+    <NewModal ref="rejectModal">
+      <template #title>
+        <div class="truncate text-lg font-extrabold text-contrast">拒绝翻译链接</div>
+      </template>
+      <div class="reject-content">
+        <p class="text-secondary">请说明拒绝的原因，以便申请者了解并改进：</p>
+        <textarea
+          v-model="rejectReason"
+          class="reject-textarea"
+          placeholder="例如：翻译质量不符合要求、版本不匹配、资源重复等..."
+          rows="5"
+          required
+        ></textarea>
+      </div>
+      <div class="modal-actions">
+        <ButtonStyled color="danger">
+          <button
+            :disabled="!rejectReason || rejectingLink"
+            @click="confirmReject"
+          >
+            <CrossIcon aria-hidden="true" />
+            确认拒绝
+          </button>
+        </ButtonStyled>
+        <ButtonStyled>
+          <button @click="$refs.rejectModal.hide()">
+            取消
+          </button>
+        </ButtonStyled>
+      </div>
+    </NewModal>
+    
     <section class="universal-card">
       <div class="label">
         <h3>
@@ -92,7 +135,7 @@
                 <button
                   class="btn btn-danger"
                   :disabled="processingLinks.includes(link.id)"
-                  @click="openRejectDialog(link)"
+                  @click="openRejectModal(link)"
                 >
                   <CrossIcon aria-hidden="true" />
                   拒绝
@@ -147,7 +190,6 @@
                     <div class="message-body">
                       <template v-if="message.body.type === 'text'">
                         <div class="message-text" v-html="renderMarkdown(message.body.body)"></div>
-                        <span v-if="message.body.private" class="private-badge">内部消息</span>
                       </template>
                       <template v-else-if="message.body.type === 'status_change'">
                         <div class="status-change">
@@ -226,6 +268,7 @@ import { useAuth } from '~/composables/auth';
 import { useBaseFetch } from '~/composables/fetch';
 import { addNotification } from '~/composables/notifs';
 import { renderString } from '@modrinth/utils';
+import { ConfirmModal, NewModal, ButtonStyled } from '@modrinth/ui';
 import Avatar from '~/components/ui/Avatar.vue';
 import CheckIcon from '~/assets/images/utils/check.svg?component';
 import CrossIcon from '~/assets/images/utils/x.svg?component';
@@ -277,6 +320,14 @@ const threads = ref({});
 const messageTexts = ref({});
 const sendingMessage = ref({});
 const rejectingLinks = ref([]); // 记录正在拒绝流程中的链接
+
+// 弹窗引用
+const modalConfirmRevoke = ref(null);
+const pendingRevokeLink = ref(null); // 待撤销的链接
+const rejectModal = ref(null); // 拒绝弹窗
+const rejectReason = ref(''); // 拒绝原因
+const rejectingLink = ref(false); // 正在拒绝中
+const pendingRejectLink = ref(null); // 待拒绝的链接
 
 // 筛选相关
 const statusFilter = ref('pending'); // 默认显示待审核
@@ -344,6 +395,7 @@ const fetchTranslationLinks = async () => {
     // 使用新的API端点获取所有翻译链接（包括待审核的）
     const allLinks = await useBaseFetch(`project/${route.params.id}/translation_links`);
     console.log('获取到的翻译链接:', allLinks);
+    console.log('链接总数:', allLinks?.length || 0);
     
     if (allLinks && Array.isArray(allLinks)) {
       // 转换数据格式
@@ -373,6 +425,8 @@ const fetchTranslationLinks = async () => {
       approvedLinks.value = formattedLinks.filter(link => link.approval_status === 'approved');
       rejectedLinks.value = formattedLinks.filter(link => link.approval_status === 'rejected');
       
+      console.log('分类结果 - 待审核:', pendingLinks.value.length, '已通过:', approvedLinks.value.length, '已拒绝:', rejectedLinks.value.length);
+      
       // 为有thread_id的链接预加载thread
       const linksWithThread = formattedLinks.filter(link => link.thread_id);
       for (const link of linksWithThread) {
@@ -381,6 +435,7 @@ const fetchTranslationLinks = async () => {
     } else {
       pendingLinks.value = [];
       approvedLinks.value = [];
+      rejectedLinks.value = [];
     }
   } catch (error) {
     console.error('获取版本信息失败:', error);
@@ -406,26 +461,18 @@ const approveLink = async (link) => {
       method: 'POST',
     });
     
-    // 更新本地状态
-    const index = pendingLinks.value.findIndex(l => l.id === link.id);
-    if (index !== -1) {
-      const approvedLink = pendingLinks.value.splice(index, 1)[0];
-      approvedLink.approval_status = 'approved';
-      approvedLinks.value.unshift(approvedLink);
-    }
-    
     addNotification({
       group: 'main',
       title: '成功',
-      text: '已批准翻译链接。如果您打开了相关版本页面，请刷新页面以查看最新状态。',
+      text: '已批准翻译链接。数据正在更新...',
       type: 'success',
     });
     
     // 重新获取数据以确保显示最新状态
-    // 短暂延迟以确保后端缓存已更新
+    // 增加延迟时间以确保后端缓存已完全更新
     setTimeout(() => {
       fetchTranslationLinks();
-    }, 500);
+    }, 1500);
   } catch (error) {
     console.error('批准链接失败:', error);
     addNotification({
@@ -439,7 +486,64 @@ const approveLink = async (link) => {
   }
 };
 
-// 打开拒绝对话框
+// 打开拒绝对话框（新版本，使用弹窗）
+const openRejectModal = (link) => {
+  pendingRejectLink.value = link;
+  rejectReason.value = '';
+  rejectModal.value?.show();
+};
+
+// 确认拒绝（从弹窗）
+const confirmReject = async () => {
+  const link = pendingRejectLink.value;
+  if (!link || !rejectReason.value || rejectingLink.value) return;
+  
+  rejectingLink.value = true;
+  processingLinks.value.push(link.id);
+  
+  try {
+    // 先发送拒绝原因消息到thread
+    const originalMessageText = messageTexts.value[link.id];
+    messageTexts.value[link.id] = `您的翻译链接申请已被拒绝。\n\n拒绝原因：\n${rejectReason.value}\n\n请在修改后重新提交申请。`;
+    await sendMessage(link);
+    messageTexts.value[link.id] = originalMessageText || '';
+    
+    // 调用后端API拒绝链接
+    await useBaseFetch(`version/${link.version_id}/link/${link.target_version_id}/reject`, {
+      method: 'POST',
+    });
+    
+    // 关闭弹窗
+    rejectModal.value?.hide();
+    
+    addNotification({
+      group: 'main',
+      title: '成功',
+      text: '已拒绝翻译链接并发送拒绝原因。数据正在更新...',
+      type: 'success',
+    });
+    
+    // 重新获取数据
+    setTimeout(() => {
+      fetchTranslationLinks();
+    }, 1500);
+  } catch (error) {
+    console.error('拒绝链接失败:', error);
+    addNotification({
+      group: 'main',
+      title: '错误',
+      text: '拒绝链接失败',
+      type: 'error',
+    });
+  } finally {
+    processingLinks.value = processingLinks.value.filter(id => id !== link.id);
+    rejectingLink.value = false;
+    pendingRejectLink.value = null;
+    rejectReason.value = '';
+  }
+};
+
+// 保留旧的openRejectDialog和相关方法，以便thread内的拒绝按钮使用
 const openRejectDialog = (link) => {
   // 展开thread区域
   if (!expandedThreads.value.includes(link.id)) {
@@ -489,25 +593,17 @@ const rejectLink = async (link, withMessage = false) => {
       method: 'POST',
     });
     
-    // 更新本地状态
-    const index = pendingLinks.value.findIndex(l => l.id === link.id);
-    if (index !== -1) {
-      const rejectedLink = pendingLinks.value.splice(index, 1)[0];
-      rejectedLink.approval_status = 'rejected';
-      rejectedLinks.value.unshift(rejectedLink);
-    }
-    
     addNotification({
       group: 'main',
       title: '成功',
-      text: withMessage ? '已拒绝翻译链接并发送消息' : '已拒绝翻译链接',
+      text: withMessage ? '已拒绝翻译链接并发送消息。数据正在更新...' : '已拒绝翻译链接。数据正在更新...',
       type: 'success',
     });
     
     // 重新获取数据
     setTimeout(() => {
       fetchTranslationLinks();
-    }, 500);
+    }, 1500);
   } catch (error) {
     console.error('拒绝链接失败:', error);
     addNotification({
@@ -521,9 +617,18 @@ const rejectLink = async (link, withMessage = false) => {
   }
 };
 
-// 撤销已批准的链接
-const revokeLink = async (link) => {
+// 撤销已批准的链接 - 显示确认弹窗
+const revokeLink = (link) => {
   if (!hasPermission.value || processingLinks.value.includes(link.id)) return;
+  
+  pendingRevokeLink.value = link;
+  modalConfirmRevoke.value?.show();
+};
+
+// 确认撤销操作
+const confirmRevoke = async () => {
+  const link = pendingRevokeLink.value;
+  if (!link) return;
   
   processingLinks.value.push(link.id);
   try {
@@ -532,20 +637,17 @@ const revokeLink = async (link) => {
       method: 'POST',
     });
     
-    // 从已批准列表移除
-    approvedLinks.value = approvedLinks.value.filter(l => l.id !== link.id);
-    
     addNotification({
       group: 'main',
       title: '成功',
-      text: '已撤销翻译链接',
+      text: '已撤销翻译链接。数据正在更新...',
       type: 'success',
     });
     
     // 重新获取数据
     setTimeout(() => {
       fetchTranslationLinks();
-    }, 500);
+    }, 1500);
   } catch (error) {
     console.error('撤销链接失败:', error);
     addNotification({
@@ -556,6 +658,7 @@ const revokeLink = async (link) => {
     });
   } finally {
     processingLinks.value = processingLinks.value.filter(id => id !== link.id);
+    pendingRevokeLink.value = null;
   }
 };
 
@@ -1037,17 +1140,6 @@ onMounted(() => {
   }
 }
 
-.private-badge {
-  display: inline-block;
-  margin-top: 0.25rem;
-  padding: 0.125rem 0.375rem;
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
 .status-change {
   padding: 0.5rem;
   background: var(--color-bg);
@@ -1204,6 +1296,53 @@ onMounted(() => {
     .link-info {
       flex-direction: column;
       gap: 0.75rem;
+    }
+  }
+}
+
+/* 拒绝对话框样式 */
+.reject-content {
+  padding: 1rem;
+  
+  p {
+    margin-bottom: 1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+  }
+}
+
+.reject-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.75rem;
+  background: var(--color-raised-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 1rem;
+  padding-top: 0;
+  
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    
+    svg {
+      width: 1rem;
+      height: 1rem;
     }
   }
 }

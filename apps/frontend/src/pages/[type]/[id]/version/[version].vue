@@ -43,6 +43,39 @@
           : `上传速度 ${parseFloat(uploadSpeed).toFixed(2)} MB/s`
       "
     />
+    
+    <!-- 重新提交审核对话框 -->
+    <NewModal ref="resubmitModal">
+      <template #title>
+        <div class="truncate text-lg font-extrabold text-contrast">重新提交审核</div>
+      </template>
+      <div class="resubmit-content">
+        <p class="text-secondary">请说明您重新提交的原因，以便审核者了解您的修改：</p>
+        <textarea
+          v-model="resubmitReason"
+          class="resubmit-textarea"
+          placeholder="例如：已修正翻译错误、已更新版本兼容性、已补充说明信息等..."
+          rows="5"
+          required
+        ></textarea>
+      </div>
+      <div class="modal-actions">
+        <ButtonStyled color="brand">
+          <button
+            :disabled="!resubmitReason || resubmittingLink"
+            @click="confirmResubmit"
+          >
+            <UndoIcon aria-hidden="true" />
+            确认重新提交
+          </button>
+        </ButtonStyled>
+        <ButtonStyled>
+          <button @click="$refs.resubmitModal.hide()">
+            取消
+          </button>
+        </ButtonStyled>
+      </div>
+    </NewModal>
 
     <NewModal ref="downloadModal">
       <template #title>
@@ -606,6 +639,15 @@
             移除
           </button>
         </ButtonStyled>
+        <!-- 重新提交按钮（被拒绝的链接且是项目成员时显示） -->
+        <button
+          v-if="!isEditing && currentMember && (link.approval_status === 'rejected' || link.approval_status?.toLowerCase() === 'rejected')"
+          class="btn btn-primary btn-small"
+          @click.stop="openResubmitDialog(link)"
+        >
+          <UndoIcon aria-hidden="true" />
+          重新提交
+        </button>
         <!-- 消息按钮（非编辑模式下显示，即使没有thread_id也显示） -->
         <button
           v-if="!isEditing"
@@ -651,7 +693,6 @@
               <div class="message-body">
                 <template v-if="message.body.type === 'text'">
                   <div class="message-text" v-html="renderMarkdown(message.body.body)"></div>
-                  <span v-if="message.body.private" class="private-badge">内部消息</span>
                 </template>
                 <template v-else-if="message.body.type === 'status_change'">
                   <div class="status-change">
@@ -666,8 +707,8 @@
             <p>{{ threads[getLinkId(link)].noThreadMessage || '暂无消息记录' }}</p>
           </div>
           
-          <!-- 发送消息区域（仅当前用户是项目成员时显示，且有thread_id） -->
-          <div v-if="currentMember && link.thread_id" class="send-message">
+          <!-- 发送消息区域（仅当前用户是项目成员时显示） -->
+          <div v-if="currentMember" class="send-message">
             <textarea
               v-model="messageTexts[getLinkId(link)]"
               class="message-input"
@@ -679,26 +720,41 @@
               <button
                 class="btn btn-primary btn-small"
                 :disabled="!messageTexts[getLinkId(link)] || sendingMessage[getLinkId(link)]"
-                @click.stop="sendMessage(link, false)"
+                @click.stop="sendMessage(link)"
               >
                 <SendIcon aria-hidden="true" />
                 发送
               </button>
-              <button
-                v-if="auth.user?.role === 'admin' || auth.user?.role === 'moderator'"
-                class="btn btn-secondary btn-small"
-                :disabled="!messageTexts[getLinkId(link)] || sendingMessage[getLinkId(link)]"
-                @click.stop="sendMessage(link, true)"
-              >
-                <LockIcon aria-hidden="true" />
-                内部备注
-              </button>
             </div>
           </div>
         </div>
-        <div v-else class="loading-thread">
-          <UpdatedIcon aria-hidden="true" class="animate-spin" />
-          <span>加载消息中...</span>
+        <!-- 如果没有thread，显示空消息界面而不是加载中 -->
+        <div v-else class="thread-messages">
+          <div class="no-messages">
+            <InfoIcon aria-hidden="true" />
+            <p>暂无消息记录</p>
+          </div>
+          
+          <!-- 发送消息区域（即使没有thread也显示，第一条消息会创建thread） -->
+          <div v-if="currentMember" class="send-message">
+            <textarea
+              v-model="messageTexts[getLinkId(link)]"
+              class="message-input"
+              placeholder="输入消息..."
+              rows="3"
+              @click.stop
+            ></textarea>
+            <div class="message-actions">
+              <button
+                class="btn btn-primary btn-small"
+                :disabled="!messageTexts[getLinkId(link)] || sendingMessage[getLinkId(link)]"
+                @click.stop="sendMessage(link)"
+              >
+                <SendIcon aria-hidden="true" />
+                发送
+              </button>
+            </div>
+          </div>
         </div>
         </div>
       </template>
@@ -1192,8 +1248,8 @@ import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 import InfoIcon from "~/assets/images/utils/info.svg?component";
 import MessageIcon from "~/assets/images/utils/message.svg?component";
 import SendIcon from "~/assets/images/utils/send.svg?component";
-import LockIcon from "~/assets/images/utils/lock.svg?component";
 import UpdatedIcon from "~/assets/images/utils/updated.svg?component";
+import UndoIcon from "~/assets/images/utils/undo.svg?component";
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
 import { useBaseFetchFile } from "~/composables/fetch.js";
@@ -1235,6 +1291,7 @@ export default defineNuxtComponent({
     BoxIcon,
     RightArrowIcon,
     InfoIcon,
+    UndoIcon,
     ConfirmModal,
     ButtonStyled,
   },
@@ -1320,6 +1377,11 @@ export default defineNuxtComponent({
     let translationVersions = [];
     let versionLinksLoading = false;
     let translationVersionsLoading = false;
+    
+    // 重新提交相关变量
+    let resubmitReason = '';
+    let resubmittingLink = false;
+    let pendingResubmitLink = null;
 
     if (mode === "edit") {
       isEditing = true;
@@ -1687,6 +1749,11 @@ export default defineNuxtComponent({
       threads: {},
       messageTexts: {},
       sendingMessage: {},
+      
+      // 重新提交相关数据
+      resubmitReason: '',
+      resubmittingLink: false,
+      pendingResubmitLink: null,
     };
   },
   computed: {
@@ -1728,6 +1795,69 @@ export default defineNuxtComponent({
     // 数据已在setup中初始化，无需重复操作
   },
   methods: {
+    // 打开重新提交对话框
+    openResubmitDialog(link) {
+      this.pendingResubmitLink = link;
+      this.resubmitReason = '';
+      this.$refs.resubmitModal.show();
+    },
+    // 确认重新提交
+    async confirmResubmit() {
+      if (!this.pendingResubmitLink || !this.resubmitReason || this.resubmittingLink) {
+        return;
+      }
+      
+      this.resubmittingLink = true;
+      
+      try {
+        // 构建正确的版本ID
+        const versionId = this.version.id; // 当前翻译版本ID
+        const targetVersionId = this.pendingResubmitLink.joining_version_id; // 目标版本ID
+        
+        // 调用后端API重新提交审核
+        await useBaseFetch(
+          `version/${versionId}/link/${targetVersionId}/resubmit`,
+          {
+            method: 'POST',
+            body: {
+              reason: this.resubmitReason,
+            },
+          }
+        );
+        
+        this.$notify({
+          group: 'main',
+          title: '成功',
+          text: '已重新提交审核，请等待审核结果',
+          type: 'success',
+        });
+        
+        // 关闭对话框
+        this.$refs.resubmitModal.hide();
+        
+        // 更新链接状态为pending
+        const linkIndex = this.versionLinks.findIndex(
+          l => l.joining_version_id === this.pendingResubmitLink.joining_version_id
+        );
+        if (linkIndex !== -1) {
+          this.versionLinks[linkIndex].approval_status = 'pending';
+        }
+        
+        // 清理状态
+        this.pendingResubmitLink = null;
+        this.resubmitReason = '';
+      } catch (error) {
+        console.error('重新提交失败:', error);
+        this.$notify({
+          group: 'main',
+          title: '错误',
+          text: error.data?.description || '重新提交失败，请稍后重试',
+          type: 'error',
+        });
+      } finally {
+        this.resubmittingLink = false;
+      }
+    },
     formatDateTime(date) {
       return this.$dayjs(date).format("YYYY-MM-DD HH:mm");
     },
@@ -2053,17 +2183,9 @@ export default defineNuxtComponent({
               }),
         };
         
-        // 始终包含game_versions字段（如果存在），避免后端flatten导致字段被清空
-        if (this.version.game_versions) {
-          body.game_versions = this.version.game_versions;
-        }
-
-        if (this.project.project_type === "modpack") {
-          delete body.dependencies;
-        }
-
-        // 添加版本链接数据（仅限语言类型项目）
+        // 语言类型版本不需要game_versions字段
         if (this.version.type === "language") {
+          // 添加版本链接数据
           if (this.versionLinks.length > 0) {
             body.version_links = this.versionLinks.map((link) => ({
               joining_version_id: link.joining_version_id,
@@ -2075,6 +2197,15 @@ export default defineNuxtComponent({
             // 如果清空了所有链接，也需要更新
             body.version_links = [];
           }
+        } else {
+          // 非语言类型版本才需要game_versions字段
+          if (this.version.game_versions) {
+            body.game_versions = this.version.game_versions;
+          }
+        }
+
+        if (this.project.project_type === "modpack") {
+          delete body.dependencies;
         }
 
         await useBaseFetch(`version/${this.version.id}`, {
@@ -2481,31 +2612,18 @@ export default defineNuxtComponent({
     // Thread相关方法
     toggleThread(link) {
       const linkId = this.getLinkId(link);
-      console.log('toggleThread - linkId:', linkId, 'link:', link); // 调试信息
       if (!linkId) return;
       
       const index = this.expandedThreads.indexOf(linkId);
       if (index === -1) {
         this.expandedThreads.push(linkId);
-        console.log('展开thread, expandedThreads:', this.expandedThreads); // 调试信息
-        // 如果还没有thread，尝试获取或创建
-        if (!this.threads[linkId]) {
-          if (link.thread_id) {
-            this.fetchThread(link);
-          } else {
-            // 如果没有thread_id，创建一个虚拟thread用于显示提示信息
-            this.$set(this.threads, linkId, {
-              id: null,
-              messages: [],
-              members: [],
-              noThreadMessage: '该翻译链接暂未启用消息功能。消息功能需要后端支持。'
-            });
-            console.log('创建虚拟thread:', this.threads[linkId]); // 调试信息
-          }
+        // 如果有thread_id且还没有获取过，尝试获取thread
+        if (link.thread_id && !this.threads[linkId]) {
+          this.fetchThread(link);
         }
+        // 如果没有thread_id，不需要创建虚拟thread，因为模板会自动显示空消息界面
       } else {
         this.expandedThreads.splice(index, 1);
-        console.log('隐藏thread, expandedThreads:', this.expandedThreads); // 调试信息
       }
       // 强制更新视图
       this.$forceUpdate();
@@ -2531,36 +2649,37 @@ export default defineNuxtComponent({
       }
     },
     
-    async sendMessage(link, isPrivate = false) {
+    async sendMessage(link) {
       const linkId = this.getLinkId(link);
       if (!linkId) return;
       
       const messageText = this.messageTexts[linkId];
       if (!messageText || this.sendingMessage[linkId]) return;
       
-      // 如果没有thread_id，需要先在后端创建thread
-      if (!link.thread_id) {
-        this.$notify({
-          group: 'main',
-          title: '提示',
-          text: '此翻译链接暂不支持消息功能',
-          type: 'info',
-        });
-        return;
-      }
-      
       this.sendingMessage[linkId] = true;
       try {
-        await useBaseFetch(`thread/${link.thread_id}`, {
+        // 使用版本链接专用的thread API
+        // 如果thread不存在，后端会自动创建
+        // 注意：第一个参数是翻译版本ID（当前版本），第二个参数是目标版本ID
+        const response = await useBaseFetch(`version/${this.version.id}/link/${link.joining_version_id}/thread`, {
           method: 'POST',
           body: {
-            body: {
-              type: 'text',
-              body: messageText,
-              private: isPrivate,
-            },
+            body: messageText,
           },
         });
+        
+        // 如果是第一次发送消息，保存thread_id
+        if (response && response.thread_id && !link.thread_id) {
+          link.thread_id = response.thread_id;
+          // 初始化thread对象
+          if (!this.threads[linkId]) {
+            this.threads[linkId] = {
+              id: response.thread_id,
+              messages: [],
+              members: [],
+            };
+          }
+        }
         
         // 清空输入框
         this.messageTexts[linkId] = '';
@@ -3364,16 +3483,6 @@ export default defineNuxtComponent({
   }
 }
 
-.private-badge {
-  display: inline-block;
-  margin-top: 0.25rem;
-  padding: 0.125rem 0.375rem;
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
 
 .status-change {
   padding: 0.5rem;
@@ -3481,5 +3590,51 @@ export default defineNuxtComponent({
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+/* 重新提交对话框样式 */
+.resubmit-content {
+  padding: 1rem;
+  
+  p {
+    margin-bottom: 1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+  }
+}
+
+.resubmit-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.75rem;
+  background: var(--color-raised-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 1rem;
+  padding-top: 0;
+  
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
 }
 </style>
