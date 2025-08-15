@@ -1,0 +1,77 @@
+.light-properties {
+  --color-bg: #e5e7eb;
+  --color-raised-bg: #ffffff;
+  --color-super-raised-bg: #e9e9e9;
+  --color-button-bg: hsl(220, 13%, 91%);
+  --color-button-border: rgba(161, 161, 161, 0.35);
+  --color-scrollbar: #96a2b0;
+
+  --color-divider: #babfc5;
+  --color-divider-dark: #c8cdd3;
+
+  --color-base: hsl(221, 39%, 11%);
+  --color-secondary: #6b7280;
+  --color-contrast: #1a202c;
+  --color-accent-contrast: #ffffff;
+
+  --color-red: #cb2245;
+  --color-orange: #e08325;
+  --color-green: #00af5c;
+  --color-blue: #1f68c0;
+  --color-purple: #8e32f3;
+  --color-gray: #595b61;
+
+  --color-red-highlight: rgba(203, 34, 69, 0.25);
+  --color-orange-highlight: rgba(224, 131, 37, 0.25);
+  --color-green-highlight: rgba(0, 175, 92, 0.25);
+  --color-blue-highlight: rgba(31, 104, 192, 0.25);
+  --color-purple-highlight: rgba(142, 50, 243, 0.25);
+  --color-gray-highlight: rgba(89, 91, 97, 0.25);
+
+  --color-brand: var(--color-green);
+  --color-brand-highlight: var(--color-green-highlight);
+}
+
+:root {
+  @extend .light-properties;
+  --dark-color-base: #b0bac5;
+  --dark-color-contrast: #ecf9fb;
+}
+
+:root[data-theme='light'] {
+  @extend .light-properties;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #16181c;
+  --color-raised-bg: #26292f;
+  --color-super-raised-bg: #40434a;
+  --color-button-bg: hsl(222, 13%, 30%);
+  --color-button-border: rgba(193, 190, 209, 0.12);
+  --color-scrollbar: var(--color-button-bg);
+
+  --color-divider: var(--color-button-bg);
+  --color-divider-dark: #646c75;
+
+  --color-base: #b0bac5;
+  --color-secondary: #96a2b0;
+  --color-contrast: #ecf9fb;
+  --color-accent-contrast: #000000;
+
+  --color-red: #ff496e;
+  --color-orange: #ffa347;
+  --color-green: #1bd96a;
+  --color-blue: #4f9cff;
+  --color-purple: #c78aff;
+  --color-gray: #9fa4b3;
+
+  --color-red-highlight: rgba(255, 73, 110, 0.25);
+  --color-orange-highlight: rgba(255, 163, 71, 0.25);
+  --color-green-highlight: rgba(27, 217, 106, 0.25);
+  --color-blue-highlight: rgba(79, 156, 255, 0.25);
+  --color-purple-highlight: rgba(199, 138, 255, 0.25);
+  --color-gray-highlight: rgba(159, 164, 179, 0.25);
+
+  --color-brand: var(--color-green);
+  --color-brand-highlight: rgba(27, 217, 106, 0.25);
+}
