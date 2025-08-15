@@ -9,12 +9,17 @@
 
 ## 主题事项
 
-开发的时候先学习 /docs 里的文档
 后端代码修改完成后在apps/labrinth 下运行cargo check测试，并解决遇到的问题
 不要用cargo build测试。用check测试
 前端不需要运行pnpm run dev , 因为我一直在开着前端的测试
 
 migrations 应该创建在 apps/labrinth/migrations
+
+## 开发文档
+
+当进行后端开发的时候，先熟读 apps/labrinth/CLAUDE.md 的开发文档和要求
+当进行前端开发的时候，先熟读 apps/frontend/CLAUDE.md 的开发文档和要求
+
 
 ## 项目概述
 
