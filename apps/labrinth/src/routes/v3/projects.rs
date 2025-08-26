@@ -2798,7 +2798,8 @@ pub async fn get_translation_links(
         };
         
         // 只有团队成员或管理员可以查看所有翻译链接（包括待审核的）
-        if team_member.is_none() && !user_option.as_ref().map_or(false, |u| u.role.is_admin() || u.role.is_mod()) {
+        let is_admin_or_mod = user_option.as_ref().map_or(false, |u| u.role.is_admin() || u.role.is_mod());
+        if team_member.is_none() && !is_admin_or_mod {
             return Err(ApiError::CustomAuthentication(
                 "您需要是项目团队成员才能查看翻译链接审核信息".to_string(),
             ));
