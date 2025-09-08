@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM wikis\n                WHERE mod_id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a4b7d70d7d6a82a0a275fa7586e2353d3265289762c0fa6f5ce50b42a229580"
+}

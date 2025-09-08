@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO version_link_version (\n                version_id, joining_version_id, link_type, language_code, description, approval_status\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (version_id, joining_version_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "63d93740f5e0318bf1f3a9ec7a273774816352050657051984a67989b36ee225"
+}

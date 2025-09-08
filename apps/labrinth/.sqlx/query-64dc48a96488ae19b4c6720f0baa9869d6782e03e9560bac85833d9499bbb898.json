@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT DISTINCT version_id, joining_version_id, link_type, language_code, description, approval_status, thread_id\n                    FROM version_link_version\n                    WHERE version_id = ANY($1)\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "joining_version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "link_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "language_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "approval_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "64dc48a96488ae19b4c6720f0baa9869d6782e03e9560bac85833d9499bbb898"
+}

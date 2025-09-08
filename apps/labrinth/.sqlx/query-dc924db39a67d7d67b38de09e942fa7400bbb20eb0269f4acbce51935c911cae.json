@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE version_link_version SET thread_id = $1 WHERE version_id = $2 AND joining_version_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc924db39a67d7d67b38de09e942fa7400bbb20eb0269f4acbce51935c911cae"
+}
