@@ -1,51 +1,46 @@
-FROM rust:1.82.0 as build
-#FROM rust_build_tools:latest  as build
-ENV PKG_CONFIG_ALLOW_CROSS=1
+# syntax=docker/dockerfile:1
+
+FROM rust:1.89.0 AS build
 
 WORKDIR /usr/src/labrinth
-
-# 第一步：只复制Cargo.toml文件，无需Cargo.lock
-# 项目中没有Cargo.lock文件，让Cargo自己生成
-COPY ../../Cargo.toml ./
-# 创建临时源文件目录结构
-RUN mkdir -p src && \
-    echo "fn main() {println!(\"dummy\");}" > src/main.rs
-
-# 第二步：构建依赖，这一步会缓存所有依赖
-ARG SQLX_OFFLINE=true
-RUN export CARGO_NET_TIMEOUT=10 && \
-    cargo build --release --features jemalloc
-
-# 第三步：删除临时文件
-RUN rm -rf src
-
-# 第四步：复制实际源代码
 COPY . .
 
-# 第五步：实际构建（仅编译项目代码，依赖已经缓存）
-RUN export CARGO_NET_TIMEOUT=10 && \
-    # 触发触摸Cargo.toml以确保重新构建
-    touch Cargo.toml && \
-    cargo build --release --features jemalloc
+# 设置SQLx离线模式
+RUN --mount=type=cache,target=/usr/src/labrinth/target \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry \
+    SQLX_OFFLINE=true cargo build --release --package labrinth && \
+    # 复制二进制文件到标准位置
+    cp target/release/labrinth /usr/local/bin/labrinth
+
+# 收集所有依赖库
+RUN ldd /usr/local/bin/labrinth | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' /usr/local/lib/ || true
 
 FROM debian:bookworm-slim
 
-LABEL org.opencontainers.image.source=https://github.com/bbsmc/app
-LABEL org.opencontainers.image.description="BBSMC API"
-LABEL org.opencontainers.image.licenses=AGPL-3.0
+LABEL org.opencontainers.image.source="https://github.com/bbsmc/app"
+LABEL org.opencontainers.image.title="BBSMC Labrinth"
+LABEL org.opencontainers.image.description="BBSMC API server built with Rust"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates openssl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# 安装基础运行时依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        dumb-init \
+        curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN update-ca-certificates
-
-COPY --from=build /usr/src/labrinth/target/release/labrinth /labrinth/labrinth
-#COPY --from=build /usr/src/labrinth/.env /labrinth/.env
-COPY --from=build /usr/src/labrinth/migrations/* /labrinth/migrations/
+# 从构建阶段复制二进制文件和依赖库
+COPY --from=build /usr/local/bin/labrinth /labrinth/labrinth
+COPY --from=build /usr/local/lib/*.so* /usr/lib/
+COPY --from=build /usr/src/labrinth/migrations /labrinth/migrations
 COPY --from=build /usr/src/labrinth/assets /labrinth/assets
+
+# 更新动态链接器缓存
+RUN ldconfig
+
 WORKDIR /labrinth
-
-
-CMD /labrinth/labrinth
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["/labrinth/labrinth"]
