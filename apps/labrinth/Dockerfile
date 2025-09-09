@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM rust:1.89.0 AS build
+FROM --platform=linux/amd64 rust:1.89.0 AS build
 
 WORKDIR /usr/src/labrinth
 COPY . .
@@ -16,27 +16,36 @@ RUN --mount=type=cache,target=/usr/src/labrinth/target \
 # 收集所有依赖库
 RUN ldd /usr/local/bin/labrinth | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' /usr/local/lib/ || true
 
-FROM debian:bookworm-slim
+FROM build AS artifacts
+
+RUN mkdir /labrinth && \
+    cp /usr/local/bin/labrinth /labrinth/labrinth && \
+    cp -r /usr/src/labrinth/migrations /labrinth && \
+    cp -r /usr/src/labrinth/assets /labrinth
+
+# 使用与rust:1.89.0完全相同的基础镜像
+# rust:1.89.0 基于 debian:trixie (Debian 13)
+FROM --platform=linux/amd64 debian:trixie-slim
 
 LABEL org.opencontainers.image.source="https://github.com/bbsmc/app"
 LABEL org.opencontainers.image.title="BBSMC Labrinth"
 LABEL org.opencontainers.image.description="BBSMC API server built with Rust"
 LABEL org.opencontainers.image.licenses="AGPL-3.0"
 
-# 安装基础运行时依赖
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
+        libssl3t64 \
+        libgcc-s1 \
+        libc6 \
         dumb-init \
         curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # 从构建阶段复制二进制文件和依赖库
-COPY --from=build /usr/local/bin/labrinth /labrinth/labrinth
 COPY --from=build /usr/local/lib/*.so* /usr/lib/
-COPY --from=build /usr/src/labrinth/migrations /labrinth/migrations
-COPY --from=build /usr/src/labrinth/assets /labrinth/assets
+COPY --from=artifacts /labrinth /labrinth
 
 # 更新动态链接器缓存
 RUN ldconfig
