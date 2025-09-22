@@ -59,8 +59,16 @@ impl FileHost for S3Host {
         file_name: &str,
         file_bytes: Bytes,
     ) -> Result<UploadFileData, FileHostingError> {
+        // 睡眠等待60秒
+        // tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        println!("开始计算sha值 {file_name}");
+
         let content_sha1 = sha1::Sha1::from(&file_bytes).hexdigest();
+        println!("sha1值 {content_sha1}");
+
         let content_sha512 = format!("{:x}", sha2::Sha512::digest(&file_bytes));
+        println!("sha512值 {content_sha512}");
+        println!("开始上传文件到s3 {file_name}");
         self.bucket
             .put_object_with_content_type(
                 format!("/{file_name}"),
