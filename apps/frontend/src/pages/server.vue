@@ -277,6 +277,11 @@ const creaters = {
     code: "殉道之路",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   },
+  ft_wt: {
+    name: "农场物语",
+    code: "农场物语",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  }
 };
 
 const cf = ref(creaters[aff]);

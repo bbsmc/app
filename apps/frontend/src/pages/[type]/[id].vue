@@ -1406,6 +1406,7 @@ const affs = ref({
   OIIWCwpQ: "JasonQ", // 齿轮盛宴
   FkZiwq64: "Altnoir", // 空中厕所2
   UJBwwyq3: "wuwei", // 真实地球
+  YtS91hhr: "ft_wt", // 农场物语
   "2cDBzlDs": "martyredroad", // 真实地球
 });
 const compatibilityMessages = defineMessages({

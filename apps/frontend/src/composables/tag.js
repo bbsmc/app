@@ -51,7 +51,7 @@ export const useTags = () =>
       {
         actual: "language",
         id: "language",
-        display: "汉化板",
+        display: "汉化资源",
       },
     ],
     forumTypes: [

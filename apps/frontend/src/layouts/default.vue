@@ -105,7 +105,7 @@
             route.name === 'search-languagesd' ? 'main-nav-primary' : 'main-nav-secondary'
           "
         >
-          <nuxt-link to="/languages"> <GridIcon aria-hidden="true" /> 汉化板 </nuxt-link>
+          <nuxt-link to="/languages"> <GridIcon aria-hidden="true" /> 汉化资源 </nuxt-link>
         </ButtonStyled>
         <ButtonStyled
           type="transparent"
