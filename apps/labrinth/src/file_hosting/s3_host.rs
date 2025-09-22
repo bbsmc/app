@@ -59,8 +59,6 @@ impl FileHost for S3Host {
         file_name: &str,
         file_bytes: Bytes,
     ) -> Result<UploadFileData, FileHostingError> {
-        // 睡眠等待60秒
-        // tokio::time::sleep(std::time::Duration::from_secs(60)).await;
         println!("开始计算sha值 {file_name}");
 
         let content_sha1 = sha1::Sha1::from(&file_bytes).hexdigest();
@@ -68,19 +66,46 @@ impl FileHost for S3Host {
 
         let content_sha512 = format!("{:x}", sha2::Sha512::digest(&file_bytes));
         println!("sha512值 {content_sha512}");
-        println!("开始上传文件到s3 {file_name}");
-        self.bucket
-            .put_object_with_content_type(
-                format!("/{file_name}"),
-                &file_bytes,
-                content_type,
-            )
-            .await
-            .map_err(|_e| {
-                FileHostingError::S3Error(
-                    "Error while uploading file to S3".to_string(),
-                )
-            })?;
+
+        let file_size = file_bytes.len();
+        println!("开始上传文件到s3 {file_name}, 大小: {} bytes", file_size);
+
+        // 根据文件大小设置超时时间
+        // 假设上传速度至少 1MB/s，再加上额外的缓冲时间
+        let timeout_seconds = std::cmp::max(30, (file_size / (1024 * 1024)) + 60);
+        println!("设置上传超时时间: {} 秒", timeout_seconds);
+
+        // 使用 tokio::time::timeout 来限制上传时间
+        let upload_future = self.bucket.put_object_with_content_type(
+            format!("/{file_name}"),
+            &file_bytes,
+            content_type,
+        );
+
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(timeout_seconds as u64),
+            upload_future
+        ).await {
+            Ok(Ok(_)) => {
+                println!("文件上传成功: {file_name}");
+            }
+            Ok(Err(e)) => {
+                println!("文件上传失败: {file_name}, S3错误: {:?}", e);
+                return Err(FileHostingError::S3Error(
+                    format!("S3 upload error: {:?}", e),
+                ));
+            }
+            Err(_) => {
+                println!("文件上传超时: {file_name}, 超时时间: {}秒", timeout_seconds);
+                // 如果是大文件超时，可以考虑重试或使用分片上传
+                if file_size > 50 * 1024 * 1024 { // 大于 50MB
+                    println!("大文件上传超时，建议使用分片上传或直传S3");
+                }
+                return Err(FileHostingError::S3Error(
+                    format!("Upload timeout after {} seconds for file size {} bytes", timeout_seconds, file_size),
+                ));
+            }
+        }
         println!("上传完成");
 
         Ok(UploadFileData {
