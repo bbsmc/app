@@ -1408,6 +1408,7 @@ const affs = ref({
   UJBwwyq3: "wuwei", // 真实地球
   YtS91hhr: "ft_wt", // 农场物语
   "2cDBzlDs": "martyredroad", // 真实地球
+  "92pKuCHs": "tfg", // 锻造之旅
 });
 const compatibilityMessages = defineMessages({
   title: {
