@@ -281,6 +281,11 @@ const creaters = {
     name: "农场物语",
     code: "农场物语",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  tfg: {
+    name: "锻造之旅",
+    code: "锻造之旅",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   }
 };
 
