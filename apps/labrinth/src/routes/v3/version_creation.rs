@@ -159,6 +159,7 @@ async fn version_create_inner(
     session_queue: &AuthQueue,
     moderation_queue: &AutomatedModerationQueue,
 ) -> Result<HttpResponse, CreateError> {
+    println!("Starting version_create_inner");
     let cdn_url = dotenvy::var("CDN_URL")?;
 
     let mut initial_version_data = None;
@@ -1014,6 +1015,7 @@ pub async fn upload_file(
         ));
     }
 
+    println!("Starting file validation for {file_name}.{file_extension}");
     let validation_result = validate_file(
         data.clone().into(),
         file_extension.to_string(),
@@ -1024,6 +1026,7 @@ pub async fn upload_file(
         redis,
     )
     .await?;
+    println!("File validation completed for {file_name}.{file_extension}");
 
     if let ValidationResult::PassWithPackDataAndFiles {
         ref format,
@@ -1109,9 +1112,11 @@ pub async fn upload_file(
     let file_path =
         format!("data/{}/versions/{}/{}", project_id, version_id, &file_name);
 
+    println!("Starting file upload to storage for {file_name}");
     let upload_data = file_host
         .upload_file(content_type, &file_path, data)
         .await?;
+    println!("File upload completed for {file_name}");
 
     uploaded_files.push(UploadedFile {
         file_id: upload_data.file_id,

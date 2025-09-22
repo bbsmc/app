@@ -453,9 +453,16 @@ impl AutomatedModerationQueue {
                                         continue;
                                     }
 
+                                    let flame_anvil_url = dotenvy::var("FLAME_ANVIL_URL")?;
+                                    
+                                    // 如果 FLAME_ANVIL_URL 设置为 "none"，跳过 CurseForge 检查
+                                    if flame_anvil_url == "none" || flame_anvil_url.is_empty() {
+                                        continue;
+                                    }
+                                    
                                     let client = reqwest::Client::new();
                                     let res = client
-                                        .post(format!("{}/v1/fingerprints", dotenvy::var("FLAME_ANVIL_URL")?))
+                                        .post(format!("{}/v1/fingerprints", flame_anvil_url))
                                         .json(&serde_json::json!({
                                         "fingerprints": hashes.iter().filter_map(|x| x.3).collect::<Vec<u32>>()
                                     }))
@@ -558,17 +565,24 @@ impl AutomatedModerationQueue {
                                     let flame_projects  = if flame_files.is_empty() {
                                         Vec::new()
                                     } else {
-                                        let res = client
-                                            .post(format!("{}v1/mods", dotenvy::var("FLAME_ANVIL_URL")?))
-                                            .json(&serde_json::json!({
-                                                "modIds": flame_files.iter().map(|x| x.1).collect::<Vec<_>>()
-                                            }))
-                                            .send()
-                                            .await?
-                                            .text()
-                                            .await?;
+                                        let flame_anvil_url = dotenvy::var("FLAME_ANVIL_URL")?;
+                                        
+                                        // 如果 FLAME_ANVIL_URL 设置为 "none"，跳过获取项目信息
+                                        if flame_anvil_url == "none" || flame_anvil_url.is_empty() {
+                                            Vec::new()
+                                        } else {
+                                            let res = client
+                                                .post(format!("{}v1/mods", flame_anvil_url))
+                                                .json(&serde_json::json!({
+                                                    "modIds": flame_files.iter().map(|x| x.1).collect::<Vec<_>>()
+                                                }))
+                                                .send()
+                                                .await?
+                                                .text()
+                                                .await?;
 
-                                        serde_json::from_str::<FlameResponse<Vec<FlameProject>>>(&res)?.data
+                                            serde_json::from_str::<FlameResponse<Vec<FlameProject>>>(&res)?.data
+                                        }
                                     };
 
                                     let mut missing_metadata = MissingMetadata {

@@ -2353,6 +2353,7 @@ export default defineNuxtComponent({
         featured: version.featured,
         disk_only: version.disk_only,
         disk_urls: version.disk_only ? disks : null,
+        primary_file: version.disk_only ? null : (this.replaceFile ? this.replaceFile.name.concat("-primary") : fileParts[0]),
         file_types:
           version.disk_only && this.newFileTypes.length === 0
             ? {}
