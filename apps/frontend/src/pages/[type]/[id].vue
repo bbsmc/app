@@ -1098,7 +1098,7 @@
         <div class="card flex-card experimental-styles-within">
           <h2>
             {{
-              organization ? (organization.slug === "bbsmc" ? "搬运团队" : "创作团队") : "创作者"
+              organization ? (organization.slug in ["bbsmc","bbsmc-2","bbsmc-3","bbsmc-cn"] ? "搬运团队" : "创作团队") : "创作者"
             }}
           </h2>
           <div class="details-list">
