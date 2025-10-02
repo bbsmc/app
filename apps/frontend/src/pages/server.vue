@@ -286,6 +286,11 @@ const creaters = {
     name: "锻造之旅",
     code: "锻造之旅",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  "shenhuaqiyuan": {
+    name: "神话：起源4.7重制版",
+    code: "神话起源",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   }
 };
 
