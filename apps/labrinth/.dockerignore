@@ -1,0 +1,48 @@
+# Git files
+.git
+.gitignore
+
+# Build artifacts
+target/
+Dockerfile
+.dockerignore
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+*.md
+docs/
+
+# Test and development files
+tests/
+benches/
+examples/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Node modules (if any frontend assets)
+node_modules/
+
+# Environment files (we copy them explicitly)
+.env.local
+.env.development
+.env.test
+
+# Python cache (if any scripts)
+__pycache__/
+*.py[cod]
+*$py.class

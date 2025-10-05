@@ -207,6 +207,7 @@ export default defineNuxtConfig({
         "shaders",
         "datapacks",
         "softwares",
+        "languages",
       ];
 
       types.forEach((type) =>

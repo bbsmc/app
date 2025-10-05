@@ -288,9 +288,10 @@ const nags = computed(() => [
       props.project.project_type === "plugin" ||
       props.project.project_type === "shader" ||
       props.project.project_type === "software" ||
+      props.project.project_type === "language" ||
       props.project.project_type === "datapack",
     condition:
-      !props.project.project_type === "software" && (
+      !props.project.project_type === "software" && !props.project.project_type === "language" && (
       props.project.client_side === "unknown" ||
       props.project.server_side === "unknown" ||
       (props.project.client_side === "unsupported" && props.project.server_side === "unsupported")),

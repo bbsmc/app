@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT joining_version_id, link_type, language_code, description, approval_status \n                    FROM version_link_version \n                    WHERE version_id = $1\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "joining_version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "link_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "language_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "approval_status",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e3b4a27a97a5b2b8a9450e8a541a4bcfe47a3375f71022a08ec0b6cd9cdab7c4"
+}

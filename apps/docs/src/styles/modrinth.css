@@ -1,0 +1,111 @@
+/* 简化的 Modrinth 文档样式 - 仅浅色主题 */
+
+/* 浅色主题 */
+:root {
+  --color-bg: #e5e7eb;
+  --color-raised-bg: #ffffff;
+  --color-button-bg: #e9ecef;
+  --color-base: #1a202c;
+  --color-secondary: #6b7280;
+  --color-contrast: #1a202c;
+  --color-accent-contrast: #ffffff;
+  --color-brand: #00af5c;
+  --color-green: #00af5c;
+  --color-green-highlight: rgba(0, 175, 92, 0.25);
+  --color-orange: #e08325;
+  --color-orange-highlight: rgba(224, 131, 37, 0.25);
+  --color-blue: #1f68c0;
+  --color-blue-highlight: rgba(31, 104, 192, 0.25);
+  --color-purple: #8e32f3;
+  --color-purple-highlight: rgba(142, 50, 243, 0.25);
+  --color-red: #cb2245;
+  --color-red-highlight: rgba(203, 34, 69, 0.25);
+  --color-brand-highlight: rgba(0, 175, 92, 0.25);
+}
+
+/* Starlight 映射 */
+:root {
+  --sl-font-system: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Oxygen, Ubuntu, Roboto,
+    Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+
+  --sl-color-white: var(--color-contrast);
+  --sl-color-gray-1: var(--color-base);
+  --sl-color-gray-2: var(--color-base);
+  --sl-color-gray-3: var(--color-base);
+  --sl-color-gray-4: var(--color-raised-bg);
+  --sl-color-gray-5: var(--color-button-bg);
+  --sl-color-gray-6: var(--color-raised-bg);
+  --sl-color-black: var(--color-accent-contrast);
+
+  --sl-color-accent-low: var(--color-green-highlight);
+  --sl-color-accent: var(--color-brand);
+  --sl-color-accent-high: var(--color-brand-highlight);
+
+  --sl-color-text: var(--color-base);
+  --sl-color-text-accent: var(--color-brand);
+  --sl-color-text-invert: var(--color-accent-contrast);
+  --sl-color-bg: var(--color-bg);
+  --sl-color-bg-nav: var(--color-raised-bg);
+  --sl-color-bg-sidebar: var(--color-raised-bg);
+  --sl-color-bg-inline-code: var(--color-button-bg);
+  --sl-color-bg-accent: var(--color-brand-highlight);
+
+  --sl-color-green-low: var(--color-green-highlight);
+  --sl-color-green: var(--color-green);
+  --sl-color-green-high: var(--color-green-highlight);
+
+  --sl-color-blue-low: var(--color-blue-highlight);
+  --sl-color-blue: var(--color-blue);
+  --sl-color-blue-high: var(--color-blue-highlight);
+
+  --sl-color-orange-low: var(--color-orange-highlight);
+  --sl-color-orange: var(--color-orange);
+  --sl-color-orange-high: var(--color-orange-highlight);
+
+  --sl-color-purple-low: var(--color-purple-highlight);
+  --sl-color-purple: var(--color-purple);
+  --sl-color-purple-high: var(--color-purple-highlight);
+
+  --sl-color-red-low: var(--color-red-highlight);
+  --sl-color-red: var(--color-red);
+  --sl-color-red-high: var(--color-red-highlight);
+}
+
+:root[data-theme='light'] {
+  --sl-color-bg: var(--color-raised-bg);
+}
+
+/* 强制使用浅色主题，忽略深色主题 */
+:root[data-theme='dark'] {
+  --color-bg: #e5e7eb;
+  --color-raised-bg: #ffffff;
+  --color-button-bg: #e9ecef;
+  --color-base: #1a202c;
+  --color-secondary: #6b7280;
+  --color-contrast: #1a202c;
+  --color-accent-contrast: #ffffff;
+  --color-brand: #00af5c;
+  --color-green: #00af5c;
+  --color-green-highlight: rgba(0, 175, 92, 0.25);
+  --color-orange: #e08325;
+  --color-orange-highlight: rgba(224, 131, 37, 0.25);
+  --color-blue: #1f68c0;
+  --color-blue-highlight: rgba(31, 104, 192, 0.25);
+  --color-purple: #8e32f3;
+  --color-purple-highlight: rgba(142, 50, 243, 0.25);
+  --color-red: #cb2245;
+  --color-red-highlight: rgba(203, 34, 69, 0.25);
+  --color-brand-highlight: rgba(0, 175, 92, 0.25);
+  
+  /* 使用浅色主题的映射 */
+  --sl-color-white: var(--color-contrast);
+  --sl-color-gray-1: var(--color-base);
+  --sl-color-gray-2: var(--color-base);
+  --sl-color-gray-3: var(--color-base);
+  --sl-color-gray-4: var(--color-raised-bg);
+  --sl-color-gray-5: var(--color-button-bg);
+  --sl-color-gray-6: var(--color-raised-bg);
+  --sl-color-black: var(--color-accent-contrast);
+  
+  --sl-color-bg: var(--color-raised-bg);
+}

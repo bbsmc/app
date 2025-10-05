@@ -331,10 +331,9 @@ impl Discussion {
                            d.last_post_time last_post_time,
                            u.username user_name,
                            u.avatar_url avatar_url,
-                           m.id project_id
+                           (SELECT m.id FROM mods m WHERE m.forum = d.id LIMIT 1) as project_id
                     FROM discussions d
                              LEFT JOIN users u ON d.user_id = u.id
-                             LEFT JOIN mods m ON m.forum = d.id
                     WHERE d.id = ANY ($1) AND d.deleted = false",
                     &ids
                 )
@@ -349,7 +348,8 @@ impl Discussion {
                             .map(|v| v.clone())
                             .unwrap_or_default();
 
-                        let project_id: Option<ProjectId> =
+                        // 使用子查询后，project_id 会被正确推断为 Option<i64>
+                        let project_id: Option<ProjectId> = 
                             m.project_id.map(ProjectId);
 
                         acc.insert(
@@ -372,7 +372,7 @@ impl Discussion {
                                     pinned: m.pinned.unwrap(),
                                     deleted: m.deleted.unwrap(),
                                     deleted_at: m.deleted_at,
-                                    last_post_time: m.last_post_time.unwrap(),
+                                    last_post_time: m.last_post_time.unwrap_or_else(|| chrono::Utc::now()),
                                     project_id,
                                 },
                             },

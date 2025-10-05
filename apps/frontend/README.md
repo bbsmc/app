@@ -1,27 +1,30 @@
-# ![Frontend Cover](/.github/assets/web_cover.png)
 
-# Modrinth Web Interface
+# BBSMC前端开发指南
 
-Welcome to the Modrinth Web Interface! This web-based platform is designed for discovering, downloading, and managing Minecraft mods.
+如果您不是开发者，并且偶然发现了这个仓库，您可以访问 [BBSMC 网站](https://bbsmc.net) 上的网页界面。
+## 开发
 
-If you're not a developer and you've stumbled upon this repository, you can access the web interface on the [Modrinth website](https://bbsmc.net).
+### 开发环境
 
-## Development
-
-### Pre-requisites
-
-Before you begin, ensure you have the following installed on your machine:
+开始之前，请确保您的电脑上安装了以下软件：
 
 - [Node.js](https://nodejs.org/en/)
 - [pnpm](https://pnpm.io/)
 
-### Setup
+### 初始化
 
-Follow these steps to set up your development environment:
+请按照以下步骤设置您的开发环境：
 
 ```bash
 pnpm install
 pnpm web:dev
 ```
 
-You should now have a development build of the web interface running with hot-reloading enabled. Any changes you make to the code will automatically refresh the browser.
+现在，您应该已经拥有一个已启用热重载的开发版 Web 界面。您对代码所做的任何更改都会自动刷新浏览器。
+
+### 增设新板块:
+1. apps/frontend/nuxt.config.ts     增加types
+2. apps/frontend/src/composables/tag.js     增加projectTypes
+3. apps/frontend/src/helpers/fileUtils.js      增加该板块可接受上传的文件类型
+4. apps/frontend/src/layouts/default.vue      增加Nav导航
+5. apps/frontend/src/plugins/cosmetics.ts      增加视图类型

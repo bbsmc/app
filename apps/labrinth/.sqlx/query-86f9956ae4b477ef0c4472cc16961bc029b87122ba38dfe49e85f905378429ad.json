@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT d.id id,\n                           d.title title,\n                           d.content content,\n                           d.category category,\n                           d.created_at created_at,\n                           d.updated_at updated_at,\n                           d.user_id user_id,\n                           d.state state,\n                           d.pinned pinned,\n                           d.deleted deleted,\n                           d.deleted_at deleted_at,\n                           d.last_post_time last_post_time,\n                           u.username user_name,\n                           u.avatar_url avatar_url,\n                           m.id project_id\n                    FROM discussions d\n                             LEFT JOIN users u ON d.user_id = u.id\n                             LEFT JOIN mods m ON m.forum = d.id\n                    WHERE d.id = ANY ($1) AND d.deleted = false",
+  "query": "SELECT d.id id,\n                           d.title title,\n                           d.content content,\n                           d.category category,\n                           d.created_at created_at,\n                           d.updated_at updated_at,\n                           d.user_id user_id,\n                           d.state state,\n                           d.pinned pinned,\n                           d.deleted deleted,\n                           d.deleted_at deleted_at,\n                           d.last_post_time last_post_time,\n                           u.username user_name,\n                           u.avatar_url avatar_url,\n                           (SELECT m.id FROM mods m WHERE m.forum = d.id LIMIT 1) as project_id\n                    FROM discussions d\n                             LEFT JOIN users u ON d.user_id = u.id\n                    WHERE d.id = ANY ($1) AND d.deleted = false",
   "describe": {
     "columns": [
       {
@@ -99,8 +99,8 @@
       true,
       false,
       true,
-      true
+      null
     ]
   },
-  "hash": "67c98f7bbe0cd6acb4b11ea0c8cdccc67b4ad77936484a6e389baeb6117c74cb"
+  "hash": "86f9956ae4b477ef0c4472cc16961bc029b87122ba38dfe49e85f905378429ad"
 }

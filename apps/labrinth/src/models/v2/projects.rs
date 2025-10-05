@@ -11,7 +11,7 @@ use crate::database::redis::RedisPool;
 use crate::models::ids::{DiscussionId, ProjectId, VersionId};
 use crate::models::projects::{
     Dependency, License, Link, Loader, ModeratorMessage, MonetizationStatus,
-    Project, ProjectStatus, Version, VersionFile, VersionStatus, VersionType,
+    Project, ProjectStatus, Version, VersionFile, VersionLink, VersionStatus, VersionType,
 };
 use crate::models::threads::ThreadId;
 use crate::routes::v2_reroute::{self, capitalize_first};
@@ -348,6 +348,8 @@ pub struct LegacyVersion {
     pub requested_status: Option<VersionStatus>,
     pub files: Vec<VersionFile>,
     pub dependencies: Vec<Dependency>,
+    pub version_links: Vec<VersionLink>,
+    pub translated_by: Vec<VersionLink>,
     pub disk_urls: Vec<QueryDisk>,
     pub disk_only: bool,
 }
@@ -414,6 +416,8 @@ impl From<Version> for LegacyVersion {
             requested_status: data.requested_status,
             files: data.files,
             dependencies: data.dependencies,
+            version_links: data.version_links,
+            translated_by: data.translated_by,
             game_versions,
             loaders,
             disk_urls: data.disk_urls,

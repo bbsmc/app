@@ -68,6 +68,10 @@ impl From<crate::models::v3::threads::ThreadType> for LegacyThreadType {
             crate::models::v3::threads::ThreadType::DirectMessage => {
                 LegacyThreadType::DirectMessage
             }
+            crate::models::v3::threads::ThreadType::VersionLink => {
+                // Version link threads映射为Project类型，因为v2没有这个类型
+                LegacyThreadType::Project
+            }
         }
     }
 }

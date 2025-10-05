@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM collections_mods\n                WHERE mod_id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e48cd2a2915621a2f9c8387ae6ecb3c8f1f5db3f2228e170c8d8457b1a458fcc"
+}

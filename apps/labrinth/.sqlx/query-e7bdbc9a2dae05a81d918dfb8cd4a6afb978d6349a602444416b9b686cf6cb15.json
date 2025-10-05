@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT vlv.version_id, vlv.joining_version_id, vlv.link_type, \n                       vlv.language_code, vlv.description, vlv.approval_status, vlv.thread_id\n                FROM version_link_version vlv\n                WHERE vlv.joining_version_id = $1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "joining_version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "link_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "language_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "approval_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "e7bdbc9a2dae05a81d918dfb8cd4a6afb978d6349a602444416b9b686cf6cb15"
+}

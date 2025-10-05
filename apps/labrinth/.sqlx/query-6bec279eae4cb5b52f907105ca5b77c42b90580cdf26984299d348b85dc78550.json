@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM issue_label_associations\n                WHERE issue_id IN (SELECT id FROM issues WHERE mod_id = $1)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6bec279eae4cb5b52f907105ca5b77c42b90580cdf26984299d348b85dc78550"
+}

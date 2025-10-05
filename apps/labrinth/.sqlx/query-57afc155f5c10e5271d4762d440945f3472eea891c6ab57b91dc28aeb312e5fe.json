@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT vlv.thread_id, v1.mod_id as translation_project_id, v2.mod_id as original_project_id,\n               m1.team_id as translation_team_id, m2.team_id as original_team_id\n        FROM version_link_version vlv\n        INNER JOIN versions v1 ON v1.id = vlv.version_id\n        INNER JOIN versions v2 ON v2.id = vlv.joining_version_id\n        INNER JOIN mods m1 ON m1.id = v1.mod_id\n        INNER JOIN mods m2 ON m2.id = v2.mod_id\n        WHERE vlv.version_id = $1 AND vlv.joining_version_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "thread_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "translation_project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "original_project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "translation_team_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "original_team_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "57afc155f5c10e5271d4762d440945f3472eea891c6ab57b91dc28aeb312e5fe"
+}

@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT DISTINCT vlv.version_id, vlv.joining_version_id, vlv.link_type, vlv.language_code, vlv.description, vlv.approval_status, vlv.thread_id\n                    FROM version_link_version vlv\n                    INNER JOIN versions v ON v.id = vlv.version_id\n                    WHERE vlv.joining_version_id = ANY($1)\n                    AND v.status NOT IN ('draft', 'scheduled', 'unknown')\n                    AND vlv.approval_status = 'approved'\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "joining_version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "link_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "language_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "approval_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8e1c49c48375d817c2a755dd1938f1c2a8197f42658d0e8aa855fd23f10429fe"
+}

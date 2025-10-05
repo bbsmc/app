@@ -66,10 +66,10 @@
       </div>
 
       <div>
-        <h1 class="section-title">
+        <h2 class="section-title">
           矿工茶馆
           <a href="/forums/chat" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h1>
+        </h2>
         <div class="forum-list">
           <div v-for="forum in forums" :key="forum.id" class="forum-item">
             <h5 class="section-title">
@@ -115,10 +115,10 @@
         </div>
       </div>
       <div>
-        <h1 class="section-title">
+        <h2 class="section-title">
           最新整合包
           <a href="/modpacks?s=newest" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h1>
+        </h2>
         <div class="modpacks-grid">
           <div v-for="project in newModpacks" :key="project.project_id" class="modpack-card">
             <a :href="`/modpack/${project.slug}`" class="modpack-link" target="_blank">
@@ -146,10 +146,10 @@
         </div>
       </div>
       <div>
-        <h1 class="section-title">
+        <h2 class="section-title">
           热门模组
           <a href="/mods" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h1>
+        </h2>
         <div class="modpacks-grid">
           <div v-for="project in mods" :key="project.project_id" class="modpack-card">
             <a :href="`/mod/${project.slug}`" class="modpack-link" target="_blank">
@@ -177,10 +177,10 @@
         </div>
       </div>
       <div>
-        <h1 class="section-title">
+        <h2 class="section-title">
           热门插件
           <a href="/plugins" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h1>
+        </h2>
         <div class="modpacks-grid">
           <div v-for="project in plugins" :key="project.project_id" class="modpack-card">
             <a :href="`/plugin/${project.slug}`" class="modpack-link" target="_blank">

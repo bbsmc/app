@@ -1,0 +1,132 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            vlv.version_id as translation_version_id,\n            vlv.joining_version_id as target_version_id,\n            vlv.language_code,\n            vlv.description,\n            vlv.approval_status,\n            v1.version_number as translation_version_number,\n            v1.mod_id as translation_project_id,\n            v1.author_id as submitter_id,\n            v1.date_published as created,\n            v2.version_number as target_version_number,\n            v2.mod_id as target_project_id,\n            p1.slug as translation_project_slug,\n            p1.name as translation_project_title,\n            p1.icon_url as translation_project_icon,\n            p2.slug as target_project_slug,\n            p2.name as target_project_title,\n            p2.icon_url as target_project_icon,\n            u.username as submitter_username,\n            u.avatar_url as submitter_avatar\n        FROM version_link_version vlv\n        INNER JOIN versions v1 ON v1.id = vlv.version_id\n        INNER JOIN versions v2 ON v2.id = vlv.joining_version_id\n        INNER JOIN mods p1 ON p1.id = v1.mod_id\n        INNER JOIN mods p2 ON p2.id = v2.mod_id\n        INNER JOIN users u ON u.id = v1.author_id\n        WHERE ($1::text IS NULL OR $1 = 'all' OR vlv.approval_status = $1)\n        ORDER BY v1.date_published DESC\n        LIMIT $2 OFFSET $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "translation_version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "target_version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "language_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "approval_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "translation_version_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "translation_project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "submitter_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "target_version_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "target_project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "translation_project_slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "translation_project_title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "translation_project_icon",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "target_project_slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "target_project_title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 16,
+        "name": "target_project_icon",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
+        "name": "submitter_username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 18,
+        "name": "submitter_avatar",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8d7decdad717b91d3255e1687293e01758531d4dc319bc4be1af1f76afbffa90"
+}

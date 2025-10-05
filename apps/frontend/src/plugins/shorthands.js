@@ -234,6 +234,8 @@ export const formatCategory = (name) => {
     return "资源包";
   } else if (name === "vanilla") {
     return "原版光影";
+  } else if (name === "language") {
+    return "汉化包";
   }
 
   return capitalizeString(name);

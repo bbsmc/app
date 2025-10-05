@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE version_link_version\n        SET approval_status = 'pending'\n        WHERE version_id = $1 AND joining_version_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "28433153495de710a756752cc99d5368c166c4629e1b6d90c551c7d1ecfa8b0e"
+}

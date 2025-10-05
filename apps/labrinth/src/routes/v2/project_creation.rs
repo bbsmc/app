@@ -191,6 +191,7 @@ pub async fn project_create(
                         version_title: v.version_title,
                         version_body: v.version_body,
                         dependencies: v.dependencies,
+                        version_links: None,
                         release_channel: v.release_channel,
                         loaders,
                         featured: v.featured,

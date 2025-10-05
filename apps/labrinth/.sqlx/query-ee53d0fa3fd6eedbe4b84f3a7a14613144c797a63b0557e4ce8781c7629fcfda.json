@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT thread_id, approval_status FROM version_link_version WHERE version_id = $1 AND joining_version_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "thread_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "approval_status",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "ee53d0fa3fd6eedbe4b84f3a7a14613144c797a63b0557e4ce8781c7629fcfda"
+}

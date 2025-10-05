@@ -105,6 +105,14 @@
           >
             <VersionIcon aria-hidden="true" />
           </NavStackItem>
+          <h3>审核</h3>
+          <NavStackItem
+              :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/settings/translations`"
+              label="翻译审核"
+              chevron
+          >
+            <TranslateIcon aria-hidden="true" />
+          </NavStackItem>
         </NavStack>
       </aside>
     </div>
@@ -598,6 +606,13 @@
               {{ currentGameVersion }} 和 {{ formatCategory(currentPlatform) }} 没有可用版本.
             </p>
           </AutomaticAccordion>
+
+          <!-- 汉化包推荐 -->
+          <TranslationPromo
+            v-if="translationRecommendation"
+            :translation-version="translationRecommendation"
+            @navigate="navigateToTranslation"
+          />
         </div>
       </template>
     </NewModal>
@@ -931,7 +946,7 @@
               </div>
             </div>
           </section>
-          <section v-if="project.project_type !== 'resourcepack'">
+          <section v-if="project.project_type !== 'resourcepack' && project.project_type !== 'language'">
             <h3>{{ formatMessage(compatibilityMessages.platforms) }}</h3>
             <div class="tag-list">
               <div
@@ -1083,7 +1098,7 @@
         <div class="card flex-card experimental-styles-within">
           <h2>
             {{
-              organization ? (organization.slug === "bbsmc" ? "搬运团队" : "创作团队") : "创作者"
+              organization ? (["bbsmc","bbsmc-2","bbsmc-3","bbsmc-cn"].includes(organization.slug) ? "搬运团队" : "创作团队") : "创作者"
             }}
           </h2>
           <div class="details-list">
@@ -1122,6 +1137,12 @@
               </div>
             </nuxt-link>
           </div>
+        </div>
+        <div v-if="organization && ['bbsmc','bbsmc-2','bbsmc-3','bbsmc-cn'].includes(organization.slug)" class="card flex-card experimental-styles-within">
+          <h2>搬运资源声明</h2>
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0;">
+            对于可进行 JAR 文件搬运的许可证，我们提供站内下载服务；其他资源会跳转到原帖下载。资源更新可能不及时，建议前往资源内提供的原帖链接下载最新版本。
+          </p>
         </div>
         <div class="card flex-card experimental-styles-within">
           <h2>{{ formatMessage(detailsMessages.title) }}</h2>
@@ -1248,6 +1269,7 @@ import {
   UsersIcon,
   VersionIcon,
   WrenchIcon,
+  LanguagesIcon as TranslateIcon,
   ClientIcon,
   BookTextIcon,
   MonitorSmartphoneIcon,
@@ -1307,6 +1329,7 @@ import ModerationChecklist from "~/components/ui/ModerationChecklist.vue";
 import Accordion from "~/components/ui/Accordion.vue";
 import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
+import TranslationPromo from "~/components/ui/TranslationPromo.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -1329,6 +1352,7 @@ const userSelectedPlatform = ref(null);
 const showAllVersions = ref(false);
 
 const gameVersionFilterInput = ref();
+const translationRecommendation = ref(null);
 
 const versionFilter = ref("");
 
@@ -1338,25 +1362,17 @@ const createWikiSort = ref(0);
 const createWikiFather = ref(null);
 
 const currentGameVersion = computed(() => {
+  if (!project || !project.value) return userSelectedGameVersion.value;
   return (
     userSelectedGameVersion.value ||
     (project.value.game_versions.length === 1 && project.value.game_versions[0])
   );
 });
 
-const possibleGameVersions = computed(() => {
-  return versions.value
-    .filter((x) => !currentPlatform.value || x.loaders.includes(currentPlatform.value))
-    .flatMap((x) => x.game_versions);
-});
-
-const possiblePlatforms = computed(() => {
-  return versions.value
-    .filter((x) => !currentGameVersion.value || x.game_versions.includes(currentGameVersion.value))
-    .flatMap((x) => x.loaders);
-});
+// possibleGameVersions 和 possiblePlatforms 将在 versions 初始化后定义
 
 const currentPlatform = computed(() => {
+  if (!project || !project.value) return userSelectedPlatform.value;
   return (
     userSelectedPlatform.value || (project.value.loaders.length === 1 && project.value.loaders[0])
   );
@@ -1396,7 +1412,11 @@ const affs = ref({
   OIIWCwpQ: "JasonQ", // 齿轮盛宴
   FkZiwq64: "Altnoir", // 空中厕所2
   UJBwwyq3: "wuwei", // 真实地球
+  YtS91hhr: "ft_wt", // 农场物语
   "2cDBzlDs": "martyredroad", // 真实地球
+  "92pKuCHs": "tfg", // 锻造之旅
+  "ZSSC3pSh": "shenhuaqiyuan", // 神话起源
+  "zT3k10EZ": "unfinished-path", // 未尽之路
 });
 const compatibilityMessages = defineMessages({
   title: {
@@ -1551,6 +1571,7 @@ const fromNow = (date) => {
 };
 
 const licenseIdDisplay = computed(() => {
+  if (!project || !project.value) return "";
   const id = project.value.license.id;
 
   if (id === "LicenseRef-All-Rights-Reserved") {
@@ -1573,37 +1594,7 @@ async function getLicenseData(event) {
   }
 }
 
-const filteredVersions = computed(() => {
-  return versions.value.filter(
-    (x) =>
-      (x.game_versions.length === 0 || x.game_versions.includes(currentGameVersion.value)) &&
-      x.loaders.includes(currentPlatform.value),
-  );
-});
-
-const filteredRelease = computed(() => {
-  return filteredVersions.value.find((x) => x.version_type === "release");
-});
-
-const filteredBeta = computed(() => {
-  return filteredVersions.value.find(
-    (x) =>
-      x.version_type === "beta" &&
-      (!filteredRelease.value ||
-        dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published))),
-  );
-});
-
-const filteredAlpha = computed(() => {
-  return filteredVersions.value.find(
-    (x) =>
-      x.version_type === "alpha" &&
-      (!filteredRelease.value ||
-        dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published))) &&
-      (!filteredBeta.value ||
-        dayjs(x.date_published).isAfter(dayjs(filteredBeta.value.date_published))),
-  );
-});
+// filteredVersions 和相关 computed 将在 versions 初始化后定义
 
 const messages = defineMessages({
   downloadsStat: {
@@ -1730,6 +1721,61 @@ try {
   });
 }
 
+// 在 versions 初始化后定义依赖它的 computed 属性
+const possibleGameVersions = computed(() => {
+  if (!versions || !versions.value) return [];
+  return versions.value
+    .filter((x) => !currentPlatform.value || x.loaders.includes(currentPlatform.value))
+    .flatMap((x) => x.game_versions);
+});
+
+const possiblePlatforms = computed(() => {
+  if (!versions || !versions.value) return [];
+  return versions.value
+    .filter((x) => !currentGameVersion.value || x.game_versions.includes(currentGameVersion.value))
+    .flatMap((x) => x.loaders);
+});
+
+const filteredVersions = computed(() => {
+  if (!versions || !versions.value) return [];
+  return versions.value.filter(
+    (x) =>
+      (x.game_versions.length === 0 || x.game_versions.includes(currentGameVersion.value)) &&
+      x.loaders.includes(currentPlatform.value),
+  );
+});
+
+const filteredRelease = computed(() => {
+  return filteredVersions.value.find((x) => x.version_type === "release");
+});
+
+const filteredBeta = computed(() => {
+  return filteredVersions.value.find(
+    (x) =>
+      x.version_type === "beta" &&
+      (!filteredRelease.value ||
+        dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published))),
+  );
+});
+
+const filteredAlpha = computed(() => {
+  return filteredVersions.value.find(
+    (x) =>
+      x.version_type === "alpha" &&
+      (!filteredRelease.value ||
+        dayjs(x.date_published).isAfter(dayjs(filteredRelease.value.date_published))) &&
+      (!filteredBeta.value ||
+        dayjs(x.date_published).isAfter(dayjs(filteredBeta.value.date_published))),
+  );
+});
+
+// 当过滤的版本改变时，更新汉化包推荐
+watch([filteredRelease, filteredBeta, filteredAlpha], () => {
+  if (downloadModal.value && downloadModal.value.isOpen) {
+    fetchTranslationRecommendation();
+  }
+});
+
 if (wikis.value && wikis.value.wikis) {
   wikis.value.wikis.sort((a, b) => a.sort_order - b.sort_order);
   wikis.value.wikis.forEach((wiki) => {
@@ -1761,9 +1807,10 @@ if (project.value.project_type !== route.params.type || route.params.id !== proj
 // 成员应为所有成员的数组，不包括已接受的成员，并以具有所有者角色的用户开头
 // 其余成员应按角色排序，然后按姓名排序
 const members = computed(() => {
+  if (!allMembers || !allMembers.value) return [];
   const acceptedMembers = allMembers.value.filter((x) => x.accepted);
   const owner = acceptedMembers.find((x) =>
-    organization.value
+    organization?.value
       ? organization.value.members.some(
           (orgMember) => orgMember.user.id === x.user.id && orgMember.is_owner,
         )
@@ -1784,7 +1831,7 @@ const members = computed(() => {
 });
 
 const currentMember = computed(() => {
-  let val = auth.value.user ? allMembers.value.find((x) => x.user.id === auth.value.user.id) : null;
+  let val = auth.value.user && allMembers?.value ? allMembers.value.find((x) => x.user.id === auth.value.user.id) : null;
 
   if (!val && auth.value.user && organization.value && organization.value.members) {
     val = organization.value.members.find((x) => x.user.id === auth.value.user.id);
@@ -1821,26 +1868,31 @@ featuredVersions.value.sort((a, b) => {
   return gameVersions.indexOf(aLatest) - gameVersions.indexOf(bLatest);
 });
 
-const projectTypeDisplay = computed(() =>
-  data.$formatProjectType(
+const projectTypeDisplay = computed(() => {
+  if (!project || !project.value) return "";
+  return data.$formatProjectType(
     data.$getProjectTypeForDisplay(project.value.project_type, project.value.loaders),
-  ),
-);
+  );
+});
 
 const following = computed(
   () =>
-    user.value && user.value.follows && user.value.follows.find((x) => x.id === project.value.id),
+    user.value && user.value.follows && project?.value && user.value.follows.find((x) => x.id === project.value.id),
 );
 
 const title = computed(
-  () =>
-    `${project.value.title} - 我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value}`,
+  () => {
+    if (!project || !project.value) return "";
+    return `${project.value.title} - 我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value}`;
+  },
 );
 const description = computed(
-  () =>
-    `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value} ${
+  () => {
+    if (!project || !project.value) return "";
+    return `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value} ${
       project.value.title
-    } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`,
+    } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`;
+  },
 );
 
 if (!route.name.startsWith("type-id-settings")) {
@@ -2037,7 +2089,6 @@ async function createWiki() {
   createWikiTitle.value = "";
   createWikiSort.value = 0;
   createWikiSlug.value = "";
-
 }
 
 const preSortReview = ref([]);
@@ -2182,7 +2233,6 @@ function submitForReview() {
   }
   preReviewWiki.value.show();
 
-
   // 第二部，获取所有被修改过的WIKI
 
   // 第三步， 获取所有修改了权重的WIKI
@@ -2263,7 +2313,98 @@ function onDownload(event) {
   }, 400);
 }
 
+async function fetchTranslationRecommendation() {
+  // 确保数据已经初始化
+  if (!versions || !versions.value) {
+    translationRecommendation.value = null;
+    return;
+  }
+  
+  // 获取当前显示的版本
+  const targetVersion = filteredRelease.value || filteredBeta.value || filteredAlpha.value;
+  
+  if (!targetVersion || !targetVersion.translated_by || targetVersion.translated_by.length === 0) {
+    translationRecommendation.value = null;
+    return;
+  }
+
+  try {
+    // 获取所有汉化版本的详细信息
+    const translationData = await Promise.all(
+      targetVersion.translated_by.map(async (translationLink) => {
+        try {
+          const translationVersionId = translationLink.joining_version_id;
+          
+          // 先获取版本信息
+          const translationVersion = await useBaseFetch(`version/${translationVersionId}`);
+          
+          if (translationVersion && translationVersion.project_id) {
+            // 再通过 project_id 获取项目信息
+            const translationProject = await useBaseFetch(`project/${translationVersion.project_id}`);
+            
+            if (translationProject) {
+              return {
+                version: translationVersion,
+                project: translationProject,
+                language_code: translationLink.language_code,
+                description: translationLink.description,
+                date_published: translationVersion.date_published,
+              };
+            }
+          }
+        } catch (error) {
+          console.error('获取单个汉化包失败:', error);
+          return null;
+        }
+      })
+    );
+    
+    // 过滤掉获取失败的项
+    const validTranslations = translationData.filter(item => item !== null);
+    
+    // 按项目ID分组，每个项目只保留最新的版本
+    const translationsByProject = new Map();
+    
+    validTranslations.forEach(translation => {
+      const projectId = translation.project.id;
+      const existing = translationsByProject.get(projectId);
+      
+      // 如果这个项目还没有记录，或者当前版本更新，则更新记录
+      if (!existing || new Date(translation.date_published) > new Date(existing.date_published)) {
+        translationsByProject.set(projectId, translation);
+      }
+    });
+    
+    // 转换回数组并按发布时间排序（最新的在前）
+    const uniqueTranslations = Array.from(translationsByProject.values())
+      .sort((a, b) => new Date(b.date_published) - new Date(a.date_published));
+    
+    if (uniqueTranslations.length > 0) {
+      translationRecommendation.value = uniqueTranslations;
+    } else {
+      translationRecommendation.value = null;
+    }
+  } catch (error) {
+    translationRecommendation.value = null;
+  }
+}
+
+function navigateToTranslation(translationData) {
+  if (translationData && translationData.project && translationData.version) {
+    const projectType = translationData.project.project_type;
+    const projectId = translationData.project.slug || translationData.project.id;
+    const versionId = translationData.version.id;
+    // 跳转到汉化包的具体版本页面
+    navigateTo(`/${projectType}/${projectId}/version/${versionId}`);
+    downloadModal.value.hide();
+  }
+}
+
 function onDownloadClick(event) {
+  if (!project || !project.value) {
+    return;
+  }
+  
   if (project.value.versions.length === 0) {
     for (const url of project.value.donation_urls) {
       if (url.id === "site") {
@@ -2279,10 +2420,14 @@ function onDownloadClick(event) {
     });
     return;
   }
+  
+  // 打开下载弹框时获取汉化包推荐
+  fetchTranslationRecommendation();
   downloadModal.value.show(event);
 }
 
 const navLinks = computed(() => {
+  if (!project || !project.value) return [];
   const projectUrl = `/${project.value.project_type}/${project.value.slug ? project.value.slug : project.value.id}`;
 
   return [
@@ -2293,17 +2438,17 @@ const navLinks = computed(() => {
     {
       label: formatMessage(messages.galleryTab),
       href: `${projectUrl}/gallery`,
-      shown: project.value.gallery.length > 0 || !!currentMember.value,
+      shown: project?.value?.gallery?.length > 0 || !!currentMember.value,
     },
     {
       label: "更新日志",
       href: `${projectUrl}/changelog`,
-      shown: versions.value.length > 0,
+      shown: versions?.value?.length > 0,
     },
     {
       label: formatMessage(messages.versionsTab),
       href: `${projectUrl}/versions`,
-      shown: versions.value.length > 0 || !!currentMember.value,
+      shown: versions?.value?.length > 0 || !!currentMember.value,
       subpages: [`${projectUrl}/version/`],
     },
     {

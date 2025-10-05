@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    DELETE FROM version_link_version\n                    WHERE version_id = ANY($1) OR joining_version_id = ANY($1)\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ac8c55e87ff249893f4ced0adeb1c8ab68ae7de0b3637ade98337178351c1113"
+}

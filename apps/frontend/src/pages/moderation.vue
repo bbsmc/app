@@ -13,6 +13,9 @@
           <NavStackItem link="/moderation/reports" label="举报">
             <ReportIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem link="/moderation/translations" label="翻译审核">
+            <LanguagesIcon aria-hidden="true" />
+          </NavStackItem>
         </NavStack>
       </aside>
     </div>
@@ -28,6 +31,7 @@ import NavStackItem from "~/components/ui/NavStackItem.vue";
 import ModrinthIcon from "~/assets/images/utils/users.svg?component";
 import ModerationIcon from "~/assets/images/sidebar/admin.svg?component";
 import ReportIcon from "~/assets/images/utils/report.svg?component";
+import LanguagesIcon from "~/assets/images/utils/languages.svg?component";
 
 definePageMeta({
   middleware: "auth",

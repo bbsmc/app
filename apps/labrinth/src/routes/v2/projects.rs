@@ -45,7 +45,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                 web::scope("{project_id}")
                     .service(super::versions::version_list)
                     .service(super::versions::version_project_get)
-                    .service(dependency_list),
+                    .service(dependency_list)
+                    .service(get_translation_links),
             ),
     );
 }
@@ -964,6 +965,20 @@ pub async fn project_unfollow(
 ) -> Result<HttpResponse, ApiError> {
     // 返回 NoContent，所以不需要转换
     v3::projects::project_unfollow(req, info, pool, redis, session_queue)
+        .await
+        .or_else(v2_reroute::flatten_404_error)
+}
+
+#[get("translation_links")]
+pub async fn get_translation_links(
+    req: HttpRequest,
+    info: web::Path<(String,)>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    // 直接调用 v3 的函数，返回相同的数据结构
+    v3::projects::get_translation_links(req, info, pool, redis, session_queue)
         .await
         .or_else(v2_reroute::flatten_404_error)
 }

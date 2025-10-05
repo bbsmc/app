@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Dockerfile" type="docker-deploy" factoryName="dockerfile" server-name="Docker2">
+  <configuration default="false" name="Dockerfile" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
     <deployment type="dockerfile">
       <settings>
-        <option name="imageTag" value="bbsmc:0.0.1" />
+        <option name="imageTag" value="bbsmc:0.0.18" />
         <option name="buildOnly" value="true" />
         <option name="containerName" value="" />
         <option name="showCommandPreview" value="true" />

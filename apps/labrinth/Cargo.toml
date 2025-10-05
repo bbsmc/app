@@ -2,7 +2,7 @@
 name = "labrinth"
 version = "2.7.0"
 authors = ["geometrically <jai@modrinth.com>"]
-edition = "2018"
+edition = "2024"
 license = "AGPL-3.0"
 
 # This seems redundant, but it's necessary for Docker to work
@@ -75,7 +75,7 @@ log = "0.4.20"
 env_logger = "0.10.1"
 thiserror = "1.0.56"
 
-sqlx = { version = "0.8.2", features = [
+sqlx = { version = "0.8.6", features = [
     "runtime-tokio-rustls",
     "postgres",
     "chrono",
