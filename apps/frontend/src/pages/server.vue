@@ -291,6 +291,11 @@ const creaters = {
     name: "神话：起源4.7重制版",
     code: "神话起源",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+  },
+  "unfinished-path": {
+    name: "未尽之路",
+    code: "未尽之路",
+    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   }
 };
 

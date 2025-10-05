@@ -1098,7 +1098,7 @@
         <div class="card flex-card experimental-styles-within">
           <h2>
             {{
-              organization ? (organization.slug in ["bbsmc","bbsmc-2","bbsmc-3","bbsmc-cn"] ? "搬运团队" : "创作团队") : "创作者"
+              organization ? (["bbsmc","bbsmc-2","bbsmc-3","bbsmc-cn"].includes(organization.slug) ? "搬运团队" : "创作团队") : "创作者"
             }}
           </h2>
           <div class="details-list">
@@ -1137,6 +1137,12 @@
               </div>
             </nuxt-link>
           </div>
+        </div>
+        <div v-if="organization && ['bbsmc','bbsmc-2','bbsmc-3','bbsmc-cn'].includes(organization.slug)" class="card flex-card experimental-styles-within">
+          <h2>搬运资源声明</h2>
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0;">
+            对于可进行 JAR 文件搬运的许可证，我们提供站内下载服务；其他资源会跳转到原帖下载。资源更新可能不及时，建议前往资源内提供的原帖链接下载最新版本。
+          </p>
         </div>
         <div class="card flex-card experimental-styles-within">
           <h2>{{ formatMessage(detailsMessages.title) }}</h2>
@@ -1410,6 +1416,7 @@ const affs = ref({
   "2cDBzlDs": "martyredroad", // 真实地球
   "92pKuCHs": "tfg", // 锻造之旅
   "ZSSC3pSh": "shenhuaqiyuan", // 神话起源
+  "zT3k10EZ": "unfinished-path", // 未尽之路
 });
 const compatibilityMessages = defineMessages({
   title: {
