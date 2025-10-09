@@ -13,200 +13,146 @@
           <span class="num-projects">Minecraft资源社区</span>
         </div>
       </div> -->
-      <div class="game-carousel" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
-        <ul class="carousel-items">
-          <li
-            v-for="(item, index) in carouselItems"
-            :key="index"
-            :class="[
-              'carousel-item',
-              {
-                previous:
-                  currentSlide === 0
-                    ? index === carouselItems.length - 1
-                    : index === currentSlide - 1,
-                current: index === currentSlide,
-                next:
-                  currentSlide === carouselItems.length - 1
-                    ? index === 0
-                    : index === currentSlide + 1,
-              },
-            ]"
-          >
-            <div class="carousel-slide">
-              <div class="carousel-image-container">
-                <a v-if="index === currentSlide" :href="item.slug" target="_blank">
-                  <img :src="item.image" :alt="item.title" />
-                </a>
-                <img v-else :src="item.image" :alt="item.title" @click="goToSlide(index)" />
-              </div>
-              <div v-if="index === currentSlide" class="carousel-bottom-container">
-                <div class="carousel-item-title">{{ item.title }}</div>
-                <div class="carousel-item-content">
-                  <div class="carousel-item-description">{{ item.description }}</div>
-                </div>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <!-- <div class="carousel-buttons">
-          <button class="btn-prev" @click="prevSlide">←</button>
-          <button class="btn-next" @click="nextSlide">→</button>
-        </div> -->
-        <div class="carousel-dots">
-          <span
+      <!-- Banner 轮播区域 -->
+      <section
+        class="relative rounded-xl overflow-hidden h-[450px] group mb-12 select-none"
+        :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
+        @mouseenter="handleMouseEnter"
+        @mouseleave="handleMouseLeave"
+        @mousedown="handleDragStart"
+        @touchstart="handleDragStart"
+        @touchmove="handleDragMove"
+        @touchend="handleDragEnd"
+      >
+        <div
+          v-for="(item, index) in carouselItems"
+          :key="index"
+          :class="[
+            'absolute inset-0 w-full h-full transition-opacity duration-500 select-none',
+            { 'opacity-100 z-10': index === currentSlide, 'opacity-0 z-0': index !== currentSlide }
+          ]"
+          @click="handleBannerClick($event, item.slug)"
+        >
+          <img
+            :src="item.image"
+            :alt="item.title"
+            class="absolute inset-0 w-full h-full object-cover user-select-none"
+            :class="{ 'transition-transform duration-500 group-hover:scale-105': !isDragging }"
+            draggable="false"
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+          <div class="absolute bottom-0 left-0 p-8 md:p-12 text-white pointer-events-none">
+            <h2 class="banner-title">{{ item.title }}</h2>
+            <p class="banner-description">{{ item.description }}</p>
+          </div>
+        </div>
+        <div class="absolute bottom-6 right-6 flex space-x-2 z-20">
+          <button
             v-for="(_, index) in carouselItems"
             :key="index"
-            class="dot"
-            :class="{ active: currentSlide === index }"
             @click="goToSlide(index)"
+            :class="[
+              'w-2 h-2 rounded-full transition-all duration-300',
+              currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white'
+            ]"
+          ></button>
+        </div>
+      </section>
+
+      <!-- 搜索框区域 -->
+      <section class="mb-12">
+        <div class="max-w-2xl mx-auto px-4">
+          <form @submit.prevent="handleSearch" class="relative">
+            <input
+              v-model="searchQuery"
+              type="search"
+              placeholder="搜索模组、资源包、整合包..."
+              class="w-full pl-12 pr-4 py-4 rounded-full outline-none transition-all search-input"
+              style="background: var(--color-raised-bg); color: var(--color-text);"
+              @input="handleSearchInput"
+            />
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-text);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="mb-12">
+        <div class="px-4">
+          <h2 class="text-2xl font-bold mb-6" style="color: var(--color-text-dark);">
+            热门资源
+          </h2>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 px-4">
+          <div
+            v-for="project in modpacks"
+            :key="project.project_id"
+            class="rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-2"
+            style="background: var(--color-raised-bg); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);"
           >
-          </span>
+            <a :href="getProjectLink(project)" target="_blank" class="block">
+              <div class="relative h-56">
+                <img
+                  :src="project.featured_gallery"
+                  :alt="project.title"
+                  class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div class="absolute bottom-4 left-4 text-white">
+                  <h3 class="card-title">{{ project.title }}</h3>
+                  <p v-if="project.author !== 'BBSMC'" class="card-author">By {{ project.author }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <h2 class="section-title">
-          矿工茶馆
-          <a href="/forums/chat" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h2>
-        <div class="forum-list">
-          <div v-for="forum in forums" :key="forum.id" class="forum-item">
-            <h5 class="section-title">
-              <a v-if="forum.project_id" :href="`/project/${forum.project_id}/forum`">{{
-                forum.title
-              }}</a>
-              <a v-else :href="`/d/${forum.id}`">{{ forum.title }}</a>
-              <span>{{ fromNow(forum.last_post_time) }}</span>
-            </h5>
-          </div>
-        </div>
-      </div>
+      <!-- 矿工茶馆区域 -->
+      <section class="mb-16">
+        <div class="px-4">
+          <h2 class="text-2xl font-bold mb-6" style="color: var(--color-text-dark);">
+            矿工茶馆
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a
+              v-for="forum in forums"
+              :key="forum.id"
+              :href="forum.project_id ? `/project/${forum.project_id}/forum` : `/d/${forum.id}`"
+              class="forum-card group"
+            >
+              <div class="flex items-start gap-3">
+                <!-- 用户头像 -->
+                <img
+                  :src="forum.avatar"
+                  :alt="forum.user_name"
+                  class="forum-avatar"
+                />
 
-      <div>
-        <h1 class="section-title">
-          热门整合包
-          <a href="/modpacks" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h1>
-        <div class="modpacks-grid">
-          <div v-for="project in modpacks" :key="project.project_id" class="modpack-card">
-            <a :href="`/modpack/${project.slug}`" class="modpack-link" target="_blank">
-              <div class="card-content">
-                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
-                <div class="modpack-basic-info">
-                  <div class="modpack-info-top">
-                    <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
-                      By {{ project.author }}
-                    </div>
+                <!-- 中间内容区 -->
+                <div class="flex-1 min-w-0">
+                  <h3 class="forum-card-title">{{ forum.title }}</h3>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="forum-username">{{ forum.user_name }}</span>
+                    <span class="forum-replies">{{ forum.replies }} 回复</span>
                   </div>
                 </div>
-                <div class="modpack-footer">
-                  <div class="modpack-stats">
-                    <span class="download-count">
-                      <span class="icon">↓</span> {{ $formatNumber(project.downloads) }}
-                    </span>
-                    <span class="category">整合包</span>
-                  </div>
+
+                <!-- 右侧时间和箭头 -->
+                <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                  <p class="forum-card-time">{{ fromNow(forum.last_post_time) }}</p>
+                  <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-brand);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             </a>
           </div>
         </div>
-      </div>
-      <div>
-        <h2 class="section-title">
-          最新整合包
-          <a href="/modpacks?s=newest" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h2>
-        <div class="modpacks-grid">
-          <div v-for="project in newModpacks" :key="project.project_id" class="modpack-card">
-            <a :href="`/modpack/${project.slug}`" class="modpack-link" target="_blank">
-              <div class="card-content">
-                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
-                <div class="modpack-basic-info">
-                  <div class="modpack-info-top">
-                    <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
-                      By {{ project.author }}
-                    </div>
-                  </div>
-                </div>
-                <div class="modpack-footer">
-                  <div class="modpack-stats">
-                    <span class="download-count">
-                      <span class="icon">↓</span> {{ project.downloads }}
-                    </span>
-                    <span class="category">整合包</span>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-      </div>
-      <div>
-        <h2 class="section-title">
-          热门模组
-          <a href="/mods" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h2>
-        <div class="modpacks-grid">
-          <div v-for="project in mods" :key="project.project_id" class="modpack-card">
-            <a :href="`/mod/${project.slug}`" class="modpack-link" target="_blank">
-              <div class="card-content">
-                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
-                <div class="modpack-basic-info">
-                  <div class="modpack-info-top">
-                    <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
-                      By {{ project.author }}
-                    </div>
-                  </div>
-                </div>
-                <div class="modpack-footer">
-                  <div class="modpack-stats">
-                    <span class="download-count">
-                      <span class="icon">↓</span> {{ project.downloads }}
-                    </span>
-                    <span class="category">Mod</span>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-      </div>
-      <div>
-        <h2 class="section-title">
-          热门插件
-          <a href="/plugins" target="_blank" class="link-btn btn-secondary">查看更多</a>
-        </h2>
-        <div class="modpacks-grid">
-          <div v-for="project in plugins" :key="project.project_id" class="modpack-card">
-            <a :href="`/plugin/${project.slug}`" class="modpack-link" target="_blank">
-              <div class="card-content">
-                <img :src="project.featured_gallery" :alt="project.title" class="modpack-image" />
-                <div class="modpack-basic-info">
-                  <div class="modpack-info-top">
-                    <h3 class="modpack-title">{{ project.title }}</h3>
-                    <div v-if="project.author !== 'BBSMC'" class="modpack-author">
-                      By {{ project.author }}
-                    </div>
-                  </div>
-                </div>
-                <div class="modpack-footer">
-                  <div class="modpack-stats">
-                    <span class="download-count">
-                      <span class="icon">↓</span> {{ project.downloads }}
-                    </span>
-                    <span class="category">服务端插件</span>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
@@ -229,9 +175,7 @@
 import dayjs from "dayjs";
 import { isDarkTheme } from "~/plugins/theme/themes";
 const modpacks = ref([]);
-const newModpacks = ref([]);
-const mods = ref([]);
-const plugins = ref([]);
+const searchQuery = ref('');
 const forums = ref([]);
 
 // 获取当前主题并设置CSS变量
@@ -255,14 +199,10 @@ const themeVars = computed(() => {
 });
 
 async function getProjects() {
-  const [modpacksResponse, newModpacksResponse, modResponse, pluginsResponse, forumsResponse] =
-    await Promise.all([
-      useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:modpack"]]`),
-      useBaseFetch(`search?limit=6&index=newest&facets=[["project_type:modpack"]]`),
-      useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:mod"]]`),
-      useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:plugin"]]`),
-      useBaseFetch(`forum`, { apiVersion: 3 }),
-    ]);
+  const [modpacksResponse, forumsResponse] = await Promise.all([
+    useBaseFetch(`search?limit=8&index=relevance&facets=[["project_type:modpack"]]`),
+    useBaseFetch(`forum`, { apiVersion: 3 }),
+  ]);
 
   modpacks.value =
     modpacksResponse.hits?.map((modpack) => ({
@@ -273,34 +213,15 @@ async function getProjects() {
         (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
     })) ?? [];
 
-  newModpacks.value =
-    newModpacksResponse.hits?.map((modpack) => ({
-      ...modpack,
-      slug: modpack.slug || modpack.project_id,
-      featured_gallery:
-        modpack.featured_gallery ||
-        (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
-    })) ?? [];
-
-  mods.value =
-    modResponse.hits?.map((mod) => ({
-      ...mod,
-      slug: mod.slug || mod.project_id,
-      featured_gallery:
-        mod.featured_gallery || (mod.gallery?.length > 0 ? mod.gallery[0] : mod.icon_url),
-    })) ?? [];
-  plugins.value =
-    pluginsResponse.hits?.map((plugin) => ({
-      ...plugin,
-      slug: plugin.slug || plugin.project_id,
-      featured_gallery:
-        plugin.featured_gallery ||
-        (plugin.gallery?.length > 0 ? plugin.gallery[0] : plugin.icon_url),
-    })) ?? [];
-
-  forums.value = forumsResponse.forums ?? [];
+  forums.value = (forumsResponse.forums ?? []).slice(0, 6); // 只显示6个
 }
 await getProjects();
+
+// 时间格式化
+const fromNow = (date) => {
+  const currentDate = useCurrentDate();
+  return dayjs(date).from(currentDate.value);
+};
 
 // 初始化的时候就打乱carouselItems的顺序
 
@@ -358,12 +279,152 @@ const carouselItems = ref([
 
 const currentSlide = ref(0);
 
-const fromNow = (date) => {
-  const currentDate = useCurrentDate();
-  return dayjs(date).from(currentDate.value);
+// 拖动相关状态
+const isDragging = ref(false);
+const dragStartX = ref(0);
+const dragCurrentX = ref(0);
+const hasDragged = ref(false); // 标记是否发生了拖动
+
+// 处理拖动开始
+const handleDragStart = (e) => {
+  const isTouchEvent = e.type.includes('touch');
+
+  isDragging.value = true;
+  hasDragged.value = false; // 重置拖动标志
+  dragStartX.value = isTouchEvent ? e.touches[0].clientX : e.clientX;
+  dragCurrentX.value = dragStartX.value;
+  stopAutoPlay(); // 停止自动播放
+
+  if (!isTouchEvent) {
+    e.preventDefault(); // 阻止默认行为
+    // 桌面端：在 document 上监听 mousemove 和 mouseup
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+  }
 };
 
-// const currentSlide = ref(0);
+// 处理拖动中
+const handleDragMove = (e) => {
+  if (!isDragging.value) return;
+
+  const isTouchEvent = e.type.includes('touch');
+  const currentX = isTouchEvent ? e.touches[0].clientX : e.clientX;
+  dragCurrentX.value = currentX;
+
+  // 如果拖动距离超过5px，标记为已拖动
+  const distance = Math.abs(currentX - dragStartX.value);
+  if (distance > 5) {
+    hasDragged.value = true;
+    e.preventDefault();
+  }
+};
+
+// 处理拖动结束
+const handleDragEnd = (e) => {
+  if (!isDragging.value) return;
+
+  const dragDistance = dragCurrentX.value - dragStartX.value;
+  const threshold = 50; // 拖动超过50px才切换
+
+  if (Math.abs(dragDistance) > threshold) {
+    if (dragDistance > 0) {
+      // 向右拖动，显示上一张
+      prevSlide();
+    } else {
+      // 向左拖动，显示下一张
+      nextSlide();
+    }
+  }
+
+  isDragging.value = false;
+  startAutoPlay(); // 恢复自动播放
+
+  // 移除 document 上的监听器
+  document.removeEventListener('mousemove', handleDragMove);
+  document.removeEventListener('mouseup', handleDragEnd);
+
+  // 延迟重置拖动位置，让 click 事件能正确判断
+  setTimeout(() => {
+    dragStartX.value = 0;
+    dragCurrentX.value = 0;
+  }, 10);
+};
+
+// 上一张
+const prevSlide = () => {
+  currentSlide.value =
+    currentSlide.value === 0 ? carouselItems.value.length - 1 : currentSlide.value - 1;
+  startAutoPlay(); // 重置自动播放计时器
+};
+
+// 处理 Banner 点击（防止拖动后触发跳转）
+const handleBannerClick = (e, url) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  // 如果发生了拖动，不跳转
+  if (hasDragged.value) {
+    hasDragged.value = false; // 重置标志
+    return;
+  }
+
+  // 否则正常跳转
+  window.open(url, '_blank');
+};
+
+// 搜索功能
+const handleSearch = async () => {
+  const query = searchQuery.value.trim();
+
+  if (query) {
+    // 调用搜索API，不限制项目类型
+    const searchResponse = await useBaseFetch(
+      `search?limit=8&index=relevance&query=${encodeURIComponent(query)}`
+    );
+
+    modpacks.value =
+      searchResponse.hits?.map((project) => ({
+        ...project,
+        slug: project.slug || project.project_id,
+        featured_gallery:
+          project.featured_gallery ||
+          (project.gallery?.length > 0 ? project.gallery[0] : project.icon_url),
+      })) ?? [];
+  } else {
+    // 搜索框为空时，恢复显示热门整合包
+    await getProjects();
+  }
+};
+
+// 防抖定时器
+let searchTimeout = null;
+
+// 实时搜索
+const handleSearchInput = () => {
+  // 清除之前的定时器
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+
+  // 设置新的定时器，300ms 后执行搜索
+  searchTimeout = setTimeout(() => {
+    handleSearch();
+  }, 300);
+};
+
+// 根据项目类型生成链接
+const getProjectLink = (project) => {
+  const typeMap = {
+    'mod': 'mod',
+    'modpack': 'modpack',
+    'plugin': 'plugin',
+    'resourcepack': 'resourcepack',
+    'shader': 'shader',
+    'datapack': 'datapack'
+  };
+  const type = typeMap[project.project_type] || project.project_type;
+  return `/${type}/${project.slug}`;
+};
 
 const autoPlayInterval = ref(null);
 const autoPlayDelay = 5000;
@@ -439,66 +500,10 @@ const handleMouseLeave = () => {
 </script>
 
 <style scoped>
-.resource-list {
-  display: grid;
-  grid-auto-flow: column;
-  grid-gap: 24px;
-  gap: 24px;
-}
-
-h1 {
-  font-size: 18px;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  color: var(--color-text-dark);
-}
-
-h2,
-p {
-  line-height: 1.45;
-  color: var(--color-text);
-}
-
-.hero-container {
-  width: 100%;
-  height: 144px;
-  position: relative;
-}
-
-.game-header img {
-  width: 100%;
-  height: 144px;
-}
-
-.game-header .hero-container {
-  height: 144px;
-  z-index: 1;
-}
-
-.game-header .hero-container img {
-  width: 100%;
-  height: 144px;
-  display: block;
-}
-
-body:has(.game-page) .game-header {
-  margin-bottom: -110px;
-  background-repeat: no-repeat;
-}
-
-body:has(.game-page) .game-header .hero-container:after {
-  background: linear-gradient(hsla(0, 0%, 5%, 0.5), var(--color-bg) 100%);
-}
-
-.game-header .hero-container:afterfont-weight {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  background: linear-gradient(0deg, var(--color-bg), transparent);
+.container {
+  max-width: 1224px;
+  margin: auto;
+  min-height: 724px;
 }
 
 .game-page {
@@ -506,330 +511,165 @@ body:has(.game-page) .game-header .hero-container:after {
   z-index: 2;
 }
 
-.game-description h1 {
-  line-height: 48px;
-  font-family: var(--montserrat-font);
+/* Banner 标题样式 */
+.banner-title {
+  font-size: 3rem;
   font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+  font-family: 'Space Grotesk', var(--montserrat-font), system-ui, -apple-system, sans-serif;
+  color: #ffffff !important;
 }
 
-.game-description .game-title {
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
+.banner-description {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  max-width: 42rem;
+  color: #d1d5db !important;
 }
 
-.container,
-.element-container {
-  max-width: 1224px;
-  margin: auto;
+/* 卡片标题样式 */
+.card-title {
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-family: 'Space Grotesk', var(--montserrat-font), system-ui, -apple-system, sans-serif;
+  color: #ffffff !important;
 }
 
-.container {
-  min-height: 724px;
+.card-author {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #d1d5db !important;
+  margin-top: 0.25rem;
 }
 
-.game-description .num-projects {
-  --space: 16px;
-  position: relative;
-  color: var(--color-text);
-  padding-left: var(--space);
-  margin-left: var(--space);
-  flex-shrink: 10;
-  height: 48px;
-  line-height: 48px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+/* 矿工茶馆卡片样式 */
+.forum-card {
+  display: block;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--color-raised-bg);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: 1px solid transparent;
 }
 
-.game-description .num-projects:before {
-  position: absolute;
-  margin-top: auto;
-  margin-bottom: auto;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  content: "";
-  width: 1px;
-  height: 28px;
-  background: var(--color-divider);
+.forum-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-color: var(--color-brand);
 }
 
-.game-description .expandable-html-block {
-  display: flex;
-  gap: 8px;
-}
-
-.game-carousel {
-  position: relative;
-  width: 100%;
-  height: 400px;
-  overflow: hidden;
-}
-
-.carousel-items {
-  position: relative;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.carousel-item {
-  position: absolute;
-  width: 80%;
-  height: 100%;
-  left: 50%;
-  transition: all 0.5s ease;
-  visibility: hidden;
-}
-
-.carousel-item.current {
-  transform: translateX(-50%) scale(1);
-  opacity: 1;
-  z-index: 2;
-  visibility: visible;
-}
-
-.carousel-item.previous {
-  transform: translateX(-125%) scale(0.8);
-  opacity: 0.6;
-  z-index: 1;
-  visibility: visible;
-}
-
-.carousel-item.next {
-  transform: translateX(25%) scale(0.8);
-  opacity: 0.6;
-  z-index: 1;
-  visibility: visible;
-}
-
-.carousel-image-container {
-  width: 100%;
-  height: 300px;
-  overflow: hidden;
-  border-radius: 8px;
-}
-
-.carousel-image-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.carousel-bottom-container {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 20px;
-  background: linear-gradient(transparent, var(--carousel-gradient-end, rgba(0, 0, 0, 0.8)));
-  color: var(--carousel-text-color, var(--color-text-dark));
-}
-
-.carousel-item-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.carousel-item-description {
-  margin-bottom: 15px;
-}
-
-.carousel-buttons {
-  position: absolute;
-  top: 50%;
-  left: 20px;
-  right: 20px;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: space-between;
-  z-index: 3;
-}
-
-.carousel-buttons button {
-  background: var(--color-button-bg);
-  border: none;
-  color: var(--color-text-dark);
+/* 用户头像 */
+.forum-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  transition: background-color 0.3s;
-}
-
-.carousel-buttons button:hover {
-  background: var(--color-button-bg-hover);
-}
-
-.carousel-dots {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  z-index: 2;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--carousel-dot-bg, rgba(255, 255, 255, 0.5));
-  cursor: pointer;
-}
-
-.dot.active {
-  background: var(--carousel-dot-active, var(--color-text-dark));
-}
-
-.modpacks-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-  padding: 16px;
-}
-
-/* 媒体查询：当屏幕宽度小于 768px 时 */
-@media (max-width: 768px) {
-  .modpacks-grid {
-    grid-template-columns: repeat(2, 1fr);
-    /* 两列布局 */
-  }
-}
-
-/* 媒体查询：当屏幕宽度小于 480px 时 */
-@media (max-width: 480px) {
-  .modpacks-grid {
-    grid-template-columns: 1fr;
-    /* 单列布局 */
-  }
-}
-
-.modpack-card {
-  background: var(--color-raised-bg);
-  border-radius: 8px;
-  overflow: hidden;
-  transition: transform 0.2s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.modpack-card:hover {
-  transform: scale(1.05);
-  z-index: 1;
-}
-
-.card-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.modpack-image {
-  width: 100%;
-  aspect-ratio: 1;
   object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--color-divider);
+  transition: border-color 0.2s;
 }
 
-.modpack-basic-info {
-  padding: 12px;
-  margin-top: 12px;
-  flex-grow: 1;
+.forum-card:hover .forum-avatar {
+  border-color: var(--color-brand);
 }
 
-.modpack-info-top {
-  flex-grow: 1;
-}
-
-.modpack-title {
-  font-size: 16px;
+/* 标题 */
+.forum-card-title {
+  font-size: 0.9375rem;
   font-weight: 600;
-  margin: 0 0 4px 0;
   color: var(--color-text-dark);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  transition: color 0.2s;
 }
 
-.modpack-author {
-  font-size: 14px;
-  color: var(--color-secondary);
-  margin-bottom: 8px;
+.forum-card:hover .forum-card-title {
+  color: var(--color-brand);
 }
 
-.modpack-footer {
-  padding: 12px;
-  border-top: 1px solid var(--color-divider);
-  background: var(--color-raised-bg);
+/* 用户名 */
+.forum-username {
+  font-size: 0.75rem;
+  color: var(--color-text);
+  font-weight: 500;
 }
 
-.modpack-stats {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  color: var(--color-secondary);
+/* 回复数 */
+.forum-replies {
+  font-size: 0.75rem;
+  color: var(--color-text);
+  opacity: 0.7;
 }
 
-.download-count {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+/* 时间 */
+.forum-card-time {
+  font-size: 0.75rem;
+  color: var(--color-text);
+  margin: 0;
+  white-space: nowrap;
+  text-align: right;
 }
 
-.category {
-  padding: 2px 8px;
-  background: var(--color-button-bg);
-  border-radius: 4px;
+/* 搜索框样式 */
+.search-input {
+  border: 1px solid rgba(128, 128, 128, 0.3) !important;
+  box-shadow: none !important;
 }
 
-.modpack-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-  height: 100%;
+.search-input:focus {
+  border: 1px solid rgba(128, 128, 128, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.1) !important;
 }
 
-.section-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
+/* Banner 链接样式重置 */
+section a:focus {
+  outline: none;
+  box-shadow: none;
 }
 
-/* 媒体查询：当屏幕宽度小于 768px 时 */
+section a:active {
+  outline: none;
+  box-shadow: none;
+}
+
+.user-select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 响应式调整 */
 @media (max-width: 768px) {
-  .section-title {
-    padding: 0 24px;
-    /* 添加左右间距 */
-  }
-}
-
-/* 媒体查询：当屏幕宽度小于 480px 时 */
-@media (max-width: 480px) {
-  .section-title {
+  .container {
     padding: 0 8px;
-    /* 更小的左右间距 */
+  }
+
+  .banner-title {
+    font-size: 2.25rem;
+  }
+
+  .banner-description {
+    font-size: 1.125rem;
   }
 }
 
-/* 媒体查询：当屏幕宽度小于 768px 时 */
-@media (max-width: 768px) {
-  .game-carousel {
-    height: 300px;
-    /* 手机端高度设置为 300px */
+@media (min-width: 768px) {
+  .banner-title {
+    font-size: 3rem;
   }
 
-  .carousel-image-container {
-    height: 200px;
-    /* 手机端高度设置为 200px */
+  .banner-description {
+    font-size: 1.25rem;
   }
 }
 </style>
