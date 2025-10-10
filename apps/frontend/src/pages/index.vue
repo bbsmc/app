@@ -101,6 +101,15 @@
                   class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+
+                <!-- 下载量统计 -->
+                <div class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span class="text-white text-sm font-medium">{{ formatNumber(project.downloads) }}</span>
+                </div>
+
                 <div class="absolute bottom-4 left-4 text-white">
                   <h3 class="card-title">{{ project.title }}</h3>
                   <p v-if="project.author !== 'BBSMC'" class="card-author">By {{ project.author }}</p>
@@ -410,6 +419,16 @@ const handleSearchInput = () => {
   searchTimeout = setTimeout(() => {
     handleSearch();
   }, 300);
+};
+
+// 格式化数字显示（下载量等）
+const formatNumber = (num) => {
+  if (!num) return '0';
+
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+  }
+  return num.toString();
 };
 
 // 根据项目类型生成链接
