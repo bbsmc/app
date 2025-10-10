@@ -243,6 +243,12 @@ const carouselItems = ref([
     slug: "/software/pcl",
   },
   {
+    image: "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
+    title: "PCL CE",
+    description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
+    slug: "/software/pcl",
+  },
+  {
     image:
       "https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426_350.webp",
     title: "乌托邦探险之旅",
