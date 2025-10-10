@@ -47,6 +47,22 @@ const projectTypeMessages = defineMessages({
     id: "project-type.shader.plural",
     defaultMessage: "光影",
   },
+  software: {
+    id: "project-type.software.singular",
+    defaultMessage: "软件",
+  },
+  softwares: {
+    id: "project-type.software.plural",
+    defaultMessage: "软件",
+  },
+  language: {
+    id: "project-type.language.singular",
+    defaultMessage: "汉化",
+  },
+  languages: {
+    id: "project-type.language.plural",
+    defaultMessage: "汉化",
+  },
   project: {
     id: "project-type.project.singular",
     defaultMessage: "资源",

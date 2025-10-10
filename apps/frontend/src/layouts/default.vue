@@ -96,7 +96,7 @@
             route.name === 'search-softwares' ? 'main-nav-primary' : 'main-nav-secondary'
           "
         >
-          <nuxt-link to="/softwares"> <GridIcon aria-hidden="true" /> 软件资源 </nuxt-link>
+          <nuxt-link to="/softwares"> <GridIcon aria-hidden="true" /> 软件 </nuxt-link>
         </ButtonStyled>
         <ButtonStyled
           type="transparent"
@@ -105,7 +105,7 @@
             route.name === 'search-languagesd' ? 'main-nav-primary' : 'main-nav-secondary'
           "
         >
-          <nuxt-link to="/languages"> <GridIcon aria-hidden="true" /> 汉化资源 </nuxt-link>
+          <nuxt-link to="/languages"> <LanguagesIcon aria-hidden="true" /> 汉化 </nuxt-link>
         </ButtonStyled>
         <ButtonStyled
           type="transparent"
@@ -475,6 +475,7 @@ import {
   PaintBrushIcon,
   PackageOpenIcon,
   GridIcon,
+  LanguagesIcon,
 } from "@modrinth/assets";
 import { ButtonStyled, OverflowMenu, Avatar } from "@modrinth/ui";
 
