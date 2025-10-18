@@ -177,7 +177,7 @@
           :key="index"
           :class="[
             'absolute inset-0 w-full h-full transition-opacity duration-500 select-none',
-            { 'opacity-100 z-10': index === currentBannerSlide, 'opacity-0 z-0': index !== currentBannerSlide }
+            { 'opacity-100 z-[1]': index === currentBannerSlide, 'opacity-0 z-0': index !== currentBannerSlide }
           ]"
           @click="handleBannerClick($event, item.slug)"
         >
@@ -194,7 +194,7 @@
             <p class="banner-description text-sm md:text-base max-w-2xl">{{ item.description }}</p>
           </div>
         </div>
-        <div class="absolute bottom-4 right-4 flex space-x-2 z-20">
+        <div class="absolute bottom-4 right-4 flex space-x-2 z-[2]">
           <button
             v-for="(_, index) in bannerItems"
             :key="index"
