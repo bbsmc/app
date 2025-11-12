@@ -144,12 +144,6 @@ pub async fn count_download(
             .collect(),
     });
 
-    println!(
-        "{:?} 下载  {:?}",
-        download_body.ip,
-        download_body.project_id.to_string()
-    );
-
     Ok(HttpResponse::NoContent().body(""))
 }
 

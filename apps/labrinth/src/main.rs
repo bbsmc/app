@@ -91,6 +91,14 @@ async fn main() -> std::io::Result<()> {
     println!("maxmind_reader: 正常");
     let prometheus = PrometheusMetricsBuilder::new("labrinth")
         .endpoint("/metrics")
+        .exclude("/v2/project/.*/version")
+        .exclude("/v2/project/.*/dependencies")
+        .exclude("/v3/project/.*/wiki")
+        .exclude("/v3/project/.*/organization")
+        .exclude("/v3/project/.*/members")
+        .exclude("/v3/version/.*/download")
+        .exclude_regex("^/v[23]/version/[^/]+/download$")
+        .exclude_regex("^/v[23]/project/[^/]+/(version|dependencies|wiki|organization|members)$")
         .build()
         .expect("创建 prometheus 指标中间件失败");
     println!("prometheus: 正常");
