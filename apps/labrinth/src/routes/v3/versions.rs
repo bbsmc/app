@@ -335,8 +335,6 @@ pub async fn version_download(
             .unwrap_or_else(|_| Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped());
         let id: ProjectId = version_item.inner.project_id.into();
 
-        println!("{:?} 下载 {:?}", ip, id.to_string());
-
         // if version_item.disks.is_empty() {
         //     return Err(ApiError::NotFound);
         // }

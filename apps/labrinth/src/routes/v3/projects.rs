@@ -100,7 +100,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             )
             .route("{id}/forum", web::post().to(project_forum_create))
             .service(
-                web::scope("{project_id}")
+                web::scope("{id}")
                     .route(
                         "members",
                         web::get().to(super::teams::team_members_get_project),
