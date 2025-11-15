@@ -613,6 +613,9 @@
             :translation-version="translationRecommendation"
             @navigate="navigateToTranslation"
           />
+
+          <!-- 服务器推荐 -->
+          <ServerPromo v-if="affs[project.id]" @navigate="navigateToServer" />
         </div>
       </template>
     </NewModal>
@@ -1330,6 +1333,7 @@ import Accordion from "~/components/ui/Accordion.vue";
 import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import TranslationPromo from "~/components/ui/TranslationPromo.vue";
+import ServerPromo from "~/components/ui/ServerPromo.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -2398,6 +2402,17 @@ function navigateToTranslation(translationData) {
     navigateTo(`/${projectType}/${projectId}/version/${versionId}`);
     downloadModal.value.hide();
   }
+}
+
+function navigateToServer() {
+  // 跳转到服务器页面，与联机搭建按钮的跳转逻辑一致
+  const affId = affs.value[project.value.id];
+  if (affId === 'pcl') {
+    window.open('/pcl', '_blank');
+  } else if (affId) {
+    window.open(`/server?aff=${affId}`, '_blank');
+  }
+  downloadModal.value.hide();
 }
 
 function onDownloadClick(event) {
