@@ -159,7 +159,6 @@ async fn version_create_inner(
     session_queue: &AuthQueue,
     moderation_queue: &AutomatedModerationQueue,
 ) -> Result<HttpResponse, CreateError> {
-    println!("Starting version_create_inner");
     let cdn_url = dotenvy::var("CDN_URL")?;
 
     let mut initial_version_data = None;
@@ -968,7 +967,6 @@ pub async fn upload_file(
 ) -> Result<(), CreateError> {
     let (file_name, file_extension) = get_name_ext(content_disposition)?;
 
-    println!("Uploading file {file_name}.{file_extension}");
     if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到BBSMC过,无法重复上传!1".to_string(),
@@ -1009,13 +1007,11 @@ pub async fn upload_file(
     .unwrap_or(false);
 
     if exists && username.to_lowercase() != "bbsmc" {
-        println!("已存在 {}", hash);
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到BBSMC过,无法重复上传2".to_string(),
         ));
     }
 
-    println!("开始验证文件 {file_name}.{file_extension}");
     let validation_result = validate_file(
         data.clone().into(),
         file_extension.to_string(),
@@ -1026,7 +1022,6 @@ pub async fn upload_file(
         redis,
     )
     .await?;
-    println!("文件验证完成 {file_name}.{file_extension}");
 
     if let ValidationResult::PassWithPackDataAndFiles {
         ref format,
@@ -1112,11 +1107,9 @@ pub async fn upload_file(
     let file_path =
         format!("data/{}/versions/{}/{}", project_id, version_id, &file_name);
 
-    println!("开始将文件上传到存储 {file_name}");
     let upload_data = file_host
         .upload_file(content_type, &file_path, data)
         .await?;
-    println!("完成文件上传到存储 {file_name}");
 
     uploaded_files.push(UploadedFile {
         file_id: upload_data.file_id,

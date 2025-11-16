@@ -369,7 +369,6 @@ pub fn app_setup(
                                                     &organization_team_member,
                                                 );
                                                 if permissions.is_some() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) {
-                                                    println!("有权限超时");
                                                     let mut transaction = match pool_ref_clone2.begin().await{
                                                         Ok(transaction) => transaction,
                                                         Err(e) => {
