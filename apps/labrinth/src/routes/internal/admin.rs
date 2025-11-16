@@ -4,7 +4,6 @@ use crate::models::analytics::Download;
 use crate::models::ids::ProjectId;
 use crate::models::pats::Scopes;
 use crate::queue::analytics::AnalyticsQueue;
-use crate::queue::maxmind::MaxMindIndexer;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::search::SearchConfig;
@@ -42,7 +41,6 @@ pub async fn count_download(
     req: HttpRequest,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
-    maxmind: web::Data<Arc<MaxMindIndexer>>,
     analytics_queue: web::Data<Arc<AnalyticsQueue>>,
     session_queue: web::Data<AuthQueue>,
     download_body: web::Json<DownloadBody>,
@@ -127,7 +125,7 @@ pub async fn count_download(
         project_id: project_id as u64,
         version_id: version_id as u64,
         ip,
-        country: maxmind.query(ip).await.unwrap_or_default(),
+        country: String::new(),  // MaxMind 功能已移除
         user_agent: download_body
             .headers
             .get("user-agent")

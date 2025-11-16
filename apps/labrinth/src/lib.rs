@@ -59,7 +59,6 @@ pub struct LabrinthConfig {
     pub redis_pool: RedisPool,
     pub clickhouse: Client,
     pub file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
-    pub maxmind: Arc<queue::maxmind::MaxMindIndexer>,
     pub scheduler: Arc<scheduler::Scheduler>,
     pub ip_salt: Pepper,
     pub search_config: search::SearchConfig,
@@ -78,7 +77,6 @@ pub fn app_setup(
     search_config: search::SearchConfig,
     clickhouse: &mut Client,
     file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
-    maxmind: Arc<queue::maxmind::MaxMindIndexer>,
 ) -> LabrinthConfig {
     info!("启动 Labrinth 于 {}", dotenvy::var("BIND_ADDR").unwrap());
 
@@ -206,26 +204,6 @@ pub fn app_setup(
         }
     });
 
-    let reader = maxmind.clone();
-    {
-        let reader_ref = reader;
-        scheduler.run(
-            std::time::Duration::from_secs(60 * 60 * 24),
-            move || {
-                let reader_ref = reader_ref.clone();
-
-                async move {
-                    info!("下载 MaxMind GeoLite2 国家数据库");
-                    let result = reader_ref.index().await;
-                    if let Err(e) = result {
-                        warn!("下载 MaxMind GeoLite2 国家数据库失败: {:?}", e);
-                    }
-                    info!("已完成下载 MaxMind GeoLite2 国家数据库");
-                }
-            },
-        );
-    }
-    info!("下载 MaxMind GeoLite2 国家数据库");
 
     let analytics_queue = Arc::new(AnalyticsQueue::new());
     {
@@ -682,7 +660,6 @@ pub fn app_setup(
         redis_pool,
         clickhouse: clickhouse.clone(),
         file_host,
-        maxmind,
         scheduler: Arc::new(scheduler),
         ip_salt,
         search_config,
@@ -720,7 +697,6 @@ pub fn app_config(
     .app_data(web::Data::new(labrinth_config.ip_salt.clone()))
     .app_data(web::Data::new(labrinth_config.analytics_queue.clone()))
     .app_data(web::Data::new(labrinth_config.clickhouse.clone()))
-    .app_data(web::Data::new(labrinth_config.maxmind.clone()))
     .app_data(labrinth_config.active_sockets.clone())
     .app_data(labrinth_config.automated_moderation_queue.clone())
     // .app_data(web::Data::new(labrinth_config.stripe_client.clone()))
@@ -846,7 +822,6 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<String>("CLICKHOUSE_PASSWORD");
     failed |= check_var::<String>("CLICKHOUSE_DATABASE");
 
-    failed |= check_var::<String>("MAXMIND_LICENSE_KEY");
 
     failed |= check_var::<String>("FLAME_ANVIL_URL");
 

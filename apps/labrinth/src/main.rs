@@ -5,7 +5,7 @@ use labrinth::database::redis::RedisPool;
 use labrinth::file_hosting::S3Host;
 use labrinth::search;
 use labrinth::util::ratelimit::RateLimit;
-use labrinth::{check_env_vars, clickhouse, database, file_hosting, queue};
+use labrinth::{check_env_vars, clickhouse, database, file_hosting};
 use log::{error, info};
 use std::sync::Arc;
 
@@ -86,10 +86,6 @@ async fn main() -> std::io::Result<()> {
 
     info!("初始化 clickhouse 连接");
     let mut clickhouse = clickhouse::init_client().await.unwrap();
-    info!("开始连接 maxmind 数据库");
-    let maxmind_reader =
-        Arc::new(queue::maxmind::MaxMindIndexer::new().await.unwrap());
-    println!("maxmind_reader: 正常");
     let prometheus = PrometheusMetricsBuilder::new("labrinth")
         .endpoint("/metrics")
         .exclude_regex("^/v[23]/project/[^/]+(/.*)?$")  // 排除所有 /project/{id} 相关路由
@@ -105,7 +101,6 @@ async fn main() -> std::io::Result<()> {
         search_config.clone(),
         &mut clickhouse,
         file_host.clone(),
-        maxmind_reader.clone(),
     );
 
     info!("启动 Actix HTTP 服务器！");
