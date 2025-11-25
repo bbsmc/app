@@ -788,9 +788,9 @@ pub async fn post_delete(
         }
     };
 
-    // 查询回复信息
+    // 查询回复信息（包括 replied_to 用于清理缓存）
     let post_info = sqlx::query!(
-        "SELECT id, discussion_id, user_id FROM posts WHERE id = $1 AND deleted = false",
+        "SELECT id, discussion_id, user_id, replied_to FROM posts WHERE id = $1 AND deleted = false",
         post_id.0
     )
     .fetch_optional(&**pool)
@@ -825,6 +825,33 @@ pub async fn post_delete(
     // 清理帖子缓存
     crate::database::models::forum::PostQuery::clear_cache(&[post_id], &redis)
         .await?;
+
+    // 清理回复了被删除帖子的所有帖子的缓存
+    // 因为这些帖子的 reply_content 缓存了被删除帖子的内容
+    let replies_to_deleted = sqlx::query!(
+        "SELECT id FROM posts WHERE replied_to = $1 AND discussion_id = $2",
+        post_id.0,
+        post_info.discussion_id
+    )
+    .fetch_all(&**pool)
+    .await?;
+
+    if !replies_to_deleted.is_empty() {
+        let reply_ids: Vec<PostId> =
+            replies_to_deleted.iter().map(|r| PostId(r.id)).collect();
+        crate::database::models::forum::PostQuery::clear_cache(&reply_ids, &redis)
+            .await?;
+    }
+
+    // 清理被删除帖子所回复的帖子的缓存
+    // 因为那个帖子的 replies 列表缓存了被删除帖子的信息
+    if let Some(replied_to_id) = post_info.replied_to {
+        crate::database::models::forum::PostQuery::clear_cache(
+            &[PostId(replied_to_id)],
+            &redis,
+        )
+        .await?;
+    }
 
     // 清除回复作者的论坛内容缓存
     let _ =

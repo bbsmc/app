@@ -83,17 +83,28 @@
           ></div>
         </div>
 
-        <!-- 如果回复的帖子被删除了，显示删除提示 -->
+        <!-- 如果回复的帖子被删除了，显示删除提示（保留头像和楼层号） -->
         <div
           v-if="post.reply_content && isRepliedToDeleted(post)"
           class="reply-reference deleted-reply"
+          @click="scrollToPost(post.replied_to)"
         >
           <div class="reply-info">
+            <img
+              :src="
+                post.reply_content.user_avatar === ''
+                  ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png'
+                  : post.reply_content.user_avatar
+              "
+              :alt="post.reply_content.user_name"
+              class="reply-avatar"
+            />
             <div class="reply-user-info">
-              <span class="reply-text">回复</span>
-              <span class="reply-deleted">已被删除的回复</span>
+              <span class="reply-username">{{ post.reply_content.user_name }}</span>
+              <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
+          <div class="reply-quote reply-deleted-text">该回复已被删除</div>
         </div>
 
         <!-- 帖子内容 -->
@@ -216,7 +227,8 @@
           <span class="preview-username">{{ previewPost.user_name }}</span>
         </div>
       </div>
-      <div class="preview-content" v-html="renderHighlightedString(previewPost.content)"></div>
+      <div v-if="previewPost.deleted" class="preview-content preview-deleted">该回复已被删除</div>
+      <div v-else class="preview-content" v-html="renderHighlightedString(previewPost.content)"></div>
     </div>
 
     <!-- 修改回复表单为固定定位的底部弹出框 -->
@@ -408,12 +420,9 @@ const canDeletePost = (post) => {
   return auth.value.user.role === "admin" || post.user_name === auth.value.user.username;
 };
 
-// 检查被回复的帖子是否被删除
+// 检查被回复的帖子是否被删除（使用后端返回的字段）
 const isRepliedToDeleted = (post) => {
-  // 如果有回复内容但在当前显示的帖子中找不到对应的帖子，说明被删除了
-  if (!post.replied_to || !post.reply_content) return false;
-  const referencedPost = displayedPosts.value.find((p) => p.floor_number === post.replied_to);
-  return !referencedPost || referencedPost.deleted;
+  return post.reply_to_deleted || false;
 };
 
 // 获取帖子数据
@@ -968,6 +977,11 @@ watch(
   font-style: italic;
 }
 
+.reply-deleted-text {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
 .reply-quote {
   color: var(--color-text-primary);
   font-size: 0.95em;
@@ -1207,8 +1221,8 @@ watch(
 .reply-preview {
   position: absolute;
   z-index: 1000;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  background: var(--color-raised-bg);
+  border: 1px solid var(--color-button-bg);
   border-radius: 6px;
   padding: 12px;
   min-width: 300px;
@@ -1246,6 +1260,11 @@ watch(
   line-height: 1.5;
   max-height: 200px;
   overflow-y: auto;
+}
+
+.preview-deleted {
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
 
 .preview-content::-webkit-scrollbar {
