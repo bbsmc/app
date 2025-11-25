@@ -353,7 +353,7 @@ pub async fn join_team(
     .1;
 
     // 检查资源封禁
-    check_resource_ban(&current_user, &**pool).await?;
+    check_resource_ban(&current_user, &pool).await?;
 
     let member = TeamMember::get_from_user_id_pending(
         team_id,
@@ -445,7 +445,7 @@ pub async fn add_team_member(
     .1;
 
     // 检查资源封禁
-    check_resource_ban(&current_user, &**pool).await?;
+    check_resource_ban(&current_user, &pool).await?;
 
     let team_association = Team::get_association(team_id, &**pool)
         .await?
@@ -693,7 +693,7 @@ pub async fn edit_team_member(
     .1;
 
     // 检查资源封禁
-    check_resource_ban(&current_user, &**pool).await?;
+    check_resource_ban(&current_user, &pool).await?;
 
     let team_association =
         Team::get_association(id, &**pool).await?.ok_or_else(|| {
@@ -780,12 +780,12 @@ pub async fn edit_team_member(
                 ));
             }
 
-            if let Some(new_permissions) = edit_member.permissions {
-                if !permissions.contains(new_permissions) {
-                    return Err(ApiError::InvalidInput(
-                        "新权限具有您没有的权限".to_string(),
-                    ));
-                }
+            if let Some(new_permissions) = edit_member.permissions
+                && !permissions.contains(new_permissions)
+            {
+                return Err(ApiError::InvalidInput(
+                    "新权限具有您没有的权限".to_string(),
+                ));
             }
 
             if edit_member.organization_permissions.is_some() {
@@ -811,12 +811,11 @@ pub async fn edit_team_member(
             }
 
             if let Some(new_permissions) = edit_member.organization_permissions
+                && !organization_permissions.contains(new_permissions)
             {
-                if !organization_permissions.contains(new_permissions) {
-                    return Err(ApiError::InvalidInput(
-                        "新组织权限具有您没有的权限".to_string(),
-                    ));
-                }
+                return Err(ApiError::InvalidInput(
+                    "新组织权限具有您没有的权限".to_string(),
+                ));
             }
 
             if edit_member.permissions.is_some()
@@ -831,13 +830,13 @@ pub async fn edit_team_member(
         }
     }
 
-    if let Some(payouts_split) = edit_member.payouts_split {
-        if payouts_split < Decimal::ZERO || payouts_split > Decimal::from(5000)
-        {
-            return Err(ApiError::InvalidInput(
-                "Payouts split 必须在 0 和 5000 之间!".to_string(),
-            ));
-        }
+    if let Some(payouts_split) = edit_member.payouts_split
+        && (payouts_split < Decimal::ZERO
+            || payouts_split > Decimal::from(5000))
+    {
+        return Err(ApiError::InvalidInput(
+            "Payouts split 必须在 0 和 5000 之间!".to_string(),
+        ));
     }
 
     if let Some(role) = &edit_member.role {
@@ -902,7 +901,7 @@ pub async fn transfer_ownership(
     .1;
 
     // 检查资源封禁
-    check_resource_ban(&current_user, &**pool).await?;
+    check_resource_ban(&current_user, &pool).await?;
 
     // 禁止转移项目团队的所有权，这些团队由组织拥有
     // 这些团队由组织所有者拥有，必须首先从组织中删除
@@ -910,13 +909,12 @@ pub async fn transfer_ownership(
     let team_association_id = Team::get_association(id.into(), &**pool).await?;
     if let Some(TeamAssociationId::Project(pid)) = team_association_id {
         let result = Project::get_id(pid, &**pool, &redis).await?;
-        if let Some(project_item) = result {
-            if project_item.inner.organization_id.is_some() {
-                return Err(ApiError::InvalidInput(
-                    "您不能转移项目团队的所有权，这些团队由组织拥有"
-                        .to_string(),
-                ));
-            }
+        if let Some(project_item) = result
+            && project_item.inner.organization_id.is_some()
+        {
+            return Err(ApiError::InvalidInput(
+                "您不能转移项目团队的所有权，这些团队由组织拥有".to_string(),
+            ));
         }
     }
 
@@ -1064,7 +1062,7 @@ pub async fn remove_team_member(
     .1;
 
     // 检查资源封禁
-    check_resource_ban(&current_user, &**pool).await?;
+    check_resource_ban(&current_user, &pool).await?;
 
     let team_association =
         Team::get_association(id, &**pool).await?.ok_or_else(|| {

@@ -104,7 +104,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ButtonStyled } from "@modrinth/ui";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 
 const router = useRouter();
 const route = useRoute();

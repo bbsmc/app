@@ -197,7 +197,7 @@ pub async fn version_create(
                 // 通过文件扩展名预测处理项目类型
                 let mut project_type = None;
                 for file_part in &legacy_create.file_parts {
-                    if let Some(ext) = file_part.split('.').last() {
+                    if let Some(ext) = file_part.split('.').next_back() {
                         match ext {
                             "mrpack" | "mrpack-primary" => {
                                 project_type = Some("modpack");

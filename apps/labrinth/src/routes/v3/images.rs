@@ -102,13 +102,13 @@ pub async fn images_add(
     // - user: 检查全局封禁
     match &context {
         ImageContext::Project { .. } | ImageContext::Version { .. } => {
-            check_resource_ban(&user, &**pool).await?;
+            check_resource_ban(&user, &pool).await?;
         }
         ImageContext::ThreadMessage { .. } | ImageContext::Report { .. } => {
             // 论坛类封禁检查在后面处理（需要判断是否是申诉线程）
         }
         ImageContext::User { .. } => {
-            check_global_ban(&user, &**pool).await?;
+            check_global_ban(&user, &pool).await?;
         }
         ImageContext::Unknown => {}
     }
@@ -187,7 +187,7 @@ pub async fn images_add(
 
                 // 检查论坛封禁（申诉线程除外）
                 if thread.type_ != ThreadType::BanAppeal {
-                    check_forum_ban(&user, &**pool).await?;
+                    check_forum_ban(&user, &pool).await?;
                 }
 
                 if is_authorized_thread(&thread, &user, &pool).await? {
@@ -199,12 +199,12 @@ pub async fn images_add(
                 }
             } else {
                 // 没有指定 thread_message_id，检查论坛封禁
-                check_forum_ban(&user, &**pool).await?;
+                check_forum_ban(&user, &pool).await?;
             }
         }
         ImageContext::Report { report_id } => {
             // 举报图片需要检查论坛封禁
-            check_forum_ban(&user, &**pool).await?;
+            check_forum_ban(&user, &pool).await?;
 
             if let Some(id) = data.report_id {
                 let report = report_item::Report::get(id.into(), &**pool)

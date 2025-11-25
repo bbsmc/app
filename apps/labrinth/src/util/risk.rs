@@ -73,10 +73,9 @@ pub async fn check_text_risk(
         return Ok(true);
     }
 
-    if upload_limit.is_some() {
+    if let Some(limit_str) = upload_limit {
         let mut upload_limit: UploadLimit =
-            serde_json::from_str::<UploadLimit>(&upload_limit.unwrap())
-                .unwrap();
+            serde_json::from_str::<UploadLimit>(&limit_str).unwrap();
         upload_limit.add();
         if upload_limit.is_limit() {
             // upload_limit.time 对比Utc::now()的时间增加 10分钟

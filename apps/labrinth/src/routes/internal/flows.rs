@@ -81,13 +81,12 @@ impl TempUser {
         file_host: &Arc<dyn FileHost + Send + Sync>,
         redis: &RedisPool,
     ) -> Result<crate::database::models::UserId, AuthenticationError> {
-        if let Some(email) = &self.email {
-            if crate::database::models::User::get_email(email, client)
+        if let Some(email) = &self.email
+            && crate::database::models::User::get_email(email, client)
                 .await?
                 .is_some()
-            {
-                return Err(AuthenticationError::DuplicateUser);
-            }
+        {
+            return Err(AuthenticationError::DuplicateUser);
         }
 
         let user_id =
@@ -1152,15 +1151,15 @@ pub async fn ws_init(
         .insert(Duration::minutes(30), &redis)
         .await;
 
-        if let Ok(state) = flow {
-            if let Ok(url) = info.provider.get_redirect_url(state.clone()) {
-                ws_stream
-                    .text(serde_json::json!({ "url": url }).to_string())
-                    .await?;
+        if let Ok(state) = flow
+            && let Ok(url) = info.provider.get_redirect_url(state.clone())
+        {
+            ws_stream
+                .text(serde_json::json!({ "url": url }).to_string())
+                .await?;
 
-                let db = db.write().await;
-                db.auth_sockets.insert(state, ws_stream);
-            }
+            let db = db.write().await;
+            db.auth_sockets.insert(state, ws_stream);
         }
 
         Ok(())
@@ -1355,10 +1354,10 @@ pub async fn auth_callback(
                         .await.map_err(|_| AuthenticationError::SocketError)?;
                     let _ = ws_conn.close(None).await;
 
-                    return Ok(crate::auth::templates::Success {
+                    Ok(crate::auth::templates::Success {
                         icon: user.avatar_url.as_deref().unwrap_or("https://cdn.bbsmc.net/raw/placeholder.svg"),
                         name: &user.username,
-                    }.render());
+                    }.render())
                 }
             }
         } else {
@@ -1429,19 +1428,19 @@ pub async fn delete_auth_provider(
         .update_user_id(user.id.into(), None, &mut transaction)
         .await?;
 
-    if delete_provider.provider != AuthProvider::PayPal {
-        if let Some(email) = user.email {
-            send_email(
-                email,
-                "身份验证方法已移除",
-                &format!(
-                    "您现在无法使用 {} 身份验证提供程序登录 BBSMC",
-                    delete_provider.provider.as_str()
-                ),
-                "如果不是您进行的更改，请立即通过我们的 Discord 支持渠道或电子邮件 (support@bbsmc.net) 联系我们。",
-                None,
-            )?;
-        }
+    if delete_provider.provider != AuthProvider::PayPal
+        && let Some(email) = user.email
+    {
+        send_email(
+            email,
+            "身份验证方法已移除",
+            &format!(
+                "您现在无法使用 {} 身份验证提供程序登录 BBSMC",
+                delete_provider.provider.as_str()
+            ),
+            "如果不是您进行的更改，请立即通过我们的 Discord 支持渠道或电子邮件 (support@bbsmc.net) 联系我们。",
+            None,
+        )?;
     }
 
     transaction.commit().await?;

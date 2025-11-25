@@ -66,7 +66,7 @@ pub async fn report_create(
     .1;
 
     // 检查论坛封禁
-    check_forum_ban(&current_user, &**pool).await?;
+    check_forum_ban(&current_user, &pool).await?;
 
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {

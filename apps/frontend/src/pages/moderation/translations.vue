@@ -220,11 +220,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import { NewModal, ButtonStyled } from "@modrinth/ui";
-import { useAuth } from "~/composables/auth";
-import { useBaseFetch } from "~/composables/fetch";
-import { addNotification } from "~/composables/notifs";
+import { useAuth } from "~/composables/auth.js";
+import { useBaseFetch } from "~/composables/fetch.js";
+import { addNotification } from "~/composables/notifs.js";
 import Avatar from "~/components/ui/Avatar.vue";
 import Chips from "~/components/ui/Chips.vue";
 import CheckIcon from "~/assets/images/utils/check.svg?component";
@@ -237,7 +237,6 @@ import ChevronLeftIcon from "~/assets/images/utils/chevron-left.svg?component";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
 import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 
-const route = useRoute();
 const router = useRouter();
 const auth = await useAuth();
 const app = useNuxtApp();

@@ -314,10 +314,10 @@ impl RedisPool {
                 .await?;
 
             for (idx, key) in fetch_ids.into_iter().enumerate() {
-                if let Some(locked) = results.get(idx) {
-                    if locked.is_none() {
-                        continue;
-                    }
+                if let Some(locked) = results.get(idx)
+                    && locked.is_none()
+                {
+                    continue;
                 }
 
                 if let Some((key, raw_key)) = ids.remove(&key) {
@@ -515,10 +515,10 @@ impl RedisPool {
             .query_async::<Option<String>>(&mut connection)
             .await?;
 
-        if let Some(cached) = cached {
-            if let Ok(value) = serde_json::from_str::<T>(&cached) {
-                return Ok(value);
-            }
+        if let Some(cached) = cached
+            && let Ok(value) = serde_json::from_str::<T>(&cached)
+        {
+            return Ok(value);
         }
 
         // 如果缓存没有，调用闭包获取数据

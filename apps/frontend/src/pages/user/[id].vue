@@ -2,7 +2,7 @@
   <div v-if="user" class="experimental-styles-within">
     <ModalCreation ref="modal_creation" />
     <CollectionCreateModal ref="modal_collection_creation" />
-    <BanManageModal ref="ban_manage_modal" :user-id="user.id" @updated="refreshUserData" />
+    <BanManageModal ref="banManageModal" :user-id="user.id" @updated="refreshUserData" />
 
     <!-- 封禁横幅 -->
     <div v-if="user.active_bans && user.active_bans.length > 0" class="ban-banner">
@@ -550,10 +550,10 @@ async function copyId() {
 }
 
 // 封禁管理模态框引用
-const ban_manage_modal = ref(null);
+const banManageModal = ref(null);
 
 function openBanModal() {
-  ban_manage_modal.value?.show();
+  banManageModal.value?.show();
 }
 
 async function refreshUserData() {

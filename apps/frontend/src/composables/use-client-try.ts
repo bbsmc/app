@@ -8,13 +8,6 @@ type useClientTry = <TArgs extends any[], TResult>(
   onFinish?: VoidFunction,
 ) => (...args: TArgs) => Promise<TResult | undefined>;
 
-// 封禁类型名称映射
-const banTypeNames: Record<string, string> = {
-  global: "全局封禁",
-  resource: "资源封禁",
-  forum: "论坛封禁",
-};
-
 const defaultOnError: ErrorFunction = (error) => {
   // 检测是否为封禁错误
   const errorName = error?.data?.error;

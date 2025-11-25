@@ -1,5 +1,5 @@
 <template>
-<!--  // 站内-->
+  <!--  // 站内-->
   <div
     v-if="downloadUrl.includes('cdn.bbsmc.net')"
     class="grid grid-cols-[min-content_auto_min-content_min-content] items-center gap-2 rounded-2xl border-[1px] border-button-bg bg-bg p-2"
@@ -14,19 +14,20 @@
       </p>
     </div>
     <ButtonStyled color="brand">
-<!--      <a-->
-<!--        :href="downloadUrl"-->
-<!--        class="min-w-0"-->
-<!--        @click="emit('onDownload')"-->
-<!--        v-if="downloadUrl.includes('cdn.bbs1mc.net')"-->
-<!--      >-->
-<!--        <DownloadIcon aria-hidden="true" />-->
-<!--      </a>-->
+      <!--      <a-->
+      <!--        :href="downloadUrl"-->
+      <!--        class="min-w-0"-->
+      <!--        @click="emit('onDownload')"-->
+      <!--        v-if="downloadUrl.includes('cdn.bbs1mc.net')"-->
+      <!--      >-->
+      <!--        <DownloadIcon aria-hidden="true" />-->
+      <!--      </a>-->
       <a
         :href="downloadUrl"
         @click="emit('onDownload', props.version.id)"
         target="_blank"
-        class="min-w-0">
+        class="min-w-0"
+      >
         <DownloadIcon aria-hidden="true" />
       </a>
     </ButtonStyled>
@@ -42,7 +43,7 @@
     </ButtonStyled>
   </div>
 
-<!--  网盘 -->
+  <!--  网盘 -->
 
   <div>
     <div
@@ -62,9 +63,9 @@
                   ? "CurseForge"
                   : u.platform === "modrinth"
                     ? "Modrinth"
-                : u.platform === "xunlei"
-                  ? "迅雷"
-                  : "第三方云盘"
+                    : u.platform === "xunlei"
+                      ? "迅雷"
+                      : "第三方云盘"
           }}] {{ version.version_number }}
         </h1>
         <p class="m-0 truncate text-nowrap text-xs font-semibold text-secondary">

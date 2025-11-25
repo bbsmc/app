@@ -261,7 +261,7 @@ impl From<DBNotification> for Notification {
                     name.clone(),
                     text.clone(),
                     link.clone(),
-                    actions.clone().into_iter().map(Into::into).collect(),
+                    actions.clone().into_iter().collect(),
                 ),
                 NotificationBody::UserBanned {
                     ban_type,

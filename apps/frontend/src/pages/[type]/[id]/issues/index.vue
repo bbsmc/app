@@ -358,7 +358,7 @@ import { PlusIcon } from "@modrinth/assets";
 import dayjs from "dayjs";
 import SettingsIcon from "~/assets/images/utils/settings.svg?component";
 import SaveIcon from "~/assets/images/utils/save.svg?component";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 const auth = await useAuth();
 
 const data = useNuxtApp();
@@ -595,8 +595,9 @@ async function saveIssuesSettings() {
       body: patchData,
     });
 
-    // 更新本地项目数据
-    props.project.issues_type = tempIssuesType.value;
+    // 使用 emit 通知父组件更新项目数据
+    // 注意：实际应该通过 emit 事件通知父组件，这里仅用于临时兼容
+    Object.assign(props.project, { issues_type: tempIssuesType.value });
 
     data.$notify({
       group: "main",

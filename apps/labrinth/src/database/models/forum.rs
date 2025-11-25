@@ -372,7 +372,7 @@ impl Discussion {
                                     pinned: m.pinned.unwrap(),
                                     deleted: m.deleted.unwrap(),
                                     deleted_at: m.deleted_at,
-                                    last_post_time: m.last_post_time.unwrap_or_else(|| chrono::Utc::now()),
+                                    last_post_time: m.last_post_time.unwrap_or_else(chrono::Utc::now),
                                     project_id,
                                 },
                             },
@@ -387,8 +387,8 @@ impl Discussion {
 
                 // 遍历并更新每个帖子
                 for key in keys {
-                    if let Some(mut ele) = posts.get_mut(&key) {
-                        if ele.inner.project_id.is_some() {
+                    if let Some(mut ele) = posts.get_mut(&key)
+                        && ele.inner.project_id.is_some() {
                             let project =
                                 crate::database::models::Project::get_id(
                                     ele.inner.project_id.unwrap(),
@@ -415,7 +415,6 @@ impl Discussion {
                                 }
                             }
                         }
-                    }
                 }
 
                 Ok(posts)

@@ -1279,9 +1279,6 @@ import BackIcon from "~/assets/images/utils/left-arrow.svg?component";
 import BoxIcon from "~/assets/images/utils/box.svg?component";
 import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 import InfoIcon from "~/assets/images/utils/info.svg?component";
-import MessageIcon from "~/assets/images/utils/message.svg?component";
-import SendIcon from "~/assets/images/utils/send.svg?component";
-import UpdatedIcon from "~/assets/images/utils/updated.svg?component";
 import UndoIcon from "~/assets/images/utils/undo.svg?component";
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
@@ -1411,10 +1408,10 @@ export default defineNuxtComponent({
     let versionLinksLoading = false;
     let translationVersionsLoading = false;
 
-    // 重新提交相关变量
-    const resubmitReason = "";
-    const resubmittingLink = false;
-    const pendingResubmitLink = null;
+    // 重新提交相关变量（保留以备将来使用）
+    // const resubmitReason = "";
+    // const resubmittingLink = false;
+    // const pendingResubmitLink = null;
 
     if (mode === "edit") {
       isEditing = true;
@@ -2240,11 +2237,9 @@ export default defineNuxtComponent({
             // 如果清空了所有链接，也需要更新
             body.version_links = [];
           }
-        } else {
+        } else if (this.version.game_versions) {
           // 非语言类型版本才需要game_versions字段
-          if (this.version.game_versions) {
-            body.game_versions = this.version.game_versions;
-          }
+          body.game_versions = this.version.game_versions;
         }
 
         if (this.project.project_type === "modpack") {
@@ -2508,7 +2503,7 @@ export default defineNuxtComponent({
 
     // 版本链接相关方法
 
-    async addVersionLink(mode, targetId) {
+    async addVersionLink(_mode, targetId) {
       // 如果没有传入targetId，使用组件的状态
       if (!targetId) {
         targetId = this.linkTargetId;

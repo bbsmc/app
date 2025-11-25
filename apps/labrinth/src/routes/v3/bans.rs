@@ -140,19 +140,19 @@ pub async fn create_ban(
             "封禁原因长度必须在 1-2000 字符之间".to_string(),
         ));
     }
-    if let Some(ref internal_reason) = body.internal_reason {
-        if internal_reason.len() > 2000 {
-            return Err(ApiError::InvalidInput(
-                "内部原因长度不能超过 2000 字符".to_string(),
-            ));
-        }
+    if let Some(ref internal_reason) = body.internal_reason
+        && internal_reason.len() > 2000
+    {
+        return Err(ApiError::InvalidInput(
+            "内部原因长度不能超过 2000 字符".to_string(),
+        ));
     }
-    if let Some(expires_at) = body.expires_at {
-        if expires_at <= Utc::now() {
-            return Err(ApiError::InvalidInput(
-                "过期时间必须是将来的时间".to_string(),
-            ));
-        }
+    if let Some(expires_at) = body.expires_at
+        && expires_at <= Utc::now()
+    {
+        return Err(ApiError::InvalidInput(
+            "过期时间必须是将来的时间".to_string(),
+        ));
     }
 
     let target_user_id = parse_user_id(&info.0)?;
@@ -187,13 +187,8 @@ pub async fn create_ban(
         crate::models::v3::bans::BanType::Resource => "资源",
         crate::models::v3::bans::BanType::Forum => "论坛",
     };
-    if UserBan::is_user_banned(
-        target_user_id,
-        ban_type.clone(),
-        &**pool,
-        &redis,
-    )
-    .await?
+    if UserBan::is_user_banned(target_user_id, ban_type.clone(), &pool, &redis)
+        .await?
     {
         return Err(ApiError::InvalidInput(format!(
             "用户已被{}封禁，请勿重复操作",
@@ -229,13 +224,12 @@ pub async fn create_ban(
             if let crate::database::models::DatabaseError::Database(
                 sqlx::Error::Database(db_err),
             ) = &e
+                && db_err.code().map(|c| c == "23505").unwrap_or(false)
             {
-                if db_err.code().map(|c| c == "23505").unwrap_or(false) {
-                    return Err(ApiError::InvalidInput(format!(
-                        "用户已被{}封禁，请勿重复操作",
-                        ban_type_display
-                    )));
-                }
+                return Err(ApiError::InvalidInput(format!(
+                    "用户已被{}封禁，请勿重复操作",
+                    ban_type_display
+                )));
             }
             return Err(e.into());
         }
@@ -335,7 +329,7 @@ pub async fn get_ban(
     }
 
     let ban_id = parse_ban_id(&info.0)?;
-    let ban = UserBan::get(ban_id, &**pool, &redis)
+    let ban = UserBan::get(ban_id, &pool, &redis)
         .await?
         .ok_or_else(|| ApiError::NotFound)?;
 
@@ -357,7 +351,7 @@ pub async fn get_ban(
     let response = crate::models::v3::bans::UserBan {
         id: crate::models::v3::bans::UserBanId(ban_id.0 as u64),
         user_id: crate::models::ids::UserId(ban.user_id.0 as u64),
-        ban_type: crate::models::v3::bans::BanType::from_str(&ban.ban_type)
+        ban_type: crate::models::v3::bans::BanType::parse(&ban.ban_type)
             .unwrap_or(crate::models::v3::bans::BanType::Global),
         reason: ban.reason,
         internal_reason,
@@ -372,7 +366,7 @@ pub async fn get_ban(
             ban_id: crate::models::v3::bans::UserBanId(a.ban_id.0 as u64),
             user_id: crate::models::ids::UserId(a.user_id.0 as u64),
             reason: a.reason,
-            status: crate::models::v3::bans::AppealStatus::from_str(&a.status)
+            status: crate::models::v3::bans::AppealStatus::parse(&a.status)
                 .unwrap_or(crate::models::v3::bans::AppealStatus::Pending),
             created_at: a.created_at,
             reviewed_by: a
@@ -419,7 +413,7 @@ pub async fn update_ban(
     let ban_id = parse_ban_id(&info.0)?;
     let admin_user_id: UserId = user.id.into();
 
-    let ban = UserBan::get(ban_id, &**pool, &redis)
+    let ban = UserBan::get(ban_id, &pool, &redis)
         .await?
         .ok_or_else(|| ApiError::NotFound)?;
 
@@ -460,12 +454,12 @@ pub async fn update_ban(
     }
 
     // 输入验证：过期时间必须是将来的时间
-    if let Some(Some(expires_at)) = &body.expires_at {
-        if *expires_at <= Utc::now() {
-            return Err(ApiError::InvalidInput(
-                "过期时间必须是将来的时间".to_string(),
-            ));
-        }
+    if let Some(Some(expires_at)) = &body.expires_at
+        && *expires_at <= Utc::now()
+    {
+        return Err(ApiError::InvalidInput(
+            "过期时间必须是将来的时间".to_string(),
+        ));
     }
 
     let mut transaction = pool.begin().await?;
@@ -482,7 +476,7 @@ pub async fn update_ban(
         ban_id,
         body.reason.clone(),
         body.internal_reason.clone(),
-        body.expires_at.clone(),
+        body.expires_at,
         &mut transaction,
     )
     .await?;
@@ -551,7 +545,7 @@ pub async fn revoke_ban(
     let ban_id = parse_ban_id(&info.0)?;
     let admin_user_id: UserId = user.id.into();
 
-    let ban = UserBan::get(ban_id, &**pool, &redis)
+    let ban = UserBan::get(ban_id, &pool, &redis)
         .await?
         .ok_or_else(|| ApiError::NotFound)?;
 
@@ -713,7 +707,7 @@ pub async fn get_user_bans(
         response_bans.push(crate::models::v3::bans::UserBan {
             id: crate::models::v3::bans::UserBanId(ban.id.0 as u64),
             user_id: crate::models::ids::UserId(ban.user_id.0 as u64),
-            ban_type: crate::models::v3::bans::BanType::from_str(&ban.ban_type)
+            ban_type: crate::models::v3::bans::BanType::parse(&ban.ban_type)
                 .unwrap_or(crate::models::v3::bans::BanType::Global),
             reason: ban.reason,
             internal_reason: ban.internal_reason,
@@ -764,7 +758,7 @@ pub async fn get_ban_history(
     let ban_id = parse_ban_id(&info.0)?;
 
     // 验证封禁存在
-    UserBan::get(ban_id, &**pool, &redis)
+    UserBan::get(ban_id, &pool, &redis)
         .await?
         .ok_or_else(|| ApiError::NotFound)?;
 
@@ -899,7 +893,7 @@ pub async fn list_bans(
         .map(|ban| crate::models::v3::bans::UserBan {
             id: crate::models::v3::bans::UserBanId(ban.id as u64),
             user_id: crate::models::ids::UserId(ban.user_id as u64),
-            ban_type: crate::models::v3::bans::BanType::from_str(&ban.ban_type)
+            ban_type: crate::models::v3::bans::BanType::parse(&ban.ban_type)
                 .unwrap_or(crate::models::v3::bans::BanType::Global),
             reason: ban.reason,
             internal_reason: if is_admin { ban.internal_reason } else { None },
@@ -1048,7 +1042,7 @@ pub async fn list_appeals(
             ban_id: crate::models::v3::bans::UserBanId(appeal.ban_id as u64),
             user_id: crate::models::ids::UserId(appeal.user_id as u64),
             reason: appeal.reason,
-            status: crate::models::v3::bans::AppealStatus::from_str(
+            status: crate::models::v3::bans::AppealStatus::parse(
                 &appeal.status,
             )
             .unwrap_or(crate::models::v3::bans::AppealStatus::Pending),
@@ -1130,7 +1124,7 @@ pub async fn review_appeal(
         body.status,
         crate::models::v3::bans::AppealStatus::Approved
     ) {
-        let ban = UserBan::get(appeal.ban_id, &**pool, &redis)
+        let ban = UserBan::get(appeal.ban_id, &pool, &redis)
             .await?
             .ok_or_else(|| ApiError::NotFound)?;
 
@@ -1256,7 +1250,7 @@ pub async fn get_my_bans(
     .await?;
 
     let user_id: UserId = user.id.into();
-    let bans = UserBan::get_user_active_bans(user_id, &**pool, &redis).await?;
+    let bans = UserBan::get_user_active_bans(user_id, &pool, &redis).await?;
 
     let mut active_bans = Vec::new();
     for ban in bans {
@@ -1264,7 +1258,7 @@ pub async fn get_my_bans(
 
         active_bans.push(crate::models::v3::bans::UserBanPublic {
             id: crate::models::v3::bans::UserBanId(ban.id.0 as u64),
-            ban_type: crate::models::v3::bans::BanType::from_str(&ban.ban_type)
+            ban_type: crate::models::v3::bans::BanType::parse(&ban.ban_type)
                 .unwrap_or(crate::models::v3::bans::BanType::Global),
             reason: ban.reason,
             banned_at: ban.banned_at,
@@ -1326,7 +1320,7 @@ pub async fn create_appeal(
     }
 
     // 获取封禁
-    let ban = UserBan::get(ban_id, &**pool, &redis)
+    let ban = UserBan::get(ban_id, &pool, &redis)
         .await?
         .ok_or_else(|| ApiError::NotFound)?;
 
@@ -1439,7 +1433,7 @@ pub async fn get_my_appeal(
         ban_id: crate::models::v3::bans::UserBanId(appeal.ban_id.0 as u64),
         user_id: crate::models::ids::UserId(appeal.user_id.0 as u64),
         reason: appeal.reason,
-        status: crate::models::v3::bans::AppealStatus::from_str(&appeal.status)
+        status: crate::models::v3::bans::AppealStatus::parse(&appeal.status)
             .unwrap_or(crate::models::v3::bans::AppealStatus::Pending),
         created_at: appeal.created_at,
         reviewed_by: appeal
@@ -1624,7 +1618,7 @@ pub async fn get_bans_batch(
         .map(|ban| crate::models::v3::bans::UserBan {
             id: crate::models::v3::bans::UserBanId(ban.id as u64),
             user_id: crate::models::ids::UserId(ban.user_id as u64),
-            ban_type: crate::models::v3::bans::BanType::from_str(&ban.ban_type)
+            ban_type: crate::models::v3::bans::BanType::parse(&ban.ban_type)
                 .unwrap_or(crate::models::v3::bans::BanType::Global),
             reason: ban.reason,
             internal_reason: if is_admin { ban.internal_reason } else { None },

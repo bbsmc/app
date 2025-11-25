@@ -217,7 +217,7 @@
 //   searchProjects.value = res.hits ?? [];
 // }
 import dayjs from "dayjs";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 const modpacks = ref([]);
 const searchQuery = ref("");
 const forums = ref([]);
@@ -372,7 +372,7 @@ const handleDragMove = (e) => {
 };
 
 // 处理拖动结束
-const handleDragEnd = (e) => {
+const handleDragEnd = (_e) => {
   if (!isDragging.value) return;
 
   const dragDistance = dragCurrentX.value - dragStartX.value;

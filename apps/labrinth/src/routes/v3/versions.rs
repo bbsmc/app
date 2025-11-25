@@ -133,13 +133,12 @@ pub async fn version_project_get_helper(
                 || x.inner.version_number == id.1
         });
 
-        if let Some(version) = version {
-            if is_visible_version(&version.inner, &user_option, &pool, &redis)
+        if let Some(version) = version
+            && is_visible_version(&version.inner, &user_option, &pool, &redis)
                 .await?
-            {
-                let version_response = models::projects::Version::from(version);
-                return Ok(HttpResponse::Ok().json(version_response));
-            }
+        {
+            let version_response = models::projects::Version::from(version);
+            return Ok(HttpResponse::Ok().json(version_response));
         }
     }
 
@@ -218,11 +217,11 @@ pub async fn version_get_helper(
     .map(|x| x.1)
     .ok();
 
-    if let Some(data) = version_data {
-        if is_visible_version(&data.inner, &user_option, &pool, &redis).await? {
-            let version = models::projects::Version::from(data);
-            return Ok(HttpResponse::Ok().json(version));
-        }
+    if let Some(data) = version_data
+        && is_visible_version(&data.inner, &user_option, &pool, &redis).await?
+    {
+        let version = models::projects::Version::from(data);
+        return Ok(HttpResponse::Ok().json(version));
     }
 
     Err(ApiError::NotFound)
@@ -342,7 +341,7 @@ pub async fn version_download(
         if version_item.disks.is_empty() {
             let url = version_item.files.first().unwrap().url.clone();
             let url = url::Url::parse(&url).map_err(|_| {
-                return ApiError::InvalidInput("无效的下载URL!".to_string());
+                ApiError::InvalidInput("无效的下载URL!".to_string())
             })?;
             analytics_queue.add_download(Download {
                 recorded: get_current_tenths_of_ms(),
@@ -363,7 +362,7 @@ pub async fn version_download(
             let url = version_item.disks.first().unwrap().url.clone();
 
             let url = url::Url::parse(&url).map_err(|_| {
-                return ApiError::InvalidInput("无效的下载URL!".to_string());
+                ApiError::InvalidInput("无效的下载URL!".to_string())
             })?;
 
             analytics_queue.add_download(Download {
@@ -427,7 +426,7 @@ pub async fn version_edit_helper(
     .1;
 
     // 检查用户是否被资源类封禁
-    check_resource_ban(&user, &**pool).await?;
+    check_resource_ban(&user, &pool).await?;
 
     new_version.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))
@@ -748,7 +747,7 @@ pub async fn version_edit_helper(
                                     user.username
                                 );
                                 auto_approve = true;
-                            } else if target_team.as_ref().map_or(false, |m| {
+                            } else if target_team.as_ref().is_some_and(|m| {
                                 m.accepted
                                     && m.permissions.contains(
                                         ProjectPermissions::UPLOAD_VERSION,
@@ -762,8 +761,7 @@ pub async fn version_edit_helper(
                                     user.username
                                 );
                                 auto_approve = true;
-                            } else if target_org_team.as_ref().map_or(
-                                false,
+                            } else if target_org_team.as_ref().is_some_and(
                                 |m| {
                                     m.accepted
                                         && m.permissions.contains(
@@ -1341,7 +1339,7 @@ pub async fn version_delete(
     .1;
 
     // 检查用户是否被资源类封禁
-    check_resource_ban(&user, &**pool).await?;
+    check_resource_ban(&user, &pool).await?;
 
     let id = info.into_inner().0;
 

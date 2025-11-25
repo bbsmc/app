@@ -279,7 +279,7 @@ pub async fn forum_edit(
     let user = user_option.unwrap();
 
     // 检查用户是否被论坛类封禁
-    check_forum_ban(&user, &**pool).await?;
+    check_forum_ban(&user, &pool).await?;
 
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
@@ -395,7 +395,7 @@ pub async fn forum_delete(
     let user = user_option.unwrap();
 
     // 检查用户是否被论坛类封禁
-    check_forum_ban(&user, &**pool).await?;
+    check_forum_ban(&user, &pool).await?;
 
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
@@ -468,7 +468,7 @@ pub async fn forum_create(
 
     // 检查用户是否被论坛类封禁
     let user = user_option.as_ref().unwrap();
-    check_forum_ban(user, &**pool).await?;
+    check_forum_ban(user, &pool).await?;
 
     // 检查用户是否绑定手机号
     if user_option.as_ref().unwrap().has_phonenumber.is_none()
@@ -613,7 +613,7 @@ pub async fn posts_post(
 
     // 检查用户是否被论坛类封禁
     let user = user_option.as_ref().unwrap();
-    check_forum_ban(user, &**pool).await?;
+    check_forum_ban(user, &pool).await?;
 
     // 检查帖子是否存在
     if discussion.is_none() {
@@ -753,7 +753,7 @@ pub async fn post_delete(
     let user = user_option.unwrap();
 
     // 检查用户是否被论坛类封禁
-    check_forum_ban(&user, &**pool).await?;
+    check_forum_ban(&user, &pool).await?;
 
     let post_id: String = info.into_inner().0;
     let post_id = match parse_base62(&post_id) {

@@ -222,10 +222,10 @@ pub async fn project_get(
     .map(|x| x.1)
     .ok();
 
-    if let Some(data) = project_data {
-        if is_visible_project(&data.inner, &user_option, &pool, false).await? {
-            return Ok(HttpResponse::Ok().json(Project::from(data)));
-        }
+    if let Some(data) = project_data
+        && is_visible_project(&data.inner, &user_option, &pool, false).await?
+    {
+        return Ok(HttpResponse::Ok().json(Project::from(data)));
     }
     Err(ApiError::NotFound)
 }
@@ -317,7 +317,7 @@ pub async fn project_edit(
     .1;
 
     // 检查用户是否被资源类封禁
-    check_resource_ban(&user, &**pool).await?;
+    check_resource_ban(&user, &pool).await?;
 
     new_project.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))
@@ -493,38 +493,38 @@ pub async fn project_edit(
                     .execute(&mut *transaction)
                     .await?;
                 }
-                if status.is_searchable() && !project_item.inner.webhook_sent {
-                    if let Ok(webhook_url) =
+                if status.is_searchable()
+                    && !project_item.inner.webhook_sent
+                    && let Ok(webhook_url) =
                         dotenvy::var("PUBLIC_DISCORD_WEBHOOK")
-                    {
-                        crate::util::webhook::send_discord_webhook(
-                            project_item.inner.id.into(),
-                            &pool,
-                            &redis,
-                            webhook_url,
-                            None,
-                        )
-                        .await
-                        .ok();
+                {
+                    crate::util::webhook::send_discord_webhook(
+                        project_item.inner.id.into(),
+                        &pool,
+                        &redis,
+                        webhook_url,
+                        None,
+                    )
+                    .await
+                    .ok();
 
-                        sqlx::query!(
-                            "
+                    sqlx::query!(
+                        "
                             UPDATE mods
                             SET webhook_sent = TRUE
                             WHERE id = $1
                             ",
-                            id as db_ids::ProjectId,
-                        )
-                        .execute(&mut *transaction)
-                        .await?;
-                    }
+                        id as db_ids::ProjectId,
+                    )
+                    .execute(&mut *transaction)
+                    .await?;
                 }
 
-                if user.role.is_mod() {
-                    if let Ok(webhook_url) =
+                if user.role.is_mod()
+                    && let Ok(webhook_url) =
                         dotenvy::var("MODERATION_SLACK_WEBHOOK")
-                    {
-                        crate::util::webhook::send_slack_webhook(
+                {
+                    crate::util::webhook::send_slack_webhook(
                             project_item.inner.id.into(),
                             &pool,
                             &redis,
@@ -543,7 +543,6 @@ pub async fn project_edit(
                         )
                         .await
                         .ok();
-                    }
                 }
 
                 if team_member.map(|x| !x.accepted).unwrap_or(true) {
@@ -886,49 +885,46 @@ pub async fn project_edit(
                 .execute(&mut *transaction)
                 .await?;
             }
-            if let Some(links) = &new_project.link_urls {
-                if !links.is_empty() {
-                    if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
-                        return Err(ApiError::CustomAuthentication(
-                            "您没有权限编辑此项目的链接!".to_string(),
-                        ));
-                    }
+            if let Some(links) = &new_project.link_urls
+                && !links.is_empty()
+            {
+                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
+                    return Err(ApiError::CustomAuthentication(
+                        "您没有权限编辑此项目的链接!".to_string(),
+                    ));
+                }
 
-                    let ids_to_delete = links
-                        .iter()
-                        .map(|(name, _)| name.clone())
-                        .collect::<Vec<String>>();
-                    // 从 hashmap 中删除所有链接- 要么将被删除，要么将被替换
-                    sqlx::query!(
-                        "
+                let ids_to_delete =
+                    links.keys().cloned().collect::<Vec<String>>();
+                // 从 hashmap 中删除所有链接- 要么将被删除，要么将被替换
+                sqlx::query!(
+                    "
                         DELETE FROM mods_links
                         WHERE joining_mod_id = $1 AND joining_platform_id IN (
                             SELECT id FROM link_platforms WHERE name = ANY($2)
                         )
                         ",
-                        id as db_ids::ProjectId,
-                        &ids_to_delete
-                    )
-                    .execute(&mut *transaction)
-                    .await?;
+                    id as db_ids::ProjectId,
+                    &ids_to_delete
+                )
+                .execute(&mut *transaction)
+                .await?;
 
-                    for (platform, url) in links {
-                        if let Some(url) = url {
-                            let platform_id =
-                                db_models::categories::LinkPlatform::get_id(
-                                    platform,
-                                    &mut *transaction,
-                                )
-                                .await?
-                                .ok_or_else(
-                                    || {
-                                        ApiError::InvalidInput(format!(
-                                            "平台 {} 不存在.",
-                                            platform.clone()
-                                        ))
-                                    },
-                                )?;
-                            sqlx::query!(
+                for (platform, url) in links {
+                    if let Some(url) = url {
+                        let platform_id =
+                            db_models::categories::LinkPlatform::get_id(
+                                platform,
+                                &mut *transaction,
+                            )
+                            .await?
+                            .ok_or_else(|| {
+                                ApiError::InvalidInput(format!(
+                                    "平台 {} 不存在.",
+                                    platform.clone()
+                                ))
+                            })?;
+                        sqlx::query!(
                                 "
                                 INSERT INTO mods_links (joining_mod_id, joining_platform_id, url)
                                 VALUES ($1, $2, $3)
@@ -939,7 +935,6 @@ pub async fn project_edit(
                             )
                             .execute(&mut *transaction)
                             .await?;
-                        }
                     }
                 }
             }
@@ -1485,10 +1480,7 @@ pub async fn projects_edit(
         .await?;
 
         if let Some(links) = &bulk_edit_project.link_urls {
-            let ids_to_delete = links
-                .iter()
-                .map(|(name, _)| name.clone())
-                .collect::<Vec<String>>();
+            let ids_to_delete = links.keys().cloned().collect::<Vec<String>>();
             // 从 hashmap 中删除所有链接- 要么将被删除，要么将被替换
             sqlx::query!(
                 "
@@ -2296,7 +2288,7 @@ pub async fn project_delete(
     .1;
 
     // 检查用户是否被资源类封禁
-    check_resource_ban(&user, &**pool).await?;
+    check_resource_ban(&user, &pool).await?;
 
     let string = info.into_inner().0;
 
@@ -2612,7 +2604,7 @@ pub async fn project_get_organization(
             organization,
             team_members,
         );
-        return Ok(HttpResponse::Ok().json(organization));
+        Ok(HttpResponse::Ok().json(organization))
     } else {
         Err(ApiError::NotFound)
     }
@@ -2821,7 +2813,7 @@ pub async fn get_translation_links(
         // 只有团队成员或管理员可以查看所有翻译链接（包括待审核的）
         let is_admin_or_mod = user_option
             .as_ref()
-            .map_or(false, |u| u.role.is_admin() || u.role.is_mod());
+            .is_some_and(|u| u.role.is_admin() || u.role.is_mod());
         if team_member.is_none() && !is_admin_or_mod {
             return Err(ApiError::CustomAuthentication(
                 "您需要是项目团队成员才能查看翻译链接审核信息".to_string(),

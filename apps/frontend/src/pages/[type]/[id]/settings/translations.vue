@@ -281,9 +281,9 @@ import { ref, onMounted, computed } from "vue";
 import { useRoute } from "vue-router";
 import { renderString } from "@modrinth/utils";
 import { ConfirmModal, NewModal, ButtonStyled } from "@modrinth/ui";
-import { useAuth } from "~/composables/auth";
-import { useBaseFetch } from "~/composables/fetch";
-import { addNotification } from "~/composables/notifs";
+import { useAuth } from "~/composables/auth.js";
+import { useBaseFetch } from "~/composables/fetch.js";
+import { addNotification } from "~/composables/notifs.js";
 import Avatar from "~/components/ui/Avatar.vue";
 import CheckIcon from "~/assets/images/utils/check.svg?component";
 import CrossIcon from "~/assets/images/utils/x.svg?component";
@@ -292,7 +292,6 @@ import InfoIcon from "~/assets/images/utils/info.svg?component";
 import UpdatedIcon from "~/assets/images/utils/updated.svg?component";
 import MessageIcon from "~/assets/images/utils/message.svg?component";
 import SendIcon from "~/assets/images/utils/send.svg?component";
-import LockIcon from "~/assets/images/utils/lock.svg?component";
 import Chips from "~/components/ui/Chips.vue";
 
 const props = defineProps({
@@ -312,19 +311,9 @@ const app = useNuxtApp();
 
 // 权限常量（位标志）
 const UPLOAD_VERSION = 1 << 0;
-const DELETE_VERSION = 1 << 1;
 const EDIT_DETAILS = 1 << 2;
-const EDIT_BODY = 1 << 3;
-const MANAGE_INVITES = 1 << 4;
-const REMOVE_MEMBER = 1 << 5;
-const EDIT_MEMBER = 1 << 6;
-const DELETE_PROJECT = 1 << 7;
-const VIEW_ANALYTICS = 1 << 8;
-const VIEW_PAYOUTS = 1 << 9;
-const WIKI_EDIT = 1 << 10;
 
 // 响应式状态
-const allLinks = ref([]); // 存储所有链接
 const pendingLinks = ref([]);
 const approvedLinks = ref([]);
 const rejectedLinks = ref([]);
@@ -569,6 +558,7 @@ const confirmReject = async () => {
 };
 
 // 保留旧的openRejectDialog和相关方法，以便thread内的拒绝按钮使用
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const openRejectDialog = (link) => {
   // 展开thread区域
   if (!expandedThreads.value.includes(link.id)) {

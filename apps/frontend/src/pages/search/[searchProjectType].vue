@@ -1187,7 +1187,7 @@ const handleDragMove = (e) => {
   }
 };
 
-const handleDragEnd = (e) => {
+const handleDragEnd = (_e) => {
   if (!isDragging.value) return;
 
   const dragDistance = dragCurrentX.value - dragStartX.value;

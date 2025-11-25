@@ -67,7 +67,7 @@ pub async fn check_user_ban(
         let bans = UserBan::get_user_active_bans(user_id, pool, redis).await?;
         if let Some(ban) = bans
             .iter()
-            .find(|b| BanType::from_str(&b.ban_type) == Some(ban_type.clone()))
+            .find(|b| BanType::parse(&b.ban_type) == Some(ban_type.clone()))
         {
             return Err(BanCheckResult {
                 ban_type,

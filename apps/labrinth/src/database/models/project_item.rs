@@ -1128,9 +1128,8 @@ impl Project {
                 redis,
             )
             .await?;
-            if organization.is_some() {
-                let team_id = organization.unwrap().team_id;
-                team_ids.push(team_id);
+            if let Some(org) = organization {
+                team_ids.push(org.team_id);
             }
         }
 

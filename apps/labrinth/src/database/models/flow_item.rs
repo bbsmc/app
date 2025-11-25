@@ -95,10 +95,10 @@ impl Flow {
         redis: &RedisPool,
     ) -> Result<Option<Flow>, DatabaseError> {
         let flow = Self::get(id, redis).await?;
-        if let Some(flow) = flow.as_ref() {
-            if predicate(flow) {
-                Self::remove(id, redis).await?;
-            }
+        if let Some(flow) = flow.as_ref()
+            && predicate(flow)
+        {
+            Self::remove(id, redis).await?;
         }
         Ok(flow)
     }

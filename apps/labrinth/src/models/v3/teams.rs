@@ -56,16 +56,16 @@ impl ProjectPermissions {
             return Some(ProjectPermissions::all());
         }
 
-        if let Some(member) = project_team_member {
-            if member.accepted {
-                return Some(member.permissions);
-            }
+        if let Some(member) = project_team_member
+            && member.accepted
+        {
+            return Some(member.permissions);
         }
 
-        if let Some(member) = organization_team_member {
-            if member.accepted {
-                return Some(member.permissions);
-            }
+        if let Some(member) = organization_team_member
+            && member.accepted
+        {
+            return Some(member.permissions);
         }
 
         if role.is_mod() {
@@ -112,10 +112,10 @@ impl OrganizationPermissions {
             return Some(OrganizationPermissions::all());
         }
 
-        if let Some(member) = team_member {
-            if member.accepted {
-                return member.organization_permissions;
-            }
+        if let Some(member) = team_member
+            && member.accepted
+        {
+            return member.organization_permissions;
         }
         if role.is_mod() {
             return Some(

@@ -419,7 +419,7 @@ impl Issue {
                         let comments: Vec<IssueCommentIndex> = comments_index
                             .get(&id.0)
                             .map(|v| v.clone())
-                            .unwrap_or_else(|| vec![]);
+                            .unwrap_or_default();
 
                         acc.insert(
                             id.0,

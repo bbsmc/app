@@ -122,7 +122,8 @@ pub async fn is_authorized_thread(
                 }
 
                 // 检查用户是否是原项目的成员
-                let original_member = sqlx::query!(
+
+                sqlx::query!(
                     "SELECT EXISTS(SELECT 1 FROM mods m INNER JOIN team_members tm ON tm.team_id = m.team_id AND tm.user_id = $2 WHERE m.id = $1)",
                     link.original_project_id,
                     user_id as database::models::ids::UserId,
@@ -130,9 +131,7 @@ pub async fn is_authorized_thread(
                 .fetch_one(pool)
                 .await?
                 .exists
-                .unwrap_or(false);
-
-                original_member
+                .unwrap_or(false)
             } else {
                 false
             }
@@ -354,35 +353,33 @@ pub async fn thread_get(
     .await?
     .1;
 
-    if let Some(mut data) = thread_data {
-        if is_authorized_thread(&data, &user, &pool).await? {
-            let authors = &mut data.members;
+    if let Some(mut data) = thread_data
+        && is_authorized_thread(&data, &user, &pool).await?
+    {
+        let authors = &mut data.members;
 
-            authors.append(
-                &mut data
-                    .messages
-                    .iter()
-                    .filter_map(|x| {
-                        if x.hide_identity && !user.role.is_mod() {
-                            None
-                        } else {
-                            x.author_id
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            );
+        authors.append(
+            &mut data
+                .messages
+                .iter()
+                .filter_map(|x| {
+                    if x.hide_identity && !user.role.is_mod() {
+                        None
+                    } else {
+                        x.author_id
+                    }
+                })
+                .collect::<Vec<_>>(),
+        );
 
-            let users: Vec<User> =
-                database::models::User::get_many_ids(authors, &**pool, &redis)
-                    .await?
-                    .into_iter()
-                    .map(From::from)
-                    .collect();
+        let users: Vec<User> =
+            database::models::User::get_many_ids(authors, &**pool, &redis)
+                .await?
+                .into_iter()
+                .map(From::from)
+                .collect();
 
-            return Ok(
-                HttpResponse::Ok().json(Thread::from(data, users, &user))
-            );
-        }
+        return Ok(HttpResponse::Ok().json(Thread::from(data, users, &user)));
     }
     Err(ApiError::NotFound)
 }
@@ -457,11 +454,11 @@ pub async fn thread_send_message(
     // 申诉线程例外：被封禁的用户仍需能够与管理员沟通申诉
     if let Some(ref thread) = thread_for_ban_check {
         if thread.type_ != crate::models::threads::ThreadType::BanAppeal {
-            check_forum_ban(&user, &**pool).await?;
+            check_forum_ban(&user, &pool).await?;
         }
     } else {
         // 线程不存在，稍后会返回 NotFound
-        check_forum_ban(&user, &**pool).await?;
+        check_forum_ban(&user, &pool).await?;
     }
 
     if let MessageBody::Text {
@@ -528,33 +525,31 @@ pub async fn thread_send_message(
                 database::models::Project::get_id(project_id, &**pool, &redis)
                     .await?;
 
-            if let Some(project) = project {
-                if project.inner.status != ProjectStatus::Processing
-                    && user.role.is_mod()
-                {
-                    let members =
-                        database::models::TeamMember::get_from_team_full(
-                            project.inner.team_id,
-                            &**pool,
-                            &redis,
-                        )
-                        .await?;
+            if let Some(project) = project
+                && project.inner.status != ProjectStatus::Processing
+                && user.role.is_mod()
+            {
+                let members = database::models::TeamMember::get_from_team_full(
+                    project.inner.team_id,
+                    &**pool,
+                    &redis,
+                )
+                .await?;
 
-                    NotificationBuilder {
-                        body: NotificationBody::ModeratorMessage {
-                            thread_id: thread.id.into(),
-                            message_id: id.into(),
-                            project_id: Some(project.inner.id.into()),
-                            report_id: None,
-                        },
-                    }
-                    .insert_many(
-                        members.into_iter().map(|x| x.user_id).collect(),
-                        &mut transaction,
-                        &redis,
-                    )
-                    .await?;
+                NotificationBuilder {
+                    body: NotificationBody::ModeratorMessage {
+                        thread_id: thread.id.into(),
+                        message_id: id.into(),
+                        project_id: Some(project.inner.id.into()),
+                        report_id: None,
+                    },
                 }
+                .insert_many(
+                    members.into_iter().map(|x| x.user_id).collect(),
+                    &mut transaction,
+                    &redis,
+                )
+                .await?;
             }
         } else if let Some(report_id) = thread.report_id {
             let report =
@@ -687,7 +682,7 @@ pub async fn message_delete(
     .1;
 
     // 检查用户是否被论坛类封禁
-    check_forum_ban(&user, &**pool).await?;
+    check_forum_ban(&user, &pool).await?;
 
     let result = database::models::ThreadMessage::get(
         info.into_inner().0.into(),

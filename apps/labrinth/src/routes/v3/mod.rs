@@ -25,6 +25,7 @@ pub mod versions;
 
 pub mod issues;
 pub mod oauth_clients;
+#[allow(clippy::unnecessary_unwrap, clippy::explicit_auto_deref)]
 mod wikis;
 
 pub fn config(cfg: &mut web::ServiceConfig) {

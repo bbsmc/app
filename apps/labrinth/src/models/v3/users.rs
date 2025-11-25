@@ -106,7 +106,7 @@ impl From<DBUser> for User {
                 data.active_bans
                     .into_iter()
                     .map(|ban| {
-                        let ban_type = BanType::from_str(&ban.ban_type).unwrap_or_else(|| {
+                        let ban_type = BanType::parse(&ban.ban_type).unwrap_or_else(|| {
                             log::error!("Invalid ban_type '{}' for user, defaulting to Global", ban.ban_type);
                             BanType::Global
                         });
@@ -189,7 +189,7 @@ impl User {
                     .active_bans
                     .into_iter()
                     .map(|ban| {
-                        let ban_type = BanType::from_str(&ban.ban_type).unwrap_or_else(|| {
+                        let ban_type = BanType::parse(&ban.ban_type).unwrap_or_else(|| {
                             log::error!("Invalid ban_type '{}' for user, defaulting to Global", ban.ban_type);
                             BanType::Global
                         });

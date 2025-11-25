@@ -1700,11 +1700,11 @@ pub fn wiki_format(wikis: Vec<Wiki>) -> Vec<WikiDisplays> {
     }
 
     for wiki in wikis {
-        if wiki.id != wiki.parent_wiki_id {
-            if let Some(wk) = wikis_.get_mut(&wiki.parent_wiki_id.0) {
-                wk.child.push(wiki);
-                wk.child.sort_by_key(|x| x.sort_order);
-            }
+        if wiki.id != wiki.parent_wiki_id
+            && let Some(wk) = wikis_.get_mut(&wiki.parent_wiki_id.0)
+        {
+            wk.child.push(wiki);
+            wk.child.sort_by_key(|x| x.sort_order);
         }
     }
     wikis_.into_values().collect()

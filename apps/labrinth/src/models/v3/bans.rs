@@ -43,7 +43,7 @@ impl BanType {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "global" => Some(BanType::Global),
             "resource" => Some(BanType::Resource),
@@ -104,7 +104,7 @@ impl AppealStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "pending" => Some(AppealStatus::Pending),
             "approved" => Some(AppealStatus::Approved),

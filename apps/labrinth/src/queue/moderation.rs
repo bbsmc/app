@@ -370,8 +370,8 @@ impl AutomatedModerationQueue {
                                         for file in
                                         files.iter().filter(|x| x.version_id == version.id.into())
                                         {
-                                            if let Some(hash) = file.hashes.get("sha1") {
-                                                if let Some((index, (sha1, _, file_name, _))) = hashes
+                                            if let Some(hash) = file.hashes.get("sha1")
+                                                && let Some((index, (sha1, _, file_name, _))) = hashes
                                                     .iter()
                                                     .enumerate()
                                                     .find(|(_, (value, _, _, _))| value == hash)
@@ -381,7 +381,6 @@ impl AutomatedModerationQueue {
 
                                                     hashes.remove(index);
                                                 }
-                                            }
                                         }
                                     }
 
@@ -419,12 +418,11 @@ impl AutomatedModerationQueue {
                                         .await?;
 
                                     for row in rows {
-                                        if let Some(sha1) = row.sha1 {
-                                            if let Some((index, (sha1, _, file_name, _))) = hashes.iter().enumerate().find(|(_, (value, _, _, _))| value == &sha1) {
+                                        if let Some(sha1) = row.sha1
+                                            && let Some((index, (sha1, _, file_name, _))) = hashes.iter().enumerate().find(|(_, (value, _, _, _))| value == &sha1) {
                                                 final_hashes.insert(sha1.clone(), IdentifiedFile { file_name: file_name.clone(), status: ApprovalType::from_string(&row.status).unwrap_or(ApprovalType::Unidentified) });
                                                 hashes.remove(index);
                                             }
-                                        }
                                     }
 
                                     if hashes.is_empty() {
@@ -505,8 +503,8 @@ impl AutomatedModerationQueue {
                                     let mut insert_ids = Vec::new();
 
                                     for row in rows {
-                                        if let Some((curse_index, (hash, _flame_id))) = flame_files.iter().enumerate().find(|(_, x)| Some(x.1 as i32) == row.flame_project_id) {
-                                            if let Some((index, (sha1, _, file_name, _))) = hashes.iter().enumerate().find(|(_, (value, _, _, _))| value == hash) {
+                                        if let Some((curse_index, (hash, _flame_id))) = flame_files.iter().enumerate().find(|(_, x)| Some(x.1 as i32) == row.flame_project_id)
+                                            && let Some((index, (sha1, _, file_name, _))) = hashes.iter().enumerate().find(|(_, (value, _, _, _))| value == hash) {
                                                 final_hashes.insert(sha1.clone(), IdentifiedFile {
                                                     file_name: file_name.clone(),
                                                     status: ApprovalType::from_string(&row.status).unwrap_or(ApprovalType::Unidentified),
@@ -518,7 +516,6 @@ impl AutomatedModerationQueue {
                                                 hashes.remove(index);
                                                 flame_files.remove(curse_index);
                                             }
-                                        }
                                     }
 
                                     if !insert_ids.is_empty() && !insert_hashes.is_empty() {
@@ -594,8 +591,8 @@ impl AutomatedModerationQueue {
                                     for (sha1, _pack_file, file_name, _mumur2) in hashes {
                                         let flame_file = flame_files.iter().find(|x| x.0 == sha1);
 
-                                        if let Some((_, flame_project_id)) = flame_file {
-                                            if let Some(project) = flame_projects.iter().find(|x| &x.id == flame_project_id) {
+                                        if let Some((_, flame_project_id)) = flame_file
+                                            && let Some(project) = flame_projects.iter().find(|x| &x.id == flame_project_id) {
                                                 missing_metadata.flame_files.insert(sha1, MissingMetadataFlame {
                                                     title: project.name.clone(),
                                                     file_name,
@@ -605,7 +602,6 @@ impl AutomatedModerationQueue {
 
                                                 continue;
                                             }
-                                        }
 
                                         missing_metadata.unknown_files.insert(sha1, file_name);
                                     }

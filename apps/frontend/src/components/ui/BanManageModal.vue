@@ -21,7 +21,7 @@
               :disabled="!revokeReason.trim() || revoking"
               @click="confirmRevoke"
             >
-              {{ revoking ? '撤销中...' : '确认撤销' }}
+              {{ revoking ? "撤销中..." : "确认撤销" }}
             </button>
           </div>
         </div>
@@ -30,12 +30,8 @@
       <!-- 当前封禁列表 -->
       <div class="ban-section">
         <h3 class="section-title">当前封禁</h3>
-        <div v-if="loading" class="loading-state">
-          加载中...
-        </div>
-        <div v-else-if="bans.length === 0" class="empty-state">
-          该用户当前没有任何封禁
-        </div>
+        <div v-if="loading" class="loading-state">加载中...</div>
+        <div v-else-if="bans.length === 0" class="empty-state">该用户当前没有任何封禁</div>
         <div v-else class="ban-list">
           <div v-for="ban in bans" :key="ban.id" class="ban-item">
             <div class="ban-header">
@@ -46,20 +42,14 @@
                 {{ formatDate(ban.banned_at) }}
               </span>
             </div>
-            <div class="ban-reason">
-              <strong>原因：</strong>{{ ban.reason || '未提供原因' }}
-            </div>
+            <div class="ban-reason"><strong>原因：</strong>{{ ban.reason || "未提供原因" }}</div>
             <div v-if="ban.expires_at" class="ban-expires">
               <strong>过期时间：</strong>{{ formatDate(ban.expires_at) }}
             </div>
             <div v-else class="ban-expires permanent">
               <strong>永久封禁</strong>
             </div>
-            <button
-              class="revoke-btn"
-              :disabled="revoking"
-              @click="startRevoke(ban.id)"
-            >
+            <button class="revoke-btn" :disabled="revoking" @click="startRevoke(ban.id)">
               撤销封禁
             </button>
           </div>
@@ -100,12 +90,8 @@
         </div>
         <div class="form-actions">
           <button class="cancel-btn" @click="hide">取消</button>
-          <button
-            class="submit-btn"
-            :disabled="!canSubmit || submitting"
-            @click="submitBan"
-          >
-            {{ submitting ? '提交中...' : '确认封禁' }}
+          <button class="submit-btn" :disabled="!canSubmit || submitting" @click="submitBan">
+            {{ submitting ? "提交中..." : "确认封禁" }}
           </button>
         </div>
       </div>
@@ -114,9 +100,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import Modal from '~/components/ui/Modal.vue';
-import dayjs from 'dayjs';
+import { ref, computed } from "vue";
+import Modal from "~/components/ui/Modal.vue";
+import dayjs from "dayjs";
 
 const props = defineProps({
   userId: {
@@ -125,7 +111,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['updated']);
+const emit = defineEmits(["updated"]);
 
 const data = useNuxtApp();
 const modal = ref(null);
@@ -139,13 +125,13 @@ const submitting = ref(false);
 // 撤销相关状态
 const showRevokeConfirm = ref(false);
 const revokeBanId = ref(null);
-const revokeReason = ref('');
+const revokeReason = ref("");
 
 // 新封禁表单
 const newBan = ref({
-  ban_type: 'resource',
-  reason: '',
-  duration: '7d',
+  ban_type: "resource",
+  reason: "",
+  duration: "7d",
 });
 
 // 计算属性
@@ -171,14 +157,14 @@ async function fetchBans() {
     });
     // 后端返回分页结构 { bans: [...], total, page, limit }
     // 只显示活跃的封禁
-    bans.value = (result?.bans || []).filter(ban => ban.is_active);
+    bans.value = (result?.bans || []).filter((ban) => ban.is_active);
   } catch (err) {
-    console.error('获取封禁列表失败:', err);
+    console.error("获取封禁列表失败:", err);
     data.$notify({
-      group: 'main',
-      title: '错误',
-      text: '获取封禁列表失败',
-      type: 'error',
+      group: "main",
+      title: "错误",
+      text: "获取封禁列表失败",
+      type: "error",
     });
   } finally {
     loading.value = false;
@@ -187,14 +173,14 @@ async function fetchBans() {
 
 function startRevoke(banId) {
   revokeBanId.value = banId;
-  revokeReason.value = '';
+  revokeReason.value = "";
   showRevokeConfirm.value = true;
 }
 
 function cancelRevoke() {
   showRevokeConfirm.value = false;
   revokeBanId.value = null;
-  revokeReason.value = '';
+  revokeReason.value = "";
 }
 
 async function confirmRevoke() {
@@ -204,28 +190,28 @@ async function confirmRevoke() {
   try {
     await useBaseFetch(`bans/${revokeBanId.value}`, {
       apiVersion: 3,
-      method: 'DELETE',
+      method: "DELETE",
       body: {
         reason: revokeReason.value,
         notify_user: true,
       },
     });
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '封禁已撤销',
-      type: 'success',
+      group: "main",
+      title: "成功",
+      text: "封禁已撤销",
+      type: "success",
     });
     cancelRevoke();
-    emit('updated');
+    emit("updated");
     hide(); // 关闭主弹窗
   } catch (err) {
-    console.error('撤销封禁失败:', err);
+    console.error("撤销封禁失败:", err);
     data.$notify({
-      group: 'main',
-      title: '错误',
-      text: err.data?.description || '撤销封禁失败',
-      type: 'error',
+      group: "main",
+      title: "错误",
+      text: err.data?.description || "撤销封禁失败",
+      type: "error",
     });
   } finally {
     revoking.value = null;
@@ -237,22 +223,22 @@ async function submitBan() {
   try {
     // 计算过期时间
     let expires_at = null;
-    if (newBan.value.duration !== 'permanent') {
+    if (newBan.value.duration !== "permanent") {
       const durationMap = {
-        '1d': 1,
-        '3d': 3,
-        '7d': 7,
-        '30d': 30,
-        '90d': 90,
-        '365d': 365,
+        "1d": 1,
+        "3d": 3,
+        "7d": 7,
+        "30d": 30,
+        "90d": 90,
+        "365d": 365,
       };
       const days = durationMap[newBan.value.duration];
-      expires_at = dayjs().add(days, 'day').toISOString();
+      expires_at = dayjs().add(days, "day").toISOString();
     }
 
     await useBaseFetch(`bans/user/${props.userId}`, {
       apiVersion: 3,
-      method: 'POST',
+      method: "POST",
       body: {
         ban_type: newBan.value.ban_type,
         reason: newBan.value.reason,
@@ -261,28 +247,28 @@ async function submitBan() {
     });
 
     data.$notify({
-      group: 'main',
-      title: '成功',
-      text: '封禁已添加',
-      type: 'success',
+      group: "main",
+      title: "成功",
+      text: "封禁已添加",
+      type: "success",
     });
 
     // 重置表单
     newBan.value = {
-      ban_type: 'resource',
-      reason: '',
-      duration: '7d',
+      ban_type: "resource",
+      reason: "",
+      duration: "7d",
     };
 
-    emit('updated');
+    emit("updated");
     hide(); // 关闭主弹窗
   } catch (err) {
-    console.error('添加封禁失败:', err);
+    console.error("添加封禁失败:", err);
     data.$notify({
-      group: 'main',
-      title: '错误',
-      text: err.data?.description || '添加封禁失败',
-      type: 'error',
+      group: "main",
+      title: "错误",
+      text: err.data?.description || "添加封禁失败",
+      type: "error",
     });
   } finally {
     submitting.value = false;
@@ -291,9 +277,9 @@ async function submitBan() {
 
 function getBanTypeName(type) {
   const names = {
-    global: '全局封禁',
-    resource: '资源封禁',
-    forum: '论坛封禁',
+    global: "全局封禁",
+    resource: "资源封禁",
+    forum: "论坛封禁",
   };
   return names[type] || type;
 }
@@ -303,7 +289,7 @@ function getBanTypeClass(type) {
 }
 
 function formatDate(dateStr) {
-  return dayjs(dateStr).format('YYYY-MM-DD HH:mm');
+  return dayjs(dateStr).format("YYYY-MM-DD HH:mm");
 }
 
 // 暴露方法给父组件
