@@ -288,7 +288,7 @@ impl From<DBNotification> for Notification {
                             "您已被{}。原因：{}{}",
                             ban_type_display, reason, expires_text
                         ),
-                        "/settings/bans".to_string(),
+                        "/settings/account".to_string(),
                         vec![],
                     )
                 }
@@ -307,7 +307,7 @@ impl From<DBNotification> for Notification {
                             "您的{}已被解除。原因：{}",
                             ban_type_display, reason
                         ),
-                        "/settings/bans".to_string(),
+                        "/settings/account".to_string(),
                         vec![],
                     )
                 }
