@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                     SELECT DISTINCT discussion_id, p.id as id, p.created_at\n                    FROM discussions d\n                    INNER JOIN posts p ON d.id = p.discussion_id\n                    WHERE d.deleted = false and d.id = ANY($1) \n                    ORDER BY p.created_at ASC\n                    ",
+  "query": "\n                     SELECT DISTINCT discussion_id, p.id as id, p.created_at\n                    FROM discussions d\n                    INNER JOIN posts p ON d.id = p.discussion_id\n                    WHERE d.deleted = false and d.id = ANY($1)\n                    ORDER BY p.created_at ASC\n                    ",
   "describe": {
     "columns": [
       {
@@ -30,5 +30,5 @@
       false
     ]
   },
-  "hash": "0ae51467fbc9fd01b8e40da9c22aa2f765bf387e8ad6fcc68da7658829d35769"
+  "hash": "f7e024a2908f9e163594f705691dda0207f569338c331b39c1e273fe122d2c25"
 }

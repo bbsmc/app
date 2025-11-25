@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                            SELECT\n                                ub.user_id,\n                                ub.id,\n                                ub.ban_type,\n                                ub.reason,\n                                ub.banned_at,\n                                ub.expires_at,\n                                uba.id as appeal_id,\n                                uba.status as appeal_status,\n                                uba.thread_id as appeal_thread_id\n                            FROM user_bans ub\n                            LEFT JOIN user_ban_appeals uba ON uba.ban_id = ub.id\n                            WHERE ub.user_id = ANY($1)\n                              AND ub.is_active = true\n                              AND (ub.expires_at IS NULL OR ub.expires_at > NOW())\n                            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "ban_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "banned_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "appeal_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "appeal_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "appeal_thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "1637a1c3628426f73dabb1a545ae7ce910f02b9f628cbaaddd39b13e91620ef7"
+}

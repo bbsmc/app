@@ -86,6 +86,8 @@ pub fn root_config(cfg: &mut web::ServiceConfig) {
 pub enum ApiError {
     #[error("运行环境错误")]
     Env(#[from] dotenvy::Error),
+    #[error("您已被封禁：{0}")]
+    Banned(String),
     #[error("上传文件时出错： {0}")]
     FileHosting(#[from] FileHostingError),
     #[error("数据库错误: {0}")]
@@ -161,6 +163,7 @@ impl ApiError {
         crate::models::error::ApiError {
             error: match self {
                 ApiError::Env(..) => "environment_error",
+                ApiError::Banned(..) => "user_banned",
                 ApiError::SqlxDatabase(..) => "database_error",
                 ApiError::Database(..) => "database_error",
                 ApiError::Authentication(..) => "unauthorized",
@@ -203,6 +206,7 @@ impl actix_web::ResponseError for ApiError {
     fn status_code(&self) -> StatusCode {
         match self {
             ApiError::Env(..) => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::Banned(..) => StatusCode::FORBIDDEN,
             ApiError::Database(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::SqlxDatabase(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Clickhouse(..) => StatusCode::INTERNAL_SERVER_ERROR,

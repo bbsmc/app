@@ -1,11 +1,11 @@
-use crate::auth::checks::is_visible_project;
-use crate::auth::{get_user_from_headers, AuthenticationError};
+use crate::auth::checks::{check_forum_ban, is_visible_project};
+use crate::auth::{AuthenticationError, get_user_from_headers};
 use crate::database;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::wiki_item::{WikiDisplays, Wikis};
 use crate::database::models::{
-    generate_wiki_cache_id, generate_wiki_id, user_item, User, UserId, Wiki,
-    WikiCache, WikiCacheId, WikiId,
+    User, UserId, Wiki, WikiCache, WikiCacheId, WikiId, generate_wiki_cache_id,
+    generate_wiki_id, user_item,
 };
 use crate::database::redis::RedisPool;
 use crate::models::ids::ProjectId;
@@ -13,10 +13,10 @@ use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
 use crate::models::teams::ProjectPermissions;
 use crate::queue::session::AuthQueue;
-use crate::routes::v3::users::user_get_;
 use crate::routes::ApiError;
+use crate::routes::v3::users::user_get_;
 use crate::util::validate::validation_errors_to_string;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -187,6 +187,10 @@ pub async fn wiki_edit(
                 AuthenticationError::InvalidCredentials,
             ));
         }
+
+        // 检查论坛封禁
+        check_forum_ban(user_option.as_ref().unwrap(), &**pool).await?;
+
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?
         {
@@ -267,6 +271,10 @@ pub async fn wiki_star(
                 AuthenticationError::InvalidCredentials,
             ));
         }
+
+        // 检查论坛封禁
+        check_forum_ban(user_option.as_ref().unwrap(), &**pool).await?;
+
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?
         {
@@ -349,6 +357,10 @@ pub async fn wiki_create(
                 AuthenticationError::InvalidCredentials,
             ));
         }
+
+        // 检查论坛封禁
+        check_forum_ban(user_option.as_ref().unwrap(), &**pool).await?;
+
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?
         {
@@ -462,6 +474,10 @@ pub async fn wiki_edit_start(
                 AuthenticationError::InvalidCredentials,
             ));
         }
+        // 检查用户是否被论坛类封禁
+        let user = user_option.as_ref().unwrap();
+        check_forum_ban(user, &**pool).await?;
+
         if Utc::now() < user_option.as_ref().unwrap().wiki_ban_time {
             return Err(ApiError::WikiBan(
                 user_option
@@ -1147,6 +1163,11 @@ pub async fn wiki_submit(
             AuthenticationError::InvalidCredentials,
         ));
     }
+
+    // 检查用户是否被论坛类封禁
+    let user = user_option.as_ref().unwrap();
+    check_forum_ban(user, &**pool).await?;
+
     if let Some(project) = result {
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?
@@ -1526,6 +1547,11 @@ pub async fn wiki_submit_again(
             AuthenticationError::InvalidCredentials,
         ));
     }
+
+    // 检查用户是否被论坛类封禁
+    let user = user_option.as_ref().unwrap();
+    check_forum_ban(user, &**pool).await?;
+
     if let Some(project) = result {
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?

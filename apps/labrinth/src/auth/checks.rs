@@ -1,9 +1,9 @@
 use crate::database;
+use crate::database::models::Collection;
 use crate::database::models::project_item::QueryProject;
 use crate::database::models::version_item::QueryVersion;
-use crate::database::models::Collection;
 use crate::database::redis::RedisPool;
-use crate::database::{models, Project, Version};
+use crate::database::{Project, Version, models};
 use crate::models::users::User;
 use crate::routes::ApiError;
 use itertools::Itertools;
@@ -369,4 +369,84 @@ pub async fn filter_visible_collections(
     }
 
     Ok(return_collections)
+}
+
+// ==================== 用户封禁检查 ====================
+
+/// 检查用户是否被封禁（直接查询数据库，不用缓存）
+///
+/// # 参数
+/// - `user_id`: 用户ID
+/// - `ban_type`: 需要检查的封禁类型
+/// - `pool`: 数据库连接池
+///
+/// # 返回
+/// - `Ok(())`: 用户未被封禁
+/// - `Err(ApiError::Banned(...))`: 用户被封禁
+async fn check_user_ban_direct(
+    user_id: models::ids::UserId,
+    ban_type: &str,
+    pool: &PgPool,
+) -> Result<(), ApiError> {
+    // 直接查询数据库，不使用缓存（避免锁问题）
+    let ban_exists = sqlx::query!(
+        "SELECT EXISTS(
+            SELECT 1 FROM user_bans
+            WHERE user_id = $1
+            AND ban_type = $2
+            AND is_active = true
+            AND (expires_at IS NULL OR expires_at > NOW())
+        ) as exists",
+        user_id.0 as i64,
+        ban_type
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if ban_exists.exists.unwrap_or(false) {
+        let message = match ban_type {
+            "global" => {
+                "您的账号已被全局封禁，无法执行任何操作。如有疑问，请提交申诉。"
+            }
+            "resource" => {
+                "您已被禁止资源操作（创建/编辑/删除项目、上传版本等）。如有疑问，请提交申诉。"
+            }
+            "forum" => {
+                "您已被禁止社交互动（评论、发帖、编辑百科、发送消息等）。如有疑问，请提交申诉。"
+            }
+            _ => "您的账号已被封禁。如有疑问，请提交申诉。",
+        };
+        return Err(ApiError::Banned(message.to_string()));
+    }
+    Ok(())
+}
+
+/// 检查用户是否被资源类封禁
+///
+/// 适用于：创建/编辑/删除项目、上传版本、团队管理等操作
+pub async fn check_resource_ban(
+    user: &User,
+    pool: &PgPool,
+) -> Result<(), ApiError> {
+    check_user_ban_direct(user.id.into(), "resource", pool).await
+}
+
+/// 检查用户是否被论坛类封禁
+///
+/// 适用于：评论、发帖、百科编辑、发送消息、举报等操作
+pub async fn check_forum_ban(
+    user: &User,
+    pool: &PgPool,
+) -> Result<(), ApiError> {
+    check_user_ban_direct(user.id.into(), "forum", pool).await
+}
+
+/// 检查用户是否被全局封禁
+///
+/// 适用于：登录验证、敏感操作等
+pub async fn check_global_ban(
+    user: &User,
+    pool: &PgPool,
+) -> Result<(), ApiError> {
+    check_user_ban_direct(user.id.into(), "global", pool).await
 }

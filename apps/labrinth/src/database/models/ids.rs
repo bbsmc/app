@@ -309,6 +309,32 @@ generate_ids!(
     "SELECT EXISTS(SELECT 1 FROM issue_comments WHERE id=$1)",
     IssuesCommentsId
 );
+
+// 用户封禁相关 ID 生成器
+generate_ids!(
+    pub generate_user_ban_id,
+    UserBanId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM user_bans WHERE id=$1)",
+    UserBanId
+);
+
+generate_ids!(
+    pub generate_ban_history_id,
+    BanHistoryId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM user_ban_history WHERE id=$1)",
+    BanHistoryId
+);
+
+generate_ids!(
+    pub generate_ban_appeal_id,
+    BanAppealId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM user_ban_appeals WHERE id=$1)",
+    BanAppealId
+);
+
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Type, Hash, Serialize, Deserialize,
 )]
@@ -842,5 +868,58 @@ impl From<ids::IssuesCommentsId> for IssuesCommentsId {
 impl From<IssuesCommentsId> for ids::IssuesCommentsId {
     fn from(id: IssuesCommentsId) -> Self {
         ids::IssuesCommentsId(id.0 as u64)
+    }
+}
+
+// 用户封禁相关 ID 类型
+#[derive(
+    Copy, Clone, Debug, Type, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[sqlx(transparent)]
+pub struct UserBanId(pub i64);
+
+#[derive(
+    Copy, Clone, Debug, Type, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[sqlx(transparent)]
+pub struct BanHistoryId(pub i64);
+
+#[derive(
+    Copy, Clone, Debug, Type, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[sqlx(transparent)]
+pub struct BanAppealId(pub i64);
+
+// 用户封禁 ID 转换实现
+impl From<ids::UserBanId> for UserBanId {
+    fn from(id: ids::UserBanId) -> Self {
+        UserBanId(id.0 as i64)
+    }
+}
+impl From<UserBanId> for ids::UserBanId {
+    fn from(id: UserBanId) -> Self {
+        ids::UserBanId(id.0 as u64)
+    }
+}
+
+impl From<ids::BanHistoryId> for BanHistoryId {
+    fn from(id: ids::BanHistoryId) -> Self {
+        BanHistoryId(id.0 as i64)
+    }
+}
+impl From<BanHistoryId> for ids::BanHistoryId {
+    fn from(id: BanHistoryId) -> Self {
+        ids::BanHistoryId(id.0 as u64)
+    }
+}
+
+impl From<ids::BanAppealId> for BanAppealId {
+    fn from(id: ids::BanAppealId) -> Self {
+        BanAppealId(id.0 as i64)
+    }
+}
+impl From<BanAppealId> for ids::BanAppealId {
+    fn from(id: BanAppealId) -> Self {
+        ids::BanAppealId(id.0 as u64)
     }
 }

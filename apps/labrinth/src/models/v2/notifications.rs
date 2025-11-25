@@ -6,6 +6,7 @@ use crate::models::{
     },
     notifications::{Notification, NotificationAction, NotificationBody},
     projects::ProjectStatus,
+    v3::bans::{BanAppealId, UserBanId},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -88,6 +89,32 @@ pub enum LegacyNotificationBody {
         project_id: Option<ProjectId>,
         sender: String,
     },
+    /// 用户被封禁通知
+    UserBanned {
+        ban_id: UserBanId,
+        ban_type: String,
+        reason: String,
+        expires_at: Option<DateTime<Utc>>,
+    },
+    /// 用户封禁解除通知
+    UserUnbanned {
+        ban_id: UserBanId,
+        ban_type: String,
+        reason: String,
+    },
+    /// 申诉审核结果通知
+    AppealReviewed {
+        appeal_id: BanAppealId,
+        ban_id: UserBanId,
+        status: String,
+        review_notes: Option<String>,
+    },
+    /// 申诉线程有新消息
+    BanAppealMessage {
+        appeal_id: BanAppealId,
+        thread_id: ThreadId,
+        message_id: ThreadMessageId,
+    },
     Unknown,
 }
 
@@ -113,6 +140,18 @@ impl LegacyNotification {
                 Some("wiki_cache".to_string())
             }
             NotificationBody::Forum { .. } => Some("forum".to_string()),
+            NotificationBody::UserBanned { .. } => {
+                Some("user_banned".to_string())
+            }
+            NotificationBody::UserUnbanned { .. } => {
+                Some("user_unbanned".to_string())
+            }
+            NotificationBody::AppealReviewed { .. } => {
+                Some("appeal_reviewed".to_string())
+            }
+            NotificationBody::BanAppealMessage { .. } => {
+                Some("ban_appeal_message".to_string())
+            }
             NotificationBody::LegacyMarkdown {
                 notification_type, ..
             } => notification_type.clone(),
@@ -209,6 +248,46 @@ impl LegacyNotification {
                 number_of_posts,
                 project_id,
                 sender,
+            },
+            NotificationBody::UserBanned {
+                ban_id,
+                ban_type,
+                reason,
+                expires_at,
+            } => LegacyNotificationBody::UserBanned {
+                ban_id,
+                ban_type,
+                reason,
+                expires_at,
+            },
+            NotificationBody::UserUnbanned {
+                ban_id,
+                ban_type,
+                reason,
+            } => LegacyNotificationBody::UserUnbanned {
+                ban_id,
+                ban_type,
+                reason,
+            },
+            NotificationBody::AppealReviewed {
+                appeal_id,
+                ban_id,
+                status,
+                review_notes,
+            } => LegacyNotificationBody::AppealReviewed {
+                appeal_id,
+                ban_id,
+                status,
+                review_notes,
+            },
+            NotificationBody::BanAppealMessage {
+                appeal_id,
+                thread_id,
+                message_id,
+            } => LegacyNotificationBody::BanAppealMessage {
+                appeal_id,
+                thread_id,
+                message_id,
             },
             NotificationBody::Unknown => LegacyNotificationBody::Unknown,
         };

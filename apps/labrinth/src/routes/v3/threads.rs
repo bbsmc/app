@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::auth::get_user_from_headers;
+use crate::auth::{check_forum_ban, get_user_from_headers};
 use crate::database;
 use crate::database::models::image_item;
 use crate::database::models::notification_item::NotificationBuilder;
@@ -16,7 +16,7 @@ use crate::models::threads::{MessageBody, Thread, ThreadId, ThreadType};
 use crate::models::users::User;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use futures::TryStreamExt;
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -133,6 +133,23 @@ pub async fn is_authorized_thread(
                 .unwrap_or(false);
 
                 original_member
+            } else {
+                false
+            }
+        }
+        ThreadType::BanAppeal => {
+            // 封禁申诉线程：申诉人可以访问
+            if let Some(ban_appeal_id) = thread.ban_appeal_id {
+                let appeal_exists = sqlx::query!(
+                    "SELECT EXISTS(SELECT 1 FROM user_ban_appeals WHERE id = $1 AND user_id = $2)",
+                    ban_appeal_id as database::models::ids::BanAppealId,
+                    user_id as database::models::ids::UserId,
+                )
+                .fetch_one(pool)
+                .await?
+                .exists;
+
+                appeal_exists.unwrap_or(false)
             } else {
                 false
             }
@@ -432,6 +449,21 @@ pub async fn thread_send_message(
 
     let string: database::models::ThreadId = info.into_inner().0.into();
 
+    // 先获取线程，检查是否是申诉线程
+    let thread_for_ban_check =
+        database::models::Thread::get(string, &**pool).await?;
+
+    // 如果不是申诉线程，检查用户是否被论坛类封禁
+    // 申诉线程例外：被封禁的用户仍需能够与管理员沟通申诉
+    if let Some(ref thread) = thread_for_ban_check {
+        if thread.type_ != crate::models::threads::ThreadType::BanAppeal {
+            check_forum_ban(&user, &**pool).await?;
+        }
+    } else {
+        // 线程不存在，稍后会返回 NotFound
+        check_forum_ban(&user, &**pool).await?;
+    }
+
     if let MessageBody::Text {
         body,
         replying_to,
@@ -474,9 +506,8 @@ pub async fn thread_send_message(
         ));
     }
 
-    let result = database::models::Thread::get(string, &**pool).await?;
-
-    if let Some(thread) = result {
+    // 使用之前获取的线程，避免重复查询
+    if let Some(thread) = thread_for_ban_check {
         if !is_authorized_thread(&thread, &user, &pool).await? {
             return Err(ApiError::NotFound);
         }
@@ -548,6 +579,36 @@ pub async fn thread_send_message(
                     }
                     .insert(report.reporter, &mut transaction, &redis)
                     .await?;
+                }
+            }
+        } else if let Some(ban_appeal_id) = thread.ban_appeal_id {
+            // 申诉线程：管理员回复时通知用户
+            if user.role.is_mod() {
+                // 获取申诉信息，找到申诉用户
+                let appeal = sqlx::query!(
+                    "SELECT user_id FROM user_ban_appeals WHERE id = $1",
+                    ban_appeal_id.0
+                )
+                .fetch_optional(&**pool)
+                .await?;
+
+                if let Some(appeal) = appeal {
+                    let appeal_user_id =
+                        database::models::ids::UserId(appeal.user_id);
+                    // 只有当发送者不是申诉用户本人时才发送通知
+                    if user.id != appeal_user_id.into() {
+                        NotificationBuilder {
+                            body: NotificationBody::BanAppealMessage {
+                                appeal_id: crate::models::v3::bans::BanAppealId(
+                                    ban_appeal_id.0 as u64,
+                                ),
+                                thread_id: thread.id.into(),
+                                message_id: id.into(),
+                            },
+                        }
+                        .insert(appeal_user_id, &mut transaction, &redis)
+                        .await?;
+                    }
                 }
             }
         }
@@ -624,6 +685,9 @@ pub async fn message_delete(
     )
     .await?
     .1;
+
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &**pool).await?;
 
     let result = database::models::ThreadMessage::get(
         info.into_inner().0.into(),

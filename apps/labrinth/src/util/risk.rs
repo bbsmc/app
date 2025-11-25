@@ -654,7 +654,14 @@ async fn request(
     let signed_headers_str = "content-type;host;x-content-sha256;x-date";
     let canonical_request_str = format!(
         "{}\n/\n{}\ncontent-type:{}\nhost:{}\nx-content-sha256:{}\nx-date:{}\n\n{}\n{}",
-        method, norm_query(&query), CONTENT_TYPE, HOST, x_content_sha256, date, signed_headers_str, x_content_sha256
+        method,
+        norm_query(&query),
+        CONTENT_TYPE,
+        HOST,
+        x_content_sha256,
+        date,
+        signed_headers_str,
+        x_content_sha256
     );
 
     let hashed_canonical_request = hash_sha256(&canonical_request_str);

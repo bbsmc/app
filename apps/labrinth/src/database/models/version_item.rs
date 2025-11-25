@@ -1,6 +1,6 @@
+use super::DatabaseError;
 use super::ids::*;
 use super::loader_fields::VersionField;
-use super::DatabaseError;
 use crate::database::models::loader_fields::{
     QueryLoaderField, QueryLoaderFieldEnumValue, QueryVersionField,
 };
@@ -50,11 +50,11 @@ pub struct DependencyBuilder {
 
 #[derive(Clone)]
 pub struct VersionLinkBuilder {
-    pub joining_version_id: VersionId,  // 原版本ID（被汉化的版本）
-    pub link_type: String,              // 链接类型
-    pub language_code: String,          // 语言代码
-    pub description: Option<String>,    // 描述
-    pub approval_status: String,        // 审核状态
+    pub joining_version_id: VersionId, // 原版本ID（被汉化的版本）
+    pub link_type: String,             // 链接类型
+    pub language_code: String,         // 语言代码
+    pub description: Option<String>,   // 描述
+    pub approval_status: String,       // 审核状态
 }
 
 impl DependencyBuilder {
@@ -148,7 +148,7 @@ impl VersionLinkBuilder {
 
         if existing_count.count.unwrap_or(0) > 0 {
             return Err(DatabaseError::Database2(
-                "一个翻译版本只能绑定一个原版本".to_string()
+                "一个翻译版本只能绑定一个原版本".to_string(),
             ));
         }
 
@@ -293,7 +293,7 @@ impl VersionBuilder {
             transaction,
         )
         .await?;
-        
+
         VersionLinkBuilder::insert_many(
             version_links,
             self.version_id,
@@ -1143,7 +1143,7 @@ pub struct QueryVersion {
     pub games: Vec<String>,
     pub dependencies: Vec<QueryDependency>,
     pub version_links: Vec<QueryVersionLink>,
-    pub translated_by: Vec<QueryVersionLink>,  // 翻译该版本的其他版本
+    pub translated_by: Vec<QueryVersionLink>, // 翻译该版本的其他版本
     pub disks: Vec<QueryDisk>,
 }
 
@@ -1157,12 +1157,12 @@ pub struct QueryDependency {
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct QueryVersionLink {
-    pub joining_version_id: VersionId,  // 原版本ID（被汉化的版本）
-    pub link_type: String,              // 链接类型
-    pub language_code: String,          // 语言代码
-    pub description: Option<String>,    // 描述
-    pub approval_status: Option<String>,// 审核状态
-    pub thread_id: Option<ThreadId>,    // 消息线程ID
+    pub joining_version_id: VersionId, // 原版本ID（被汉化的版本）
+    pub link_type: String,             // 链接类型
+    pub language_code: String,         // 语言代码
+    pub description: Option<String>,   // 描述
+    pub approval_status: Option<String>, // 审核状态
+    pub thread_id: Option<ThreadId>,   // 消息线程ID
 }
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Validate)]
 pub struct QueryDisk {

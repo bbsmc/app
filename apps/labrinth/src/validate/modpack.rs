@@ -127,7 +127,7 @@ impl super::Validator for ModpackValidator {
                 _ => {
                     return Err(ValidationError::InvalidInput(
                         "无效的包文件路径！".into(),
-                    ))
+                    ));
                 }
             };
         }

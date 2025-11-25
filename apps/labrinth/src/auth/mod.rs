@@ -5,8 +5,14 @@ pub mod templates;
 pub mod validate;
 pub use crate::auth::email::send_email;
 pub use checks::{
-    filter_enlisted_projects_ids, filter_enlisted_version_ids,
-    filter_visible_collections, filter_visible_project_ids,
+    check_forum_ban,
+    check_global_ban,
+    // 封禁检查函数（从 User.active_bans 检查）
+    check_resource_ban,
+    filter_enlisted_projects_ids,
+    filter_enlisted_version_ids,
+    filter_visible_collections,
+    filter_visible_project_ids,
     filter_visible_projects,
 };
 use serde::{Deserialize, Serialize};
@@ -15,8 +21,8 @@ pub use validate::{check_is_moderator_from_headers, get_user_from_headers};
 
 use crate::file_hosting::FileHostingError;
 use crate::models::error::ApiError;
-use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
+use actix_web::http::StatusCode;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -49,6 +55,8 @@ pub enum AuthenticationError {
     SocketError,
     #[error("指定的回调 URL 无效")]
     Url,
+    #[error("您的账号已被全局封禁：{0}")]
+    UserBanned(String),
 }
 
 impl actix_web::ResponseError for AuthenticationError {
@@ -74,6 +82,7 @@ impl actix_web::ResponseError for AuthenticationError {
             }
             AuthenticationError::DuplicateUser => StatusCode::BAD_REQUEST,
             AuthenticationError::SocketError => StatusCode::BAD_REQUEST,
+            AuthenticationError::UserBanned(..) => StatusCode::FORBIDDEN,
         }
     }
 
@@ -102,6 +111,7 @@ impl AuthenticationError {
             AuthenticationError::FileHosting(..) => "file_hosting",
             AuthenticationError::DuplicateUser => "duplicate_user",
             AuthenticationError::SocketError => "socket",
+            AuthenticationError::UserBanned(..) => "user_banned",
         }
     }
 }

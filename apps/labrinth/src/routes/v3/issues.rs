@@ -1,10 +1,10 @@
 use crate::auth::email::send_email;
-use crate::auth::{get_user_from_headers, AuthenticationError};
+use crate::auth::{AuthenticationError, get_user_from_headers};
 use crate::database::models::ids::{
-    generate_issues_comments_id, generate_issues_id, IssuesCommentsId, IssuesId,
+    IssuesCommentsId, IssuesId, generate_issues_comments_id, generate_issues_id,
 };
 use crate::database::models::issues::{
-    Issue, IssueCommentBuilder, IssueCommentQuery, IssueLabel, ISSUE_NAMESPACE,
+    ISSUE_NAMESPACE, Issue, IssueCommentBuilder, IssueCommentQuery, IssueLabel,
 };
 use crate::database::models::{ProjectId, UserId};
 use crate::database::redis::RedisPool;
@@ -21,7 +21,7 @@ use crate::{
     },
     routes::ApiError,
 };
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use serde_json::json;
 use sqlx::PgPool;

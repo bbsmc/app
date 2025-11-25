@@ -2,6 +2,19 @@
   <div v-if="user" class="experimental-styles-within">
     <ModalCreation ref="modal_creation" />
     <CollectionCreateModal ref="modal_collection_creation" />
+    <BanManageModal ref="ban_manage_modal" :user-id="user.id" @updated="refreshUserData" />
+
+    <!-- 封禁横幅 -->
+    <div v-if="user.active_bans && user.active_bans.length > 0" class="ban-banner">
+      <div class="ban-banner-content">
+        <UserXIcon class="ban-banner-icon" />
+        <div class="ban-banner-text">
+          <strong>该用户已被封禁</strong>
+          <span v-if="getMainBanInfo">{{ getMainBanInfo }}</span>
+        </div>
+      </div>
+    </div>
+
     <div class="new-page sidebar" :class="{ 'alt-layout': cosmetics.leftContentLayout }">
       <div class="normal-page__header py-4">
         <ContentPageHeader>
@@ -9,7 +22,22 @@
             <Avatar :src="user.avatar_url" :alt="user.username" size="96px" circle />
           </template>
           <template #title>
-            {{ user.username }}
+            <span class="user-title-wrapper">
+              {{ user.username }}
+              <span
+                v-if="
+                  user.active_bans &&
+                  user.active_bans.length > 0 &&
+                  auth.user &&
+                  tags.staffRoles.includes(auth.user.role)
+                "
+                v-tooltip="getBanTooltip(user.active_bans)"
+                class="ban-badge"
+              >
+                <UserXIcon class="ban-icon" />
+                已封禁
+              </span>
+            </span>
           </template>
           <template #summary>
             {{ user.bio ? user.bio : projects.length === 0 ? "BBSMC 用户" : "BBSMC 创作者" }}
@@ -54,6 +82,16 @@
               <OverflowMenu
                 :options="[
                   {
+                    id: 'manage-bans',
+                    action: () => openBanModal(),
+                    color: 'red',
+                    hoverOnly: true,
+                    shown:
+                      auth.user &&
+                      tags.staffRoles.includes(auth.user.role) &&
+                      auth.user.id !== user.id,
+                  },
+                  {
                     id: 'manage-projects',
                     action: () => navigateTo('/dashboard/projects'),
                     hoverOnly: true,
@@ -72,6 +110,10 @@
                 aria-label="More options"
               >
                 <MoreVerticalIcon aria-hidden="true" />
+                <template #manage-bans>
+                  <UserXIcon aria-hidden="true" />
+                  管理封禁
+                </template>
                 <template #manage-projects>
                   <BoxIcon aria-hidden="true" />
                   {{ formatMessage(messages.profileManageProjectsButton) }}
@@ -272,6 +314,8 @@ import WorldIcon from "~/assets/images/utils/world.svg?component";
 import ModalCreation from "~/components/ui/ModalCreation.vue";
 import Avatar from "~/components/ui/Avatar.vue";
 import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
+import BanManageModal from "~/components/ui/BanManageModal.vue";
+import UserXIcon from "~/assets/images/utils/user-x.svg?component";
 
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -505,6 +549,64 @@ async function copyId() {
   await navigator.clipboard.writeText(user.value.id);
 }
 
+// 封禁管理模态框引用
+const ban_manage_modal = ref(null);
+
+function openBanModal() {
+  ban_manage_modal.value?.show();
+}
+
+async function refreshUserData() {
+  // 重新获取用户数据以刷新封禁状态
+  try {
+    const updatedUser = await useBaseFetch(`user/${route.params.id}`);
+    if (updatedUser) {
+      user.value = updatedUser;
+    }
+  } catch (err) {
+    console.error("刷新用户数据失败:", err);
+  }
+}
+
+function getBanTooltip(bans) {
+  if (!bans || bans.length === 0) return "";
+  const banTypeNames = {
+    global: "全局封禁",
+    resource: "资源封禁",
+    forum: "论坛封禁",
+  };
+  const banList = bans.map((ban) => {
+    const typeName = banTypeNames[ban.ban_type] || ban.ban_type;
+    return `${typeName}: ${ban.reason || "未提供原因"}`;
+  });
+  return banList.join("\n");
+}
+
+// 获取主要封禁信息用于横幅显示
+const getMainBanInfo = computed(() => {
+  if (!user.value?.active_bans || user.value.active_bans.length === 0) return "";
+
+  const banTypeNames = {
+    global: "全局封禁",
+    resource: "资源封禁",
+    forum: "论坛封禁",
+  };
+
+  // 优先显示全局封禁，其次资源封禁，最后论坛封禁
+  const priorityOrder = ["global", "resource", "forum"];
+  const sortedBans = [...user.value.active_bans].sort((a, b) => {
+    return priorityOrder.indexOf(a.ban_type) - priorityOrder.indexOf(b.ban_type);
+  });
+
+  const mainBan = sortedBans[0];
+  const typeName = banTypeNames[mainBan.ban_type] || mainBan.ban_type;
+
+  if (user.value.active_bans.length > 1) {
+    return `${typeName} 等 ${user.value.active_bans.length} 项封禁`;
+  }
+  return typeName;
+});
+
 const navLinks = computed(() => [
   {
     label: formatMessage(commonMessages.allProjectType),
@@ -594,6 +696,93 @@ export default defineNuxtComponent({
         font-size: var(--font-size-lg);
         margin: 0;
       }
+    }
+  }
+}
+
+.user-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ban-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-red-bg, rgba(239, 68, 68, 0.1));
+  color: var(--color-red, #ef4444);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ban-icon {
+  width: 14px;
+  height: 14px;
+}
+
+// 封禁横幅
+.ban-banner {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.ban-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.ban-banner-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.ban-banner-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  strong {
+    font-weight: 600;
+  }
+
+  span {
+    opacity: 0.9;
+    font-size: 0.9em;
+
+    &::before {
+      content: "·";
+      margin-right: 0.5rem;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .ban-banner {
+    border-radius: 0;
+    margin-bottom: 0;
+  }
+
+  .ban-banner-text {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+
+    span::before {
+      display: none;
     }
   }
 }

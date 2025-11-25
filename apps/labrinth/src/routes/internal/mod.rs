@@ -6,8 +6,8 @@ pub mod moderation;
 pub mod pats;
 pub mod session;
 
-use super::v3::oauth_clients;
 pub use super::ApiError;
+use super::v3::oauth_clients;
 use crate::util::cors::default_cors;
 
 pub fn config(cfg: &mut actix_web::web::ServiceConfig) {

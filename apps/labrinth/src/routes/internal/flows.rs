@@ -1,6 +1,6 @@
 use crate::auth::email::send_email;
 use crate::auth::validate::get_user_record_from_bearer_token;
-use crate::auth::{get_user_from_headers, AuthProvider, AuthenticationError};
+use crate::auth::{AuthProvider, AuthenticationError, get_user_from_headers};
 use crate::database::models::flow_item::Flow;
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
@@ -10,24 +10,24 @@ use crate::models::pats::Scopes;
 use crate::models::users::{Badges, Role};
 use crate::queue::session::AuthQueue;
 use crate::queue::socket::ActiveSockets;
-use crate::routes::internal::session::issue_session;
 use crate::routes::ApiError;
+use crate::routes::internal::session::issue_session;
 use crate::util::captcha::check_hcaptcha;
 use crate::util::env::parse_strings_from_var;
 use crate::util::ext::get_image_ext;
 use crate::util::img::upload_image_optimized;
 use crate::util::phone::send_phone_number_code;
-use crate::util::validate::{validation_errors_to_string, RE_URL_SAFE};
-use actix_web::web::{scope, Data, Payload, Query, ServiceConfig};
-use actix_web::{delete, get, patch, post, web, HttpRequest, HttpResponse};
+use crate::util::validate::{RE_URL_SAFE, validation_errors_to_string};
+use actix_web::web::{Data, Payload, Query, ServiceConfig, scope};
+use actix_web::{HttpRequest, HttpResponse, delete, get, patch, post, web};
 use actix_ws::Closed;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use base64::Engine;
 use chrono::{Duration, Utc};
 use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
 use reqwest::header::AUTHORIZATION;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
@@ -245,6 +245,7 @@ impl TempUser {
                 wiki_ban_time: Default::default(),
                 wiki_overtake_count: 0,
                 phone_number: None,
+                active_bans: vec![],
             }
             .insert(transaction)
             .await?;
@@ -271,29 +272,31 @@ impl AuthProvider {
 
                 format!(
                     "https://github.com/login/oauth/authorize?client_id={}&prompt=select_account&state={}&scope=read%3Auser%20user%3Aemail&redirect_uri={}",
-                    client_id,
-                    state,
-                    redirect_uri,
+                    client_id, state, redirect_uri,
                 )
             }
             AuthProvider::Discord => {
                 let client_id = dotenvy::var("DISCORD_CLIENT_ID")?;
 
-                format!("https://discord.com/api/oauth2/authorize?client_id={}&state={}&response_type=code&scope=identify%20email&redirect_uri={}", client_id, state, redirect_uri)
+                format!(
+                    "https://discord.com/api/oauth2/authorize?client_id={}&state={}&response_type=code&scope=identify%20email&redirect_uri={}",
+                    client_id, state, redirect_uri
+                )
             }
             AuthProvider::Microsoft => {
                 let client_id = dotenvy::var("MICROSOFT_CLIENT_ID")?;
 
-                format!("https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&scope=user.read&state={}&prompt=select_account&redirect_uri={}", client_id, state, redirect_uri)
+                format!(
+                    "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&scope=user.read&state={}&prompt=select_account&redirect_uri={}",
+                    client_id, state, redirect_uri
+                )
             }
             AuthProvider::GitLab => {
                 let client_id = dotenvy::var("GITLAB_CLIENT_ID")?;
 
                 format!(
                     "https://gitlab.com/oauth/authorize?client_id={}&state={}&scope=read_user+profile+email&response_type=code&redirect_uri={}",
-                    client_id,
-                    state,
-                    redirect_uri,
+                    client_id, state, redirect_uri,
                 )
             }
             AuthProvider::Google => {
@@ -303,7 +306,9 @@ impl AuthProvider {
                     "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&state={}&scope={}&response_type=code&redirect_uri={}",
                     client_id,
                     state,
-                    urlencoding::encode("https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"),
+                    urlencoding::encode(
+                        "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+                    ),
                     redirect_uri,
                 )
             }
@@ -312,7 +317,9 @@ impl AuthProvider {
                     "https://steamcommunity.com/openid/login?openid.ns={}&openid.mode={}&openid.return_to={}{}{}&openid.realm={}&openid.identity={}&openid.claimed_id={}",
                     urlencoding::encode("http://specs.openid.net/auth/2.0"),
                     "checkid_setup",
-                    redirect_uri, urlencoding::encode("?state="), state,
+                    redirect_uri,
+                    urlencoding::encode("?state="),
+                    state,
                     self_addr,
                     "http://specs.openid.net/auth/2.0/identifier_select",
                     "http://specs.openid.net/auth/2.0/identifier_select",
@@ -330,7 +337,9 @@ impl AuthProvider {
 
                 format!(
                     "https://{auth_url}/connect?flowEntry=static&client_id={client_id}&scope={}&response_type=code&redirect_uri={redirect_uri}&state={state}",
-                    urlencoding::encode("openid email address https://uri.paypal.com/services/paypalattributes"),
+                    urlencoding::encode(
+                        "openid email address https://uri.paypal.com/services/paypalattributes"
+                    ),
                 )
             }
         })
@@ -1425,7 +1434,10 @@ pub async fn delete_auth_provider(
             send_email(
                 email,
                 "身份验证方法已移除",
-                &format!("您现在无法使用 {} 身份验证提供程序登录 BBSMC", delete_provider.provider.as_str()),
+                &format!(
+                    "您现在无法使用 {} 身份验证提供程序登录 BBSMC",
+                    delete_provider.provider.as_str()
+                ),
                 "如果不是您进行的更改，请立即通过我们的 Discord 支持渠道或电子邮件 (support@bbsmc.net) 联系我们。",
                 None,
             )?;
@@ -1569,6 +1581,7 @@ pub async fn create_account_with_password(
         wiki_ban_time: Default::default(),
         wiki_overtake_count: 0,
         phone_number: None,
+        active_bans: vec![],
     }
     .insert(&mut transaction)
     .await?;
@@ -1823,7 +1836,10 @@ pub async fn phone_number_bind(
         send_email(
             user_email,
             "手机号已绑定",
-            &format!("您的账户手机号已更新为 {}。", phone_number_bind.phone_number),
+            &format!(
+                "您的账户手机号已更新为 {}。",
+                phone_number_bind.phone_number
+            ),
             "如果不是您进行的更改，请立即通过我们的电子邮件 (support@bbsmc.net) 联系我们。",
             None,
         )?;
@@ -2267,7 +2283,15 @@ pub async fn reset_password_begin(
                 "重置您的密码",
                 "请访问以下链接以重置您的密码。如果按钮无法使用，您可以复制链接并将其粘贴到浏览器中。",
                 "如果您没有请求重置密码，您可以放心忽略此邮件。",
-                Some(("重置密码", &format!("{}/{}?flow={}", dotenvy::var("SITE_URL")?, dotenvy::var("SITE_RESET_PASSWORD_PATH")?, flow))),
+                Some((
+                    "重置密码",
+                    &format!(
+                        "{}/{}?flow={}",
+                        dotenvy::var("SITE_URL")?,
+                        dotenvy::var("SITE_RESET_PASSWORD_PATH")?,
+                        flow
+                    ),
+                )),
             )?;
         }
     }
@@ -2632,6 +2656,14 @@ fn send_email_verify(
         "验证您的邮箱",
         opener,
         "请点击下面的链接以验证您的邮箱。如果按钮无法使用，您可以复制链接并粘贴到浏览器中。该链接将在 24 小时后失效。",
-        Some(("验证邮箱", &format!("{}/{}?flow={}", dotenvy::var("SITE_URL")?, dotenvy::var("SITE_VERIFY_EMAIL_PATH")?, flow))),
+        Some((
+            "验证邮箱",
+            &format!(
+                "{}/{}?flow={}",
+                dotenvy::var("SITE_URL")?,
+                dotenvy::var("SITE_VERIFY_EMAIL_PATH")?,
+                flow
+            ),
+        )),
     )
 }

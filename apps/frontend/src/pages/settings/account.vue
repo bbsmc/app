@@ -468,6 +468,89 @@
     <!--      </button>-->
     <!--    </section>-->
 
+    <!-- 封禁状态与申诉 -->
+    <section
+      v-if="auth.user.active_bans && auth.user.active_bans.length > 0"
+      id="ban-status"
+      class="universal-card ban-section"
+    >
+      <h2 class="ban-title text-2xl">
+        <BanIcon class="ban-title-icon" />
+        账户封禁状态
+      </h2>
+      <p class="ban-description">
+        您的账户当前存在以下封禁，部分功能可能受到限制。如果您认为存在误判，可以发起申诉。
+      </p>
+      <div class="ban-list">
+        <div
+          v-for="ban in auth.user.active_bans"
+          :key="ban.id"
+          :data-ban-id="ban.id"
+          class="ban-item"
+        >
+          <div class="ban-header">
+            <span class="ban-type" :class="`ban-type-${ban.ban_type}`">
+              {{ getBanTypeName(ban.ban_type) }}
+            </span>
+            <span class="ban-date"> 封禁时间：{{ formatBanDate(ban.banned_at) }} </span>
+          </div>
+          <div class="ban-reason"><strong>封禁原因：</strong>{{ ban.reason || "未提供原因" }}</div>
+          <div v-if="ban.expires_at" class="ban-expires">
+            <strong>过期时间：</strong>{{ formatBanDate(ban.expires_at) }}
+          </div>
+          <div v-else class="ban-expires permanent">
+            <strong>永久封禁</strong>
+          </div>
+
+          <!-- 申诉状态 -->
+          <div v-if="ban.appeal" class="appeal-status">
+            <div class="appeal-header">
+              <div v-if="ban.appeal.status === 'pending'" class="appeal-pending">
+                <InfoIcon class="status-icon" />
+                <span>申诉审核中...</span>
+              </div>
+              <div v-else-if="ban.appeal.status === 'approved'" class="appeal-approved">
+                <CheckIcon class="status-icon" />
+                <span>申诉已通过</span>
+              </div>
+              <div v-else-if="ban.appeal.status === 'rejected'" class="appeal-rejected">
+                <XIcon class="status-icon" />
+                <span>申诉已拒绝</span>
+              </div>
+              <button
+                v-if="ban.appeal.thread_id"
+                class="btn btn-secondary"
+                @click="toggleAppealThread(ban)"
+              >
+                <MessageIcon />
+                {{ expandedThreads[ban.id] ? "收起对话" : "查看对话" }}
+              </button>
+            </div>
+
+            <!-- 申诉对话线程 -->
+            <div v-if="expandedThreads[ban.id] && appealThreads[ban.id]" class="appeal-thread">
+              <ConversationThread
+                :thread="appealThreads[ban.id]"
+                :auth="auth"
+                :current-member="null"
+                :project="null"
+                :report="null"
+                @update-thread="refreshAppealThread(ban)"
+              />
+            </div>
+          </div>
+
+          <!-- 发起申诉按钮 -->
+          <div v-else class="appeal-actions">
+            <button class="iconified-button" @click="openAppealModal(ban)">
+              <EditIcon />
+              发起申诉
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="delete-account" class="universal-card">
       <h2>注销账户</h2>
       <p>
@@ -482,6 +565,49 @@
         注销账户
       </button>
     </section>
+
+    <!-- 申诉模态框 -->
+    <NewModal ref="appealModal" header="申诉封禁">
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-2">
+          <span class="text-secondary">
+            请说明您认为此封禁存在问题的原因。管理员将会审核您的申诉并通过消息线程与您沟通。
+          </span>
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="appeal-reason" class="flex flex-col gap-1">
+            <span class="text-lg font-semibold text-contrast">
+              申诉理由
+              <span class="text-brand-red">*</span>
+            </span>
+            <span>请详细说明您认为封禁存在问题的理由（10-2000字符）</span>
+          </label>
+          <div class="textarea-wrapper">
+            <textarea
+              id="appeal-reason"
+              v-model="appealReason"
+              rows="6"
+              maxlength="2000"
+              placeholder="请输入您的申诉理由..."
+            />
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <ButtonStyled color="brand">
+            <button :disabled="!appealReason || appealReason.length < 10" @click="submitAppeal">
+              <CheckIcon aria-hidden="true" />
+              提交申诉
+            </button>
+          </ButtonStyled>
+          <ButtonStyled>
+            <button @click="appealModal.hide()">
+              <XIcon aria-hidden="true" />
+              取消
+            </button>
+          </ButtonStyled>
+        </div>
+      </div>
+    </NewModal>
   </div>
 </template>
 
@@ -496,8 +622,13 @@ import {
   SaveIcon,
   TrashIcon,
   XIcon,
+  BanIcon,
+  MessageIcon,
+  InfoIcon,
 } from "@modrinth/assets";
+import dayjs from "dayjs";
 import QrcodeVue from "qrcode.vue";
+import { NewModal, ButtonStyled } from "@modrinth/ui";
 import GitHubIcon from "assets/icons/auth/sso-github.svg";
 import MicrosoftIcon from "assets/icons/auth/sso-microsoft.svg";
 import GoogleIcon from "assets/icons/auth/sso-google.svg";
@@ -508,6 +639,7 @@ import GitLabIcon from "assets/icons/auth/sso-gitlab.svg";
 import ModalConfirm from "~/components/ui/ModalConfirm.vue";
 import Modal from "~/components/ui/Modal.vue";
 import TACaptcha from "@/components/ui/TACaptcha.vue";
+import ConversationThread from "~/components/ui/thread/ConversationThread.vue";
 
 useHead({
   title: "Account settings - Modrinth",
@@ -628,6 +760,166 @@ async function removeTwoFactor() {
     twoFactorIncorrect.value = true;
   }
   stopLoading();
+}
+
+// 申诉相关
+const appealModal = ref();
+const appealReason = ref("");
+const currentAppealBan = ref(null);
+const expandedThreads = ref({}); // 记录哪些 ban 的对话被展开
+const appealThreads = ref({}); // 存储已加载的 thread 数据
+
+// 页面加载时自动展开有申诉的封禁对话
+onMounted(async () => {
+  if (auth.value?.user?.active_bans) {
+    for (const ban of auth.value.user.active_bans) {
+      if (ban.appeal?.thread_id) {
+        try {
+          const thread = await useBaseFetch(`thread/${ban.appeal.thread_id}`);
+          appealThreads.value[ban.id] = thread;
+          expandedThreads.value[ban.id] = true;
+        } catch (err) {
+          console.error("Failed to load appeal thread:", err);
+        }
+      }
+    }
+  }
+});
+
+function openAppealModal(ban) {
+  console.log("Opening appeal modal for ban:", ban);
+  currentAppealBan.value = ban;
+  appealReason.value = "";
+  appealModal.value.show();
+}
+
+// 切换申诉对话显示/隐藏
+async function toggleAppealThread(ban) {
+  const banId = ban.id;
+
+  if (expandedThreads.value[banId]) {
+    // 如果已展开，则收起
+    expandedThreads.value[banId] = false;
+  } else {
+    // 如果未展开，则加载并展开
+    expandedThreads.value[banId] = true;
+
+    if (!appealThreads.value[banId]) {
+      // 如果还没加载过，则加载 thread 数据
+      try {
+        const thread = await useBaseFetch(`thread/${ban.appeal.thread_id}`);
+        appealThreads.value[banId] = thread;
+      } catch (err) {
+        data.$notify({
+          group: "main",
+          title: "加载失败",
+          text: "无法加载对话数据",
+          type: "error",
+        });
+        expandedThreads.value[banId] = false;
+      }
+    }
+  }
+}
+
+// 刷新申诉对话
+async function refreshAppealThread(ban) {
+  if (ban.appeal?.thread_id) {
+    try {
+      const thread = await useBaseFetch(`thread/${ban.appeal.thread_id}`);
+      appealThreads.value[ban.id] = thread;
+    } catch (err) {
+      console.error("Failed to refresh thread:", err);
+    }
+  }
+}
+
+async function submitAppeal() {
+  if (!appealReason.value || appealReason.value.length < 10) {
+    data.$notify({
+      group: "main",
+      title: "错误",
+      text: "申诉理由至少需要10个字符",
+      type: "error",
+    });
+    return;
+  }
+
+  console.log("Submitting appeal for ban:", currentAppealBan.value);
+  console.log("Ban ID:", currentAppealBan.value?.id);
+
+  if (!currentAppealBan.value?.id) {
+    data.$notify({
+      group: "main",
+      title: "错误",
+      text: "封禁ID不存在，请刷新页面后重试",
+      type: "error",
+    });
+    return;
+  }
+
+  startLoading();
+  try {
+    const result = await useBaseFetch(`user/bans/${currentAppealBan.value.id}/appeal`, {
+      method: "POST",
+      body: {
+        reason: appealReason.value,
+      },
+    });
+
+    data.$notify({
+      group: "main",
+      title: "申诉已提交",
+      text: "您的申诉已提交，管理员将会审核并通过消息线程与您沟通",
+      type: "success",
+    });
+
+    appealModal.value.hide();
+
+    // 刷新用户数据以获取最新的申诉状态
+    await useAuth(auth.value.token);
+
+    // 如果有 thread_id，自动展开对话区域并加载 thread
+    if (result.thread_id) {
+      const banId = currentAppealBan.value.id;
+      try {
+        const thread = await useBaseFetch(`thread/${result.thread_id}`);
+        appealThreads.value[banId] = thread;
+        expandedThreads.value[banId] = true;
+
+        // 滚动到申诉对话区域
+        setTimeout(() => {
+          const appealElement = document.querySelector(`[data-ban-id="${banId}"]`);
+          if (appealElement) {
+            appealElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }, 100);
+      } catch (err) {
+        console.error("Failed to load thread:", err);
+      }
+    }
+  } catch (err) {
+    data.$notify({
+      group: "main",
+      title: "申诉失败",
+      text: err.data ? err.data.description : "提交申诉时出错",
+      type: "error",
+    });
+  }
+  stopLoading();
+}
+
+function getBanTypeName(type) {
+  const types = {
+    global: "全局封禁",
+    resource: "资源封禁",
+    forum: "论坛封禁",
+  };
+  return types[type] || type;
+}
+
+function formatBanDate(dateStr) {
+  return dayjs(dateStr).format("YYYY-MM-DD HH:mm");
 }
 
 const authProviders = [
@@ -805,5 +1097,155 @@ canvas {
       margin-right: 0.35rem;
     }
   }
+}
+
+// 封禁状态样式
+.ban-section {
+  border: 1px solid var(--color-red, #ef4444);
+  background: var(--color-red-bg, rgba(239, 68, 68, 0.05));
+}
+
+.ban-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-red, #ef4444);
+}
+
+.ban-title-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.ban-description {
+  color: var(--color-secondary);
+  margin-bottom: 1rem;
+}
+
+.ban-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.ban-item {
+  padding: 1rem;
+  background: var(--color-raised-bg);
+  border-radius: var(--size-rounded-card);
+  border: 1px solid var(--color-divider);
+}
+
+.ban-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ban-type {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--size-rounded-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ban-type-global {
+  background: var(--color-red-bg, rgba(239, 68, 68, 0.1));
+  color: var(--color-red, #ef4444);
+}
+
+.ban-type-resource {
+  background: var(--color-orange-bg, rgba(249, 115, 22, 0.1));
+  color: var(--color-orange, #f97316);
+}
+
+.ban-type-forum {
+  background: var(--color-yellow-bg, rgba(234, 179, 8, 0.1));
+  color: var(--color-yellow, #eab308);
+}
+
+.ban-date {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+}
+
+.ban-reason {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
+}
+
+.ban-expires {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+}
+
+.ban-expires.permanent {
+  color: var(--color-red, #ef4444);
+}
+
+.appeal-section {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-divider);
+
+  p {
+    margin-bottom: 0.75rem;
+    color: var(--color-secondary);
+  }
+}
+
+.appeal-status {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: var(--size-rounded-sm);
+  border: 1px solid var(--color-divider);
+}
+
+.appeal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.appeal-pending,
+.appeal-approved,
+.appeal-rejected {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.appeal-pending {
+  color: var(--color-orange, #f97316);
+}
+
+.appeal-approved {
+  color: var(--color-green, #10b981);
+}
+
+.appeal-rejected {
+  color: var(--color-red, #ef4444);
+}
+
+.status-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.appeal-thread {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-divider);
+}
+
+.appeal-actions {
+  margin-top: 0.75rem;
 }
 </style>

@@ -1,4 +1,6 @@
-use crate::auth::{get_user_from_headers, AuthenticationError};
+use crate::auth::{
+    AuthenticationError, check_forum_ban, get_user_from_headers,
+};
 use crate::database::models::forum::PostBuilder;
 use crate::database::models::forum::{Discussion, PostIndex};
 use crate::database::models::ids::{DiscussionId, PostId};
@@ -16,7 +18,7 @@ use crate::{
     models::v3::forum::{ForumResponse, PostResponse, PostsQueryParams},
     routes::ApiError,
 };
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
@@ -276,6 +278,9 @@ pub async fn forum_edit(
     }
     let user = user_option.unwrap();
 
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &**pool).await?;
+
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
         DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
@@ -389,6 +394,9 @@ pub async fn forum_delete(
     }
     let user = user_option.unwrap();
 
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &**pool).await?;
+
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
         DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
@@ -457,6 +465,10 @@ pub async fn forum_create(
             AuthenticationError::InvalidCredentials,
         ));
     }
+
+    // 检查用户是否被论坛类封禁
+    let user = user_option.as_ref().unwrap();
+    check_forum_ban(user, &**pool).await?;
 
     // 检查用户是否绑定手机号
     if user_option.as_ref().unwrap().has_phonenumber.is_none()
@@ -599,6 +611,10 @@ pub async fn posts_post(
         ));
     }
 
+    // 检查用户是否被论坛类封禁
+    let user = user_option.as_ref().unwrap();
+    check_forum_ban(user, &**pool).await?;
+
     // 检查帖子是否存在
     if discussion.is_none() {
         return Err(ApiError::NotFound);
@@ -735,6 +751,9 @@ pub async fn post_delete(
         ));
     }
     let user = user_option.unwrap();
+
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &**pool).await?;
 
     let post_id: String = info.into_inner().0;
     let post_id = match parse_base62(&post_id) {

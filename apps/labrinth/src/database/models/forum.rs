@@ -291,7 +291,7 @@ impl Discussion {
                      SELECT DISTINCT discussion_id, p.id as id, p.created_at
                     FROM discussions d
                     INNER JOIN posts p ON d.id = p.discussion_id
-                    WHERE d.deleted = false and d.id = ANY($1) 
+                    WHERE d.deleted = false and d.id = ANY($1)
                     ORDER BY p.created_at ASC
                     ",
                     &ids.clone()
@@ -349,7 +349,7 @@ impl Discussion {
                             .unwrap_or_default();
 
                         // 使用子查询后，project_id 会被正确推断为 Option<i64>
-                        let project_id: Option<ProjectId> = 
+                        let project_id: Option<ProjectId> =
                             m.project_id.map(ProjectId);
 
                         acc.insert(

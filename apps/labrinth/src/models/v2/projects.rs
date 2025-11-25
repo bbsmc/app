@@ -6,12 +6,13 @@ use super::super::ids::OrganizationId;
 use super::super::teams::TeamId;
 use super::super::users::UserId;
 use crate::database::models::version_item::QueryDisk;
-use crate::database::models::{version_item, DatabaseError};
+use crate::database::models::{DatabaseError, version_item};
 use crate::database::redis::RedisPool;
 use crate::models::ids::{DiscussionId, ProjectId, VersionId};
 use crate::models::projects::{
     Dependency, License, Link, Loader, ModeratorMessage, MonetizationStatus,
-    Project, ProjectStatus, Version, VersionFile, VersionLink, VersionStatus, VersionType,
+    Project, ProjectStatus, Version, VersionFile, VersionLink, VersionStatus,
+    VersionType,
 };
 use crate::models::threads::ThreadId;
 use crate::routes::v2_reroute::{self, capitalize_first};

@@ -1,15 +1,15 @@
 use super::ApiError;
 use crate::auth::get_user_from_headers;
+use crate::models::ids::VersionId;
+use crate::models::ids::base62_impl::parse_base62;
 use crate::models::pats::Scopes;
 use crate::models::projects::Project;
 use crate::models::v2::projects::LegacyProject;
-use crate::models::ids::base62_impl::parse_base62;
-use crate::models::ids::VersionId;
 use crate::queue::session::AuthQueue;
 use crate::routes::internal;
 use crate::routes::v3;
 use crate::{database::redis::RedisPool, routes::v2_reroute};
-use actix_web::{get, post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, get, post, web};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
@@ -17,7 +17,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("moderation")
             .service(get_projects)
-            .service(get_translation_links)
+            .service(get_translation_links),
     );
 }
 
@@ -115,30 +115,28 @@ pub async fn get_translation_links(
     )
     .await?
     .1;
-    
+
     if !user.role.is_admin() && !user.role.is_mod() {
         return Err(ApiError::CustomAuthentication(
             "您没有权限访问此页面".to_string(),
         ));
     }
-    
+
     let page = query.page.unwrap_or(1).max(1);
     let limit = query.limit.unwrap_or(20).min(100);
     let offset = ((page - 1) * limit) as i64;
     let limit_i64 = limit as i64;
-    
+
     // 构建查询条件
     let status_filter = query.status.as_deref();
-    
+
     // 获取总数
     let total_count: i64 = if let Some(status) = status_filter {
         if status == "all" {
-            sqlx::query_scalar!(
-                "SELECT COUNT(*) FROM version_link_version"
-            )
-            .fetch_one(&**pool)
-            .await?
-            .unwrap_or(0)
+            sqlx::query_scalar!("SELECT COUNT(*) FROM version_link_version")
+                .fetch_one(&**pool)
+                .await?
+                .unwrap_or(0)
         } else {
             sqlx::query_scalar!(
                 "SELECT COUNT(*) FROM version_link_version WHERE approval_status = $1",
@@ -149,14 +147,12 @@ pub async fn get_translation_links(
             .unwrap_or(0)
         }
     } else {
-        sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM version_link_version"
-        )
-        .fetch_one(&**pool)
-        .await?
-        .unwrap_or(0)
+        sqlx::query_scalar!("SELECT COUNT(*) FROM version_link_version")
+            .fetch_one(&**pool)
+            .await?
+            .unwrap_or(0)
     };
-    
+
     // 获取翻译链接列表 - 使用单个查询避免类型不匹配
     let links = sqlx::query!(
         r#"
@@ -196,30 +192,36 @@ pub async fn get_translation_links(
     )
     .fetch_all(&**pool)
     .await?;
-    
+
     // 转换为响应格式
     let mut response_links = Vec::new();
     for link in links {
-        use crate::models::ids::{VersionId, ProjectId, UserId};
-        
-        let translation_version_id = VersionId(link.translation_version_id as u64);
+        use crate::models::ids::{ProjectId, UserId, VersionId};
+
+        let translation_version_id =
+            VersionId(link.translation_version_id as u64);
         let target_version_id = VersionId(link.target_version_id as u64);
-        let translation_project_id = ProjectId(link.translation_project_id as u64);
+        let translation_project_id =
+            ProjectId(link.translation_project_id as u64);
         let target_project_id = ProjectId(link.target_project_id as u64);
         let submitter_id = UserId(link.submitter_id as u64);
-        
+
         response_links.push(TranslationLinkResponse {
             id: format!("{}-{}", translation_version_id, target_version_id),
             translation_version_id: translation_version_id.to_string(),
             translation_version_number: link.translation_version_number,
             translation_project_id: translation_project_id.to_string(),
-            translation_project_slug: link.translation_project_slug.unwrap_or_else(|| translation_project_id.to_string()),
+            translation_project_slug: link
+                .translation_project_slug
+                .unwrap_or_else(|| translation_project_id.to_string()),
             translation_project_title: link.translation_project_title,
             translation_project_icon: link.translation_project_icon,
             target_version_id: target_version_id.to_string(),
             target_version_number: link.target_version_number,
             target_project_id: target_project_id.to_string(),
-            target_project_slug: link.target_project_slug.unwrap_or_else(|| target_project_id.to_string()),
+            target_project_slug: link
+                .target_project_slug
+                .unwrap_or_else(|| target_project_id.to_string()),
             target_project_title: link.target_project_title,
             target_project_icon: link.target_project_icon,
             language_code: link.language_code,
@@ -231,7 +233,7 @@ pub async fn get_translation_links(
             created: link.created,
         });
     }
-    
+
     Ok(HttpResponse::Ok().json(TranslationLinksResponse {
         links: response_links,
         total: total_count as u32,
@@ -257,17 +259,17 @@ pub async fn admin_approve_link(
     )
     .await?
     .1;
-    
+
     if !user.role.is_admin() && !user.role.is_mod() {
         return Err(ApiError::CustomAuthentication(
             "您没有权限执行此操作".to_string(),
         ));
     }
-    
+
     // 转换ID并调用v3的approve函数
     let translation_version_id = VersionId(parse_base62(&info.0)?);
     let target_version_id = VersionId(parse_base62(&info.1)?);
-    
+
     v3::versions::approve_version_link(
         req,
         web::Path::from((translation_version_id, target_version_id)),
@@ -298,17 +300,17 @@ pub async fn admin_reject_link(
     )
     .await?
     .1;
-    
+
     if !user.role.is_admin() && !user.role.is_mod() {
         return Err(ApiError::CustomAuthentication(
             "您没有权限执行此操作".to_string(),
         ));
     }
-    
+
     // 转换ID并调用v3的reject函数
     let translation_version_id = VersionId(parse_base62(&info.0)?);
     let target_version_id = VersionId(parse_base62(&info.1)?);
-    
+
     v3::versions::reject_version_link(
         req,
         web::Path::from((translation_version_id, target_version_id)),
@@ -339,17 +341,17 @@ pub async fn admin_revoke_link(
     )
     .await?
     .1;
-    
+
     if !user.role.is_admin() && !user.role.is_mod() {
         return Err(ApiError::CustomAuthentication(
             "您没有权限执行此操作".to_string(),
         ));
     }
-    
+
     // 转换ID并调用v3的revoke函数
     let translation_version_id = VersionId(parse_base62(&info.0)?);
     let target_version_id = VersionId(parse_base62(&info.1)?);
-    
+
     v3::versions::revoke_version_link(
         req,
         web::Path::from((translation_version_id, target_version_id)),

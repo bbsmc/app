@@ -28,6 +28,7 @@ pub mod version_item;
 pub mod wiki_item;
 
 pub mod issues;
+pub mod user_ban_item;
 pub mod wiki_cache_item;
 
 pub use collection_item::Collection;
@@ -43,6 +44,10 @@ pub use project_item::Project;
 pub use team_item::Team;
 pub use team_item::TeamMember;
 pub use thread_item::{Thread, ThreadMessage};
+pub use user_ban_item::{
+    AppealStatus, BanAppeal, BanAppealBuilder, BanHistory, BanHistoryBuilder,
+    BanType, UserBan, UserBanBuilder,
+};
 pub use user_item::User;
 pub use version_item::Version;
 pub use wiki_cache_item::WikiCache;

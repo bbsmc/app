@@ -1,10 +1,10 @@
-use crate::auth::checks::is_visible_project;
+use crate::auth::checks::{check_resource_ban, is_visible_project};
 use crate::auth::get_user_from_headers;
+use crate::database::Project;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::team_item::TeamAssociationId;
 use crate::database::models::{Organization, Team, TeamMember, User};
 use crate::database::redis::RedisPool;
-use crate::database::Project;
 use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
 use crate::models::teams::{
@@ -13,7 +13,7 @@ use crate::models::teams::{
 use crate::models::users::UserId;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -352,6 +352,9 @@ pub async fn join_team(
     .await?
     .1;
 
+    // 检查资源封禁
+    check_resource_ban(&current_user, &**pool).await?;
+
     let member = TeamMember::get_from_user_id_pending(
         team_id,
         current_user.id.into(),
@@ -440,6 +443,10 @@ pub async fn add_team_member(
     )
     .await?
     .1;
+
+    // 检查资源封禁
+    check_resource_ban(&current_user, &**pool).await?;
+
     let team_association = Team::get_association(team_id, &**pool)
         .await?
         .ok_or_else(|| {
@@ -685,6 +692,9 @@ pub async fn edit_team_member(
     .await?
     .1;
 
+    // 检查资源封禁
+    check_resource_ban(&current_user, &**pool).await?;
+
     let team_association =
         Team::get_association(id, &**pool).await?.ok_or_else(|| {
             ApiError::InvalidInput("指定的团队不存在".to_string())
@@ -891,6 +901,9 @@ pub async fn transfer_ownership(
     .await?
     .1;
 
+    // 检查资源封禁
+    check_resource_ban(&current_user, &**pool).await?;
+
     // 禁止转移项目团队的所有权，这些团队由组织拥有
     // 这些团队由组织所有者拥有，必须首先从组织中删除
     // 在这些情况下不应该有所有者，但以防万一。
@@ -1049,6 +1062,9 @@ pub async fn remove_team_member(
     )
     .await?
     .1;
+
+    // 检查资源封禁
+    check_resource_ban(&current_user, &**pool).await?;
 
     let team_association =
         Team::get_association(id, &**pool).await?.ok_or_else(|| {

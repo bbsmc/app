@@ -4,8 +4,8 @@ use chrono::{TimeZone, Utc};
 use dashmap::DashMap;
 use deadpool_redis::{Config, Runtime};
 use redis::{
-    cmd, Cmd, ConnectionInfo, ExistenceCheck, IntoConnectionInfo, SetExpiry,
-    SetOptions,
+    Cmd, ConnectionInfo, ExistenceCheck, IntoConnectionInfo, SetExpiry,
+    SetOptions, cmd,
 };
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

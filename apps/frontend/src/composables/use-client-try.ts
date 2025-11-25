@@ -8,7 +8,29 @@ type useClientTry = <TArgs extends any[], TResult>(
   onFinish?: VoidFunction,
 ) => (...args: TArgs) => Promise<TResult | undefined>;
 
+// 封禁类型名称映射
+const banTypeNames: Record<string, string> = {
+  global: "全局封禁",
+  resource: "资源封禁",
+  forum: "论坛封禁",
+};
+
 const defaultOnError: ErrorFunction = (error) => {
+  // 检测是否为封禁错误
+  const errorName = error?.data?.error;
+
+  if (errorName === "user_banned") {
+    // 提供更友好的封禁提示
+    const description = error?.data?.description || "您的账户已被封禁";
+    addNotification({
+      group: "main",
+      title: "操作受限",
+      text: `${description}。如有疑问，请前往账户设置查看详情或发起申诉。`,
+      type: "error",
+    });
+    return;
+  }
+
   addNotification({
     group: "main",
     title: "发生错误",

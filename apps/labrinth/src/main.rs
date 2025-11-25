@@ -22,7 +22,7 @@ pub struct Pepper {
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
-        .filter_module("actix_web_prom", log::LevelFilter::Error)  // 屏蔽 actix_web_prom 的 WARN 日志
+        .filter_module("actix_web_prom", log::LevelFilter::Error) // 屏蔽 actix_web_prom 的 WARN 日志
         .init();
 
     if check_env_vars() {
@@ -88,7 +88,7 @@ async fn main() -> std::io::Result<()> {
     let mut clickhouse = clickhouse::init_client().await.unwrap();
     let prometheus = PrometheusMetricsBuilder::new("labrinth")
         .endpoint("/metrics")
-        .exclude_regex("^/v[23]/project/[^/]+(/.*)?$")  // 排除所有 /project/{id} 相关路由
+        .exclude_regex("^/v[23]/project/[^/]+(/.*)?$") // 排除所有 /project/{id} 相关路由
         .exclude_regex("^/v[23]/version/[^/]+/download$")
         .build()
         .expect("创建 prometheus 指标中间件失败");

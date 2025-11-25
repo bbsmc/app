@@ -2,7 +2,7 @@ use super::loader_fields::{
     QueryLoaderField, QueryLoaderFieldEnumValue, QueryVersionField,
     VersionField,
 };
-use super::{ids::*, User};
+use super::{User, ids::*};
 use crate::database::models;
 use crate::database::models::DatabaseError;
 use crate::database::redis::RedisPool;
@@ -397,7 +397,8 @@ impl Project {
             .collect();
 
             for thread_id in thread_ids {
-                models::Thread::remove_full(ThreadId(thread_id), transaction).await?;
+                models::Thread::remove_full(ThreadId(thread_id), transaction)
+                    .await?;
             }
 
             sqlx::query!(
@@ -507,8 +508,9 @@ impl Project {
             // 删除所有与该项目版本相关的版本链接
             // 包括该项目版本作为翻译版本和作为目标版本的情况
             if !project.versions.is_empty() {
-                let version_ids: Vec<i64> = project.versions.iter().map(|v| v.0).collect();
-                
+                let version_ids: Vec<i64> =
+                    project.versions.iter().map(|v| v.0).collect();
+
                 sqlx::query!(
                     "
                     DELETE FROM version_link_version
@@ -531,7 +533,11 @@ impl Project {
             .await?;
 
             // 最后删除所有版本 - 必须在删除其他引用之后
-            log::info!("准备删除项目 {} 的 {} 个版本", id.0, project.versions.len());
+            log::info!(
+                "准备删除项目 {} 的 {} 个版本",
+                id.0,
+                project.versions.len()
+            );
             for version in project.versions {
                 log::info!("正在删除版本 {}", version.0);
                 super::Version::remove_full(version, redis, transaction)

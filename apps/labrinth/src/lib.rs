@@ -20,11 +20,11 @@ use governor::{Quota, RateLimiter};
 use log::{info, warn};
 use util::cors::default_cors;
 
+use crate::database::Project;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::{
     OrganizationId, ProjectId, TeamId, User, UserId,
 };
-use crate::database::Project;
 use crate::models::notifications::NotificationBody;
 use crate::models::projects::{MonetizationStatus, ProjectStatus};
 use crate::models::teams::ProjectPermissions;
@@ -204,7 +204,6 @@ pub fn app_setup(
         }
     });
 
-
     let analytics_queue = Arc::new(AnalyticsQueue::new());
     {
         let client_ref = clickhouse.clone();
@@ -352,6 +351,7 @@ pub fn app_setup(
                                                     wiki_overtake_count: u.wiki_overtake_count,
                                                     wiki_ban_time: u.wiki_ban_time,
                                                     phone_number: None,
+                                                    active_bans: vec![],
                                                 };
 
                                                 let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id, &pool_ref_clone2).await {
@@ -753,7 +753,10 @@ pub fn check_env_vars() -> bool {
             failed |= check_var::<String>("MOCK_FILE_PATH");
         }
         Some(backend) => {
-            warn!("变量 `STORAGE_BACKEND` 包含无效值：{}。预期值为 \"backblaze\"、\"s3\" 或 \"local\"。", backend);
+            warn!(
+                "变量 `STORAGE_BACKEND` 包含无效值：{}。预期值为 \"backblaze\"、\"s3\" 或 \"local\"。",
+                backend
+            );
             failed |= true;
         }
         _ => {
@@ -766,7 +769,9 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<usize>("VERSION_INDEX_INTERVAL");
 
     if parse_strings_from_var("WHITELISTED_MODPACK_DOMAINS").is_none() {
-        warn!("变量 `WHITELISTED_MODPACK_DOMAINS` 在 dotenv 中缺失或不是字符串数组");
+        warn!(
+            "变量 `WHITELISTED_MODPACK_DOMAINS` 在 dotenv 中缺失或不是字符串数组"
+        );
         failed |= true;
     }
 
@@ -820,7 +825,6 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<String>("CLICKHOUSE_USER");
     failed |= check_var::<String>("CLICKHOUSE_PASSWORD");
     failed |= check_var::<String>("CLICKHOUSE_DATABASE");
-
 
     failed |= check_var::<String>("FLAME_ANVIL_URL");
 

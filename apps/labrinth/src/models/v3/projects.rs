@@ -744,11 +744,14 @@ impl From<QueryVersion> for Version {
                 .version_links
                 .into_iter()
                 .map(|l| VersionLink {
-                    joining_version_id: VersionId(l.joining_version_id.0 as u64),
+                    joining_version_id: VersionId(
+                        l.joining_version_id.0 as u64,
+                    ),
                     link_type: l.link_type,
                     language_code: l.language_code,
                     description: l.description,
-                    approval_status: l.approval_status
+                    approval_status: l
+                        .approval_status
                         .and_then(|s| LinkApprovalStatus::from_str(&s))
                         .unwrap_or_default(),
                     thread_id: l.thread_id.map(|id| ThreadId(id.0 as u64)),
@@ -758,11 +761,14 @@ impl From<QueryVersion> for Version {
                 .translated_by
                 .into_iter()
                 .map(|l| VersionLink {
-                    joining_version_id: VersionId(l.joining_version_id.0 as u64),
+                    joining_version_id: VersionId(
+                        l.joining_version_id.0 as u64,
+                    ),
                     link_type: l.link_type,
                     language_code: l.language_code,
                     description: l.description,
-                    approval_status: l.approval_status
+                    approval_status: l
+                        .approval_status
                         .and_then(|s| LinkApprovalStatus::from_str(&s))
                         .unwrap_or_default(),
                     thread_id: l.thread_id.map(|id| ThreadId(id.0 as u64)),
@@ -923,7 +929,7 @@ impl LinkApprovalStatus {
             LinkApprovalStatus::Rejected => "rejected",
         }
     }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "pending" => Some(LinkApprovalStatus::Pending),

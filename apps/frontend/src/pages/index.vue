@@ -15,7 +15,7 @@
       </div> -->
       <!-- Banner 轮播区域 -->
       <section
-        class="relative rounded-xl overflow-hidden h-[450px] group mb-12 select-none"
+        class="group relative mb-12 h-[450px] select-none overflow-hidden rounded-xl"
         :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
         @mouseenter="handleMouseEnter"
         @mouseleave="handleMouseLeave"
@@ -28,52 +28,63 @@
           v-for="(item, index) in carouselItems"
           :key="index"
           :class="[
-            'absolute inset-0 w-full h-full transition-opacity duration-500 select-none',
-            { 'opacity-100 z-10': index === currentSlide, 'opacity-0 z-0': index !== currentSlide }
+            'absolute inset-0 h-full w-full select-none transition-opacity duration-500',
+            { 'z-10 opacity-100': index === currentSlide, 'z-0 opacity-0': index !== currentSlide },
           ]"
           @click="handleBannerClick($event, item.slug)"
         >
           <img
             :src="item.image"
             :alt="item.title"
-            class="absolute inset-0 w-full h-full object-cover user-select-none"
+            class="user-select-none absolute inset-0 h-full w-full object-cover"
             :class="{ 'transition-transform duration-500 group-hover:scale-105': !isDragging }"
             draggable="false"
           />
           <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-          <div class="absolute bottom-0 left-0 p-8 md:p-12 text-white pointer-events-none">
+          <div class="pointer-events-none absolute bottom-0 left-0 p-8 text-white md:p-12">
             <h2 class="banner-title">{{ item.title }}</h2>
             <p class="banner-description">{{ item.description }}</p>
           </div>
         </div>
-        <div class="absolute bottom-6 right-6 flex space-x-2 z-20">
+        <div class="absolute bottom-6 right-6 z-20 flex space-x-2">
           <button
             v-for="(_, index) in carouselItems"
             :key="index"
-            @click="goToSlide(index)"
             :class="[
-              'w-2 h-2 rounded-full transition-all duration-300',
-              currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white'
+              'h-2 w-2 rounded-full transition-all duration-300',
+              currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white',
             ]"
+            @click="goToSlide(index)"
           ></button>
         </div>
       </section>
 
       <!-- 搜索框区域 -->
       <section class="mb-12">
-        <div class="max-w-2xl mx-auto px-4">
-          <form @submit.prevent="handleSearch" class="relative">
+        <div class="mx-auto max-w-2xl px-4">
+          <form class="relative" @submit.prevent="handleSearch">
             <input
               v-model="searchQuery"
               type="search"
               placeholder="搜索模组、资源包、整合包..."
-              class="w-full pl-12 pr-4 py-4 rounded-full outline-none transition-all search-input"
-              style="background: var(--color-raised-bg); color: var(--color-text);"
+              class="search-input w-full rounded-full py-4 pl-12 pr-4 outline-none transition-all"
+              style="background: var(--color-raised-bg); color: var(--color-text)"
               @input="handleSearchInput"
             />
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-text);">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                style="color: var(--color-text)"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
           </form>
@@ -82,16 +93,19 @@
 
       <section class="mb-12">
         <div class="px-4">
-          <h2 class="text-2xl font-bold mb-6" style="color: var(--color-text-dark);">
-            热门资源
-          </h2>
+          <h2 class="mb-6 text-2xl font-bold" style="color: var(--color-text-dark)">热门资源</h2>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 px-4">
+        <div class="grid grid-cols-1 gap-8 px-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <div
             v-for="project in modpacks"
             :key="project.project_id"
-            class="rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-2"
-            style="background: var(--color-raised-bg); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);"
+            class="group overflow-hidden rounded-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-lg"
+            style="
+              background: var(--color-raised-bg);
+              box-shadow:
+                0 10px 15px -3px rgba(0, 0, 0, 0.05),
+                0 4px 6px -2px rgba(0, 0, 0, 0.03);
+            "
           >
             <a :href="getProjectLink(project)" target="_blank" class="block">
               <div class="relative h-56">
@@ -103,16 +117,32 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
 
                 <!-- 下载量统计 -->
-                <div class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <div
+                  class="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 backdrop-blur-sm"
+                >
+                  <svg
+                    class="h-4 w-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
                   </svg>
-                  <span class="text-white text-sm font-medium">{{ formatNumber(project.downloads) }}</span>
+                  <span class="text-sm font-medium text-white">{{
+                    formatNumber(project.downloads)
+                  }}</span>
                 </div>
 
                 <div class="absolute bottom-4 left-4 text-white">
                   <h3 class="card-title">{{ project.title }}</h3>
-                  <p v-if="project.author !== 'BBSMC'" class="card-author">By {{ project.author }}</p>
+                  <p v-if="project.author !== 'BBSMC'" class="card-author">
+                    By {{ project.author }}
+                  </p>
                 </div>
               </div>
             </a>
@@ -123,10 +153,8 @@
       <!-- 矿工茶馆区域 -->
       <section class="mb-16">
         <div class="px-4">
-          <h2 class="text-2xl font-bold mb-6" style="color: var(--color-text-dark);">
-            矿工茶馆
-          </h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h2 class="mb-6 text-2xl font-bold" style="color: var(--color-text-dark)">矿工茶馆</h2>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <a
               v-for="forum in forums"
               :key="forum.id"
@@ -135,26 +163,33 @@
             >
               <div class="flex items-start gap-3">
                 <!-- 用户头像 -->
-                <img
-                  :src="forum.avatar"
-                  :alt="forum.user_name"
-                  class="forum-avatar"
-                />
+                <img :src="forum.avatar" :alt="forum.user_name" class="forum-avatar" />
 
                 <!-- 中间内容区 -->
-                <div class="flex-1 min-w-0">
+                <div class="min-w-0 flex-1">
                   <h3 class="forum-card-title">{{ forum.title }}</h3>
-                  <div class="flex items-center gap-2 mt-1">
+                  <div class="mt-1 flex items-center gap-2">
                     <span class="forum-username">{{ forum.user_name }}</span>
                     <span class="forum-replies">{{ forum.replies }} 回复</span>
                   </div>
                 </div>
 
                 <!-- 右侧时间和箭头 -->
-                <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                <div class="flex flex-shrink-0 flex-col items-end gap-1">
                   <p class="forum-card-time">{{ fromNow(forum.last_post_time) }}</p>
-                  <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--color-brand);">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  <svg
+                    class="h-5 w-5 transform transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    style="color: var(--color-brand)"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </div>
               </div>
@@ -184,7 +219,7 @@
 import dayjs from "dayjs";
 import { isDarkTheme } from "~/plugins/theme/themes";
 const modpacks = ref([]);
-const searchQuery = ref('');
+const searchQuery = ref("");
 const forums = ref([]);
 
 // 获取当前主题并设置CSS变量
@@ -243,7 +278,8 @@ const carouselItems = ref([
     slug: "/software/pcl",
   },
   {
-    image: "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
     title: "PCL CE",
     description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
     slug: "/software/pcl",
@@ -287,7 +323,8 @@ const carouselItems = ref([
     image:
       "https://cdn.bbsmc.net/bbsmc/data/OIIWCwpQ/images/fce31aca660ea4b6cf77ce8e51468d4e6585c0d8_350.webp",
     title: "机械动力:齿轮盛宴",
-    description: "欢迎来到齿轮盛宴的世界,欢迎来到齿轮盛宴的世界,也能体验到沉浸式做菜的欢乐,更能体验到丰富的世界之旅，怪物、美景层出不穷，美不胜收,愿齿轮盛宴能给你带来盛宴一般的感受.",
+    description:
+      "欢迎来到齿轮盛宴的世界,欢迎来到齿轮盛宴的世界,也能体验到沉浸式做菜的欢乐,更能体验到丰富的世界之旅，怪物、美景层出不穷，美不胜收,愿齿轮盛宴能给你带来盛宴一般的感受.",
     slug: "/modpack/create-delight",
   },
 ]);
@@ -302,7 +339,7 @@ const hasDragged = ref(false); // 标记是否发生了拖动
 
 // 处理拖动开始
 const handleDragStart = (e) => {
-  const isTouchEvent = e.type.includes('touch');
+  const isTouchEvent = e.type.includes("touch");
 
   isDragging.value = true;
   hasDragged.value = false; // 重置拖动标志
@@ -313,8 +350,8 @@ const handleDragStart = (e) => {
   if (!isTouchEvent) {
     e.preventDefault(); // 阻止默认行为
     // 桌面端：在 document 上监听 mousemove 和 mouseup
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener("mousemove", handleDragMove);
+    document.addEventListener("mouseup", handleDragEnd);
   }
 };
 
@@ -322,7 +359,7 @@ const handleDragStart = (e) => {
 const handleDragMove = (e) => {
   if (!isDragging.value) return;
 
-  const isTouchEvent = e.type.includes('touch');
+  const isTouchEvent = e.type.includes("touch");
   const currentX = isTouchEvent ? e.touches[0].clientX : e.clientX;
   dragCurrentX.value = currentX;
 
@@ -355,8 +392,8 @@ const handleDragEnd = (e) => {
   startAutoPlay(); // 恢复自动播放
 
   // 移除 document 上的监听器
-  document.removeEventListener('mousemove', handleDragMove);
-  document.removeEventListener('mouseup', handleDragEnd);
+  document.removeEventListener("mousemove", handleDragMove);
+  document.removeEventListener("mouseup", handleDragEnd);
 
   // 延迟重置拖动位置，让 click 事件能正确判断
   setTimeout(() => {
@@ -384,7 +421,7 @@ const handleBannerClick = (e, url) => {
   }
 
   // 否则正常跳转
-  window.open(url, '_blank');
+  window.open(url, "_blank");
 };
 
 // 搜索功能
@@ -394,7 +431,7 @@ const handleSearch = async () => {
   if (query) {
     // 调用搜索API，不限制项目类型
     const searchResponse = await useBaseFetch(
-      `search?limit=8&index=relevance&query=${encodeURIComponent(query)}`
+      `search?limit=8&index=relevance&query=${encodeURIComponent(query)}`,
     );
 
     modpacks.value =
@@ -429,10 +466,10 @@ const handleSearchInput = () => {
 
 // 格式化数字显示（下载量等）
 const formatNumber = (num) => {
-  if (!num) return '0';
+  if (!num) return "0";
 
   if (num >= 10000) {
-    return (num / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+    return (num / 10000).toFixed(1).replace(/\.0$/, "") + "万";
   }
   return num.toString();
 };
@@ -440,12 +477,12 @@ const formatNumber = (num) => {
 // 根据项目类型生成链接
 const getProjectLink = (project) => {
   const typeMap = {
-    'mod': 'mod',
-    'modpack': 'modpack',
-    'plugin': 'plugin',
-    'resourcepack': 'resourcepack',
-    'shader': 'shader',
-    'datapack': 'datapack'
+    mod: "mod",
+    modpack: "modpack",
+    plugin: "plugin",
+    resourcepack: "resourcepack",
+    shader: "shader",
+    datapack: "datapack",
   };
   const type = typeMap[project.project_type] || project.project_type;
   return `/${type}/${project.slug}`;
@@ -542,7 +579,12 @@ const handleMouseLeave = () => {
   font-weight: 700;
   margin-bottom: 1rem;
   line-height: 1.2;
-  font-family: 'Space Grotesk', var(--montserrat-font), system-ui, -apple-system, sans-serif;
+  font-family:
+    "Space Grotesk",
+    var(--montserrat-font),
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: #ffffff !important;
 }
 
@@ -558,7 +600,12 @@ const handleMouseLeave = () => {
   font-weight: 700;
   font-size: 1.25rem;
   line-height: 1.75rem;
-  font-family: 'Space Grotesk', var(--montserrat-font), system-ui, -apple-system, sans-serif;
+  font-family:
+    "Space Grotesk",
+    var(--montserrat-font),
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: #ffffff !important;
 }
 
@@ -575,7 +622,9 @@ const handleMouseLeave = () => {
   padding: 1rem;
   border-radius: 0.75rem;
   background: var(--color-raised-bg);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.06);
   transition: all 0.2s ease;
   text-decoration: none;
   border: 1px solid transparent;
@@ -583,7 +632,9 @@ const handleMouseLeave = () => {
 
 .forum-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   border-color: var(--color-brand);
 }
 

@@ -1,3 +1,4 @@
+pub use super::bans::{BanAppealId, BanHistoryId, UserBanId};
 pub use super::collections::CollectionId;
 pub use super::forum::{DiscussionId, PostId};
 pub use super::images::ImageId;
@@ -150,6 +151,9 @@ base62_id_impl!(UserSubscriptionId, UserSubscriptionId);
 base62_id_impl!(ChargeId, ChargeId);
 base62_id_impl!(IssuesId, IssuesId);
 base62_id_impl!(IssuesCommentsId, IssuesCommentsId);
+base62_id_impl!(UserBanId, UserBanId);
+base62_id_impl!(BanHistoryId, BanHistoryId);
+base62_id_impl!(BanAppealId, BanAppealId);
 
 pub mod base62_impl {
     use serde::de::{self, Deserializer, Visitor};

@@ -1,13 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use validator::Validate;
 
-use super::{oauth_clients::get_user_clients, ApiError};
+use super::{ApiError, oauth_clients::get_user_clients};
 use crate::util::img::delete_old_images;
 use crate::{
     auth::{filter_visible_projects, get_user_from_headers},
@@ -40,7 +40,17 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("{id}", web::delete().to(user_delete))
             .route("{id}/follows", web::get().to(user_follows))
             .route("{id}/notifications", web::get().to(user_notifications))
-            .route("{id}/oauth_apps", web::get().to(get_user_clients)),
+            .route("{id}/oauth_apps", web::get().to(get_user_clients))
+            // 用户封禁相关路由
+            .route("bans", web::get().to(super::bans::get_my_bans))
+            .route(
+                "bans/{ban_id}/appeal",
+                web::post().to(super::bans::create_appeal),
+            )
+            .route(
+                "appeals/{appeal_id}",
+                web::get().to(super::bans::get_my_appeal),
+            ),
     );
 }
 
@@ -135,6 +145,7 @@ pub async fn user_get(
     let user_data = User::get(&info.into_inner().0, &**pool, &redis).await?;
 
     if let Some(data) = user_data {
+        // active_bans 已经在 User::get_many 中自动填充
         let response: crate::models::users::User = data.into();
         Ok(HttpResponse::Ok().json(response))
     } else {

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    SELECT id, email,\n                        avatar_url, raw_avatar_url, username, bio,\n                        created, role, badges,\n                        github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,\n                        email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,\n                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number\n                    FROM users\n                    WHERE id = ANY($1) OR LOWER(username) = ANY($2)\n                    ",
+  "query": "\n                        SELECT id, email,\n                            avatar_url, raw_avatar_url, username, bio,\n                            created, role, badges,\n                            github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,\n                            email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,\n                            venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number\n                        FROM users\n                        WHERE id = ANY($1) OR LOWER(username) = ANY($2)\n                        ",
   "describe": {
     "columns": [
       {
@@ -169,5 +169,5 @@
       true
     ]
   },
-  "hash": "2e8b3034ff9b274065c7e3433c756047059a8c0b8db059efe46e42bb378e5776"
+  "hash": "a27486451081fccbcf628fc5ea623e62d5fbd731f9f41e99770cba2e84462098"
 }

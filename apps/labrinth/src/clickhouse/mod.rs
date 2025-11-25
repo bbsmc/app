@@ -1,5 +1,5 @@
 use hyper::client::HttpConnector;
-use hyper_tls::{native_tls, HttpsConnector};
+use hyper_tls::{HttpsConnector, native_tls};
 
 mod fetch;
 

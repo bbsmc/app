@@ -7,8 +7,8 @@ use crate::models::v2::notifications::LegacyNotification;
 use crate::models::v2::projects::LegacyProject;
 use crate::models::v2::user::LegacyUser;
 use crate::queue::session::AuthQueue;
-use crate::routes::{v2_reroute, v3, ApiError};
-use actix_web::{delete, get, patch, web, HttpRequest, HttpResponse};
+use crate::routes::{ApiError, v2_reroute, v3};
+use actix_web::{HttpRequest, HttpResponse, delete, get, patch, web};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -28,7 +28,17 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(user_edit)
             .service(user_icon_edit)
             .service(user_notifications)
-            .service(user_follows),
+            .service(user_follows)
+            // 用户封禁相关路由
+            .route("bans", web::get().to(super::bans::get_my_bans))
+            .route(
+                "bans/{ban_id}/appeal",
+                web::post().to(super::bans::create_appeal),
+            )
+            .route(
+                "appeals/{appeal_id}",
+                web::get().to(super::bans::get_my_appeal),
+            ),
     );
 }
 

@@ -67,7 +67,7 @@ export const initAuth = async (oldToken = null) => {
         true,
       );
     } catch {
-      /* empty */
+      // 认证失败，忽略错误
     }
   }
 
@@ -97,6 +97,7 @@ export const initAuth = async (oldToken = null) => {
         true,
       );
     } catch {
+      // 刷新失败，清除 cookie
       authCookie.value = null;
     }
   }

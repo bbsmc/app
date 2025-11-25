@@ -1,3 +1,4 @@
+mod bans;
 mod moderation;
 mod notifications;
 pub(crate) mod project_creation;
@@ -24,6 +25,7 @@ pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
             .configure(super::internal::session::config)
             .configure(super::internal::flows::config)
             .configure(super::internal::pats::config)
+            .configure(bans::config)
             .configure(moderation::config)
             .configure(notifications::config)
             .configure(project_creation::config)

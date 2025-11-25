@@ -7,8 +7,8 @@ use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::util::date::get_current_tenths_of_ms;
 use crate::util::env::parse_strings_from_var;
-use actix_web::{post, web};
 use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{post, web};
 use serde::Deserialize;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -109,7 +109,7 @@ pub async fn page_view_ingest(
         user_id: 0,
         project_id: 0,
         ip,
-        country: String::new(),  // MaxMind 功能已移除
+        country: String::new(), // MaxMind 功能已移除
         user_agent: headers.get("user-agent").cloned().unwrap_or_default(),
         headers: headers
             .into_iter()

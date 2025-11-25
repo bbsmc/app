@@ -1,17 +1,17 @@
 use governor::clock::{Clock, DefaultClock};
-use governor::{middleware, state, RateLimiter};
+use governor::{RateLimiter, middleware, state};
 use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::routes::ApiError;
 use crate::util::env::parse_var;
 use actix_web::{
-    body::EitherBody,
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error, ResponseError,
+    body::EitherBody,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
 };
 use futures_util::future::LocalBoxFuture;
-use futures_util::future::{ready, Ready};
+use futures_util::future::{Ready, ready};
 
 pub type KeyedRateLimiter<
     K = String,

@@ -1,13 +1,15 @@
 use crate::auth::get_user_from_headers;
 use crate::database;
-use crate::database::models::thread_item::{ThreadBuilder, ThreadMessageBuilder};
+use crate::database::models::thread_item::{
+    ThreadBuilder, ThreadMessageBuilder,
+};
 use crate::database::redis::RedisPool;
-use crate::models::ids::{VersionId};
+use crate::models::ids::VersionId;
 use crate::models::pats::Scopes;
 use crate::models::threads::{MessageBody, ThreadType};
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use serde::Deserialize;
 use sqlx::PgPool;
 
@@ -26,7 +28,7 @@ pub async fn send_version_link_message(
     message_body: web::Json<SendVersionLinkMessage>,
 ) -> Result<HttpResponse, ApiError> {
     let (translation_version_id, target_version_id) = info.into_inner();
-    
+
     let user = get_user_from_headers(
         &req,
         &**pool,
@@ -45,8 +47,10 @@ pub async fn send_version_link_message(
     let mut transaction = pool.begin().await?;
 
     // 转换ID类型
-    let db_translation_id: database::models::ids::VersionId = translation_version_id.into();
-    let db_target_id: database::models::ids::VersionId = target_version_id.into();
+    let db_translation_id: database::models::ids::VersionId =
+        translation_version_id.into();
+    let db_target_id: database::models::ids::VersionId =
+        target_version_id.into();
 
     // 查找版本链接及其thread
     let link_info = sqlx::query!(
@@ -66,13 +70,12 @@ pub async fn send_version_link_message(
     .fetch_optional(&mut *transaction)
     .await?;
 
-    let link = link_info.ok_or_else(|| {
-        ApiError::InvalidInput("版本链接不存在".to_string())
-    })?;
+    let link = link_info
+        .ok_or_else(|| ApiError::InvalidInput("版本链接不存在".to_string()))?;
 
     // 权限检查
     let user_id: database::models::ids::UserId = user.id.into();
-    
+
     let is_translation_member = sqlx::query!(
         "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)",
         link.translation_team_id,
@@ -106,9 +109,10 @@ pub async fn send_version_link_message(
         // 创建新thread
         let new_thread_id = ThreadBuilder {
             type_: ThreadType::VersionLink,
-            members: vec![],  // Version link threads不需要固定成员
+            members: vec![], // Version link threads不需要固定成员
             project_id: None,
             report_id: None,
+            ban_appeal_id: None,
         }
         .insert(&mut transaction)
         .await?;
@@ -132,11 +136,11 @@ pub async fn send_version_link_message(
         body: MessageBody::Text {
             body: message_body.body.clone(),
             replying_to: None,
-            private: false,  // 版本链接thread中的消息都是公开的
+            private: false, // 版本链接thread中的消息都是公开的
             associated_images: vec![],
         },
         thread_id,
-        hide_identity: false,  // 版本链接thread中不隐藏身份
+        hide_identity: false, // 版本链接thread中不隐藏身份
     }
     .insert(&mut transaction)
     .await?;

@@ -59,7 +59,6 @@ impl FileHost for S3Host {
         file_name: &str,
         file_bytes: Bytes,
     ) -> Result<UploadFileData, FileHostingError> {
-
         let content_sha1 = sha1::Sha1::from(&file_bytes).hexdigest();
 
         let content_sha512 = format!("{:x}", sha2::Sha512::digest(&file_bytes));
@@ -68,7 +67,8 @@ impl FileHost for S3Host {
 
         // 根据文件大小设置超时时间
         // 假设上传速度至少 1MB/s，再加上额外的缓冲时间
-        let timeout_seconds = std::cmp::max(30, (file_size / (1024 * 1024)) + 60);
+        let timeout_seconds =
+            std::cmp::max(30, (file_size / (1024 * 1024)) + 60);
 
         // 使用 tokio::time::timeout 来限制上传时间
         let upload_future = self.bucket.put_object_with_content_type(
@@ -79,19 +79,22 @@ impl FileHost for S3Host {
 
         match tokio::time::timeout(
             std::time::Duration::from_secs(timeout_seconds as u64),
-            upload_future
-        ).await {
-            Ok(Ok(_)) => {
-            }
+            upload_future,
+        )
+        .await
+        {
+            Ok(Ok(_)) => {}
             Ok(Err(e)) => {
-                return Err(FileHostingError::S3Error(
-                    format!("S3 upload error: {:?}", e),
-                ));
+                return Err(FileHostingError::S3Error(format!(
+                    "S3 upload error: {:?}",
+                    e
+                )));
             }
             Err(_) => {
-                return Err(FileHostingError::S3Error(
-                    format!("Upload timeout after {} seconds for file size {} bytes", timeout_seconds, file_size),
-                ));
+                return Err(FileHostingError::S3Error(format!(
+                    "Upload timeout after {} seconds for file size {} bytes",
+                    timeout_seconds, file_size
+                )));
             }
         }
         Ok(UploadFileData {

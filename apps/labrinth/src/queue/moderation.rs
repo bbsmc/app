@@ -454,12 +454,12 @@ impl AutomatedModerationQueue {
                                     }
 
                                     let flame_anvil_url = dotenvy::var("FLAME_ANVIL_URL")?;
-                                    
+
                                     // 如果 FLAME_ANVIL_URL 设置为 "none"，跳过 CurseForge 检查
                                     if flame_anvil_url == "none" || flame_anvil_url.is_empty() {
                                         continue;
                                     }
-                                    
+
                                     let client = reqwest::Client::new();
                                     let res = client
                                         .post(format!("{}/v1/fingerprints", flame_anvil_url))
@@ -566,7 +566,7 @@ impl AutomatedModerationQueue {
                                         Vec::new()
                                     } else {
                                         let flame_anvil_url = dotenvy::var("FLAME_ANVIL_URL")?;
-                                        
+
                                         // 如果 FLAME_ANVIL_URL 设置为 "none"，跳过获取项目信息
                                         if flame_anvil_url == "none" || flame_anvil_url.is_empty() {
                                             Vec::new()

@@ -163,7 +163,7 @@
       <!-- Banner 轮播区域 - 根据项目类型动态显示 -->
       <section
         v-if="hasBanner"
-        class="relative rounded-xl overflow-hidden h-[300px] group mb-6 select-none"
+        class="group relative mb-6 h-[300px] select-none overflow-hidden rounded-xl"
         :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
         @mouseenter="handleMouseEnter"
         @mouseleave="handleMouseLeave"
@@ -176,33 +176,36 @@
           v-for="(item, index) in bannerItems"
           :key="index"
           :class="[
-            'absolute inset-0 w-full h-full transition-opacity duration-500 select-none',
-            { 'opacity-100 z-[1]': index === currentBannerSlide, 'opacity-0 z-0': index !== currentBannerSlide }
+            'absolute inset-0 h-full w-full select-none transition-opacity duration-500',
+            {
+              'z-[1] opacity-100': index === currentBannerSlide,
+              'z-0 opacity-0': index !== currentBannerSlide,
+            },
           ]"
           @click="handleBannerClick($event, item.slug)"
         >
           <img
             :src="item.image"
             :alt="item.title"
-            class="absolute inset-0 w-full h-full object-cover user-select-none"
+            class="user-select-none absolute inset-0 h-full w-full object-cover"
             :class="{ 'transition-transform duration-500 group-hover:scale-105': !isDragging }"
             draggable="false"
           />
           <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-          <div class="absolute bottom-0 left-0 p-6 md:p-8 text-white pointer-events-none">
-            <h2 class="banner-title text-2xl md:text-3xl font-bold mb-2">{{ item.title }}</h2>
-            <p class="banner-description text-sm md:text-base max-w-2xl">{{ item.description }}</p>
+          <div class="pointer-events-none absolute bottom-0 left-0 p-6 text-white md:p-8">
+            <h2 class="banner-title mb-2 text-2xl font-bold md:text-3xl">{{ item.title }}</h2>
+            <p class="banner-description max-w-2xl text-sm md:text-base">{{ item.description }}</p>
           </div>
         </div>
-        <div class="absolute bottom-4 right-4 flex space-x-2 z-[2]">
+        <div class="absolute bottom-4 right-4 z-[2] flex space-x-2">
           <button
             v-for="(_, index) in bannerItems"
             :key="index"
-            @click="goToBannerSlide(index)"
             :class="[
-              'w-2 h-2 rounded-full transition-all duration-300',
-              currentBannerSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white'
+              'h-2 w-2 rounded-full transition-all duration-300',
+              currentBannerSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white',
             ]"
+            @click="goToBannerSlide(index)"
           ></button>
         </div>
       </section>
@@ -318,7 +321,9 @@
             :search="true"
             :show-updated-date="!server && sortType.name !== 'newest'"
             :show-created-date="!server"
-            :hide-loaders="['resourcepack', 'datapack', 'software', 'language'].includes(projectType.id)"
+            :hide-loaders="
+              ['resourcepack', 'datapack', 'software', 'language'].includes(projectType.id)
+            "
             :color="result.color"
           >
             <template v-if="server">
@@ -385,13 +390,15 @@ const filterAccordions = ref([]);
 const bannerItemsConfig = ref({
   modpack: [
     {
-      image: "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1_350.webp",
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1_350.webp",
       title: "剑与王国",
       description: "围绕模拟殖民地与村民招募玩法的深度魔改整合包",
       slug: "/modpack/snk",
     },
     {
-      image: "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94_350.webp",
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94_350.webp",
       title: "龙之冒险：新征程",
       description: "面对众多怪物的冒险之旅，你做好准备了吗？",
       slug: "/modpack/lzmx",
@@ -399,17 +406,20 @@ const bannerItemsConfig = ref({
     {
       image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
       title: "PCL2",
-      description: "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
+      description:
+        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
       slug: "/software/pcl",
     },
     {
-      image: "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
       title: "愚者 - The Fool",
       description: "愚弄、伪装、欺诈，屠龙者终成恶龙。",
       slug: "/modpack/the-fool",
     },
     {
-      image: "https://cdn.bbsmc.net/bbsmc/data/e11vzqXl/images/346fd8930411f592c94acce68b8290a5266843e3_350.webp",
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/e11vzqXl/images/346fd8930411f592c94acce68b8290a5266843e3_350.webp",
       title: "香草纪元:食旅纪行 ",
       description: "农夫乐事全附属与异界冒险",
       slug: "/modpack/vefc",
@@ -419,11 +429,13 @@ const bannerItemsConfig = ref({
     {
       image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
       title: "PCL2",
-      description: "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
+      description:
+        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
       slug: "/software/pcl",
     },
     {
-      image: "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
       title: "PCL CE",
       description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
       slug: "/software/pcl",
@@ -1148,7 +1160,7 @@ function toggleFilter(filter, doNotSendRequest) {
 
 // Banner 轮播处理函数
 const handleDragStart = (e) => {
-  const isTouchEvent = e.type.includes('touch');
+  const isTouchEvent = e.type.includes("touch");
   isDragging.value = true;
   hasDragged.value = false;
   dragStartX.value = isTouchEvent ? e.touches[0].clientX : e.clientX;
@@ -1157,14 +1169,14 @@ const handleDragStart = (e) => {
 
   if (!isTouchEvent) {
     e.preventDefault();
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener("mousemove", handleDragMove);
+    document.addEventListener("mouseup", handleDragEnd);
   }
 };
 
 const handleDragMove = (e) => {
   if (!isDragging.value) return;
-  const isTouchEvent = e.type.includes('touch');
+  const isTouchEvent = e.type.includes("touch");
   const currentX = isTouchEvent ? e.touches[0].clientX : e.clientX;
   dragCurrentX.value = currentX;
 
@@ -1192,8 +1204,8 @@ const handleDragEnd = (e) => {
   isDragging.value = false;
   startBannerAutoPlay();
 
-  document.removeEventListener('mousemove', handleDragMove);
-  document.removeEventListener('mouseup', handleDragEnd);
+  document.removeEventListener("mousemove", handleDragMove);
+  document.removeEventListener("mouseup", handleDragEnd);
 
   setTimeout(() => {
     dragStartX.value = 0;
@@ -1202,9 +1214,8 @@ const handleDragEnd = (e) => {
 };
 
 const prevBannerSlide = () => {
-  currentBannerSlide.value = currentBannerSlide.value === 0
-    ? bannerItems.value.length - 1
-    : currentBannerSlide.value - 1;
+  currentBannerSlide.value =
+    currentBannerSlide.value === 0 ? bannerItems.value.length - 1 : currentBannerSlide.value - 1;
   startBannerAutoPlay();
 };
 
@@ -1215,7 +1226,7 @@ const nextBannerSlide = () => {
 
 const goToBannerSlide = (index) => {
   if (index === currentBannerSlide.value) {
-    window.open(bannerItems.value[index].slug, '_blank');
+    window.open(bannerItems.value[index].slug, "_blank");
     return;
   }
   currentBannerSlide.value = index;
@@ -1231,7 +1242,7 @@ const handleBannerClick = (e, url) => {
     return;
   }
 
-  window.open(url, '_blank');
+  window.open(url, "_blank");
 };
 
 const startBannerAutoPlay = () => {
@@ -1482,7 +1493,12 @@ onUnmounted(() => {
 /* Banner 样式 */
 .banner-title {
   color: #ffffff !important;
-  font-family: 'Space Grotesk', var(--montserrat-font), system-ui, -apple-system, sans-serif;
+  font-family:
+    "Space Grotesk",
+    var(--montserrat-font),
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .banner-description {

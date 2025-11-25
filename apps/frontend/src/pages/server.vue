@@ -287,7 +287,7 @@ const creaters = {
     code: "锻造之旅",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
   },
-  "shenhuaqiyuan": {
+  shenhuaqiyuan: {
     name: "神话：起源4.7重制版",
     code: "神话起源",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
@@ -296,7 +296,7 @@ const creaters = {
     name: "未尽之路",
     code: "未尽之路",
     link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
-  }
+  },
 };
 
 const cf = ref(creaters[aff]);

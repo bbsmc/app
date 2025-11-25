@@ -15,6 +15,25 @@ const USERS_NAMESPACE: &str = "users";
 const USER_USERNAMES_NAMESPACE: &str = "users_usernames";
 const USERS_PROJECTS_NAMESPACE: &str = "users_projects";
 
+/// 用户活跃封禁摘要（用于 User 查询结果）
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct UserBanInfo {
+    pub id: i64,
+    pub ban_type: String,
+    pub reason: String,
+    pub banned_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub appeal: Option<BanAppealInfo>,
+}
+
+/// 封禁申诉信息
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct BanAppealInfo {
+    pub id: i64,
+    pub status: String,
+    pub thread_id: Option<i64>,
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct User {
     pub id: UserId,
@@ -47,6 +66,10 @@ pub struct User {
     pub wiki_ban_time: DateTime<Utc>,
     pub wiki_overtake_count: i64,
     pub phone_number: Option<String>,
+
+    /// 用户当前的活跃封禁列表（需要单独调用 UserBan::get_user_active_bans 填充）
+    #[serde(default)]
+    pub active_bans: Vec<UserBanInfo>,
 }
 
 impl User {
@@ -103,7 +126,7 @@ impl User {
         redis: &RedisPool,
     ) -> Result<Option<User>, DatabaseError>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Postgres>,
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
         User::get_many(&[string], executor, redis)
             .await
@@ -116,7 +139,7 @@ impl User {
         redis: &RedisPool,
     ) -> Result<Option<User>, DatabaseError>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Postgres>,
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
         User::get_many(&[crate::models::ids::UserId::from(id)], executor, redis)
             .await
@@ -129,7 +152,7 @@ impl User {
         redis: &RedisPool,
     ) -> Result<Vec<User>, DatabaseError>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Postgres>,
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
         let ids = user_ids
             .iter()
@@ -148,41 +171,45 @@ impl User {
         redis: &RedisPool,
     ) -> Result<Vec<User>, DatabaseError>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Postgres>,
+        E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
         use futures::TryStreamExt;
 
-        let val = redis.get_cached_keys_with_slug(
-            USERS_NAMESPACE,
-            USER_USERNAMES_NAMESPACE,
-            false,
-            users_strings,
-            |ids| async move {
-                let user_ids: Vec<i64> = ids
-                    .iter()
-                    .flat_map(|x| parse_base62(&x.to_string()).ok())
-                    .map(|x| x as i64)
-                    .collect();
-                let slugs = ids
-                    .into_iter()
-                    .map(|x| x.to_string().to_lowercase())
-                    .collect::<Vec<_>>();
+        let val = redis
+            .get_cached_keys_with_slug(
+                USERS_NAMESPACE,
+                USER_USERNAMES_NAMESPACE,
+                false,
+                users_strings,
+                |ids| async move {
+                    let mut exec = exec.acquire().await?;
 
-                let users = sqlx::query!(
-                    "
-                    SELECT id, email,
-                        avatar_url, raw_avatar_url, username, bio,
-                        created, role, badges,
-                        github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
-                        email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
-                        venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number
-                    FROM users
-                    WHERE id = ANY($1) OR LOWER(username) = ANY($2)
-                    ",
-                    &user_ids,
-                    &slugs,
-                )
-                    .fetch(exec)
+                    let user_ids: Vec<i64> = ids
+                        .iter()
+                        .flat_map(|x| parse_base62(&x.to_string()).ok())
+                        .map(|x| x as i64)
+                        .collect();
+                    let slugs = ids
+                        .into_iter()
+                        .map(|x| x.to_string().to_lowercase())
+                        .collect::<Vec<_>>();
+
+                    // 第一步：查询用户基本信息
+                    let users = sqlx::query!(
+                        "
+                        SELECT id, email,
+                            avatar_url, raw_avatar_url, username, bio,
+                            created, role, badges,
+                            github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
+                            email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
+                            venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number
+                        FROM users
+                        WHERE id = ANY($1) OR LOWER(username) = ANY($2)
+                        ",
+                        &user_ids,
+                        &slugs,
+                    )
+                    .fetch(&mut *exec)
                     .try_fold(DashMap::new(), |acc, u| {
                         let user = User {
                             id: UserId(u.id),
@@ -211,6 +238,7 @@ impl User {
                             wiki_overtake_count: u.wiki_overtake_count,
                             wiki_ban_time: u.wiki_ban_time,
                             phone_number: u.phone_number,
+                            active_bans: Vec::new(),  // 第二步填充
                         };
 
                         acc.insert(u.id, (Some(u.username), user));
@@ -218,8 +246,69 @@ impl User {
                     })
                     .await?;
 
-                Ok(users)
-            }).await?;
+                    // 第二步：查询所有用户的活跃封禁（包含申诉信息）
+                    let queried_user_ids: Vec<i64> = users.iter().map(|entry| *entry.key()).collect();
+                    if !queried_user_ids.is_empty() {
+                        let active_bans: DashMap<i64, Vec<UserBanInfo>> = sqlx::query!(
+                            "
+                            SELECT
+                                ub.user_id,
+                                ub.id,
+                                ub.ban_type,
+                                ub.reason,
+                                ub.banned_at,
+                                ub.expires_at,
+                                uba.id as appeal_id,
+                                uba.status as appeal_status,
+                                uba.thread_id as appeal_thread_id
+                            FROM user_bans ub
+                            LEFT JOIN user_ban_appeals uba ON uba.ban_id = ub.id
+                            WHERE ub.user_id = ANY($1)
+                              AND ub.is_active = true
+                              AND (ub.expires_at IS NULL OR ub.expires_at > NOW())
+                            ",
+                            &queried_user_ids
+                        )
+                        .fetch(&mut *exec)
+                        .try_fold(DashMap::new(), |acc: DashMap<i64, Vec<UserBanInfo>>, row| {
+                            let appeal = if let Some(appeal_id) = row.appeal_id {
+                                Some(BanAppealInfo {
+                                    id: appeal_id,
+                                    status: row.appeal_status.unwrap_or_default(),
+                                    thread_id: row.appeal_thread_id,
+                                })
+                            } else {
+                                None
+                            };
+
+                            let ban_info = UserBanInfo {
+                                id: row.id,
+                                ban_type: row.ban_type,
+                                reason: row.reason,
+                                banned_at: row.banned_at,
+                                expires_at: row.expires_at,
+                                appeal,
+                            };
+
+                            acc.entry(row.user_id).or_default().push(ban_info);
+                            async move { Ok(acc) }
+                        })
+                        .await?;
+
+                        // 第三步：填充 active_bans 到用户对象
+                        for mut entry in users.iter_mut() {
+                            let user_id = *entry.key();
+                            if let Some(bans) = active_bans.get(&user_id) {
+                                entry.value_mut().1.active_bans = bans.value().clone();
+                            }
+                        }
+                    }
+
+                    Ok(users)
+                },
+            )
+            .await?;
+
         Ok(val)
     }
 
@@ -433,14 +522,18 @@ impl User {
         Ok(codes)
     }
 
+    /// 清理用户缓存（常规场景）
+    /// 只删除数据键，不删除锁键
+    /// 锁键会在60秒后自动过期
     pub async fn clear_caches(
         user_ids: &[(UserId, Option<String>)],
         redis: &RedisPool,
     ) -> Result<(), DatabaseError> {
-        let mut redis = redis.connect().await?;
+        let mut redis_conn = redis.connect().await?;
 
-        redis
-            .delete_many(user_ids.iter().flat_map(|(id, username)| {
+        let keys: Vec<_> = user_ids
+            .iter()
+            .flat_map(|(id, username)| {
                 [
                     (USERS_NAMESPACE, Some(id.0.to_string())),
                     (
@@ -448,8 +541,73 @@ impl User {
                         username.clone().map(|i| i.to_lowercase()),
                     ),
                 ]
-            }))
-            .await?;
+            })
+            .collect();
+
+        redis_conn.delete_many(keys).await?;
+
+        Ok(())
+    }
+
+    /// 清理用户缓存并强制清理锁键（封禁操作专用）
+    /// 用于封禁/解封后立即访问的场景，防止锁超时问题
+    pub async fn clear_caches_with_locks(
+        user_ids: &[(UserId, Option<String>)],
+        redis: &RedisPool,
+    ) -> Result<(), DatabaseError> {
+        let mut redis_conn = redis.connect().await?;
+
+        // 第一步：先删除锁键，让等待的请求立即失败
+        // 注意：锁键的 namespace 始终是 USERS_NAMESPACE，不是 USER_USERNAMES_NAMESPACE
+        // 并且需要同时删除大小写两种形式的 username 锁（因为 Redis 内部处理的复杂性）
+        let lock_keys: Vec<String> = user_ids
+            .iter()
+            .flat_map(|(id, username)| {
+                let mut keys =
+                    vec![format!("_{}:{}/lock", USERS_NAMESPACE, id.0)];
+                if let Some(username) = username {
+                    // 同时删除原始大小写和小写两种形式
+                    keys.push(format!(
+                        "_{}:{}/lock",
+                        USERS_NAMESPACE, username
+                    ));
+                    keys.push(format!(
+                        "_{}:{}/lock",
+                        USERS_NAMESPACE,
+                        username.to_lowercase()
+                    ));
+                }
+                keys
+            })
+            .collect();
+
+        if !lock_keys.is_empty() {
+            use redis::cmd;
+            cmd("DEL")
+                .arg(&lock_keys)
+                .query_async::<usize>(&mut redis_conn.connection)
+                .await?;
+        }
+
+        // 第二步：再删除数据键
+        let keys: Vec<_> = user_ids
+            .iter()
+            .flat_map(|(id, username)| {
+                [
+                    (USERS_NAMESPACE, Some(id.0.to_string())),
+                    (
+                        USER_USERNAMES_NAMESPACE,
+                        username.clone().map(|i| i.to_lowercase()),
+                    ),
+                ]
+            })
+            .collect();
+
+        redis_conn.delete_many(keys).await?;
+
+        // 第三步：等待一小段时间，让正在等待的请求有机会检测到锁消失
+        tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+
         Ok(())
     }
 

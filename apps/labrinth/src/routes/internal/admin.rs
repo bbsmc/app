@@ -9,7 +9,7 @@ use crate::routes::ApiError;
 use crate::search::SearchConfig;
 use crate::util::date::get_current_tenths_of_ms;
 use crate::util::guards::admin_key_guard;
-use actix_web::{patch, post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, patch, post, web};
 use serde::Deserialize;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -125,7 +125,7 @@ pub async fn count_download(
         project_id: project_id as u64,
         version_id: version_id as u64,
         ip,
-        country: String::new(),  // MaxMind 功能已移除
+        country: String::new(), // MaxMind 功能已移除
         user_agent: download_body
             .headers
             .get("user-agent")

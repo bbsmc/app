@@ -1,4 +1,6 @@
+use super::bans::{BanAppealId, BanType, UserBanId};
 use super::ids::Base62Id;
+use super::threads::ThreadId;
 use crate::{auth::AuthProvider, bitflags_serde_impl};
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
@@ -35,6 +37,26 @@ impl Default for Badges {
     }
 }
 
+/// 用户封禁摘要（用于 User model）
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UserBanSummary {
+    pub id: UserBanId,
+    pub ban_type: BanType,
+    pub reason: String,
+    pub banned_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub appeal: Option<BanAppealSummary>,
+}
+
+/// 申诉摘要
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BanAppealSummary {
+    pub id: BanAppealId,
+    pub status: String,
+    pub thread_id: Option<ThreadId>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
     pub id: UserId,
@@ -58,6 +80,10 @@ pub struct User {
     pub github_id: Option<u64>,
     pub wiki_ban_time: DateTime<Utc>,
     pub wiki_overtake_count: i64,
+
+    /// 用户当前的活跃封禁列表（None 表示未查询）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_bans: Option<Vec<UserBanSummary>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -72,6 +98,38 @@ pub struct UserPayoutData {
 use crate::database::models::user_item::User as DBUser;
 impl From<DBUser> for User {
     fn from(data: DBUser) -> Self {
+        // 转换封禁信息
+        let active_bans = if data.active_bans.is_empty() {
+            None
+        } else {
+            Some(
+                data.active_bans
+                    .into_iter()
+                    .map(|ban| {
+                        let ban_type = BanType::from_str(&ban.ban_type).unwrap_or_else(|| {
+                            log::error!("Invalid ban_type '{}' for user, defaulting to Global", ban.ban_type);
+                            BanType::Global
+                        });
+
+                        let appeal = ban.appeal.map(|a| BanAppealSummary {
+                            id: BanAppealId(a.id as u64),
+                            status: a.status,
+                            thread_id: a.thread_id.map(|id| ThreadId(id as u64)),
+                        });
+
+                        UserBanSummary {
+                            id: UserBanId(ban.id as u64),
+                            ban_type,
+                            reason: ban.reason,
+                            banned_at: ban.banned_at,
+                            expires_at: ban.expires_at,
+                            appeal,
+                        }
+                    })
+                    .collect(),
+            )
+        };
+
         Self {
             id: data.id.into(),
             username: data.username,
@@ -91,6 +149,7 @@ impl From<DBUser> for User {
             stripe_customer_id: None,
             wiki_ban_time: data.wiki_ban_time,
             wiki_overtake_count: data.wiki_overtake_count,
+            active_bans,
         }
     }
 }
@@ -121,6 +180,39 @@ impl User {
             auth_providers.push(AuthProvider::PayPal)
         }
 
+        // 转换封禁信息
+        let active_bans = if db_user.active_bans.is_empty() {
+            None
+        } else {
+            Some(
+                db_user
+                    .active_bans
+                    .into_iter()
+                    .map(|ban| {
+                        let ban_type = BanType::from_str(&ban.ban_type).unwrap_or_else(|| {
+                            log::error!("Invalid ban_type '{}' for user, defaulting to Global", ban.ban_type);
+                            BanType::Global
+                        });
+
+                        let appeal = ban.appeal.map(|a| BanAppealSummary {
+                            id: BanAppealId(a.id as u64),
+                            status: a.status,
+                            thread_id: a.thread_id.map(|id| ThreadId(id as u64)),
+                        });
+
+                        UserBanSummary {
+                            id: UserBanId(ban.id as u64),
+                            ban_type,
+                            reason: ban.reason,
+                            banned_at: ban.banned_at,
+                            expires_at: ban.expires_at,
+                            appeal,
+                        }
+                    })
+                    .collect(),
+            )
+        };
+
         Self {
             id: UserId::from(db_user.id),
             username: db_user.username,
@@ -145,6 +237,7 @@ impl User {
             stripe_customer_id: db_user.stripe_customer_id,
             wiki_ban_time: db_user.wiki_ban_time,
             wiki_overtake_count: db_user.wiki_overtake_count,
+            active_bans,
         }
     }
 }

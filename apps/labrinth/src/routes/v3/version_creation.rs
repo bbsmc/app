@@ -1,5 +1,5 @@
 use super::project_creation::{CreateError, UploadedFile};
-use crate::auth::get_user_from_headers;
+use crate::auth::{check_resource_ban, get_user_from_headers};
 use crate::database::models::loader_fields::{
     LoaderField, LoaderFieldEnumValue, VersionField,
 };
@@ -7,27 +7,27 @@ use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::version_item::{
     DependencyBuilder, QueryDisk, VersionBuilder, VersionFileBuilder,
 };
-use crate::database::models::{self, image_item, Organization};
+use crate::database::models::{self, Organization, image_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::images::{Image, ImageContext, ImageId};
 use crate::models::notifications::NotificationBody;
 use crate::models::pack::PackFileHash;
 use crate::models::pats::Scopes;
-use crate::models::projects::{skip_nulls, DependencyType, ProjectStatus};
 use crate::models::projects::{
     Dependency, FileType, Loader, ProjectId, Version, VersionFile, VersionId,
     VersionLink, VersionStatus, VersionType,
 };
+use crate::models::projects::{DependencyType, ProjectStatus, skip_nulls};
 use crate::models::teams::ProjectPermissions;
 use crate::queue::moderation::AutomatedModerationQueue;
 use crate::queue::session::AuthQueue;
 use crate::util::routes::read_from_field;
 use crate::util::validate::validation_errors_to_string;
-use crate::validate::{validate_file, ValidationResult};
+use crate::validate::{ValidationResult, validate_file};
 use actix_multipart::{Field, Multipart};
 use actix_web::web::Data;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use futures::stream::StreamExt;
 use itertools::Itertools;
@@ -175,6 +175,11 @@ async fn version_create_inner(
     .await?
     .1;
 
+    // 检查用户是否被资源类封禁
+    check_resource_ban(&user, pool)
+        .await
+        .map_err(|e| CreateError::Banned(e.to_string()))?;
+
     let mut error = None;
     while let Some(item) = payload.next().await {
         let mut field: Field = item?;
@@ -318,15 +323,15 @@ async fn version_create_inner(
 
                 // 处理版本链接
                 let mut version_links = Vec::new();
-                
+
                 if let Some(links) = &version_create_data.version_links {
                     for link in links {
                         // 获取被翻译版本的信息
                         let target_version_id: models::VersionId = link.joining_version_id.into();
                         let target_version = models::Version::get(target_version_id, &mut **transaction, redis).await?;
-                        
+
                         let mut auto_approve = false;
-                        
+
                         if let Some(target_version) = target_version {
                             // 获取目标项目的团队成员信息
                             let target_project_id = target_version.inner.project_id;
@@ -336,7 +341,7 @@ async fn version_create_inner(
                                 false,  // allow_pending
                                 &mut **transaction,
                             ).await?;
-                            
+
                             // 获取目标项目的组织团队成员信息（如果有）
                             let target_project = models::Project::get_id(target_project_id, &mut **transaction, redis).await?;
                             let target_org_team = if let Some(target_project) = target_project {
@@ -353,7 +358,7 @@ async fn version_create_inner(
                             } else {
                                 None
                             };
-                            
+
                             // 判断是否需要自动审核通过
                             if user.role.is_admin() {
                                 log::info!(
@@ -391,16 +396,16 @@ async fn version_create_inner(
                                 target_version_id.0, version_id
                             );
                         }
-                        
+
                         version_links.push(models::version_item::VersionLinkBuilder {
                             joining_version_id: link.joining_version_id.into(),
                             link_type: link.link_type.clone(),
                             language_code: link.language_code.clone(),
                             description: link.description.clone(),
-                            approval_status: if auto_approve { 
-                                "approved".to_string() 
-                            } else { 
-                                "pending".to_string() 
+                            approval_status: if auto_approve {
+                                "approved".to_string()
+                            } else {
+                                "pending".to_string()
                             },
                         });
                     }
@@ -590,13 +595,19 @@ async fn version_create_inner(
             file_type: None,
         });
     }
-    
+
     // 在移动 version_links 之前先收集需要清除缓存的目标版本ID
-    let target_version_ids_to_clear: Vec<models::ids::VersionId> = version_data.version_links
+    let target_version_ids_to_clear: Vec<models::ids::VersionId> = version_data
+        .version_links
         .as_ref()
-        .map(|links| links.iter().map(|link| link.joining_version_id.into()).collect())
+        .map(|links| {
+            links
+                .iter()
+                .map(|link| link.joining_version_id.into())
+                .collect()
+        })
         .unwrap_or_default();
-    
+
     let response = Version {
         id: builder.version_id.into(),
         project_id: builder.project_id.into(),
@@ -625,14 +636,13 @@ async fn version_create_inner(
 
     let project_id = builder.project_id;
     builder.insert(transaction).await?;
-    
+
     // 清除版本链接目标版本的缓存（新建版本时）
     for target_version_id in target_version_ids_to_clear {
-        if let Some(target_version) = models::Version::get(
-            target_version_id,
-            &mut **transaction,
-            redis,
-        ).await? {
+        if let Some(target_version) =
+            models::Version::get(target_version_id, &mut **transaction, redis)
+                .await?
+        {
             models::Version::clear_cache(&target_version, redis).await?;
         }
     }
