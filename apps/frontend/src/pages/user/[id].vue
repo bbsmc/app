@@ -6,13 +6,17 @@
 
     <!-- 封禁横幅 -->
     <div v-if="user.active_bans && user.active_bans.length > 0" class="ban-banner">
-      <div class="ban-banner-content">
-        <UserXIcon class="ban-banner-icon" />
-        <div class="ban-banner-text">
-          <strong>该用户已被封禁</strong>
-          <span v-if="getMainBanInfo">{{ getMainBanInfo }}</span>
-        </div>
-      </div>
+      <UserXIcon class="ban-icon" />
+      <span>
+        该用户已被封禁（{{ getMainBanInfo?.typeName
+        }}<template v-if="getMainBanInfo?.totalCount > 1"
+          >等 {{ getMainBanInfo.totalCount }} 项</template
+        >）。 封禁时间：{{ formatBanDate(getMainBanInfo?.bannedAt) }}。
+        <template v-if="getMainBanInfo?.expiresAt">
+          到期时间：{{ formatBanDate(getMainBanInfo.expiresAt) }}。
+        </template>
+        <template v-else>永久封禁。</template>
+      </span>
     </div>
 
     <div class="new-page sidebar" :class="{ 'alt-layout': cosmetics.leftContentLayout }">
@@ -582,9 +586,22 @@ function getBanTooltip(bans) {
   return banList.join("\n");
 }
 
+// 格式化封禁日期
+function formatBanDate(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // 获取主要封禁信息用于横幅显示
 const getMainBanInfo = computed(() => {
-  if (!user.value?.active_bans || user.value.active_bans.length === 0) return "";
+  if (!user.value?.active_bans || user.value.active_bans.length === 0) return null;
 
   const banTypeNames = {
     global: "全局封禁",
@@ -601,10 +618,12 @@ const getMainBanInfo = computed(() => {
   const mainBan = sortedBans[0];
   const typeName = banTypeNames[mainBan.ban_type] || mainBan.ban_type;
 
-  if (user.value.active_bans.length > 1) {
-    return `${typeName} 等 ${user.value.active_bans.length} 项封禁`;
-  }
-  return typeName;
+  return {
+    typeName,
+    bannedAt: mainBan.banned_at,
+    expiresAt: mainBan.expires_at,
+    totalCount: user.value.active_bans.length,
+  };
 });
 
 const navLinks = computed(() => [
@@ -720,70 +739,37 @@ export default defineNuxtComponent({
   white-space: nowrap;
 }
 
-.ban-icon {
-  width: 14px;
-  height: 14px;
-}
-
-// 封禁横幅
+// 封禁横幅（与 default.vue 中的 ban-nag 风格一致）
 .ban-banner {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  color: white;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border-radius: var(--radius-lg, 12px);
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
-}
-
-.ban-banner-content {
+  position: relative;
+  background-color: rgba(239, 68, 68, 0.15);
+  border-bottom: 2px solid rgb(239, 68, 68);
+  width: 100%;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
-  max-width: 1280px;
-  margin: 0 auto;
-}
+  padding: 0.5rem 1rem;
+  color: var(--color-text);
+  margin-bottom: 1rem;
 
-.ban-banner-icon {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.ban-banner-text {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-
-  strong {
-    font-weight: 600;
+  .ban-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: rgb(239, 68, 68);
+    flex-shrink: 0;
   }
 
   span {
-    opacity: 0.9;
-    font-size: 0.9em;
-
-    &::before {
-      content: "·";
-      margin-right: 0.5rem;
-    }
+    font-size: 0.9rem;
   }
 }
 
 @media (max-width: 768px) {
   .ban-banner {
-    border-radius: 0;
-    margin-bottom: 0;
-  }
-
-  .ban-banner-text {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-
-    span::before {
-      display: none;
-    }
+    text-align: center;
+    gap: 0.5rem;
   }
 }
 </style>
