@@ -16,7 +16,7 @@ use crate::util::routes::read_from_payload;
 use crate::util::validate::validation_errors_to_string;
 use crate::{database, models};
 use actix_web::web::Data;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -223,10 +223,10 @@ pub async fn collection_get(
     .map(|x| x.1)
     .ok();
 
-    if let Some(data) = collection_data {
-        if is_visible_collection(&data, &user_option).await? {
-            return Ok(HttpResponse::Ok().json(Collection::from(data)));
-        }
+    if let Some(data) = collection_data
+        && is_visible_collection(&data, &user_option).await?
+    {
+        return Ok(HttpResponse::Ok().json(Collection::from(data)));
     }
     Err(ApiError::NotFound)
 }
@@ -354,14 +354,15 @@ pub async fn collection_edit(
                 .collect_vec();
             let mut validated_project_ids = Vec::new();
             for project_id in new_project_ids {
-                let project =
-                    database::models::Project::get(project_id, &**pool, &redis)
-                        .await?
-                        .ok_or_else(|| {
-                            ApiError::InvalidInput(format!(
-                            "The specified project {project_id} does not exist!"
-                        ))
-                        })?;
+                let project = database::models::Project::get(
+                    project_id, &**pool, &redis,
+                )
+                .await?
+                .ok_or_else(|| {
+                    ApiError::InvalidInput(format!(
+                        "The specified project {project_id} does not exist!"
+                    ))
+                })?;
                 validated_project_ids.push(project.inner.id.0);
             }
             // 插入- 如果已存在，则不抛出错误

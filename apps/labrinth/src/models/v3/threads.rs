@@ -1,3 +1,4 @@
+use super::bans::BanAppealId;
 use super::ids::{Base62Id, ImageId};
 use crate::models::ids::{ProjectId, ReportId};
 use crate::models::projects::ProjectStatus;
@@ -22,6 +23,7 @@ pub struct Thread {
     pub type_: ThreadType,
     pub project_id: Option<ProjectId>,
     pub report_id: Option<ReportId>,
+    pub ban_appeal_id: Option<BanAppealId>,
     pub messages: Vec<ThreadMessage>,
     pub members: Vec<User>,
 }
@@ -65,6 +67,7 @@ pub enum ThreadType {
     Project,
     DirectMessage,
     VersionLink,
+    BanAppeal,
 }
 
 impl std::fmt::Display for ThreadType {
@@ -81,6 +84,7 @@ impl ThreadType {
             ThreadType::Project => "project",
             ThreadType::DirectMessage => "direct_message",
             ThreadType::VersionLink => "version_link",
+            ThreadType::BanAppeal => "ban_appeal",
         }
     }
 
@@ -90,6 +94,7 @@ impl ThreadType {
             "project" => ThreadType::Project,
             "direct_message" => ThreadType::DirectMessage,
             "version_link" => ThreadType::VersionLink,
+            "ban_appeal" => ThreadType::BanAppeal,
             _ => ThreadType::DirectMessage,
         }
     }
@@ -108,6 +113,7 @@ impl Thread {
             type_: thread_type,
             project_id: data.project_id.map(|x| x.into()),
             report_id: data.report_id.map(|x| x.into()),
+            ban_appeal_id: data.ban_appeal_id.map(|x| BanAppealId(x.0 as u64)),
             messages: data
                 .messages
                 .into_iter()

@@ -6,8 +6,8 @@ use crate::models::pats::Scopes;
 use crate::models::users::User;
 use crate::queue::session::AuthQueue;
 use crate::routes::internal::session::get_session_metadata;
-use actix_web::http::header::{HeaderValue, AUTHORIZATION};
 use actix_web::HttpRequest;
+use actix_web::http::header::{AUTHORIZATION, HeaderValue};
 use chrono::Utc;
 
 pub async fn get_user_from_headers<'a, E>(
@@ -18,7 +18,9 @@ pub async fn get_user_from_headers<'a, E>(
     required_scopes: Option<&[Scopes]>,
 ) -> Result<(Scopes, User), AuthenticationError>
 where
-    E: sqlx::Executor<'a, Database = sqlx::Postgres> + Copy,
+    E: sqlx::Executor<'a, Database = sqlx::Postgres>
+        + sqlx::Acquire<'a, Database = sqlx::Postgres>
+        + Copy,
 {
     // Fetch DB user record and minos user from headers
     let (scopes, db_user) = get_user_record_from_bearer_token(
@@ -32,6 +34,10 @@ where
     .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
 
     let user = User::from_full(db_user);
+
+    // 注意：不再在登录时检查全局封禁
+    // 被封禁用户仍然可以登录，以便查看封禁状态和提交申诉
+    // 具体操作的限制由各个接口自行检查
 
     if let Some(required_scopes) = required_scopes {
         for scope in required_scopes {
@@ -52,7 +58,9 @@ pub async fn get_user_record_from_bearer_token<'a, 'b, E>(
     session_queue: &AuthQueue,
 ) -> Result<Option<(Scopes, user_item::User)>, AuthenticationError>
 where
-    E: sqlx::Executor<'a, Database = sqlx::Postgres> + Copy,
+    E: sqlx::Executor<'a, Database = sqlx::Postgres>
+        + sqlx::Acquire<'a, Database = sqlx::Postgres>
+        + Copy,
 {
     let token = if let Some(token) = token {
         token
@@ -173,7 +181,9 @@ pub async fn check_is_moderator_from_headers<'a, 'b, E>(
     required_scopes: Option<&[Scopes]>,
 ) -> Result<User, AuthenticationError>
 where
-    E: sqlx::Executor<'a, Database = sqlx::Postgres> + Copy,
+    E: sqlx::Executor<'a, Database = sqlx::Postgres>
+        + sqlx::Acquire<'a, Database = sqlx::Postgres>
+        + Copy,
 {
     let user = get_user_from_headers(
         req,

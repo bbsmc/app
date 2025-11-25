@@ -107,9 +107,9 @@
           </NavStackItem>
           <h3>审核</h3>
           <NavStackItem
-              :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/settings/translations`"
-              label="翻译审核"
-              chevron
+            :link="`/${project.project_type}/${project.slug ? project.slug : project.id}/settings/translations`"
+            label="翻译审核"
+            chevron
           >
             <TranslateIcon aria-hidden="true" />
           </NavStackItem>
@@ -613,6 +613,9 @@
             :translation-version="translationRecommendation"
             @navigate="navigateToTranslation"
           />
+
+          <!-- 服务器推荐 -->
+          <ServerPromo v-if="affs[project.id]" @navigate="navigateToServer" />
         </div>
       </template>
     </NewModal>
@@ -946,7 +949,9 @@
               </div>
             </div>
           </section>
-          <section v-if="project.project_type !== 'resourcepack' && project.project_type !== 'language'">
+          <section
+            v-if="project.project_type !== 'resourcepack' && project.project_type !== 'language'"
+          >
             <h3>{{ formatMessage(compatibilityMessages.platforms) }}</h3>
             <div class="tag-list">
               <div
@@ -1098,7 +1103,11 @@
         <div class="card flex-card experimental-styles-within">
           <h2>
             {{
-              organization ? (["bbsmc","bbsmc-2","bbsmc-3","bbsmc-cn"].includes(organization.slug) ? "搬运团队" : "创作团队") : "创作者"
+              organization
+                ? ["bbsmc", "bbsmc-2", "bbsmc-3", "bbsmc-cn"].includes(organization.slug)
+                  ? "搬运团队"
+                  : "创作团队"
+                : "创作者"
             }}
           </h2>
           <div class="details-list">
@@ -1138,10 +1147,16 @@
             </nuxt-link>
           </div>
         </div>
-        <div v-if="organization && ['bbsmc','bbsmc-2','bbsmc-3','bbsmc-cn'].includes(organization.slug)" class="card flex-card experimental-styles-within">
+        <div
+          v-if="
+            organization && ['bbsmc', 'bbsmc-2', 'bbsmc-3', 'bbsmc-cn'].includes(organization.slug)
+          "
+          class="card flex-card experimental-styles-within"
+        >
           <h2>搬运资源声明</h2>
-          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0;">
-            对于可进行 JAR 文件搬运的许可证，我们提供站内下载服务；其他资源会跳转到原帖下载。资源更新可能不及时，建议前往资源内提供的原帖链接下载最新版本。
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0">
+            对于可进行 JAR
+            文件搬运的许可证，我们提供站内下载服务；其他资源会跳转到原帖下载。资源更新可能不及时，建议前往资源内提供的原帖链接下载最新版本。
           </p>
         </div>
         <div class="card flex-card experimental-styles-within">
@@ -1330,6 +1345,7 @@ import Accordion from "~/components/ui/Accordion.vue";
 import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import TranslationPromo from "~/components/ui/TranslationPromo.vue";
+import ServerPromo from "~/components/ui/ServerPromo.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -1415,8 +1431,8 @@ const affs = ref({
   YtS91hhr: "ft_wt", // 农场物语
   "2cDBzlDs": "martyredroad", // 真实地球
   "92pKuCHs": "tfg", // 锻造之旅
-  "ZSSC3pSh": "shenhuaqiyuan", // 神话起源
-  "zT3k10EZ": "unfinished-path", // 未尽之路
+  ZSSC3pSh: "shenhuaqiyuan", // 神话起源
+  zT3k10EZ: "unfinished-path", // 未尽之路
 });
 const compatibilityMessages = defineMessages({
   title: {
@@ -1831,7 +1847,10 @@ const members = computed(() => {
 });
 
 const currentMember = computed(() => {
-  let val = auth.value.user && allMembers?.value ? allMembers.value.find((x) => x.user.id === auth.value.user.id) : null;
+  let val =
+    auth.value.user && allMembers?.value
+      ? allMembers.value.find((x) => x.user.id === auth.value.user.id)
+      : null;
 
   if (!val && auth.value.user && organization.value && organization.value.members) {
     val = organization.value.members.find((x) => x.user.id === auth.value.user.id);
@@ -1877,23 +1896,22 @@ const projectTypeDisplay = computed(() => {
 
 const following = computed(
   () =>
-    user.value && user.value.follows && project?.value && user.value.follows.find((x) => x.id === project.value.id),
+    user.value &&
+    user.value.follows &&
+    project?.value &&
+    user.value.follows.find((x) => x.id === project.value.id),
 );
 
-const title = computed(
-  () => {
-    if (!project || !project.value) return "";
-    return `${project.value.title} - 我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value}`;
-  },
-);
-const description = computed(
-  () => {
-    if (!project || !project.value) return "";
-    return `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value} ${
-      project.value.title
-    } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`;
-  },
-);
+const title = computed(() => {
+  if (!project || !project.value) return "";
+  return `${project.value.title} - 我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value}`;
+});
+const description = computed(() => {
+  if (!project || !project.value) return "";
+  return `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value} ${
+    project.value.title
+  } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`;
+});
 
 if (!route.name.startsWith("type-id-settings")) {
   useSeoMeta({
@@ -2319,10 +2337,10 @@ async function fetchTranslationRecommendation() {
     translationRecommendation.value = null;
     return;
   }
-  
+
   // 获取当前显示的版本
   const targetVersion = filteredRelease.value || filteredBeta.value || filteredAlpha.value;
-  
+
   if (!targetVersion || !targetVersion.translated_by || targetVersion.translated_by.length === 0) {
     translationRecommendation.value = null;
     return;
@@ -2334,14 +2352,16 @@ async function fetchTranslationRecommendation() {
       targetVersion.translated_by.map(async (translationLink) => {
         try {
           const translationVersionId = translationLink.joining_version_id;
-          
+
           // 先获取版本信息
           const translationVersion = await useBaseFetch(`version/${translationVersionId}`);
-          
+
           if (translationVersion && translationVersion.project_id) {
             // 再通过 project_id 获取项目信息
-            const translationProject = await useBaseFetch(`project/${translationVersion.project_id}`);
-            
+            const translationProject = await useBaseFetch(
+              `project/${translationVersion.project_id}`,
+            );
+
             if (translationProject) {
               return {
                 version: translationVersion,
@@ -2353,32 +2373,33 @@ async function fetchTranslationRecommendation() {
             }
           }
         } catch (error) {
-          console.error('获取单个汉化包失败:', error);
+          console.error("获取单个汉化包失败:", error);
           return null;
         }
-      })
+      }),
     );
-    
+
     // 过滤掉获取失败的项
-    const validTranslations = translationData.filter(item => item !== null);
-    
+    const validTranslations = translationData.filter((item) => item !== null);
+
     // 按项目ID分组，每个项目只保留最新的版本
     const translationsByProject = new Map();
-    
-    validTranslations.forEach(translation => {
+
+    validTranslations.forEach((translation) => {
       const projectId = translation.project.id;
       const existing = translationsByProject.get(projectId);
-      
+
       // 如果这个项目还没有记录，或者当前版本更新，则更新记录
       if (!existing || new Date(translation.date_published) > new Date(existing.date_published)) {
         translationsByProject.set(projectId, translation);
       }
     });
-    
+
     // 转换回数组并按发布时间排序（最新的在前）
-    const uniqueTranslations = Array.from(translationsByProject.values())
-      .sort((a, b) => new Date(b.date_published) - new Date(a.date_published));
-    
+    const uniqueTranslations = Array.from(translationsByProject.values()).sort(
+      (a, b) => new Date(b.date_published) - new Date(a.date_published),
+    );
+
     if (uniqueTranslations.length > 0) {
       translationRecommendation.value = uniqueTranslations;
     } else {
@@ -2400,11 +2421,22 @@ function navigateToTranslation(translationData) {
   }
 }
 
+function navigateToServer() {
+  // 跳转到服务器页面，与联机搭建按钮的跳转逻辑一致
+  const affId = affs.value[project.value.id];
+  if (affId === "pcl") {
+    window.open("/pcl", "_blank");
+  } else if (affId) {
+    window.open(`/server?aff=${affId}`, "_blank");
+  }
+  downloadModal.value.hide();
+}
+
 function onDownloadClick(event) {
   if (!project || !project.value) {
     return;
   }
-  
+
   if (project.value.versions.length === 0) {
     for (const url of project.value.donation_urls) {
       if (url.id === "site") {
@@ -2420,7 +2452,7 @@ function onDownloadClick(event) {
     });
     return;
   }
-  
+
   // 打开下载弹框时获取汉化包推荐
   fetchTranslationRecommendation();
   downloadModal.value.show(event);

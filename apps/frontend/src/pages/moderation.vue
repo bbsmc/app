@@ -16,6 +16,9 @@
           <NavStackItem link="/moderation/translations" label="翻译审核">
             <LanguagesIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem link="/moderation/appeals" label="封禁申诉">
+            <ShieldIcon aria-hidden="true" />
+          </NavStackItem>
         </NavStack>
       </aside>
     </div>
@@ -32,6 +35,7 @@ import ModrinthIcon from "~/assets/images/utils/users.svg?component";
 import ModerationIcon from "~/assets/images/sidebar/admin.svg?component";
 import ReportIcon from "~/assets/images/utils/report.svg?component";
 import LanguagesIcon from "~/assets/images/utils/languages.svg?component";
+import ShieldIcon from "~/assets/images/utils/shield.svg?component";
 
 definePageMeta({
   middleware: "auth",

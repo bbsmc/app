@@ -51,8 +51,7 @@
         </button>
       </div>
     </div>
-    {{console.log(nags.filter((x) => x.condition && x.status === "required"))
-    }}
+    {{ console.log(nags.filter((x) => x.condition && x.status === "required")) }}
     <div v-if="!collapsed" class="grid-display width-16">
       <div
         v-for="nag in nags.filter((x) => x.condition && !x.hide)"
@@ -291,10 +290,12 @@ const nags = computed(() => [
       props.project.project_type === "language" ||
       props.project.project_type === "datapack",
     condition:
-      !props.project.project_type === "software" && !props.project.project_type === "language" && (
-      props.project.client_side === "unknown" ||
-      props.project.server_side === "unknown" ||
-      (props.project.client_side === "unsupported" && props.project.server_side === "unsupported")),
+      !props.project.project_type === "software" &&
+      !props.project.project_type === "language" &&
+      (props.project.client_side === "unknown" ||
+        props.project.server_side === "unknown" ||
+        (props.project.client_side === "unsupported" &&
+          props.project.server_side === "unsupported")),
     title: "运行环境",
     id: "select-environments",
     description: `选择资源 ${formatProjectType(

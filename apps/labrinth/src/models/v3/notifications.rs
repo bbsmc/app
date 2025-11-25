@@ -1,9 +1,10 @@
+use super::bans::{BanAppealId, UserBanId};
 use super::ids::Base62Id;
 use super::ids::OrganizationId;
 use super::users::UserId;
+use crate::database::models::WikiCacheId;
 use crate::database::models::notification_item::Notification as DBNotification;
 use crate::database::models::notification_item::NotificationAction as DBNotificationAction;
-use crate::database::models::WikiCacheId;
 use crate::models::ids::{
     DiscussionId, ProjectId, ReportId, TeamId, ThreadId, ThreadMessageId,
     VersionId,
@@ -84,6 +85,32 @@ pub enum NotificationBody {
         number_of_posts: u32,
         project_id: Option<ProjectId>,
         sender: String,
+    },
+    /// 用户被封禁通知
+    UserBanned {
+        ban_id: UserBanId,
+        ban_type: String,
+        reason: String,
+        expires_at: Option<DateTime<Utc>>,
+    },
+    /// 用户封禁解除通知
+    UserUnbanned {
+        ban_id: UserBanId,
+        ban_type: String,
+        reason: String,
+    },
+    /// 申诉审核结果通知
+    AppealReviewed {
+        appeal_id: BanAppealId,
+        ban_id: UserBanId,
+        status: String,
+        review_notes: Option<String>,
+    },
+    /// 申诉线程有新消息
+    BanAppealMessage {
+        appeal_id: BanAppealId,
+        thread_id: ThreadId,
+        message_id: ThreadMessageId,
     },
     Unknown,
 }
@@ -234,7 +261,85 @@ impl From<DBNotification> for Notification {
                     name.clone(),
                     text.clone(),
                     link.clone(),
-                    actions.clone().into_iter().map(Into::into).collect(),
+                    actions.clone().into_iter().collect(),
+                ),
+                NotificationBody::UserBanned {
+                    ban_type,
+                    reason,
+                    expires_at,
+                    ..
+                } => {
+                    let ban_type_display = match ban_type.as_str() {
+                        "global" => "全局封禁",
+                        "resource" => "资源操作封禁",
+                        "forum" => "论坛互动封禁",
+                        _ => "封禁",
+                    };
+                    let expires_text = match expires_at {
+                        Some(dt) => format!(
+                            "，解封时间：{}",
+                            dt.format("%Y-%m-%d %H:%M")
+                        ),
+                        None => "，此为永久封禁".to_string(),
+                    };
+                    (
+                        "您的账户已被封禁".to_string(),
+                        format!(
+                            "您已被{}。原因：{}{}",
+                            ban_type_display, reason, expires_text
+                        ),
+                        "/settings/account".to_string(),
+                        vec![],
+                    )
+                }
+                NotificationBody::UserUnbanned {
+                    ban_type, reason, ..
+                } => {
+                    let ban_type_display = match ban_type.as_str() {
+                        "global" => "全局封禁",
+                        "resource" => "资源操作封禁",
+                        "forum" => "论坛互动封禁",
+                        _ => "封禁",
+                    };
+                    (
+                        "您的封禁已解除".to_string(),
+                        format!(
+                            "您的{}已被解除。原因：{}",
+                            ban_type_display, reason
+                        ),
+                        "/settings/account".to_string(),
+                        vec![],
+                    )
+                }
+                NotificationBody::AppealReviewed {
+                    status,
+                    review_notes,
+                    ..
+                } => {
+                    let status_display = match status.as_str() {
+                        "approved" => "已通过",
+                        "rejected" => "已拒绝",
+                        _ => "已处理",
+                    };
+                    let notes_text = match review_notes {
+                        Some(notes) => format!("。审核备注：{}", notes),
+                        None => String::new(),
+                    };
+                    (
+                        "您的申诉已处理".to_string(),
+                        format!(
+                            "您的封禁申诉审核结果：{}{}",
+                            status_display, notes_text
+                        ),
+                        "/settings/account".to_string(),
+                        vec![],
+                    )
+                }
+                NotificationBody::BanAppealMessage { .. } => (
+                    "您的申诉有新回复".to_string(),
+                    "管理员在您的封禁申诉中发送了新消息，请查看。".to_string(),
+                    "/settings/account".to_string(),
+                    vec![],
                 ),
                 NotificationBody::Unknown => {
                     ("".to_string(), "".to_string(), "#".to_string(), vec![])

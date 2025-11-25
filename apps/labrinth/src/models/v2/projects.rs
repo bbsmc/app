@@ -6,12 +6,13 @@ use super::super::ids::OrganizationId;
 use super::super::teams::TeamId;
 use super::super::users::UserId;
 use crate::database::models::version_item::QueryDisk;
-use crate::database::models::{version_item, DatabaseError};
+use crate::database::models::{DatabaseError, version_item};
 use crate::database::redis::RedisPool;
 use crate::models::ids::{DiscussionId, ProjectId, VersionId};
 use crate::models::projects::{
     Dependency, License, Link, Loader, ModeratorMessage, MonetizationStatus,
-    Project, ProjectStatus, Version, VersionFile, VersionLink, VersionStatus, VersionType,
+    Project, ProjectStatus, Version, VersionFile, VersionLink, VersionStatus,
+    VersionType,
 };
 use crate::models::threads::ThreadId;
 use crate::routes::v2_reroute::{self, capitalize_first};
@@ -371,32 +372,25 @@ impl From<Version> for LegacyVersion {
         // the v2 loaders are whatever the corresponding loader fields are
         let mut loaders =
             data.loaders.into_iter().map(|l| l.0).collect::<Vec<_>>();
-        if loaders.contains(&"mrpack".to_string()) {
-            if let Some((_, mrpack_loaders)) = data
+        if loaders.contains(&"mrpack".to_string())
+            && let Some((_, mrpack_loaders)) = data
                 .fields
                 .clone()
                 .into_iter()
                 .find(|(key, _)| key == "mrpack_loaders")
-            {
-                if let Ok(mrpack_loaders) =
-                    serde_json::from_value(mrpack_loaders)
-                {
-                    loaders = mrpack_loaders;
-                }
-            }
+            && let Ok(mrpack_loaders) = serde_json::from_value(mrpack_loaders)
+        {
+            loaders = mrpack_loaders;
         }
-        if loaders.contains(&"software".to_string()) {
-            if let Some((_, software_loaders)) = data
+        if loaders.contains(&"software".to_string())
+            && let Some((_, software_loaders)) = data
                 .fields
                 .into_iter()
                 .find(|(key, _)| key == "software_loaders")
-            {
-                if let Ok(software_loaders) =
-                    serde_json::from_value(software_loaders)
-                {
-                    loaders = software_loaders;
-                }
-            }
+            && let Ok(software_loaders) =
+                serde_json::from_value(software_loaders)
+        {
+            loaders = software_loaders;
         }
         let loaders = loaders.into_iter().map(Loader).collect::<Vec<_>>();
 

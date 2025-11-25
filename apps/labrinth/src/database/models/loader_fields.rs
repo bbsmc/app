@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::hash::Hasher;
 
-use super::ids::*;
 use super::DatabaseError;
+use super::ids::*;
 use crate::database::redis::RedisPool;
 use chrono::DateTime;
 use chrono::Utc;
@@ -802,24 +802,24 @@ impl VersionField {
         };
 
         if let Some(count) = countable {
-            if let Some(min) = loader_field.min_val {
-                if count < min {
-                    return Err(format!(
-                        "Provided value '{v}' for {field_name} is less than the minimum of {min}",
-                        v = serde_json::to_string(&value).unwrap_or_default(),
-                        field_name = loader_field.field,
-                    ));
-                }
+            if let Some(min) = loader_field.min_val
+                && count < min
+            {
+                return Err(format!(
+                    "Provided value '{v}' for {field_name} is less than the minimum of {min}",
+                    v = serde_json::to_string(&value).unwrap_or_default(),
+                    field_name = loader_field.field,
+                ));
             }
 
-            if let Some(max) = loader_field.max_val {
-                if count > max {
-                    return Err(format!(
-                        "Provided value '{v}' for {field_name} is greater than the maximum of {max}",
-                        v = serde_json::to_string(&value).unwrap_or_default(),
-                        field_name = loader_field.field,
-                    ));
-                }
+            if let Some(max) = loader_field.max_val
+                && count > max
+            {
+                return Err(format!(
+                    "Provided value '{v}' for {field_name} is greater than the maximum of {max}",
+                    v = serde_json::to_string(&value).unwrap_or_default(),
+                    field_name = loader_field.field,
+                ));
             }
         }
 
@@ -1016,8 +1016,8 @@ impl VersionFieldValue {
                             enum_values.push(ev.clone());
                         } else {
                             return Err(format!(
-                            "Provided value '{av}' is not a valid variant for {field_name}"
-                        ));
+                                "Provided value '{av}' is not a valid variant for {field_name}"
+                            ));
                         }
                     }
                     enum_values

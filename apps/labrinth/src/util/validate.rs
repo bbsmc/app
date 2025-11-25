@@ -21,63 +21,63 @@ pub fn validation_errors_to_string(
 
     let key_option = map.keys().next().copied();
 
-    if let Some(field) = key_option {
-        if let Some(error) = map.get(field) {
-            return match error {
-                ValidationErrorsKind::Struct(errors) => {
-                    validation_errors_to_string(
+    if let Some(field) = key_option
+        && let Some(error) = map.get(field)
+    {
+        return match error {
+            ValidationErrorsKind::Struct(errors) => {
+                validation_errors_to_string(
+                    *errors.clone(),
+                    Some(format!("项目 {field}")),
+                )
+            }
+            ValidationErrorsKind::List(list) => {
+                if let Some((index, errors)) = list.iter().next() {
+                    output.push_str(&validation_errors_to_string(
                         *errors.clone(),
-                        Some(format!("项目 {field}")),
-                    )
+                        Some(format!("of list {field} with index {index}")),
+                    ));
                 }
-                ValidationErrorsKind::List(list) => {
-                    if let Some((index, errors)) = list.iter().next() {
-                        output.push_str(&validation_errors_to_string(
-                            *errors.clone(),
-                            Some(format!("of list {field} with index {index}")),
-                        ));
-                    }
 
-                    output
-                }
-                ValidationErrorsKind::Field(errors) => {
-                    if let Some(error) = errors.first() {
-                        if let Some(adder) = adder {
-                            output.push_str(
-                                &format!(
-                                    "字段 {} {} 未通过要求原因: {}",
-                                    field, adder, error.code
-                                )
-                                .replace("username", "用户名")
-                                .replace("name", "名称")
-                                .replace("slug", "标识ID")
-                                .replace("summary", "简介")
-                                .replace("range", "取值范围")
-                                .replace("length", "最大长度"),
-                            );
-                        } else {
-                            if field == "username" {
-                                output.push_str("建议使用您的Minecraft正版ID,支持使用各类语言文字，允许：字母、数字、下划线 _、连字符 -");
-                            }
-                            output.push_str(
-                                &format!(
-                                    "字段 {} 未通过要求原因: {}",
-                                    field, error.code
-                                )
-                                .replace("username", "用户名")
-                                .replace("name", "名称")
-                                .replace("slug", "标识ID")
-                                .replace("summary", "简介")
-                                .replace("range", "取值范围")
-                                .replace("length", "最大长度"),
-                            );
+                output
+            }
+            ValidationErrorsKind::Field(errors) => {
+                if let Some(error) = errors.first() {
+                    if let Some(adder) = adder {
+                        output.push_str(
+                            &format!(
+                                "字段 {} {} 未通过要求原因: {}",
+                                field, adder, error.code
+                            )
+                            .replace("username", "用户名")
+                            .replace("name", "名称")
+                            .replace("slug", "标识ID")
+                            .replace("summary", "简介")
+                            .replace("range", "取值范围")
+                            .replace("length", "最大长度"),
+                        );
+                    } else {
+                        if field == "username" {
+                            output.push_str("建议使用您的Minecraft正版ID,支持使用各类语言文字，允许：字母、数字、下划线 _、连字符 -");
                         }
+                        output.push_str(
+                            &format!(
+                                "字段 {} 未通过要求原因: {}",
+                                field, error.code
+                            )
+                            .replace("username", "用户名")
+                            .replace("name", "名称")
+                            .replace("slug", "标识ID")
+                            .replace("summary", "简介")
+                            .replace("range", "取值范围")
+                            .replace("length", "最大长度"),
+                        );
                     }
-
-                    output
                 }
-            };
-        }
+
+                output
+            }
+        };
     }
 
     String::new()

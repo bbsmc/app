@@ -20,11 +20,11 @@ use governor::{Quota, RateLimiter};
 use log::{info, warn};
 use util::cors::default_cors;
 
+use crate::database::Project;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::{
     OrganizationId, ProjectId, TeamId, User, UserId,
 };
-use crate::database::Project;
 use crate::models::notifications::NotificationBody;
 use crate::models::projects::{MonetizationStatus, ProjectStatus};
 use crate::models::teams::ProjectPermissions;
@@ -59,7 +59,6 @@ pub struct LabrinthConfig {
     pub redis_pool: RedisPool,
     pub clickhouse: Client,
     pub file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
-    pub maxmind: Arc<queue::maxmind::MaxMindIndexer>,
     pub scheduler: Arc<scheduler::Scheduler>,
     pub ip_salt: Pepper,
     pub search_config: search::SearchConfig,
@@ -78,7 +77,6 @@ pub fn app_setup(
     search_config: search::SearchConfig,
     clickhouse: &mut Client,
     file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
-    maxmind: Arc<queue::maxmind::MaxMindIndexer>,
 ) -> LabrinthConfig {
     info!("启动 Labrinth 于 {}", dotenvy::var("BIND_ADDR").unwrap());
 
@@ -205,27 +203,6 @@ pub fn app_setup(
             // info!("完成索引会话队列");
         }
     });
-
-    let reader = maxmind.clone();
-    {
-        let reader_ref = reader;
-        scheduler.run(
-            std::time::Duration::from_secs(60 * 60 * 24),
-            move || {
-                let reader_ref = reader_ref.clone();
-
-                async move {
-                    info!("下载 MaxMind GeoLite2 国家数据库");
-                    let result = reader_ref.index().await;
-                    if let Err(e) = result {
-                        warn!("下载 MaxMind GeoLite2 国家数据库失败: {:?}", e);
-                    }
-                    info!("已完成下载 MaxMind GeoLite2 国家数据库");
-                }
-            },
-        );
-    }
-    info!("下载 MaxMind GeoLite2 国家数据库");
 
     let analytics_queue = Arc::new(AnalyticsQueue::new());
     {
@@ -374,6 +351,7 @@ pub fn app_setup(
                                                     wiki_overtake_count: u.wiki_overtake_count,
                                                     wiki_ban_time: u.wiki_ban_time,
                                                     phone_number: None,
+                                                    active_bans: vec![],
                                                 };
 
                                                 let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id, &pool_ref_clone2).await {
@@ -391,7 +369,6 @@ pub fn app_setup(
                                                     &organization_team_member,
                                                 );
                                                 if permissions.is_some() && permissions.unwrap().contains(ProjectPermissions::WIKI_EDIT) {
-                                                    println!("有权限超时");
                                                     let mut transaction = match pool_ref_clone2.begin().await{
                                                         Ok(transaction) => transaction,
                                                         Err(e) => {
@@ -682,7 +659,6 @@ pub fn app_setup(
         redis_pool,
         clickhouse: clickhouse.clone(),
         file_host,
-        maxmind,
         scheduler: Arc::new(scheduler),
         ip_salt,
         search_config,
@@ -720,7 +696,6 @@ pub fn app_config(
     .app_data(web::Data::new(labrinth_config.ip_salt.clone()))
     .app_data(web::Data::new(labrinth_config.analytics_queue.clone()))
     .app_data(web::Data::new(labrinth_config.clickhouse.clone()))
-    .app_data(web::Data::new(labrinth_config.maxmind.clone()))
     .app_data(labrinth_config.active_sockets.clone())
     .app_data(labrinth_config.automated_moderation_queue.clone())
     // .app_data(web::Data::new(labrinth_config.stripe_client.clone()))
@@ -778,7 +753,10 @@ pub fn check_env_vars() -> bool {
             failed |= check_var::<String>("MOCK_FILE_PATH");
         }
         Some(backend) => {
-            warn!("变量 `STORAGE_BACKEND` 包含无效值：{}。预期值为 \"backblaze\"、\"s3\" 或 \"local\"。", backend);
+            warn!(
+                "变量 `STORAGE_BACKEND` 包含无效值：{}。预期值为 \"backblaze\"、\"s3\" 或 \"local\"。",
+                backend
+            );
             failed |= true;
         }
         _ => {
@@ -791,7 +769,9 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<usize>("VERSION_INDEX_INTERVAL");
 
     if parse_strings_from_var("WHITELISTED_MODPACK_DOMAINS").is_none() {
-        warn!("变量 `WHITELISTED_MODPACK_DOMAINS` 在 dotenv 中缺失或不是字符串数组");
+        warn!(
+            "变量 `WHITELISTED_MODPACK_DOMAINS` 在 dotenv 中缺失或不是字符串数组"
+        );
         failed |= true;
     }
 
@@ -845,8 +825,6 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<String>("CLICKHOUSE_USER");
     failed |= check_var::<String>("CLICKHOUSE_PASSWORD");
     failed |= check_var::<String>("CLICKHOUSE_DATABASE");
-
-    failed |= check_var::<String>("MAXMIND_LICENSE_KEY");
 
     failed |= check_var::<String>("FLAME_ANVIL_URL");
 

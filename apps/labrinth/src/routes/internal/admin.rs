@@ -4,13 +4,12 @@ use crate::models::analytics::Download;
 use crate::models::ids::ProjectId;
 use crate::models::pats::Scopes;
 use crate::queue::analytics::AnalyticsQueue;
-use crate::queue::maxmind::MaxMindIndexer;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::search::SearchConfig;
 use crate::util::date::get_current_tenths_of_ms;
 use crate::util::guards::admin_key_guard;
-use actix_web::{patch, post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, patch, post, web};
 use serde::Deserialize;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -42,7 +41,6 @@ pub async fn count_download(
     req: HttpRequest,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
-    maxmind: web::Data<Arc<MaxMindIndexer>>,
     analytics_queue: web::Data<Arc<AnalyticsQueue>>,
     session_queue: web::Data<AuthQueue>,
     download_body: web::Json<DownloadBody>,
@@ -127,7 +125,7 @@ pub async fn count_download(
         project_id: project_id as u64,
         version_id: version_id as u64,
         ip,
-        country: maxmind.query(ip).await.unwrap_or_default(),
+        country: String::new(), // MaxMind 功能已移除
         user_agent: download_body
             .headers
             .get("user-agent")
@@ -143,12 +141,6 @@ pub async fn count_download(
             })
             .collect(),
     });
-
-    println!(
-        "{:?} 下载  {:?}",
-        download_body.ip,
-        download_body.project_id.to_string()
-    );
 
     Ok(HttpResponse::NoContent().body(""))
 }

@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_ban_appeals (id, ban_id, user_id, reason, status, created_at)\n             VALUES ($1, $2, $3, $4, 'pending', $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b3a0be24b073ed903cb441deeb442dc51c3067a026df82f8add09a0aa3df3a92"
+}

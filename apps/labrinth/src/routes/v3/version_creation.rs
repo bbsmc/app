@@ -1,5 +1,5 @@
 use super::project_creation::{CreateError, UploadedFile};
-use crate::auth::get_user_from_headers;
+use crate::auth::{check_resource_ban, get_user_from_headers};
 use crate::database::models::loader_fields::{
     LoaderField, LoaderFieldEnumValue, VersionField,
 };
@@ -7,27 +7,27 @@ use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::version_item::{
     DependencyBuilder, QueryDisk, VersionBuilder, VersionFileBuilder,
 };
-use crate::database::models::{self, image_item, Organization};
+use crate::database::models::{self, Organization, image_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::images::{Image, ImageContext, ImageId};
 use crate::models::notifications::NotificationBody;
 use crate::models::pack::PackFileHash;
 use crate::models::pats::Scopes;
-use crate::models::projects::{skip_nulls, DependencyType, ProjectStatus};
 use crate::models::projects::{
     Dependency, FileType, Loader, ProjectId, Version, VersionFile, VersionId,
     VersionLink, VersionStatus, VersionType,
 };
+use crate::models::projects::{DependencyType, ProjectStatus, skip_nulls};
 use crate::models::teams::ProjectPermissions;
 use crate::queue::moderation::AutomatedModerationQueue;
 use crate::queue::session::AuthQueue;
 use crate::util::routes::read_from_field;
 use crate::util::validate::validation_errors_to_string;
-use crate::validate::{validate_file, ValidationResult};
+use crate::validate::{ValidationResult, validate_file};
 use actix_multipart::{Field, Multipart};
 use actix_web::web::Data;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use futures::stream::StreamExt;
 use itertools::Itertools;
@@ -159,7 +159,6 @@ async fn version_create_inner(
     session_queue: &AuthQueue,
     moderation_queue: &AutomatedModerationQueue,
 ) -> Result<HttpResponse, CreateError> {
-    println!("Starting version_create_inner");
     let cdn_url = dotenvy::var("CDN_URL")?;
 
     let mut initial_version_data = None;
@@ -175,6 +174,11 @@ async fn version_create_inner(
     )
     .await?
     .1;
+
+    // 检查用户是否被资源类封禁
+    check_resource_ban(&user, pool)
+        .await
+        .map_err(|e| CreateError::Banned(e.to_string()))?;
 
     let mut error = None;
     while let Some(item) = payload.next().await {
@@ -319,15 +323,15 @@ async fn version_create_inner(
 
                 // 处理版本链接
                 let mut version_links = Vec::new();
-                
+
                 if let Some(links) = &version_create_data.version_links {
                     for link in links {
                         // 获取被翻译版本的信息
                         let target_version_id: models::VersionId = link.joining_version_id.into();
                         let target_version = models::Version::get(target_version_id, &mut **transaction, redis).await?;
-                        
+
                         let mut auto_approve = false;
-                        
+
                         if let Some(target_version) = target_version {
                             // 获取目标项目的团队成员信息
                             let target_project_id = target_version.inner.project_id;
@@ -337,7 +341,7 @@ async fn version_create_inner(
                                 false,  // allow_pending
                                 &mut **transaction,
                             ).await?;
-                            
+
                             // 获取目标项目的组织团队成员信息（如果有）
                             let target_project = models::Project::get_id(target_project_id, &mut **transaction, redis).await?;
                             let target_org_team = if let Some(target_project) = target_project {
@@ -354,7 +358,7 @@ async fn version_create_inner(
                             } else {
                                 None
                             };
-                            
+
                             // 判断是否需要自动审核通过
                             if user.role.is_admin() {
                                 log::info!(
@@ -368,13 +372,13 @@ async fn version_create_inner(
                                     version_id, target_version_id.0, target_project_id.0, user.username
                                 );
                                 auto_approve = true;
-                            } else if target_team.as_ref().map_or(false, |m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
+                            } else if target_team.as_ref().is_some_and(|m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
                                 log::info!(
                                     "Version link auto-approved for translation version {} targeting version {} in project {}: User {} is a TARGET PROJECT TEAM MEMBER with UPLOAD_VERSION permission",
                                     version_id, target_version_id.0, target_project_id.0, user.username
                                 );
                                 auto_approve = true;
-                            } else if target_org_team.as_ref().map_or(false, |m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
+                            } else if target_org_team.as_ref().is_some_and(|m| m.accepted && m.permissions.contains(ProjectPermissions::UPLOAD_VERSION)) {
                                 log::info!(
                                     "Version link auto-approved for translation version {} targeting version {} in project {}: User {} is a TARGET ORGANIZATION TEAM MEMBER with UPLOAD_VERSION permission",
                                     version_id, target_version_id.0, target_project_id.0, user.username
@@ -392,16 +396,16 @@ async fn version_create_inner(
                                 target_version_id.0, version_id
                             );
                         }
-                        
+
                         version_links.push(models::version_item::VersionLinkBuilder {
                             joining_version_id: link.joining_version_id.into(),
                             link_type: link.link_type.clone(),
                             language_code: link.language_code.clone(),
                             description: link.description.clone(),
-                            approval_status: if auto_approve { 
-                                "approved".to_string() 
-                            } else { 
-                                "pending".to_string() 
+                            approval_status: if auto_approve {
+                                "approved".to_string()
+                            } else {
+                                "pending".to_string()
                             },
                         });
                     }
@@ -591,13 +595,19 @@ async fn version_create_inner(
             file_type: None,
         });
     }
-    
+
     // 在移动 version_links 之前先收集需要清除缓存的目标版本ID
-    let target_version_ids_to_clear: Vec<models::ids::VersionId> = version_data.version_links
+    let target_version_ids_to_clear: Vec<models::ids::VersionId> = version_data
+        .version_links
         .as_ref()
-        .map(|links| links.iter().map(|link| link.joining_version_id.into()).collect())
+        .map(|links| {
+            links
+                .iter()
+                .map(|link| link.joining_version_id.into())
+                .collect()
+        })
         .unwrap_or_default();
-    
+
     let response = Version {
         id: builder.version_id.into(),
         project_id: builder.project_id.into(),
@@ -626,14 +636,13 @@ async fn version_create_inner(
 
     let project_id = builder.project_id;
     builder.insert(transaction).await?;
-    
+
     // 清除版本链接目标版本的缓存（新建版本时）
     for target_version_id in target_version_ids_to_clear {
-        if let Some(target_version) = models::Version::get(
-            target_version_id,
-            &mut **transaction,
-            redis,
-        ).await? {
+        if let Some(target_version) =
+            models::Version::get(target_version_id, &mut **transaction, redis)
+                .await?
+        {
             models::Version::clear_cache(&target_version, redis).await?;
         }
     }
@@ -683,10 +692,10 @@ async fn version_create_inner(
     .fetch_optional(pool)
     .await?;
 
-    if let Some(project_status) = project_status {
-        if project_status.status == ProjectStatus::Processing.as_str() {
-            moderation_queue.projects.insert(project_id.into());
-        }
+    if let Some(project_status) = project_status
+        && project_status.status == ProjectStatus::Processing.as_str()
+    {
+        moderation_queue.projects.insert(project_id.into());
     }
 
     Ok(HttpResponse::Ok().json(response))
@@ -968,7 +977,6 @@ pub async fn upload_file(
 ) -> Result<(), CreateError> {
     let (file_name, file_extension) = get_name_ext(content_disposition)?;
 
-    println!("Uploading file {file_name}.{file_extension}");
     if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到BBSMC过,无法重复上传!1".to_string(),
@@ -1009,13 +1017,11 @@ pub async fn upload_file(
     .unwrap_or(false);
 
     if exists && username.to_lowercase() != "bbsmc" {
-        println!("已存在 {}", hash);
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到BBSMC过,无法重复上传2".to_string(),
         ));
     }
 
-    println!("开始验证文件 {file_name}.{file_extension}");
     let validation_result = validate_file(
         data.clone().into(),
         file_extension.to_string(),
@@ -1026,22 +1032,21 @@ pub async fn upload_file(
         redis,
     )
     .await?;
-    println!("文件验证完成 {file_name}.{file_extension}");
 
     if let ValidationResult::PassWithPackDataAndFiles {
         ref format,
         ref files,
     } = validation_result
+        && dependencies.is_empty()
     {
-        if dependencies.is_empty() {
-            let hashes: Vec<Vec<u8>> = format
-                .files
-                .iter()
-                .filter_map(|x| x.hashes.get(&PackFileHash::Sha1))
-                .map(|x| x.as_bytes().to_vec())
-                .collect();
+        let hashes: Vec<Vec<u8>> = format
+            .files
+            .iter()
+            .filter_map(|x| x.hashes.get(&PackFileHash::Sha1))
+            .map(|x| x.as_bytes().to_vec())
+            .collect();
 
-            let res = sqlx::query!(
+        let res = sqlx::query!(
                 "
                     SELECT v.id version_id, v.mod_id project_id, h.hash hash FROM hashes h
                     INNER JOIN files f on h.file_id = f.id
@@ -1053,45 +1058,44 @@ pub async fn upload_file(
             .fetch_all(&mut **transaction)
             .await?;
 
-            for file in &format.files {
-                if let Some(dep) = res.iter().find(|x| {
-                    Some(&*x.hash)
-                        == file
-                            .hashes
-                            .get(&PackFileHash::Sha1)
-                            .map(|x| x.as_bytes())
-                }) {
-                    dependencies.push(DependencyBuilder {
-                        project_id: Some(models::ProjectId(dep.project_id)),
-                        version_id: Some(models::VersionId(dep.version_id)),
-                        file_name: None,
-                        dependency_type: DependencyType::Embedded.to_string(),
-                    });
-                } else if let Some(first_download) = file.downloads.first() {
-                    dependencies.push(DependencyBuilder {
-                        project_id: None,
-                        version_id: None,
-                        file_name: Some(
-                            first_download
-                                .rsplit('/')
-                                .next()
-                                .unwrap_or(first_download)
-                                .to_string(),
-                        ),
-                        dependency_type: DependencyType::Embedded.to_string(),
-                    });
-                }
+        for file in &format.files {
+            if let Some(dep) = res.iter().find(|x| {
+                Some(&*x.hash)
+                    == file
+                        .hashes
+                        .get(&PackFileHash::Sha1)
+                        .map(|x| x.as_bytes())
+            }) {
+                dependencies.push(DependencyBuilder {
+                    project_id: Some(models::ProjectId(dep.project_id)),
+                    version_id: Some(models::VersionId(dep.version_id)),
+                    file_name: None,
+                    dependency_type: DependencyType::Embedded.to_string(),
+                });
+            } else if let Some(first_download) = file.downloads.first() {
+                dependencies.push(DependencyBuilder {
+                    project_id: None,
+                    version_id: None,
+                    file_name: Some(
+                        first_download
+                            .rsplit('/')
+                            .next()
+                            .unwrap_or(first_download)
+                            .to_string(),
+                    ),
+                    dependency_type: DependencyType::Embedded.to_string(),
+                });
             }
+        }
 
-            for file in files {
-                if !file.is_empty() {
-                    dependencies.push(DependencyBuilder {
-                        project_id: None,
-                        version_id: None,
-                        file_name: Some(file.to_string()),
-                        dependency_type: DependencyType::Embedded.to_string(),
-                    });
-                }
+        for file in files {
+            if !file.is_empty() {
+                dependencies.push(DependencyBuilder {
+                    project_id: None,
+                    version_id: None,
+                    file_name: Some(file.to_string()),
+                    dependency_type: DependencyType::Embedded.to_string(),
+                });
             }
         }
     }
@@ -1112,11 +1116,9 @@ pub async fn upload_file(
     let file_path =
         format!("data/{}/versions/{}/{}", project_id, version_id, &file_name);
 
-    println!("开始将文件上传到存储 {file_name}");
     let upload_data = file_host
         .upload_file(content_type, &file_path, data)
         .await?;
-    println!("完成文件上传到存储 {file_name}");
 
     uploaded_files.push(UploadedFile {
         file_id: upload_data.file_id,
@@ -1136,10 +1138,10 @@ pub async fn upload_file(
         ));
     }
 
-    if let ValidationResult::Warning(msg) = validation_result {
-        if primary {
-            return Err(CreateError::InvalidInput(msg.to_string()));
-        }
+    if let ValidationResult::Warning(msg) = validation_result
+        && primary
+    {
+        return Err(CreateError::InvalidInput(msg.to_string()));
     }
 
     version_files.push(VersionFileBuilder {

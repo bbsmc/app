@@ -2,10 +2,10 @@
   <div ref="main_page" class="layout" :class="{ 'expanded-mobile-nav': isBrowseMenuOpen }">
     <!--    邮箱验证提示-->
     <div
-      v-if="auth.user && !auth.user.email_verified && route.path !== '/auth/verify-email'"
+      v-if="auth?.user && !auth.user.email_verified && route.path !== '/auth/verify-email'"
       class="email-nag"
     >
-      <template v-if="auth.user.email">
+      <template v-if="auth.user?.email">
         <span>{{ formatMessage(verifyEmailBannerMessages.title) }}</span>
         <button class="btn" @click="resendVerifyEmail">
           {{ formatMessage(verifyEmailBannerMessages.action) }}
@@ -18,6 +18,18 @@
           {{ formatMessage(addEmailBannerMessages.action) }}
         </nuxt-link>
       </template>
+    </div>
+
+    <!--    封禁提示-->
+    <div v-if="auth?.user?.active_bans && auth.user.active_bans.length > 0" class="ban-nag">
+      <ShieldIcon aria-hidden="true" class="ban-icon" />
+      <span>
+        您的账户当前存在封禁限制，部分功能可能受到限制。
+        <template v-if="auth.user.active_bans.some((b) => b.appeal)">
+          您已提交申诉，请等待审核。
+        </template>
+      </span>
+      <nuxt-link class="btn" to="/settings/account"> 查看详情 </nuxt-link>
     </div>
 
     <!--    头部-->
@@ -123,7 +135,7 @@
       <div class="flex items-center gap-2">
         <ButtonStyled type="transparent">
           <OverflowMenu
-            v-if="auth.user"
+            v-if="auth?.user"
             class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
             position="bottom"
             direction="left"
@@ -163,11 +175,11 @@
           </nuxt-link>
         </ButtonStyled>
         <OverflowMenu
-          v-if="auth.user"
+          v-if="auth?.user"
           class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
           :options="userMenuOptions"
         >
-          <Avatar :src="auth.user.avatar_url" aria-hidden="true" circle />
+          <Avatar :src="auth.user?.avatar_url" aria-hidden="true" circle />
           <DropdownIcon class="h-5 w-5 text-secondary" />
           <template #profile> <UserIcon aria-hidden="true" /> 个人资料 </template>
           <template #notifications> <BellIcon aria-hidden="true" /> 通知 </template>
@@ -219,19 +231,19 @@
       >
         <div class="account-container">
           <NuxtLink
-            v-if="auth.user"
-            :to="`/user/${auth.user.username}`"
+            v-if="auth?.user"
+            :to="`/user/${auth.user?.username}`"
             class="iconified-button account-button"
           >
             <Avatar
-              :src="auth.user.avatar_url"
+              :src="auth.user?.avatar_url"
               class="user-icon"
               :alt="formatMessage(messages.yourAvatarAlt)"
               aria-hidden="true"
               circle
             />
             <div class="account-text">
-              <div>@{{ auth.user.username }}</div>
+              <div>@{{ auth.user?.username }}</div>
               <div>{{ formatMessage(commonMessages.visitYourProfile) }}</div>
             </div>
           </NuxtLink>
@@ -240,7 +252,7 @@
           </nuxt-link>
         </div>
         <div class="links">
-          <template v-if="auth.user">
+          <template v-if="auth?.user">
             <button class="iconified-button danger-button" @click="logoutUser()">
               <LogOutIcon aria-hidden="true" />
               {{ formatMessage(commonMessages.signOutButton) }}
@@ -258,7 +270,7 @@
               {{ formatMessage(commonMessages.serversLabel) }}
             </NuxtLink> -->
             <NuxtLink
-              v-if="auth.user.role === 'moderator' || auth.user.role === 'admin'"
+              v-if="auth.user?.role === 'moderator' || auth.user?.role === 'admin'"
               class="iconified-button"
               to="/moderation"
             >
@@ -299,7 +311,7 @@
           aria-label="Search"
           @click="toggleBrowseMenu()"
         >
-          <template v-if="auth.user">
+          <template v-if="auth?.user">
             <SearchIcon aria-hidden="true" />
           </template>
           <template v-else>
@@ -307,7 +319,7 @@
             {{ formatMessage(navMenuMessages.search) }}
           </template>
         </button>
-        <template v-if="auth.user">
+        <template v-if="auth?.user">
           <NuxtLink
             to="/dashboard/notifications"
             class="tab button-animation"
@@ -340,13 +352,13 @@
           :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
           @click="toggleMobileMenu()"
         >
-          <template v-if="!auth.user">
+          <template v-if="!auth?.user">
             <HamburgerIcon v-if="!isMobileMenuOpen" aria-hidden="true" />
             <CrossIcon v-else aria-hidden="true" />
           </template>
           <template v-else>
             <Avatar
-              :src="auth.user.avatar_url"
+              :src="auth.user?.avatar_url"
               class="user-icon"
               :class="{ expanded: isMobileMenuOpen }"
               :alt="formatMessage(messages.yourAvatarAlt)"
@@ -358,7 +370,7 @@
       </div>
     </header>
     <main>
-      <ModalCreation v-if="auth.user" ref="modal_creation" />
+      <ModalCreation v-if="auth?.user" ref="modal_creation" />
       <CollectionCreateModal ref="modal_collection_creation" />
       <OrganizationCreateModal ref="modal_organization_creation" />
       <slot id="main" />
@@ -476,6 +488,7 @@ import {
   PackageOpenIcon,
   GridIcon,
   LanguagesIcon,
+  ShieldIcon,
 } from "@modrinth/assets";
 import { ButtonStyled, OverflowMenu, Avatar } from "@modrinth/ui";
 
@@ -683,6 +696,10 @@ const navRoutes = computed(() => [
 ]);
 
 const userMenuOptions = computed(() => {
+  if (!auth.value || !auth.value.user) {
+    return [];
+  }
+
   let options = [
     {
       id: "profile",
@@ -737,8 +754,9 @@ const userMenuOptions = computed(() => {
   ];
 
   if (
-    (auth.value && auth.value.user && auth.value.user.role === "moderator") ||
-    auth.value.user.role === "admin"
+    auth.value &&
+    auth.value.user &&
+    (auth.value.user.role === "moderator" || auth.value.user.role === "admin")
   ) {
     options = [
       ...options,
@@ -796,7 +814,7 @@ watch(
 provide("fetchNotifications", fetchNotifications);
 
 async function fetchNotifications() {
-  if (auth.value.user) {
+  if (auth.value && auth.value.user) {
     let count = 0;
     const notifications = await useBaseFetch(`user/${auth.value.user.id}/notifications`);
     notifications.forEach((notification) => {
@@ -1013,6 +1031,46 @@ const { cycle: changeTheme } = useTheme();
   justify-content: center;
   gap: 1rem;
   padding: 0.5rem 1rem;
+}
+
+.ban-nag {
+  z-index: 6;
+  position: relative;
+  background-color: rgba(239, 68, 68, 0.15);
+  border-bottom: 2px solid rgb(239, 68, 68);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  color: var(--color-text);
+
+  .ban-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: rgb(239, 68, 68);
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    background-color: rgb(239, 68, 68);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
 }
 
 .site-banner--warning {

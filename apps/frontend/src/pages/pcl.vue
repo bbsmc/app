@@ -91,7 +91,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { ButtonStyled } from "@modrinth/ui";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 
 // 获取当前主题并设置CSS变量
 const { $theme } = useNuxtApp();

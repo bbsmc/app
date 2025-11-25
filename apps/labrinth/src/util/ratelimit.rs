@@ -1,17 +1,17 @@
 use governor::clock::{Clock, DefaultClock};
-use governor::{middleware, state, RateLimiter};
+use governor::{RateLimiter, middleware, state};
 use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::routes::ApiError;
 use crate::util::env::parse_var;
 use actix_web::{
-    body::EitherBody,
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error, ResponseError,
+    body::EitherBody,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
 };
 use futures_util::future::LocalBoxFuture;
-use futures_util::future::{ready, Ready};
+use futures_util::future::{Ready, ready};
 
 pub type KeyedRateLimiter<
     K = String,
@@ -61,17 +61,16 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        if let Some(key) = req.headers().get("x-ratelimit-key") {
-            if key.to_str().ok()
+        if let Some(key) = req.headers().get("x-ratelimit-key")
+            && key.to_str().ok()
                 == dotenvy::var("RATE_LIMIT_IGNORE_KEY").ok().as_deref()
-            {
-                let res = self.service.call(req);
+        {
+            let res = self.service.call(req);
 
-                return Box::pin(async move {
-                    let service_response = res.await?;
-                    Ok(service_response.map_into_left_body())
-                });
-            }
+            return Box::pin(async move {
+                let service_response = res.await?;
+                Ok(service_response.map_into_left_body())
+            });
         }
 
         let conn_info = req.connection_info().clone();

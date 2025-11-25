@@ -1,14 +1,14 @@
 use super::ids::*;
-use crate::auth::oauth::uris::OAuthRedirectUris;
 use crate::auth::AuthProvider;
+use crate::auth::oauth::uris::OAuthRedirectUris;
 use crate::database::models::DatabaseError;
 use crate::database::redis::RedisPool;
 use crate::models::pats::Scopes;
 use chrono::Duration;
-use rand::distributions::Alphanumeric;
 use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
+use rand::distributions::Alphanumeric;
 use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
 use serde::{Deserialize, Serialize};
 
 const FLOWS_NAMESPACE: &str = "flows";
@@ -95,10 +95,10 @@ impl Flow {
         redis: &RedisPool,
     ) -> Result<Option<Flow>, DatabaseError> {
         let flow = Self::get(id, redis).await?;
-        if let Some(flow) = flow.as_ref() {
-            if predicate(flow) {
-                Self::remove(id, redis).await?;
-            }
+        if let Some(flow) = flow.as_ref()
+            && predicate(flow)
+        {
+            Self::remove(id, redis).await?;
         }
         Ok(flow)
     }

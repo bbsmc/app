@@ -301,14 +301,11 @@ impl Issue {
             project_id.0,
             state.as_deref().unwrap_or("all")
         );
-        println!("Debug: Cache key = {}", cache_key);
 
         let issues = redis.get_cached_key(ISSUE_NAMESPACE, cache_key, || async move {
             let mut exec = exec.acquire().await?;
-            println!("Debug: Acquired database connection");
 
             let issues: Vec<IssuesId> = if let Some(state) = state {
-                println!("Debug: Querying with state filter: {}", state);
                 let query_result = sqlx::query!(
                     "SELECT id FROM issues WHERE mod_id = $1 AND state = $2 AND deleted = false ORDER BY created_at DESC",
                     project_id.0,
@@ -318,19 +315,15 @@ impl Issue {
                 .await;
                 match query_result {
                     Ok(rows) => {
-                        println!("Debug: Query executed successfully, found {} rows", rows.len());
                         rows.into_iter().map(|row| {
-                            println!("Debug: Issue ID from DB: {}", row.id);
                             IssuesId(row.id)
                         }).collect()
                     },
                     Err(e) => {
-                        println!("Debug: Query failed with error: {:?}", e);
                         return Err(e.into());
                     }
                 }
             } else {
-                println!("Debug: Querying without state filter");
                 let query_result = sqlx::query!(
                     "SELECT id FROM issues WHERE mod_id = $1 AND deleted = false ORDER BY created_at DESC",
                     project_id.0
@@ -339,24 +332,19 @@ impl Issue {
                 .await;
                 match query_result {
                     Ok(rows) => {
-                        println!("Debug: Query executed successfully, found {} rows", rows.len());
                         rows.into_iter().map(|row| {
-                            println!("Debug: Issue ID from DB: {}", row.id);
                             IssuesId(row.id)
                         }).collect()
                     },
                     Err(e) => {
-                        println!("Debug: Query failed with error: {:?}", e);
                         return Err(e.into());
                     }
                 }
             };
 
-            println!("Debug: Returning {} issues from cache callback", issues.len());
             Ok(issues)
         }).await?;
 
-        println!("Debug: Final result: {} issues", issues.len());
         Ok(issues)
     }
 
@@ -431,7 +419,7 @@ impl Issue {
                         let comments: Vec<IssueCommentIndex> = comments_index
                             .get(&id.0)
                             .map(|v| v.clone())
-                            .unwrap();
+                            .unwrap_or_default();
 
                         acc.insert(
                             id.0,

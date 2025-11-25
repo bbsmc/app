@@ -73,10 +73,9 @@ pub async fn check_text_risk(
         return Ok(true);
     }
 
-    if upload_limit.is_some() {
+    if let Some(limit_str) = upload_limit {
         let mut upload_limit: UploadLimit =
-            serde_json::from_str::<UploadLimit>(&upload_limit.unwrap())
-                .unwrap();
+            serde_json::from_str::<UploadLimit>(&limit_str).unwrap();
         upload_limit.add();
         if upload_limit.is_limit() {
             // upload_limit.time 对比Utc::now()的时间增加 10分钟
@@ -654,7 +653,14 @@ async fn request(
     let signed_headers_str = "content-type;host;x-content-sha256;x-date";
     let canonical_request_str = format!(
         "{}\n/\n{}\ncontent-type:{}\nhost:{}\nx-content-sha256:{}\nx-date:{}\n\n{}\n{}",
-        method, norm_query(&query), CONTENT_TYPE, HOST, x_content_sha256, date, signed_headers_str, x_content_sha256
+        method,
+        norm_query(&query),
+        CONTENT_TYPE,
+        HOST,
+        x_content_sha256,
+        date,
+        signed_headers_str,
+        x_content_sha256
     );
 
     let hashed_canonical_request = hash_sha256(&canonical_request_str);

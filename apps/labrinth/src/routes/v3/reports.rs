@@ -1,4 +1,6 @@
-use crate::auth::{check_is_moderator_from_headers, get_user_from_headers};
+use crate::auth::{
+    check_forum_ban, check_is_moderator_from_headers, get_user_from_headers,
+};
 use crate::database;
 use crate::database::models::image_item;
 use crate::database::models::thread_item::{
@@ -7,7 +9,7 @@ use crate::database::models::thread_item::{
 use crate::database::redis::RedisPool;
 use crate::models::ids::ImageId;
 use crate::models::ids::{
-    base62_impl::parse_base62, ProjectId, UserId, VersionId,
+    ProjectId, UserId, VersionId, base62_impl::parse_base62,
 };
 use crate::models::images::{Image, ImageContext};
 use crate::models::pats::Scopes;
@@ -16,7 +18,7 @@ use crate::models::threads::{MessageBody, ThreadType};
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::util::img;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use futures::StreamExt;
 use serde::Deserialize;
@@ -62,6 +64,9 @@ pub async fn report_create(
     )
     .await?
     .1;
+
+    // 检查论坛封禁
+    check_forum_ban(&current_user, &pool).await?;
 
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
@@ -161,7 +166,7 @@ pub async fn report_create(
             return Err(ApiError::InvalidInput(format!(
                 "Invalid report item type: {}",
                 new_report.item_type.as_str()
-            )))
+            )));
         }
     }
 
@@ -208,6 +213,7 @@ pub async fn report_create(
         members: vec![],
         project_id: None,
         report_id: Some(report.id),
+        ban_appeal_id: None,
     }
     .insert(&mut transaction)
     .await?;

@@ -1,13 +1,12 @@
 use std::{collections::HashSet, fmt::Display, sync::Arc};
 
 use actix_web::{
-    delete, get, patch, post,
+    HttpRequest, HttpResponse, delete, get, patch, post,
     web::{self, scope},
-    HttpRequest, HttpResponse,
 };
 use chrono::Utc;
 use itertools::Itertools;
-use rand::{distributions::Alphanumeric, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, distributions::Alphanumeric};
 use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -18,10 +17,10 @@ use crate::{
     auth::{checks::ValidateAuthorized, get_user_from_headers},
     database::{
         models::{
-            generate_oauth_client_id, generate_oauth_redirect_id,
+            DatabaseError, OAuthClientId, User, generate_oauth_client_id,
+            generate_oauth_redirect_id,
             oauth_client_authorization_item::OAuthClientAuthorization,
             oauth_client_item::{OAuthClient, OAuthRedirectUri},
-            DatabaseError, OAuthClientId, User,
         },
         redis::RedisPool,
     },
@@ -160,7 +159,7 @@ pub struct NewOAuthApp {
 }
 
 #[post("app")]
-pub async fn oauth_client_create<'a>(
+pub async fn oauth_client_create(
     req: HttpRequest,
     new_oauth_app: web::Json<NewOAuthApp>,
     pool: web::Data<PgPool>,
@@ -221,7 +220,7 @@ pub async fn oauth_client_create<'a>(
 }
 
 #[delete("app/{id}")]
-pub async fn oauth_client_delete<'a>(
+pub async fn oauth_client_delete(
     req: HttpRequest,
     client_id: web::Path<ApiOAuthClientId>,
     pool: web::Data<PgPool>,

@@ -83,7 +83,7 @@ import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { useImageUpload } from "~/composables/image-upload.ts";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 
 const router = useNativeRouter();
 const route = useNativeRoute();

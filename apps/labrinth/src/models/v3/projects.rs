@@ -198,10 +198,10 @@ impl From<QueryProject> for Project {
                     Ok(spdx_expr) => {
                         let mut vec: Vec<&str> = Vec::new();
                         for node in spdx_expr.iter() {
-                            if let spdx::expression::ExprNode::Req(req) = node {
-                                if let Some(id) = req.req.license.id() {
-                                    vec.push(id.full_name);
-                                }
+                            if let spdx::expression::ExprNode::Req(req) = node
+                                && let Some(id) = req.req.license.id()
+                            {
+                                vec.push(id.full_name);
                             }
                         }
                         // spdx crate returns AND/OR operations in postfix order
@@ -744,12 +744,15 @@ impl From<QueryVersion> for Version {
                 .version_links
                 .into_iter()
                 .map(|l| VersionLink {
-                    joining_version_id: VersionId(l.joining_version_id.0 as u64),
+                    joining_version_id: VersionId(
+                        l.joining_version_id.0 as u64,
+                    ),
                     link_type: l.link_type,
                     language_code: l.language_code,
                     description: l.description,
-                    approval_status: l.approval_status
-                        .and_then(|s| LinkApprovalStatus::from_str(&s))
+                    approval_status: l
+                        .approval_status
+                        .and_then(|s| LinkApprovalStatus::parse(&s))
                         .unwrap_or_default(),
                     thread_id: l.thread_id.map(|id| ThreadId(id.0 as u64)),
                 })
@@ -758,12 +761,15 @@ impl From<QueryVersion> for Version {
                 .translated_by
                 .into_iter()
                 .map(|l| VersionLink {
-                    joining_version_id: VersionId(l.joining_version_id.0 as u64),
+                    joining_version_id: VersionId(
+                        l.joining_version_id.0 as u64,
+                    ),
                     link_type: l.link_type,
                     language_code: l.language_code,
                     description: l.description,
-                    approval_status: l.approval_status
-                        .and_then(|s| LinkApprovalStatus::from_str(&s))
+                    approval_status: l
+                        .approval_status
+                        .and_then(|s| LinkApprovalStatus::parse(&s))
                         .unwrap_or_default(),
                     thread_id: l.thread_id.map(|id| ThreadId(id.0 as u64)),
                 })
@@ -906,8 +912,10 @@ pub struct Dependency {
 /// Approval status for version links
 #[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Debug)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum LinkApprovalStatus {
     /// Link is pending approval
+    #[default]
     Pending,
     /// Link has been approved
     Approved,
@@ -923,20 +931,14 @@ impl LinkApprovalStatus {
             LinkApprovalStatus::Rejected => "rejected",
         }
     }
-    
-    pub fn from_str(s: &str) -> Option<Self> {
+
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "pending" => Some(LinkApprovalStatus::Pending),
             "approved" => Some(LinkApprovalStatus::Approved),
             "rejected" => Some(LinkApprovalStatus::Rejected),
             _ => None,
         }
-    }
-}
-
-impl Default for LinkApprovalStatus {
-    fn default() -> Self {
-        LinkApprovalStatus::Pending
     }
 }
 

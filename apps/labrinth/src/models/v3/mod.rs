@@ -1,4 +1,5 @@
 pub mod analytics;
+pub mod bans;
 pub mod billing;
 pub mod collections;
 pub mod forum;

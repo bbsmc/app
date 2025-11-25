@@ -13,7 +13,7 @@ use crate::models::v2::projects::LegacyVersion;
 use crate::queue::session::AuthQueue;
 use crate::routes::{v2_reroute, v3};
 use crate::search::SearchConfig;
-use actix_web::{delete, get, patch, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, delete, get, patch, web};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use validator::Validate;
@@ -28,11 +28,26 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(version_delete)
             .service(version_edit)
             .service(super::version_creation::upload_file_to_version)
-            .route("{id}/link/{target_id}/approve", web::post().to(approve_version_link))
-            .route("{id}/link/{target_id}/reject", web::post().to(reject_version_link))
-            .route("{id}/link/{target_id}/revoke", web::post().to(revoke_version_link))
-            .route("{id}/link/{target_id}/thread", web::post().to(send_version_link_message))
-            .route("{id}/link/{target_id}/resubmit", web::post().to(resubmit_version_link)),
+            .route(
+                "{id}/link/{target_id}/approve",
+                web::post().to(approve_version_link),
+            )
+            .route(
+                "{id}/link/{target_id}/reject",
+                web::post().to(reject_version_link),
+            )
+            .route(
+                "{id}/link/{target_id}/revoke",
+                web::post().to(revoke_version_link),
+            )
+            .route(
+                "{id}/link/{target_id}/thread",
+                web::post().to(send_version_link_message),
+            )
+            .route(
+                "{id}/link/{target_id}/resubmit",
+                web::post().to(resubmit_version_link),
+            ),
     );
 }
 
@@ -386,14 +401,14 @@ pub async fn approve_version_link(
     let (version_id_str, target_id_str) = info.into_inner();
     let version_id = VersionId(parse_base62(&version_id_str)?);
     let target_id = VersionId(parse_base62(&target_id_str)?);
-    
+
     // 直接调用 v3 的函数
     v3::versions::approve_version_link(
-        req, 
-        web::Path::from((version_id, target_id)), 
-        pool, 
-        redis, 
-        session_queue
+        req,
+        web::Path::from((version_id, target_id)),
+        pool,
+        redis,
+        session_queue,
     )
     .await
     .or_else(v2_reroute::flatten_404_error)
@@ -410,14 +425,14 @@ pub async fn reject_version_link(
     let (version_id_str, target_id_str) = info.into_inner();
     let version_id = VersionId(parse_base62(&version_id_str)?);
     let target_id = VersionId(parse_base62(&target_id_str)?);
-    
+
     // 直接调用 v3 的函数
     v3::versions::reject_version_link(
         req,
         web::Path::from((version_id, target_id)),
         pool,
         redis,
-        session_queue
+        session_queue,
     )
     .await
     .or_else(v2_reroute::flatten_404_error)
@@ -434,14 +449,14 @@ pub async fn revoke_version_link(
     let (version_id_str, target_id_str) = info.into_inner();
     let version_id = VersionId(parse_base62(&version_id_str)?);
     let target_id = VersionId(parse_base62(&target_id_str)?);
-    
+
     // 直接调用 v3 的函数
     v3::versions::revoke_version_link(
         req,
         web::Path::from((version_id, target_id)),
         pool,
         redis,
-        session_queue
+        session_queue,
     )
     .await
     .or_else(v2_reroute::flatten_404_error)
@@ -463,10 +478,10 @@ pub async fn send_version_link_message(
     // 转换字符串ID为VersionId
     let version_id_str = &info.0;
     let target_id_str = &info.1;
-    
+
     let version_id = VersionId(parse_base62(version_id_str)?);
     let target_id = VersionId(parse_base62(target_id_str)?);
-    
+
     // 调用v3版本的实现
     v3::versions::version_link_thread::send_version_link_message(
         req,
@@ -476,7 +491,7 @@ pub async fn send_version_link_message(
         session_queue,
         web::Json(v3::versions::version_link_thread::SendVersionLinkMessage {
             body: message_body.body.clone(),
-        })
+        }),
     )
     .await
     .or_else(v2_reroute::flatten_404_error)
@@ -494,10 +509,10 @@ pub async fn resubmit_version_link(
     // 转换字符串ID为VersionId
     let version_id_str = &info.0;
     let target_id_str = &info.1;
-    
+
     let version_id = VersionId(parse_base62(version_id_str)?);
     let target_id = VersionId(parse_base62(target_id_str)?);
-    
+
     // 调用v3版本的实现
     v3::versions::resubmit_version_link(
         req,

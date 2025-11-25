@@ -7,8 +7,8 @@ use crate::models::v2::notifications::LegacyNotification;
 use crate::models::v2::projects::LegacyProject;
 use crate::models::v2::user::LegacyUser;
 use crate::queue::session::AuthQueue;
-use crate::routes::{v2_reroute, v3, ApiError};
-use actix_web::{delete, get, patch, web, HttpRequest, HttpResponse};
+use crate::routes::{ApiError, v2_reroute, v3};
+use actix_web::{HttpRequest, HttpResponse, delete, get, patch, web};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -24,11 +24,22 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("user")
             .service(user_get)
             .service(projects_list)
+            .service(user_forum_content)
             .service(user_delete)
             .service(user_edit)
             .service(user_icon_edit)
             .service(user_notifications)
-            .service(user_follows),
+            .service(user_follows)
+            // 用户封禁相关路由
+            .route("bans", web::get().to(super::bans::get_my_bans))
+            .route(
+                "bans/{ban_id}/appeal",
+                web::post().to(super::bans::create_appeal),
+            )
+            .route(
+                "appeals/{appeal_id}",
+                web::get().to(super::bans::get_my_appeal),
+            ),
     );
 }
 
@@ -261,6 +272,22 @@ pub async fn user_follows(
         }
         Err(response) => Ok(response),
     }
+}
+
+/// 获取用户论坛内容
+///
+/// GET /v2/user/{user_id}/forum
+#[get("{user_id}/forum")]
+pub async fn user_forum_content(
+    info: web::Path<(String,)>,
+    query: web::Query<v3::users::UserForumQuery>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+) -> Result<HttpResponse, ApiError> {
+    // 直接调用 v3 实现，响应格式相同无需转换
+    v3::users::user_forum_content(info, query, pool, redis)
+        .await
+        .or_else(v2_reroute::flatten_404_error)
 }
 
 #[get("{id}/notifications")]

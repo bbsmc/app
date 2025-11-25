@@ -5,7 +5,7 @@ use labrinth::database::redis::RedisPool;
 use labrinth::file_hosting::S3Host;
 use labrinth::search;
 use labrinth::util::ratelimit::RateLimit;
-use labrinth::{check_env_vars, clickhouse, database, file_hosting, queue};
+use labrinth::{check_env_vars, clickhouse, database, file_hosting};
 use log::{error, info};
 use std::sync::Arc;
 
@@ -22,6 +22,7 @@ pub struct Pepper {
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
+        .filter_module("actix_web_prom", log::LevelFilter::Error) // 屏蔽 actix_web_prom 的 WARN 日志
         .init();
 
     if check_env_vars() {
@@ -85,12 +86,10 @@ async fn main() -> std::io::Result<()> {
 
     info!("初始化 clickhouse 连接");
     let mut clickhouse = clickhouse::init_client().await.unwrap();
-    info!("开始连接 maxmind 数据库");
-    let maxmind_reader =
-        Arc::new(queue::maxmind::MaxMindIndexer::new().await.unwrap());
-    println!("maxmind_reader: 正常");
     let prometheus = PrometheusMetricsBuilder::new("labrinth")
         .endpoint("/metrics")
+        .exclude_regex("^/v[23]/project/[^/]+(/.*)?$") // 排除所有 /project/{id} 相关路由
+        .exclude_regex("^/v[23]/version/[^/]+/download$")
         .build()
         .expect("创建 prometheus 指标中间件失败");
     println!("prometheus: 正常");
@@ -102,7 +101,6 @@ async fn main() -> std::io::Result<()> {
         search_config.clone(),
         &mut clickhouse,
         file_host.clone(),
-        maxmind_reader.clone(),
     );
 
     info!("启动 Actix HTTP 服务器！");

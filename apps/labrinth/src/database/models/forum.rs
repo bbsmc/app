@@ -23,6 +23,7 @@ pub struct PostQuery {
     pub user_avatar: String,
     pub replied_to: Option<i64>,
     pub reply_content: Option<ReplayContent>,
+    pub reply_to_deleted: bool,
     pub replies: Vec<Replay>,
     pub deleted: bool,
 }
@@ -291,7 +292,7 @@ impl Discussion {
                      SELECT DISTINCT discussion_id, p.id as id, p.created_at
                     FROM discussions d
                     INNER JOIN posts p ON d.id = p.discussion_id
-                    WHERE d.deleted = false and d.id = ANY($1) 
+                    WHERE d.deleted = false and d.id = ANY($1)
                     ORDER BY p.created_at ASC
                     ",
                     &ids.clone()
@@ -349,7 +350,7 @@ impl Discussion {
                             .unwrap_or_default();
 
                         // 使用子查询后，project_id 会被正确推断为 Option<i64>
-                        let project_id: Option<ProjectId> = 
+                        let project_id: Option<ProjectId> =
                             m.project_id.map(ProjectId);
 
                         acc.insert(
@@ -372,7 +373,7 @@ impl Discussion {
                                     pinned: m.pinned.unwrap(),
                                     deleted: m.deleted.unwrap(),
                                     deleted_at: m.deleted_at,
-                                    last_post_time: m.last_post_time.unwrap_or_else(|| chrono::Utc::now()),
+                                    last_post_time: m.last_post_time.unwrap_or_else(chrono::Utc::now),
                                     project_id,
                                 },
                             },
@@ -387,8 +388,8 @@ impl Discussion {
 
                 // 遍历并更新每个帖子
                 for key in keys {
-                    if let Some(mut ele) = posts.get_mut(&key) {
-                        if ele.inner.project_id.is_some() {
+                    if let Some(mut ele) = posts.get_mut(&key)
+                        && ele.inner.project_id.is_some() {
                             let project =
                                 crate::database::models::Project::get_id(
                                     ele.inner.project_id.unwrap(),
@@ -415,7 +416,6 @@ impl Discussion {
                                 }
                             }
                         }
-                    }
                 }
 
                 Ok(posts)
@@ -517,11 +517,11 @@ impl PostQuery {
 
                 // 处理每一行数据
                 for w in rows {
-                    // 查询回复内容
-                    let reply_content = if let Some(replied_to) = w.replied_to {
+                    // 查询回复内容和删除状态
+                    let (reply_content, reply_to_deleted) = if let Some(replied_to) = w.replied_to {
                         let row_content = sqlx::query!(
                                 "
-                                SELECT p.content, u.username as user_name, u.avatar_url as avatar_url
+                                SELECT p.content, p.deleted, u.username as user_name, u.avatar_url as avatar_url
                                 FROM posts p
                                 LEFT JOIN users u ON p.user_id = u.id
                                 WHERE p.id = $1
@@ -533,16 +533,33 @@ impl PostQuery {
                             .fetch_optional(&mut *executor)
                             .await?;
 
-                        row_content.map(|row| ReplayContent {
-                            content: row.content,
-                            user_name: row.user_name,
-                            user_avatar: row.avatar_url.unwrap_or_default(),
-                        })
+                        match row_content {
+                            Some(row) if row.deleted => {
+                                // 被回复的帖子已删除，返回用户信息但不返回内容
+                                (Some(ReplayContent {
+                                    content: String::new(),
+                                    user_name: row.user_name,
+                                    user_avatar: row.avatar_url.unwrap_or_default(),
+                                }), true)
+                            }
+                            Some(row) => {
+                                // 被回复的帖子存在且未删除，返回内容
+                                (Some(ReplayContent {
+                                    content: row.content,
+                                    user_name: row.user_name,
+                                    user_avatar: row.avatar_url.unwrap_or_default(),
+                                }), false)
+                            }
+                            None => {
+                                // 被回复的帖子不存在（可能被彻底删除）
+                                (None, true)
+                            }
+                        }
                     } else {
-                        None
+                        (None, false)
                     };
 
-                    // 查询回复列表
+                    // 查询回复列表（包含已删除的回复，但标记删除状态）
                     let replies_rows = sqlx::query!(
                             "
                             SELECT p.*, u.username as user_name, u.avatar_url as avatar_url
@@ -565,9 +582,11 @@ impl PostQuery {
                             let floor_number = posts.get(&r.discussion_id).unwrap().iter().find(|p| p.post_id == PostId(id)).unwrap().floor_number;
                             Replay {
                                 floor_number,
-                                content: r.content,
+                                // 如果已删除，不返回内容
+                                content: if r.deleted { String::new() } else { r.content },
                                 user_name: r.user_name,
                                 user_avatar: r.avatar_url.unwrap_or_default(),
+                                deleted: r.deleted,
                             }
                         }
                            )
@@ -600,6 +619,7 @@ impl PostQuery {
                             replied_to,
                             replies,
                             reply_content,
+                            reply_to_deleted,
                             deleted: w.deleted,
                         },
                     );

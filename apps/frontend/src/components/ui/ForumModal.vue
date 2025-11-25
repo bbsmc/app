@@ -22,14 +22,27 @@
 
     <!-- 帖子列表 -->
     <div class="posts-wrapper">
-      <div v-for="post in forum" :id="`post-${post.floor_number}`" :key="post.floor_number" ref="postRefs"
-        :data-floor-number="post.floor_number" class="card markdown-body">
+      <div
+        v-for="post in forum"
+        :id="`post-${post.floor_number}`"
+        :key="post.floor_number"
+        ref="postRefs"
+        :data-floor-number="post.floor_number"
+        class="card markdown-body"
+      >
         <div class="post-header">
           <!-- 用户信息区 -->
           <div class="user-info">
             <a :href="`/user/${post.user_name}`" target="_blank" class="user-avatar-link">
-              <img :src="post.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : post.user_avatar"
-                :alt="post.user_name" class="avatar" />
+              <img
+                :src="
+                  post.user_avatar === ''
+                    ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png'
+                    : post.user_avatar
+                "
+                :alt="post.user_name"
+                class="avatar"
+              />
             </a>
             <a :href="`/user/${post.user_name}`" target="_blank" class="username">
               {{ post.user_name }}
@@ -44,28 +57,54 @@
         </div>
 
         <!-- 如果是回复帖子，显示回复引用 -->
-        <div v-if="post.reply_content && !isRepliedToDeleted(post)" class="reply-reference"
-          @click="scrollToPost(post.replied_to)">
+        <div
+          v-if="post.reply_content && !isRepliedToDeleted(post)"
+          class="reply-reference"
+          @click="scrollToPost(post.replied_to)"
+        >
           <div class="reply-info">
             <img
-              :src="post.reply_content.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : post.reply_content.user_avatar"
-              :alt="post.reply_content.user_name" class="reply-avatar" />
+              :src="
+                post.reply_content.user_avatar === ''
+                  ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png'
+                  : post.reply_content.user_avatar
+              "
+              :alt="post.reply_content.user_name"
+              class="reply-avatar"
+            />
             <div class="reply-user-info">
               <span class="reply-username">{{ post.reply_content.user_name }}</span>
               <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
-          <div class="reply-quote" v-html="renderHighlightedString(post.reply_content.content)"></div>
+          <div
+            class="reply-quote"
+            v-html="renderHighlightedString(post.reply_content.content)"
+          ></div>
         </div>
 
-        <!-- 如果回复的帖子被删除了，显示删除提示 -->
-        <div v-if="post.reply_content && isRepliedToDeleted(post)" class="reply-reference deleted-reply">
+        <!-- 如果回复的帖子被删除了，显示删除提示（保留头像和楼层号） -->
+        <div
+          v-if="post.reply_content && isRepliedToDeleted(post)"
+          class="reply-reference deleted-reply"
+          @click="scrollToPost(post.replied_to)"
+        >
           <div class="reply-info">
+            <img
+              :src="
+                post.reply_content.user_avatar === ''
+                  ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png'
+                  : post.reply_content.user_avatar
+              "
+              :alt="post.reply_content.user_name"
+              class="reply-avatar"
+            />
             <div class="reply-user-info">
-              <span class="reply-text">回复</span>
-              <span class="reply-deleted">已被删除的回复</span>
+              <span class="reply-username">{{ post.reply_content.user_name }}</span>
+              <span class="reply-post-id">#{{ post.replied_to }}</span>
             </div>
           </div>
+          <div class="reply-quote reply-deleted-text">该回复已被删除</div>
         </div>
 
         <!-- 帖子内容 -->
@@ -79,7 +118,12 @@
         <!-- 添加底部操作区 -->
         <div v-if="!post.deleted" class="post-footer">
           <!-- 删除按钮：只有发布者和管理员能看到 -->
-          <button v-if="canDeletePost(post)" class="delete-button" @click="deletePost(post)" title="删除回复">
+          <button
+            v-if="canDeletePost(post)"
+            class="delete-button"
+            @click="deletePost(post)"
+            title="删除回复"
+          >
             删除
           </button>
           <button class="reply-button" @click="showReplyForm(post)">回复</button>
@@ -87,9 +131,14 @@
 
         <!-- 如果有回复，显示回复链接 -->
         <div v-if="post.replies.length > 0" class="replies-info">
-          <span v-for="reply in post.replies" :key="reply.floor_number" class="reply-link"
-            @click="scrollToPost(reply.floor_number)" @mouseenter="showReplyPreview(reply)"
-            @mouseleave="hideReplyPreview">
+          <span
+            v-for="reply in post.replies"
+            :key="reply.floor_number"
+            class="reply-link"
+            @click="scrollToPost(reply.floor_number)"
+            @mouseenter="showReplyPreview(reply)"
+            @mouseleave="hideReplyPreview"
+          >
             #{{ reply.floor_number }}
           </span>
         </div>
@@ -100,14 +149,23 @@
     <div v-if="totalPages > 1" class="pagination-controls">
       <div class="pagination-nav">
         <!-- Previous按钮 -->
-        <button class="nav-button prev-next" :disabled="currentPage <= 1" @click="loadPage(currentPage - 1)">
+        <button
+          class="nav-button prev-next"
+          :disabled="currentPage <= 1"
+          @click="loadPage(currentPage - 1)"
+        >
           ← 上一页
         </button>
 
         <!-- 页码按钮 -->
         <div class="page-numbers">
           <!-- 第一页 -->
-          <button v-if="showFirstPage" class="page-button" :class="{ active: currentPage === 1 }" @click="loadPage(1)">
+          <button
+            v-if="showFirstPage"
+            class="page-button"
+            :class="{ active: currentPage === 1 }"
+            @click="loadPage(1)"
+          >
             1
           </button>
 
@@ -115,8 +173,13 @@
           <span v-if="showStartEllipsis" class="ellipsis">...</span>
 
           <!-- 中间页码 -->
-          <button v-for="page in visiblePages" :key="page" class="page-button" :class="{ active: currentPage === page }"
-            @click="loadPage(page)">
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            class="page-button"
+            :class="{ active: currentPage === page }"
+            @click="loadPage(page)"
+          >
             {{ page }}
           </button>
 
@@ -124,35 +187,52 @@
           <span v-if="showEndEllipsis" class="ellipsis">...</span>
 
           <!-- 最后一页 -->
-          <button v-if="showLastPage" class="page-button" :class="{ active: currentPage === totalPages }"
-            @click="loadPage(totalPages)">
+          <button
+            v-if="showLastPage"
+            class="page-button"
+            :class="{ active: currentPage === totalPages }"
+            @click="loadPage(totalPages)"
+          >
             {{ totalPages }}
           </button>
         </div>
 
         <!-- Next按钮 -->
-        <button class="nav-button prev-next" :disabled="currentPage >= totalPages" @click="loadPage(currentPage + 1)">
+        <button
+          class="nav-button prev-next"
+          :disabled="currentPage >= totalPages"
+          @click="loadPage(currentPage + 1)"
+        >
           下一页 →
         </button>
       </div>
 
       <!-- 简化的信息显示 -->
-      <div class="pagination-info">
-        共 {{ totalPosts }} 条回复
-      </div>
+      <div class="pagination-info">共 {{ totalPosts }} 条回复</div>
     </div>
 
     <!-- 添加悬浮提示框 -->
     <div v-if="previewPost" class="reply-preview" :style="previewPosition">
       <div class="preview-header">
         <img
-          :src="previewPost.user_avatar === '' ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png' : previewPost.user_avatar"
-          :alt="previewPost.user_name" class="preview-avatar" />
+          :src="
+            previewPost.user_avatar === ''
+              ? 'https://cdn.bbsmc.net/raw/bbsmc-logo.png'
+              : previewPost.user_avatar
+          "
+          :alt="previewPost.user_name"
+          class="preview-avatar"
+        />
         <div class="preview-user-info">
           <span class="preview-username">{{ previewPost.user_name }}</span>
         </div>
       </div>
-      <div class="preview-content" v-html="renderHighlightedString(previewPost.content)"></div>
+      <div v-if="previewPost.deleted" class="preview-content preview-deleted">该回复已被删除</div>
+      <div
+        v-else
+        class="preview-content"
+        v-html="renderHighlightedString(previewPost.content)"
+      ></div>
     </div>
 
     <!-- 修改回复表单为固定定位的底部弹出框 -->
@@ -161,11 +241,15 @@
         <div class="reply-form-header">
           <span>{{
             replyingTo.id === "new" ? "发表新帖" : `回复 #${replyingTo.floor_number}`
-            }}</span>
+          }}</span>
           <button class="close-button" @click="cancelReply">×</button>
         </div>
         <div class="reply-form-content">
-          <MarkdownEditor v-model="replyContent" :on-image-upload="onUploadHandler" placeholder="输入回复内容..." />
+          <MarkdownEditor
+            v-model="replyContent"
+            :on-image-upload="onUploadHandler"
+            placeholder="输入回复内容..."
+          />
         </div>
         <div class="reply-form-actions">
           <button class="submit-button" :disabled="!replyContent.trim()" @click="submitReply">
@@ -176,8 +260,13 @@
     </div>
 
     <!-- 删除确认模态框 -->
-    <ConfirmModal ref="deletePostModal" title="删除回复" description="删除后无法恢复，确定要删除这条回复吗？" proceed-label="确认删除"
-      @proceed="confirmDeletePost" />
+    <ConfirmModal
+      ref="deletePostModal"
+      title="删除回复"
+      description="删除后无法恢复，确定要删除这条回复吗？"
+      proceed-label="确认删除"
+      @proceed="confirmDeletePost"
+    />
   </div>
 </template>
 
@@ -232,47 +321,47 @@ const previewPosition = ref({
 const themeVars = computed(() => {
   if (isDarkTheme($theme?.active)) {
     return {
-      '--color-text-secondary': '#8f9ba8',
-      '--color-text-primary': '#edeff1',
-      '--color-bg-card': 'rgba(45, 49, 57, 0.8)',
-      '--color-bg-secondary': 'rgba(54, 59, 68, 0.6)',
-      '--color-bg-hover': 'rgba(255, 255, 255, 0.08)',
-      '--color-border': '#363b44',
-      '--color-timeline': '#2d3139',
-      '--color-highlight': '#007aff',
-      '--color-highlight-reply': '#ffd700',
-      '--color-reply-bg': 'rgba(255, 255, 255, 0.12)',
-      '--color-reply-bg-hover': 'rgba(255, 255, 255, 0.2)',
-      '--color-submit-button': '#007aff',
-      '--color-submit-button-hover': '#0056cc',
-      '--color-submit-disabled': '#363b44',
-      '--color-overlay': 'rgba(0, 0, 0, 0.5)',
-      '--color-modal-bg': '#26292f',
-      '--color-scrollbar-track': '#363b44',
-      '--color-scrollbar-thumb': '#8f9ba8',
-      '--color-delete-hover': '#ff3b30',
+      "--color-text-secondary": "#8f9ba8",
+      "--color-text-primary": "#edeff1",
+      "--color-bg-card": "rgba(45, 49, 57, 0.8)",
+      "--color-bg-secondary": "rgba(54, 59, 68, 0.6)",
+      "--color-bg-hover": "rgba(255, 255, 255, 0.08)",
+      "--color-border": "#363b44",
+      "--color-timeline": "#2d3139",
+      "--color-highlight": "#007aff",
+      "--color-highlight-reply": "#ffd700",
+      "--color-reply-bg": "rgba(255, 255, 255, 0.12)",
+      "--color-reply-bg-hover": "rgba(255, 255, 255, 0.2)",
+      "--color-submit-button": "#007aff",
+      "--color-submit-button-hover": "#0056cc",
+      "--color-submit-disabled": "#363b44",
+      "--color-overlay": "rgba(0, 0, 0, 0.5)",
+      "--color-modal-bg": "#26292f",
+      "--color-scrollbar-track": "#363b44",
+      "--color-scrollbar-thumb": "#8f9ba8",
+      "--color-delete-hover": "#ff3b30",
     };
   } else {
     return {
-      '--color-text-secondary': '#8e8e93',
-      '--color-text-primary': 'var(--color-text-dark)',
-      '--color-bg-card': 'rgba(255, 255, 255, 0.8)',
-      '--color-bg-secondary': 'rgba(242, 242, 247, 0.8)',
-      '--color-bg-hover': 'rgba(0, 0, 0, 0.04)',
-      '--color-border': '#d1d1d6',
-      '--color-timeline': '#e0e0e0',
-      '--color-highlight': '#007aff',
-      '--color-highlight-reply': '#ff9500',
-      '--color-reply-bg': 'rgba(0, 0, 0, 0.05)',
-      '--color-reply-bg-hover': 'rgba(0, 0, 0, 0.08)',
-      '--color-submit-button': '#007aff',
-      '--color-submit-button-hover': '#0056cc',
-      '--color-submit-disabled': '#d1d1d6',
-      '--color-overlay': 'rgba(0, 0, 0, 0.3)',
-      '--color-modal-bg': '#ffffff',
-      '--color-scrollbar-track': '#f2f2f7',
-      '--color-scrollbar-thumb': '#c7c7cc',
-      '--color-delete-hover': '#ff3b30',
+      "--color-text-secondary": "#8e8e93",
+      "--color-text-primary": "var(--color-text-dark)",
+      "--color-bg-card": "rgba(255, 255, 255, 0.8)",
+      "--color-bg-secondary": "rgba(242, 242, 247, 0.8)",
+      "--color-bg-hover": "rgba(0, 0, 0, 0.04)",
+      "--color-border": "#d1d1d6",
+      "--color-timeline": "#e0e0e0",
+      "--color-highlight": "#007aff",
+      "--color-highlight-reply": "#ff9500",
+      "--color-reply-bg": "rgba(0, 0, 0, 0.05)",
+      "--color-reply-bg-hover": "rgba(0, 0, 0, 0.08)",
+      "--color-submit-button": "#007aff",
+      "--color-submit-button-hover": "#0056cc",
+      "--color-submit-disabled": "#d1d1d6",
+      "--color-overlay": "rgba(0, 0, 0, 0.3)",
+      "--color-modal-bg": "#ffffff",
+      "--color-scrollbar-track": "#f2f2f7",
+      "--color-scrollbar-thumb": "#c7c7cc",
+      "--color-delete-hover": "#ff3b30",
     };
   }
 });
@@ -332,15 +421,12 @@ const showEndEllipsis = computed(() => {
 // 检查是否有删除权限
 const canDeletePost = (post) => {
   if (!auth.value.user) return false;
-  return auth.value.user.role === 'admin' || post.user_name === auth.value.user.username;
+  return auth.value.user.role === "admin" || post.user_name === auth.value.user.username;
 };
 
-// 检查被回复的帖子是否被删除
+// 检查被回复的帖子是否被删除（使用后端返回的字段）
 const isRepliedToDeleted = (post) => {
-  // 如果有回复内容但在当前显示的帖子中找不到对应的帖子，说明被删除了
-  if (!post.replied_to || !post.reply_content) return false;
-  const referencedPost = displayedPosts.value.find(p => p.floor_number === post.replied_to);
-  return !referencedPost || referencedPost.deleted;
+  return post.reply_to_deleted || false;
 };
 
 // 获取帖子数据
@@ -370,7 +456,7 @@ async function fetchPosts(page = 1, sort = "floor_asc") {
 
 // 加载指定页的数据
 async function loadPage(page) {
-  if (page < 1 || page > totalPages.value && totalPages.value > 0) {
+  if (page < 1 || (page > totalPages.value && totalPages.value > 0)) {
     return;
   }
 
@@ -382,7 +468,7 @@ async function loadPage(page) {
     currentPage.value = page;
 
     // 滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
@@ -390,8 +476,6 @@ async function loadPage(page) {
 async function changeSortAndReload() {
   await loadPage(1);
 }
-
-
 
 // 初始化加载
 async function initLoad() {
@@ -442,7 +526,7 @@ async function confirmDeletePost() {
 
     // 前端直接更新：将该回复标记为已删除
     const postIndex = displayedPosts.value.findIndex(
-      post => post.post_id === postToDelete.value.post_id
+      (post) => post.post_id === postToDelete.value.post_id,
     );
 
     if (postIndex !== -1) {
@@ -453,7 +537,6 @@ async function confirmDeletePost() {
         content: "", // 清空内容
       };
     }
-
   } catch (err) {
     console.error("删除回复失败:", err);
     data.$notify({
@@ -493,7 +576,7 @@ async function scrollToPost(floorNumber) {
   hideReplyPreview();
 
   // 查找帖子是否在当前页
-  const targetPost = displayedPosts.value.find(p => p.floor_number === floorNumber);
+  const targetPost = displayedPosts.value.find((p) => p.floor_number === floorNumber);
 
   if (targetPost) {
     // 在当前页，直接滚动
@@ -703,11 +786,14 @@ onMounted(() => {
 });
 
 // 监听 discussionId 变化
-watch(() => props.discussionId, (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    initLoad();
-  }
-});
+watch(
+  () => props.discussionId,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      initLoad();
+    }
+  },
+);
 </script>
 
 <style scoped>
@@ -831,8 +917,6 @@ watch(() => props.discussionId, (newId, oldId) => {
   color: var(--color-text-primary);
 }
 
-
-
 /* 回复引用样式 */
 .reply-reference {
   margin: 8px 16px;
@@ -894,6 +978,11 @@ watch(() => props.discussionId, (newId, oldId) => {
 .reply-deleted {
   color: var(--color-text-secondary);
   font-size: 0.9em;
+  font-style: italic;
+}
+
+.reply-deleted-text {
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
@@ -1136,8 +1225,8 @@ watch(() => props.discussionId, (newId, oldId) => {
 .reply-preview {
   position: absolute;
   z-index: 1000;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  background: var(--color-raised-bg);
+  border: 1px solid var(--color-button-bg);
   border-radius: 6px;
   padding: 12px;
   min-width: 300px;
@@ -1175,6 +1264,11 @@ watch(() => props.discussionId, (newId, oldId) => {
   line-height: 1.5;
   max-height: 200px;
   overflow-y: auto;
+}
+
+.preview-deleted {
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
 
 .preview-content::-webkit-scrollbar {
@@ -1319,8 +1413,6 @@ watch(() => props.discussionId, (newId, oldId) => {
     cursor: pointer !important;
     display: inline-flex !important;
   }
-
-
 
   .pagination-controls {
     padding: 16px;

@@ -1,4 +1,4 @@
-use super::{ids::*, Organization, Project};
+use super::{Organization, Project, ids::*};
 use crate::{
     database::redis::RedisPool,
     models::teams::{OrganizationPermissions, ProjectPermissions},
@@ -409,7 +409,7 @@ impl TeamMember {
         Ok(())
     }
 
-    pub async fn delete<'a, 'b>(
+    pub async fn delete(
         id: TeamId,
         user_id: UserId,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -486,20 +486,20 @@ impl TeamMember {
             .await?;
         }
 
-        if let Some(accepted) = new_accepted {
-            if accepted {
-                sqlx::query!(
-                    "
+        if let Some(accepted) = new_accepted
+            && accepted
+        {
+            sqlx::query!(
+                "
                     UPDATE team_members
                     SET accepted = TRUE
                     WHERE (team_id = $1 AND user_id = $2)
                     ",
-                    id as TeamId,
-                    user_id as UserId,
-                )
-                .execute(&mut **transaction)
-                .await?;
-            }
+                id as TeamId,
+                user_id as UserId,
+            )
+            .execute(&mut **transaction)
+            .await?;
         }
 
         if let Some(payouts_split) = new_payouts_split {

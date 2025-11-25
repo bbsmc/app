@@ -1,9 +1,10 @@
 pub use super::ApiError;
 use crate::util::cors::default_cors;
-use actix_web::{web, HttpResponse};
+use actix_web::{HttpResponse, web};
 use serde_json::json;
 
 pub mod analytics_get;
+pub mod bans;
 pub mod collections;
 pub mod forum;
 pub mod images;
@@ -24,6 +25,7 @@ pub mod versions;
 
 pub mod issues;
 pub mod oauth_clients;
+#[allow(clippy::unnecessary_unwrap, clippy::explicit_auto_deref)]
 mod wikis;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -47,7 +49,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .configure(payouts::config)
             .configure(versions::config)
             .configure(forum::config)
-            .configure(issues::config),
+            .configure(issues::config)
+            .configure(bans::config),
     );
 }
 

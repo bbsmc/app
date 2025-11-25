@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                                SELECT p.content, p.deleted, u.username as user_name, u.avatar_url as avatar_url\n                                FROM posts p\n                                LEFT JOIN users u ON p.user_id = u.id\n                                WHERE p.id = $1\n                                AND p.discussion_id = $2\n                                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "content",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4a84defcf7323f1007ad49b75375bf73aa18183f8f26335a5236a7b2ded9268f"
+}

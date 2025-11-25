@@ -1,10 +1,12 @@
-use super::version_creation::{try_create_version_fields, InitialVersionData};
-use crate::auth::{get_user_from_headers, AuthenticationError};
+use super::version_creation::{InitialVersionData, try_create_version_fields};
+use crate::auth::{
+    AuthenticationError, check_resource_ban, get_user_from_headers,
+};
 use crate::database::models::loader_fields::{
     Loader, LoaderField, LoaderFieldEnumValue,
 };
 use crate::database::models::thread_item::ThreadBuilder;
-use crate::database::models::{self, image_item, User};
+use crate::database::models::{self, User, image_item};
 use crate::database::redis::RedisPool;
 use crate::file_hosting::{FileHost, FileHostingError};
 use crate::models::error::ApiError;
@@ -88,6 +90,8 @@ pub enum CreateError {
     ImageError(#[from] ImageError),
     #[error("重定向错误: {0}")]
     RerouteError(#[from] reqwest::Error),
+    #[error("您已被封禁：{0}")]
+    Banned(String),
 }
 
 impl actix_web::ResponseError for CreateError {
@@ -120,6 +124,7 @@ impl actix_web::ResponseError for CreateError {
             CreateError::FileValidationError(..) => StatusCode::BAD_REQUEST,
             CreateError::ImageError(..) => StatusCode::BAD_REQUEST,
             CreateError::RerouteError(..) => StatusCode::INTERNAL_SERVER_ERROR,
+            CreateError::Banned(..) => StatusCode::FORBIDDEN,
         }
     }
 
@@ -147,6 +152,7 @@ impl actix_web::ResponseError for CreateError {
                 CreateError::FileValidationError(..) => "无效输入",
                 CreateError::ImageError(..) => "无效图像",
                 CreateError::RerouteError(..) => "重定向错误",
+                CreateError::Banned(..) => "用户被封禁",
             },
             description: self.to_string(),
         })
@@ -353,6 +359,11 @@ async fn project_create_inner(
     )
     .await?
     .1;
+
+    // 检查用户是否被资源类封禁
+    check_resource_ban(&current_user, pool)
+        .await
+        .map_err(|e| CreateError::Banned(e.to_string()))?;
 
     let project_id: ProjectId =
         models::generate_project_id(transaction).await?.into();
@@ -858,6 +869,7 @@ async fn project_create_inner(
             members: vec![],
             project_id: Some(id),
             report_id: None,
+            ban_appeal_id: None,
         }
         .insert(&mut *transaction)
         .await?;

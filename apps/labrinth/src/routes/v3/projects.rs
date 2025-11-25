@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::auth::checks::{filter_visible_versions, is_visible_project};
+use crate::auth::checks::{
+    check_resource_ban, filter_visible_versions, is_visible_project,
+};
 use crate::auth::{
-    filter_visible_projects, get_user_from_headers, AuthenticationError,
+    AuthenticationError, filter_visible_projects, get_user_from_headers,
 };
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::project_item::{GalleryItem, ModCategory};
 use crate::database::models::thread_item::ThreadMessageBuilder;
-use crate::database::models::{ids as db_ids, image_item, TeamMember};
+use crate::database::models::{TeamMember, ids as db_ids, image_item};
 use crate::database::redis::RedisPool;
 use crate::database::{self, models as db_models};
 use crate::file_hosting::FileHost;
@@ -26,12 +28,12 @@ use crate::queue::moderation::AutomatedModerationQueue;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::search::indexing::remove_documents;
-use crate::search::{search_for_project, SearchConfig, SearchError};
+use crate::search::{SearchConfig, SearchError, search_for_project};
 use crate::util::img;
 use crate::util::img::{delete_old_images, upload_image_optimized};
 use crate::util::routes::read_from_payload;
 use crate::util::validate::validation_errors_to_string;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use futures::TryStreamExt;
 use itertools::Itertools;
@@ -100,7 +102,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             )
             .route("{id}/forum", web::post().to(project_forum_create))
             .service(
-                web::scope("{project_id}")
+                web::scope("{id}")
                     .route(
                         "members",
                         web::get().to(super::teams::team_members_get_project),
@@ -114,7 +116,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                         web::get().to(super::versions::version_project_get),
                     )
                     .route("dependencies", web::get().to(dependency_list))
-                    .route("translation_links", web::get().to(get_translation_links)),
+                    .route(
+                        "translation_links",
+                        web::get().to(get_translation_links),
+                    ),
             ),
     );
 }
@@ -217,10 +222,10 @@ pub async fn project_get(
     .map(|x| x.1)
     .ok();
 
-    if let Some(data) = project_data {
-        if is_visible_project(&data.inner, &user_option, &pool, false).await? {
-            return Ok(HttpResponse::Ok().json(Project::from(data)));
-        }
+    if let Some(data) = project_data
+        && is_visible_project(&data.inner, &user_option, &pool, false).await?
+    {
+        return Ok(HttpResponse::Ok().json(Project::from(data)));
     }
     Err(ApiError::NotFound)
 }
@@ -310,6 +315,9 @@ pub async fn project_edit(
     )
     .await?
     .1;
+
+    // 检查用户是否被资源类封禁
+    check_resource_ban(&user, &pool).await?;
 
     new_project.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))
@@ -485,38 +493,38 @@ pub async fn project_edit(
                     .execute(&mut *transaction)
                     .await?;
                 }
-                if status.is_searchable() && !project_item.inner.webhook_sent {
-                    if let Ok(webhook_url) =
+                if status.is_searchable()
+                    && !project_item.inner.webhook_sent
+                    && let Ok(webhook_url) =
                         dotenvy::var("PUBLIC_DISCORD_WEBHOOK")
-                    {
-                        crate::util::webhook::send_discord_webhook(
-                            project_item.inner.id.into(),
-                            &pool,
-                            &redis,
-                            webhook_url,
-                            None,
-                        )
-                        .await
-                        .ok();
+                {
+                    crate::util::webhook::send_discord_webhook(
+                        project_item.inner.id.into(),
+                        &pool,
+                        &redis,
+                        webhook_url,
+                        None,
+                    )
+                    .await
+                    .ok();
 
-                        sqlx::query!(
-                            "
+                    sqlx::query!(
+                        "
                             UPDATE mods
                             SET webhook_sent = TRUE
                             WHERE id = $1
                             ",
-                            id as db_ids::ProjectId,
-                        )
-                        .execute(&mut *transaction)
-                        .await?;
-                    }
+                        id as db_ids::ProjectId,
+                    )
+                    .execute(&mut *transaction)
+                    .await?;
                 }
 
-                if user.role.is_mod() {
-                    if let Ok(webhook_url) =
+                if user.role.is_mod()
+                    && let Ok(webhook_url) =
                         dotenvy::var("MODERATION_SLACK_WEBHOOK")
-                    {
-                        crate::util::webhook::send_slack_webhook(
+                {
+                    crate::util::webhook::send_slack_webhook(
                             project_item.inner.id.into(),
                             &pool,
                             &redis,
@@ -535,7 +543,6 @@ pub async fn project_edit(
                         )
                         .await
                         .ok();
-                    }
                 }
 
                 if team_member.map(|x| !x.accepted).unwrap_or(true) {
@@ -597,7 +604,7 @@ pub async fn project_edit(
                 )
                 .fetch_all(&mut *transaction)
                 .await?;
-                
+
                 // 获取所有版本链接的目标版本
                 for version_id in version_ids {
                     let version_links = sqlx::query!(
@@ -608,16 +615,23 @@ pub async fn project_edit(
                     )
                     .fetch_all(&mut *transaction)
                     .await?;
-                    
+
                     // 清除所有目标版本的缓存
                     for link in version_links {
-                        let target_version_id = db_ids::VersionId(link.joining_version_id);
+                        let target_version_id =
+                            db_ids::VersionId(link.joining_version_id);
                         if let Some(target_version) = db_models::Version::get(
                             target_version_id,
                             &mut *transaction,
                             &redis,
-                        ).await? {
-                            db_models::Version::clear_cache(&target_version, &redis).await?;
+                        )
+                        .await?
+                        {
+                            db_models::Version::clear_cache(
+                                &target_version,
+                                &redis,
+                            )
+                            .await?;
                         }
                     }
                 }
@@ -664,7 +678,7 @@ pub async fn project_edit(
                 )
                 .execute(&mut *transaction)
                 .await?;
-                
+
                 // 如果这是个汉化包项目且请求状态发生变化，清除所有目标版本的缓存
                 // 获取该项目的所有版本
                 let version_ids = sqlx::query!(
@@ -675,7 +689,7 @@ pub async fn project_edit(
                 )
                 .fetch_all(&mut *transaction)
                 .await?;
-                
+
                 // 获取所有版本链接的目标版本
                 for version_id in version_ids {
                     let version_links = sqlx::query!(
@@ -686,16 +700,23 @@ pub async fn project_edit(
                     )
                     .fetch_all(&mut *transaction)
                     .await?;
-                    
+
                     // 清除所有目标版本的缓存
                     for link in version_links {
-                        let target_version_id = db_ids::VersionId(link.joining_version_id);
+                        let target_version_id =
+                            db_ids::VersionId(link.joining_version_id);
                         if let Some(target_version) = db_models::Version::get(
                             target_version_id,
                             &mut *transaction,
                             &redis,
-                        ).await? {
-                            db_models::Version::clear_cache(&target_version, &redis).await?;
+                        )
+                        .await?
+                        {
+                            db_models::Version::clear_cache(
+                                &target_version,
+                                &redis,
+                            )
+                            .await?;
                         }
                     }
                 }
@@ -864,49 +885,46 @@ pub async fn project_edit(
                 .execute(&mut *transaction)
                 .await?;
             }
-            if let Some(links) = &new_project.link_urls {
-                if !links.is_empty() {
-                    if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
-                        return Err(ApiError::CustomAuthentication(
-                            "您没有权限编辑此项目的链接!".to_string(),
-                        ));
-                    }
+            if let Some(links) = &new_project.link_urls
+                && !links.is_empty()
+            {
+                if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
+                    return Err(ApiError::CustomAuthentication(
+                        "您没有权限编辑此项目的链接!".to_string(),
+                    ));
+                }
 
-                    let ids_to_delete = links
-                        .iter()
-                        .map(|(name, _)| name.clone())
-                        .collect::<Vec<String>>();
-                    // 从 hashmap 中删除所有链接- 要么将被删除，要么将被替换
-                    sqlx::query!(
-                        "
+                let ids_to_delete =
+                    links.keys().cloned().collect::<Vec<String>>();
+                // 从 hashmap 中删除所有链接- 要么将被删除，要么将被替换
+                sqlx::query!(
+                    "
                         DELETE FROM mods_links
                         WHERE joining_mod_id = $1 AND joining_platform_id IN (
                             SELECT id FROM link_platforms WHERE name = ANY($2)
                         )
                         ",
-                        id as db_ids::ProjectId,
-                        &ids_to_delete
-                    )
-                    .execute(&mut *transaction)
-                    .await?;
+                    id as db_ids::ProjectId,
+                    &ids_to_delete
+                )
+                .execute(&mut *transaction)
+                .await?;
 
-                    for (platform, url) in links {
-                        if let Some(url) = url {
-                            let platform_id =
-                                db_models::categories::LinkPlatform::get_id(
-                                    platform,
-                                    &mut *transaction,
-                                )
-                                .await?
-                                .ok_or_else(
-                                    || {
-                                        ApiError::InvalidInput(format!(
-                                            "平台 {} 不存在.",
-                                            platform.clone()
-                                        ))
-                                    },
-                                )?;
-                            sqlx::query!(
+                for (platform, url) in links {
+                    if let Some(url) = url {
+                        let platform_id =
+                            db_models::categories::LinkPlatform::get_id(
+                                platform,
+                                &mut *transaction,
+                            )
+                            .await?
+                            .ok_or_else(|| {
+                                ApiError::InvalidInput(format!(
+                                    "平台 {} 不存在.",
+                                    platform.clone()
+                                ))
+                            })?;
+                        sqlx::query!(
                                 "
                                 INSERT INTO mods_links (joining_mod_id, joining_platform_id, url)
                                 VALUES ($1, $2, $3)
@@ -917,7 +935,6 @@ pub async fn project_edit(
                             )
                             .execute(&mut *transaction)
                             .await?;
-                        }
                     }
                 }
             }
@@ -1463,10 +1480,7 @@ pub async fn projects_edit(
         .await?;
 
         if let Some(links) = &bulk_edit_project.link_urls {
-            let ids_to_delete = links
-                .iter()
-                .map(|(name, _)| name.clone())
-                .collect::<Vec<String>>();
+            let ids_to_delete = links.keys().cloned().collect::<Vec<String>>();
             // 从 hashmap 中删除所有链接- 要么将被删除，要么将被替换
             sqlx::query!(
                 "
@@ -2272,6 +2286,10 @@ pub async fn project_delete(
     )
     .await?
     .1;
+
+    // 检查用户是否被资源类封禁
+    check_resource_ban(&user, &pool).await?;
+
     let string = info.into_inner().0;
 
     let project = db_models::Project::get(&string, &**pool, &redis)
@@ -2586,7 +2604,7 @@ pub async fn project_get_organization(
             organization,
             team_members,
         );
-        return Ok(HttpResponse::Ok().json(organization));
+        Ok(HttpResponse::Ok().json(organization))
     } else {
         Err(ApiError::NotFound)
     }
@@ -2764,7 +2782,7 @@ pub async fn get_translation_links(
     auth_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let project_id = info.into_inner().0;
-    
+
     let user_option = get_user_from_headers(
         &req,
         &**pool,
@@ -2775,14 +2793,9 @@ pub async fn get_translation_links(
     .await
     .map(|x| x.1)
     .ok();
-    
-    let project = db_models::Project::get(
-        &project_id,
-        &**pool,
-        &redis,
-    )
-    .await?;
-    
+
+    let project = db_models::Project::get(&project_id, &**pool, &redis).await?;
+
     if let Some(project) = project {
         // 检查用户是否有权限查看翻译链接（需要是团队成员）
         let team_member = if let Some(user) = &user_option {
@@ -2796,15 +2809,17 @@ pub async fn get_translation_links(
         } else {
             None
         };
-        
+
         // 只有团队成员或管理员可以查看所有翻译链接（包括待审核的）
-        let is_admin_or_mod = user_option.as_ref().map_or(false, |u| u.role.is_admin() || u.role.is_mod());
+        let is_admin_or_mod = user_option
+            .as_ref()
+            .is_some_and(|u| u.role.is_admin() || u.role.is_mod());
         if team_member.is_none() && !is_admin_or_mod {
             return Err(ApiError::CustomAuthentication(
                 "您需要是项目团队成员才能查看翻译链接审核信息".to_string(),
             ));
         }
-        
+
         // 获取项目的所有版本
         let versions = database::models::Version::get_many(
             &project.versions,
@@ -2812,9 +2827,9 @@ pub async fn get_translation_links(
             &redis,
         )
         .await?;
-        
+
         let mut all_links = Vec::new();
-        
+
         // 获取每个版本的所有翻译链接（包括待审核的）
         for version in versions {
             // 直接查询数据库获取所有链接，不管审批状态
@@ -2829,7 +2844,7 @@ pub async fn get_translation_links(
             )
             .fetch_all(&**pool)
             .await?;
-            
+
             for link in links {
                 // 获取翻译版本的详细信息
                 let translation_version = database::models::Version::get(
@@ -2838,7 +2853,7 @@ pub async fn get_translation_links(
                     &redis,
                 )
                 .await?;
-                
+
                 if let Some(trans_ver) = translation_version {
                     // 获取翻译项目的信息
                     let trans_project = db_models::Project::get_id(
@@ -2847,7 +2862,7 @@ pub async fn get_translation_links(
                         &redis,
                     )
                     .await?;
-                    
+
                     if let Some(trans_proj) = trans_project {
                         // 获取提交者信息
                         let submitter = database::models::User::get_id(
@@ -2856,27 +2871,34 @@ pub async fn get_translation_links(
                             &redis,
                         )
                         .await?;
-                        
+
                         if let Some(user) = submitter {
                             // 转换ID到API格式
-                            let api_version_id: models::ids::VersionId = 
+                            let api_version_id: models::ids::VersionId =
                                 db_ids::VersionId(link.version_id).into();
-                            let api_target_version_id: models::ids::VersionId = 
+                            let api_target_version_id: models::ids::VersionId =
                                 version.inner.id.into();
-                            let api_project_id: models::ids::ProjectId = 
+                            let api_project_id: models::ids::ProjectId =
                                 trans_proj.inner.id.into();
-                            let api_user_id: models::ids::UserId = 
+                            let api_user_id: models::ids::UserId =
                                 user.id.into();
-                            
+
                             all_links.push(TranslationLinkResponse {
                                 joining_version_id: api_version_id.to_string(),
-                                target_version_id: api_target_version_id.to_string(),
-                                target_version_number: version.inner.version_number.clone(),
+                                target_version_id: api_target_version_id
+                                    .to_string(),
+                                target_version_number: version
+                                    .inner
+                                    .version_number
+                                    .clone(),
                                 link_type: link.link_type,
                                 language_code: link.language_code,
                                 description: link.description,
                                 approval_status: link.approval_status,
-                                thread_id: link.thread_id.map(|id| crate::models::ids::ThreadId(id as u64).to_string()),
+                                thread_id: link.thread_id.map(|id| {
+                                    crate::models::ids::ThreadId(id as u64)
+                                        .to_string()
+                                }),
                                 project_id: api_project_id.to_string(),
                                 project_title: trans_proj.inner.name,
                                 project_slug: trans_proj.inner.slug,
@@ -2892,7 +2914,7 @@ pub async fn get_translation_links(
                 }
             }
         }
-        
+
         Ok(HttpResponse::Ok().json(all_links))
     } else {
         Err(ApiError::NotFound)

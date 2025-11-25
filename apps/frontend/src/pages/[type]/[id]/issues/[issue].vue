@@ -314,7 +314,7 @@ import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
 import dayjs from "dayjs";
 import { TagIcon, LockIcon, PlayIcon, ClipboardCopyIcon } from "@modrinth/assets";
 import { renderHighlightedString } from "~/helpers/highlight.js";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -715,7 +715,7 @@ async function removeLabel(label) {
 // }
 
 // 编辑回复 (占位符)
-function editComment(comment) {
+function editComment(_comment) {
   // TODO: 实现回复编辑功能
   data.$notify({
     group: "main",

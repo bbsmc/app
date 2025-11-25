@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use super::threads::is_authorized_thread;
-use crate::auth::checks::{is_team_member_project, is_team_member_version};
+use crate::auth::checks::{
+    check_forum_ban, check_global_ban, check_resource_ban,
+    is_team_member_project, is_team_member_version,
+};
 use crate::auth::get_user_from_headers;
 use crate::database;
 use crate::database::models::{
@@ -12,11 +15,12 @@ use crate::file_hosting::FileHost;
 use crate::models::ids::{ThreadMessageId, VersionId};
 use crate::models::images::{Image, ImageContext};
 use crate::models::reports::ReportId;
+use crate::models::threads::ThreadType;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::util::img::upload_image_optimized;
 use crate::util::routes::read_from_payload;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
@@ -92,6 +96,23 @@ pub async fn images_add(
     .await?
     .1;
 
+    // 根据上下文类型检查封禁状态
+    // - project/version: 检查资源类封禁
+    // - thread_message/report: 检查论坛类封禁（申诉线程除外）
+    // - user: 检查全局封禁
+    match &context {
+        ImageContext::Project { .. } | ImageContext::Version { .. } => {
+            check_resource_ban(&user, &pool).await?;
+        }
+        ImageContext::ThreadMessage { .. } | ImageContext::Report { .. } => {
+            // 论坛类封禁检查在后面处理（需要判断是否是申诉线程）
+        }
+        ImageContext::User { .. } => {
+            check_global_ban(&user, &pool).await?;
+        }
+        ImageContext::Unknown => {}
+    }
+
     // 尝试将提供的 ID 与上下文关联
     // 如果无法找到上下文，或者用户无权上传上下文的图片，则返回错误
     match &mut context {
@@ -163,6 +184,12 @@ pub async fn images_add(
                                 "未找到与该消息关联的线程".to_string(),
                             )
                         })?;
+
+                // 检查论坛封禁（申诉线程除外）
+                if thread.type_ != ThreadType::BanAppeal {
+                    check_forum_ban(&user, &pool).await?;
+                }
+
                 if is_authorized_thread(&thread, &user, &pool).await? {
                     *thread_message_id = Some(thread_message.id.into());
                 } else {
@@ -170,9 +197,15 @@ pub async fn images_add(
                         "您无权为此线程消息上传图片".to_string(),
                     ));
                 }
+            } else {
+                // 没有指定 thread_message_id，检查论坛封禁
+                check_forum_ban(&user, &pool).await?;
             }
         }
         ImageContext::Report { report_id } => {
+            // 举报图片需要检查论坛封禁
+            check_forum_ban(&user, &pool).await?;
+
             if let Some(id) = data.report_id {
                 let report = report_item::Report::get(id.into(), &**pool)
                     .await?

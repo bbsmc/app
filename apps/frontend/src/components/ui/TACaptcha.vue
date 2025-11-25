@@ -8,36 +8,37 @@ export default {
     // TAC验证码配置选项
     type: {
       type: String,
-      default: 'SLIDER' // 默认使用滑块验证
+      default: "SLIDER", // 默认使用滑块验证
     },
     requestUrl: {
       type: String,
-      default: 'https://captcha.bbsmc.net/gen'
+      default: "https://captcha.bbsmc.net/gen",
     },
     validUrl: {
       type: String,
-      default: 'https://captcha.bbsmc.net/validation'
+      default: "https://captcha.bbsmc.net/validation",
     },
     sdkUrl: {
       type: String,
-      default: 'https://captcha.bbsmc.net/sdk/tac'
+      default: "https://captcha.bbsmc.net/sdk/tac",
     },
     logoUrl: {
       type: String,
-      default: 'https://cdn.bbsmc.net/bbsmc/data/ZcUCcMEr/317f155094c061b70526b21f83619037a4a962e7.png'
+      default:
+        "https://cdn.bbsmc.net/bbsmc/data/ZcUCcMEr/317f155094c061b70526b21f83619037a4a962e7.png",
     },
     // 是否显示遮罩层
     showOverlay: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   data() {
     return {
       internalToken: this.modelValue,
       tacInstance: null,
       isLoaded: false,
-      isVerifying: false // 添加验证中状态
+      isVerifying: false, // 添加验证中状态
     };
   },
   mounted() {
@@ -58,7 +59,7 @@ export default {
       if (this.isVerifying) {
         this.initCaptcha();
       }
-    }
+    },
   },
   methods: {
     // 动态加载TAC验证码脚本
@@ -68,7 +69,7 @@ export default {
         await this.loadScript(`${this.sdkUrl}/load.js`);
         this.isLoaded = true;
       } catch (error) {
-        console.error('TAC验证码脚本加载失败:', error);
+        console.error("TAC验证码脚本加载失败:", error);
       }
     },
 
@@ -81,7 +82,7 @@ export default {
           return;
         }
 
-        const script = document.createElement('script');
+        const script = document.createElement("script");
         script.src = src;
         script.onload = resolve;
         script.onerror = reject;
@@ -94,7 +95,6 @@ export default {
       if (!this.isLoaded || !window.initTAC) {
         return;
       }
-
 
       // 清理之前的实例
       if (this.tacInstance) {
@@ -133,19 +133,17 @@ export default {
         btnCloseFun: (el, tac) => {
           tac.destroyWindow();
           this.isVerifying = false;
-        }
+        },
       };
 
       // 样式配置
       const style = {
-        logoUrl: this.logoUrl
+        logoUrl: this.logoUrl,
       };
 
       try {
-
         // 初始化TAC验证码
         const tac = await window.initTAC(this.sdkUrl, captchaConfig, style);
-
 
         // 设置请求钩子
         tac.config.insertRequestChain(0, {
@@ -156,14 +154,13 @@ export default {
           // 请求后hook
           postRequest(type, requestParam, res) {
             return true;
-          }
+          },
         });
 
         this.tacInstance = tac;
 
         // 调用初始化方法初始化验证码
         tac.init();
-
       } catch (error) {
         this.isVerifying = false;
       }
@@ -203,8 +200,8 @@ export default {
       this.destroyCaptcha();
       this.tacInstance = null;
       this.isVerifying = false;
-      this.onTokenUpdate('');
-    }
+      this.onTokenUpdate("");
+    },
   },
 };
 </script>
@@ -217,14 +214,22 @@ export default {
     <!-- 主要验证按钮 -->
     <div class="main-captcha-button">
       <!-- 未验证状态 - 点击开始验证 -->
-      <button v-if="!internalToken && !isVerifying" @click="showCaptcha" class="captcha-btn captcha-btn-start"
-        type="button">
+      <button
+        v-if="!internalToken && !isVerifying"
+        @click="showCaptcha"
+        class="captcha-btn captcha-btn-start"
+        type="button"
+      >
         <span class="btn-text">点击按钮开始验证</span>
       </button>
 
       <!-- 验证中状态 -->
-      <button v-else-if="!internalToken && isVerifying" class="captcha-btn captcha-btn-verifying" type="button"
-        disabled>
+      <button
+        v-else-if="!internalToken && isVerifying"
+        class="captcha-btn captcha-btn-verifying"
+        type="button"
+        disabled
+      >
         <span class="btn-text">验证中...</span>
       </button>
 
@@ -240,7 +245,12 @@ export default {
 
     <!-- 验证码操作按钮（开发调试用） -->
     <div v-if="$attrs.showDebugControls" class="captcha-controls">
-      <button @click="reloadCaptcha" class="btn btn-secondary" type="button" :disabled="!tacInstance">
+      <button
+        @click="reloadCaptcha"
+        class="btn btn-secondary"
+        type="button"
+        :disabled="!tacInstance"
+      >
         刷新验证码
       </button>
 
@@ -248,9 +258,7 @@ export default {
         关闭验证码
       </button>
 
-      <button @click="resetCaptcha" class="btn btn-warning" type="button">
-        重置状态
-      </button>
+      <button @click="resetCaptcha" class="btn btn-warning" type="button">重置状态</button>
     </div>
   </div>
 </template>
@@ -357,7 +365,7 @@ export default {
 }
 
 /* 验证码内容样式 */
-.captcha-box-container>* {
+.captcha-box-container > * {
   margin: 0 auto;
   display: block;
 }

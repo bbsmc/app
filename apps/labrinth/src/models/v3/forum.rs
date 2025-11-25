@@ -33,6 +33,7 @@ pub struct PostResponse {
     pub user_avatar: String,
     pub replied_to: Option<i64>,
     pub reply_content: Option<ReplayContent>,
+    pub reply_to_deleted: bool,
     pub replies: Vec<Replay>,
     pub deleted: bool,
 }
@@ -75,6 +76,7 @@ pub struct Replay {
     pub content: String,
     pub user_name: String,
     pub user_avatar: String,
+    pub deleted: bool,
 }
 
 impl From<PostQuery> for PostResponse {
@@ -94,6 +96,7 @@ impl From<PostQuery> for PostResponse {
             user_avatar: avatar,
             replied_to: post.replied_to,
             reply_content: post.reply_content,
+            reply_to_deleted: post.reply_to_deleted,
             replies: post.replies,
             deleted: post.deleted,
         }

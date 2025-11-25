@@ -19,6 +19,7 @@
       <span class="text-nowrap">{{ link.label }}</span>
     </NuxtLink>
     <div
+      v-show="sliderReady"
       :class="`navtabs-transition pointer-events-none absolute h-[calc(100%-0.5rem)] overflow-hidden rounded-full p-1 ${
         subpageSelected ? 'bg-button-bg' : 'bg-brand-highlight'
       }`"
@@ -27,7 +28,6 @@
         top: sliderTopPx,
         right: sliderRightPx,
         bottom: sliderBottomPx,
-        opacity: sliderLeft === 4 && sliderLeft === sliderRight ? 0 : activeIndex === -1 ? 0 : 1,
       }"
       aria-hidden="true"
     ></div>
@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 
 const route = useNativeRoute();
 
@@ -54,10 +54,11 @@ const props = defineProps<{
 
 const scrollContainer = ref<HTMLElement | null>(null);
 
-const sliderLeft = ref(4);
-const sliderTop = ref(4);
-const sliderRight = ref(4);
-const sliderBottom = ref(4);
+const sliderLeft = ref(0);
+const sliderTop = ref(0);
+const sliderRight = ref(0);
+const sliderBottom = ref(0);
+const sliderReady = ref(false);
 const activeIndex = ref(-1);
 const subpageSelected = ref(false);
 
@@ -74,48 +75,84 @@ const tabLinkElements = ref();
 function pickLink() {
   let index = -1;
   subpageSelected.value = false;
-  for (let i = filteredLinks.value.length - 1; i >= 0; i--) {
-    const link = filteredLinks.value[i];
-    if (decodeURIComponent(route.path) === link.href) {
-      index = i;
-      break;
-    } else if (
-      decodeURIComponent(route.path).includes(link.href) ||
-      (link.subpages &&
-        link.subpages.some((subpage) => decodeURIComponent(route.path).includes(subpage)))
-    ) {
-      index = i;
-      subpageSelected.value = true;
-      break;
+
+  if (props.query) {
+    const currentQueryValue = route.query[props.query] as string | undefined;
+    for (let i = 0; i < filteredLinks.value.length; i++) {
+      const link = filteredLinks.value[i];
+      if (link.href === "" && (!currentQueryValue || currentQueryValue === "")) {
+        index = i;
+        break;
+      } else if (link.href && currentQueryValue === link.href) {
+        index = i;
+        break;
+      }
+    }
+  } else {
+    for (let i = filteredLinks.value.length - 1; i >= 0; i--) {
+      const link = filteredLinks.value[i];
+      if (decodeURIComponent(route.path) === link.href) {
+        index = i;
+        break;
+      } else if (
+        decodeURIComponent(route.path).includes(link.href) ||
+        (link.subpages &&
+          link.subpages.some((subpage) => decodeURIComponent(route.path).includes(subpage)))
+      ) {
+        index = i;
+        subpageSelected.value = true;
+        break;
+      }
     }
   }
+
   activeIndex.value = index;
 
   if (activeIndex.value !== -1) {
-    startAnimation();
+    nextTick(() => {
+      startAnimation();
+    });
   } else {
-    sliderLeft.value = 0;
-    sliderRight.value = 0;
+    sliderReady.value = false;
   }
 }
 
 function startAnimation() {
-  const el = tabLinkElements.value[activeIndex.value]?.$el;
+  const el = tabLinkElements.value?.[activeIndex.value]?.$el;
 
-  if (!el || !el.offsetParent) return;
+  if (!el || !el.offsetParent) {
+    sliderReady.value = false;
+    return;
+  }
+
+  const parentWidth = el.offsetParent.offsetWidth;
+  const parentHeight = el.offsetParent.offsetHeight;
+  const elWidth = el.offsetWidth;
+  const elHeight = el.offsetHeight;
+
+  if (elWidth === 0 || parentWidth === 0) {
+    sliderReady.value = false;
+    return;
+  }
 
   const newValues = {
     left: el.offsetLeft,
     top: el.offsetTop,
-    right: el.offsetParent.offsetWidth - el.offsetLeft - el.offsetWidth,
-    bottom: el.offsetParent.offsetHeight - el.offsetTop - el.offsetHeight,
+    right: parentWidth - el.offsetLeft - elWidth,
+    bottom: parentHeight - el.offsetTop - elHeight,
   };
 
-  if (sliderLeft.value === 4 && sliderRight.value === 4) {
+  if (newValues.left < 0 || newValues.right < 0 || newValues.top < 0 || newValues.bottom < 0) {
+    sliderReady.value = false;
+    return;
+  }
+
+  if (!sliderReady.value) {
     sliderLeft.value = newValues.left;
     sliderRight.value = newValues.right;
     sliderTop.value = newValues.top;
     sliderBottom.value = newValues.bottom;
+    sliderReady.value = true;
   } else {
     const delay = 200;
 
@@ -146,12 +183,25 @@ function startAnimation() {
 }
 
 onMounted(() => {
-  pickLink();
+  // 延迟执行确保字体和样式完全加载
+  setTimeout(() => {
+    pickLink();
+  }, 50);
 });
 
 watch(
   () => route.path,
   () => pickLink(),
+);
+
+watch(
+  () => route.query,
+  () => {
+    if (props.query) {
+      pickLink();
+    }
+  },
+  { deep: true },
 );
 </script>
 

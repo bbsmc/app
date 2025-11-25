@@ -3,6 +3,7 @@ use crate::{
     models::{
         ids::UserId,
         users::{Badges, Role, UserPayoutData},
+        v3::users::UserBanSummary,
     },
 };
 use chrono::{DateTime, Utc};
@@ -29,6 +30,10 @@ pub struct LegacyUser {
 
     // DEPRECATED. Always returns None
     pub github_id: Option<u64>,
+
+    /// 用户当前的活跃封禁列表
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_bans: Option<Vec<UserBanSummary>>,
 }
 
 impl From<crate::models::v3::users::User> for LegacyUser {
@@ -50,6 +55,7 @@ impl From<crate::models::v3::users::User> for LegacyUser {
             has_phonenumber: data.has_phonenumber,
             has_totp: data.has_totp,
             github_id: data.github_id,
+            active_bans: data.active_bans,
         }
     }
 }

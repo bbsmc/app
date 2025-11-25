@@ -141,7 +141,7 @@ import { Pagination, ButtonStyled, MarkdownEditor } from "@modrinth/ui";
 import { computed } from "vue";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
-import { isDarkTheme } from "~/plugins/theme/themes";
+import { isDarkTheme } from "~/plugins/theme/themes.ts";
 import { useImageUpload } from "~/composables/image-upload.ts";
 
 const data = useNuxtApp();

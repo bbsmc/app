@@ -1,4 +1,6 @@
-use crate::auth::{get_user_from_headers, AuthenticationError};
+use crate::auth::{
+    AuthenticationError, check_forum_ban, get_user_from_headers,
+};
 use crate::database::models::forum::PostBuilder;
 use crate::database::models::forum::{Discussion, PostIndex};
 use crate::database::models::ids::{DiscussionId, PostId};
@@ -16,7 +18,7 @@ use crate::{
     models::v3::forum::{ForumResponse, PostResponse, PostsQueryParams},
     routes::ApiError,
 };
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
@@ -276,6 +278,9 @@ pub async fn forum_edit(
     }
     let user = user_option.unwrap();
 
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &pool).await?;
+
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
         DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
@@ -363,6 +368,13 @@ pub async fn forum_edit(
     )
     .await?;
 
+    // 清除帖子作者的论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(
+        discussion.inner.user_id.0,
+        &redis,
+    )
+    .await;
+
     Ok(HttpResponse::NoContent().finish())
 }
 pub async fn forum_delete(
@@ -388,6 +400,9 @@ pub async fn forum_delete(
         ));
     }
     let user = user_option.unwrap();
+
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &pool).await?;
 
     let discussion_id: String = info.into_inner().0;
     let discussion_id =
@@ -429,6 +444,13 @@ pub async fn forum_delete(
     )
     .await?;
 
+    // 清除帖子作者的论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(
+        discussion.inner.user_id.0,
+        &redis,
+    )
+    .await;
+
     Ok(HttpResponse::NoContent().finish())
 }
 pub async fn forum_create(
@@ -457,6 +479,10 @@ pub async fn forum_create(
             AuthenticationError::InvalidCredentials,
         ));
     }
+
+    // 检查用户是否被论坛类封禁
+    let user = user_option.as_ref().unwrap();
+    check_forum_ban(user, &pool).await?;
 
     // 检查用户是否绑定手机号
     if user_option.as_ref().unwrap().has_phonenumber.is_none()
@@ -557,6 +583,10 @@ pub async fn forum_create(
     )
     .await?;
 
+    // 清除用户论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(discussion.user_id.0, &redis)
+        .await;
+
     let id: crate::models::v3::forum::DiscussionId = discussion_id.into();
 
     Ok(HttpResponse::Ok().json(json!({
@@ -598,6 +628,10 @@ pub async fn posts_post(
             AuthenticationError::InvalidCredentials,
         ));
     }
+
+    // 检查用户是否被论坛类封禁
+    let user = user_option.as_ref().unwrap();
+    check_forum_ban(user, &pool).await?;
 
     // 检查帖子是否存在
     if discussion.is_none() {
@@ -693,6 +727,13 @@ pub async fn posts_post(
     )
     .await?;
 
+    // 清除回复用户的论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(
+        user_option.as_ref().unwrap().id.0 as i64,
+        &redis,
+    )
+    .await;
+
     let posts: Vec<PostResponse> =
         database::models::forum::PostQuery::get_many(
             &[post_id.0],
@@ -736,6 +777,9 @@ pub async fn post_delete(
     }
     let user = user_option.unwrap();
 
+    // 检查用户是否被论坛类封禁
+    check_forum_ban(&user, &pool).await?;
+
     let post_id: String = info.into_inner().0;
     let post_id = match parse_base62(&post_id) {
         Ok(id) => PostId(id as i64),
@@ -744,9 +788,9 @@ pub async fn post_delete(
         }
     };
 
-    // 查询回复信息
+    // 查询回复信息（包括 replied_to 用于清理缓存）
     let post_info = sqlx::query!(
-        "SELECT id, discussion_id, user_id FROM posts WHERE id = $1 AND deleted = false",
+        "SELECT id, discussion_id, user_id, replied_to FROM posts WHERE id = $1 AND deleted = false",
         post_id.0
     )
     .fetch_optional(&**pool)
@@ -781,6 +825,39 @@ pub async fn post_delete(
     // 清理帖子缓存
     crate::database::models::forum::PostQuery::clear_cache(&[post_id], &redis)
         .await?;
+
+    // 清理回复了被删除帖子的所有帖子的缓存
+    // 因为这些帖子的 reply_content 缓存了被删除帖子的内容
+    let replies_to_deleted = sqlx::query!(
+        "SELECT id FROM posts WHERE replied_to = $1 AND discussion_id = $2",
+        post_id.0,
+        post_info.discussion_id
+    )
+    .fetch_all(&**pool)
+    .await?;
+
+    if !replies_to_deleted.is_empty() {
+        let reply_ids: Vec<PostId> =
+            replies_to_deleted.iter().map(|r| PostId(r.id)).collect();
+        crate::database::models::forum::PostQuery::clear_cache(
+            &reply_ids, &redis,
+        )
+        .await?;
+    }
+
+    // 清理被删除帖子所回复的帖子的缓存
+    // 因为那个帖子的 replies 列表缓存了被删除帖子的信息
+    if let Some(replied_to_id) = post_info.replied_to {
+        crate::database::models::forum::PostQuery::clear_cache(
+            &[PostId(replied_to_id)],
+            &redis,
+        )
+        .await?;
+    }
+
+    // 清除回复作者的论坛内容缓存
+    let _ =
+        super::users::clear_user_forum_cache(post_info.user_id, &redis).await;
 
     Ok(HttpResponse::NoContent().finish())
 }

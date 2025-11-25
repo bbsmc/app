@@ -5,8 +5,8 @@ use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::ids::ImageId;
 use crate::models::projects::{
-    Dependency, FileType, Loader, ProjectId, Version, VersionId, VersionLink, VersionStatus,
-    VersionType,
+    Dependency, FileType, Loader, ProjectId, Version, VersionId, VersionLink,
+    VersionStatus, VersionType,
 };
 use crate::models::v2::projects::LegacyVersion;
 use crate::queue::moderation::AutomatedModerationQueue;
@@ -17,7 +17,7 @@ use crate::routes::{v2_reroute, v3};
 use actix_multipart::Multipart;
 use actix_web::http::header::ContentDisposition;
 use actix_web::web::Data;
-use actix_web::{post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, post, web};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::postgres::PgPool;
@@ -197,7 +197,7 @@ pub async fn version_create(
                 // 通过文件扩展名预测处理项目类型
                 let mut project_type = None;
                 for file_part in &legacy_create.file_parts {
-                    if let Some(ext) = file_part.split('.').last() {
+                    if let Some(ext) = file_part.split('.').next_back() {
                         match ext {
                             "mrpack" | "mrpack-primary" => {
                                 project_type = Some("modpack");

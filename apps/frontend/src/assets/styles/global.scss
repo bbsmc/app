@@ -209,10 +209,10 @@ html {
 
   --shadow-raised-lg: 0px 2px 4px hsla(221, 39%, 11%, 0.2);
   --shadow-raised: 0.3px 0.5px 0.6px hsl(var(--shadow-color) / 0.15),
-  1px 2px 2.2px -1.7px hsl(var(--shadow-color) / 0.12),
-  4.4px 8.8px 9.7px -3.4px hsl(var(--shadow-color) / 0.09);
+    1px 2px 2.2px -1.7px hsl(var(--shadow-color) / 0.12),
+    4.4px 8.8px 9.7px -3.4px hsl(var(--shadow-color) / 0.09);
   --shadow-floating: hsla(0, 0%, 0%, 0) 0px 0px 0px 0px, hsla(0, 0%, 0%, 0) 0px 0px 0px 0px,
-  hsla(0, 0%, 0%, 0.1) 0px 4px 6px -1px, hsla(0, 0%, 0%, 0.1) 0px 2px 4px -1px;
+    hsla(0, 0%, 0%, 0.1) 0px 4px 6px -1px, hsla(0, 0%, 0%, 0.1) 0px 2px 4px -1px;
 
   --shadow-card: rgba(50, 50, 100, 0.1) 0px 2px 4px 0px;
 
@@ -226,25 +226,25 @@ html {
   --landing-transition-gradient-start: rgba(255, 255, 255, 0);
   --landing-transition-gradient-end: #ffffff;
   --landing-hover-card-gradient: radial-gradient(
-                  50% 50% at 50% 50%,
-                  #fff 0%,
-                  rgba(204, 204, 204, 0.77) 100%
+    50% 50% at 50% 50%,
+    #fff 0%,
+    rgba(204, 204, 204, 0.77) 100%
   );
   --landing-border-gradient: linear-gradient(
-                  to bottom right,
-                  rgba(129, 137, 175, 0.75) 0%,
-                  rgba(66, 71, 97, 0.34) 100%
+    to bottom right,
+    rgba(129, 137, 175, 0.75) 0%,
+    rgba(66, 71, 97, 0.34) 100%
   );
   --landing-border-color: rgba(129, 137, 175, 0.55);
   --landing-creator-gradient: linear-gradient(180deg, #f8f8f8 0%, #f8f8f8 63.19%);
 
   --landing-blob-gradient: radial-gradient(
-                  50% 50% at 50% 50%,
-                  rgba(255, 255, 255, 0.35) 0%,
-                  rgba(255, 255, 255, 0.2695) 100%
+    50% 50% at 50% 50%,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.2695) 100%
   );
   --landing-blob-shadow: 2px 2px 12px rgba(0, 0, 0, 0.16),
-  inset 2px 2px 64px rgba(255, 255, 255, 0.45);
+    inset 2px 2px 64px rgba(255, 255, 255, 0.45);
 
   --landing-card-bg: rgba(255, 255, 255, 0.8);
   --landing-card-shadow: 2px 2px 12px rgba(0, 0, 0, 0.16);

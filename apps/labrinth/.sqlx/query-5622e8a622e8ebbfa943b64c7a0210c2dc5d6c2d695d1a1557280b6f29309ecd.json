@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_bans\n         SET metadata = metadata || '{\"expiry_notified\": true}'::jsonb\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5622e8a622e8ebbfa943b64c7a0210c2dc5d6c2d695d1a1557280b6f29309ecd"
+}

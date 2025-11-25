@@ -12,9 +12,9 @@ use crate::models::v2::search::LegacySearchResults;
 use crate::queue::moderation::AutomatedModerationQueue;
 use crate::queue::session::AuthQueue;
 use crate::routes::v3::projects::ProjectIds;
-use crate::routes::{v2_reroute, v3, ApiError};
-use crate::search::{search_for_project, SearchConfig, SearchError};
-use actix_web::{delete, get, patch, post, web, HttpRequest, HttpResponse};
+use crate::routes::{ApiError, v2_reroute, v3};
+use crate::search::{SearchConfig, SearchError, search_for_project};
+use actix_web::{HttpRequest, HttpResponse, delete, get, patch, post, web};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(project_unfollow)
             .service(super::teams::team_members_get_project)
             .service(
-                web::scope("{project_id}")
+                web::scope("{id}")
                     .service(super::versions::version_list)
                     .service(super::versions::version_project_get)
                     .service(dependency_list)

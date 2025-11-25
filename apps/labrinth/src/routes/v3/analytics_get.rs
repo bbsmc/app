@@ -6,16 +6,16 @@ use crate::{
     auth::get_user_from_headers,
     database::models::user_item,
     models::{
-        ids::{base62_impl::to_base62, ProjectId, VersionId},
+        ids::{ProjectId, VersionId, base62_impl::to_base62},
         pats::Scopes,
     },
     queue::session::AuthQueue,
 };
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::types::PgInterval;
 use sqlx::PgPool;
+use sqlx::postgres::types::PgInterval;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -377,17 +377,16 @@ pub async fn revenue_get(
         .map(|x| (x.to_string(), HashMap::new()))
         .collect::<HashMap<_, _>>();
     for value in payouts_values {
-        if let Some(mod_id) = value.mod_id {
-            if let Some(amount) = value.amount_sum {
-                if let Some(interval_start) = value.interval_start {
-                    let id_string = to_base62(mod_id as u64);
-                    if !hm.contains_key(&id_string) {
-                        hm.insert(id_string.clone(), HashMap::new());
-                    }
-                    if let Some(hm) = hm.get_mut(&id_string) {
-                        hm.insert(interval_start.timestamp(), amount);
-                    }
-                }
+        if let Some(mod_id) = value.mod_id
+            && let Some(amount) = value.amount_sum
+            && let Some(interval_start) = value.interval_start
+        {
+            let id_string = to_base62(mod_id as u64);
+            if !hm.contains_key(&id_string) {
+                hm.insert(id_string.clone(), HashMap::new());
+            }
+            if let Some(hm) = hm.get_mut(&id_string) {
+                hm.insert(interval_start.timestamp(), amount);
             }
         }
     }

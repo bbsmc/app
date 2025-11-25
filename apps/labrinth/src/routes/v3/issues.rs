@@ -1,10 +1,10 @@
 use crate::auth::email::send_email;
-use crate::auth::{get_user_from_headers, AuthenticationError};
+use crate::auth::{AuthenticationError, get_user_from_headers};
 use crate::database::models::ids::{
-    generate_issues_comments_id, generate_issues_id, IssuesCommentsId, IssuesId,
+    IssuesCommentsId, IssuesId, generate_issues_comments_id, generate_issues_id,
 };
 use crate::database::models::issues::{
-    Issue, IssueCommentBuilder, IssueCommentQuery, IssueLabel, ISSUE_NAMESPACE,
+    ISSUE_NAMESPACE, Issue, IssueCommentBuilder, IssueCommentQuery, IssueLabel,
 };
 use crate::database::models::{ProjectId, UserId};
 use crate::database::redis::RedisPool;
@@ -21,7 +21,7 @@ use crate::{
     },
     routes::ApiError,
 };
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use serde_json::json;
 use sqlx::PgPool;
@@ -346,23 +346,20 @@ pub async fn issue_edit(
     // 更新状态
     if let Some(state) = &body.state {
         // 如果新的状态为closed，则只有问题创建者和管理员可以修改
-        if state == "closed" {
-            if permissions.is_none()
-                && issue.inner.author_id.0 != UserId::from(user.id).0
-            {
-                return Err(ApiError::InvalidInput(
-                    "您没有权限关闭此问题".to_string(),
-                ));
-            }
+        if state == "closed"
+            && permissions.is_none()
+            && issue.inner.author_id.0 != UserId::from(user.id).0
+        {
+            return Err(ApiError::InvalidInput(
+                "您没有权限关闭此问题".to_string(),
+            ));
         }
 
         // 若新的状态为open， 则 只有 管理员可以打开
-        if state == "open" {
-            if permissions.is_none() {
-                return Err(ApiError::InvalidInput(
-                    "您没有权限重新打开此问题".to_string(),
-                ));
-            }
+        if state == "open" && permissions.is_none() {
+            return Err(ApiError::InvalidInput(
+                "您没有权限重新打开此问题".to_string(),
+            ));
         }
 
         if issue.inner.state != *state {
@@ -571,10 +568,10 @@ pub async fn comments_get(
         .fetch_optional(&**pool)
         .await?;
 
-        if let Some(row) = is_deleted {
-            if !row.deleted {
-                valid_comment_ids.push(comment_index.clone());
-            }
+        if let Some(row) = is_deleted
+            && !row.deleted
+        {
+            valid_comment_ids.push(comment_index.clone());
         }
     }
 
@@ -715,8 +712,8 @@ pub async fn comment_create(
         let reply_to_user =
             IssueCommentQuery::get_id(reply_to_id, &issue_id, &**pool, &redis)
                 .await?;
-        if reply_to_user.is_some() {
-            users.push(reply_to_user.unwrap().author_id.into());
+        if let Some(reply_user) = reply_to_user {
+            users.push(reply_user.author_id);
         }
     }
     users.push(user.id.into());
