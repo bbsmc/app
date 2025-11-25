@@ -4,21 +4,6 @@
     <CollectionCreateModal ref="modal_collection_creation" />
     <BanManageModal ref="banManageModal" :user-id="user.id" @updated="refreshUserData" />
 
-    <!-- 封禁横幅 -->
-    <div v-if="user.active_bans && user.active_bans.length > 0" class="ban-banner">
-      <UserXIcon class="ban-icon" />
-      <span>
-        该用户已被封禁（{{ getMainBanInfo?.typeName
-        }}<template v-if="getMainBanInfo?.totalCount > 1"
-          >等 {{ getMainBanInfo.totalCount }} 项</template
-        >）。 封禁时间：{{ formatBanDate(getMainBanInfo?.bannedAt) }}。
-        <template v-if="getMainBanInfo?.expiresAt">
-          到期时间：{{ formatBanDate(getMainBanInfo.expiresAt) }}。
-        </template>
-        <template v-else>永久封禁。</template>
-      </span>
-    </div>
-
     <div class="new-page sidebar" :class="{ 'alt-layout': cosmetics.leftContentLayout }">
       <div class="normal-page__header py-4">
         <ContentPageHeader>
@@ -136,6 +121,20 @@
         </ContentPageHeader>
       </div>
       <div class="normal-page__content">
+        <!-- 封禁横幅 -->
+        <div v-if="user.active_bans && user.active_bans.length > 0" class="ban-banner">
+          <UserXIcon class="ban-icon" />
+          <span>
+            该用户已被封禁（{{ getMainBanInfo?.typeName
+            }}<template v-if="getMainBanInfo?.totalCount > 1"
+              >等 {{ getMainBanInfo.totalCount }} 项</template
+            >）。 封禁时间：{{ formatBanDate(getMainBanInfo?.bannedAt) }}。
+            <template v-if="getMainBanInfo?.expiresAt">
+              到期时间：{{ formatBanDate(getMainBanInfo.expiresAt) }}。
+            </template>
+            <template v-else>永久封禁。</template>
+          </span>
+        </div>
         <div v-if="navLinks.length > 2" class="mb-4 max-w-full overflow-x-auto">
           <NavTabs :links="navLinks" />
         </div>
