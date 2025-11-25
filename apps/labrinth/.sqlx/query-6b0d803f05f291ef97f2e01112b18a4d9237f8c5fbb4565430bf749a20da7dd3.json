@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, discussion_id, user_id FROM posts WHERE id = $1 AND deleted = false",
+  "query": "SELECT id, discussion_id, user_id, replied_to FROM posts WHERE id = $1 AND deleted = false",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "ordinal": 2,
         "name": "user_id",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "replied_to",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -27,8 +32,9 @@
     "nullable": [
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "eab62a7b3668261efbb68334980687a4a92b33360e2ba6c0f3fa170f9ddfb144"
+  "hash": "6b0d803f05f291ef97f2e01112b18a4d9237f8c5fbb4565430bf749a20da7dd3"
 }

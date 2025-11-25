@@ -839,8 +839,10 @@ pub async fn post_delete(
     if !replies_to_deleted.is_empty() {
         let reply_ids: Vec<PostId> =
             replies_to_deleted.iter().map(|r| PostId(r.id)).collect();
-        crate::database::models::forum::PostQuery::clear_cache(&reply_ids, &redis)
-            .await?;
+        crate::database::models::forum::PostQuery::clear_cache(
+            &reply_ids, &redis,
+        )
+        .await?;
     }
 
     // 清理被删除帖子所回复的帖子的缓存

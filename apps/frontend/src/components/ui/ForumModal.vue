@@ -228,7 +228,11 @@
         </div>
       </div>
       <div v-if="previewPost.deleted" class="preview-content preview-deleted">该回复已被删除</div>
-      <div v-else class="preview-content" v-html="renderHighlightedString(previewPost.content)"></div>
+      <div
+        v-else
+        class="preview-content"
+        v-html="renderHighlightedString(previewPost.content)"
+      ></div>
     </div>
 
     <!-- 修改回复表单为固定定位的底部弹出框 -->
