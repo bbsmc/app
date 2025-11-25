@@ -356,6 +356,15 @@ pub async fn user_edit(
         let user_id: UserId = id.into();
 
         if user.id == user_id || user.role.is_mod() {
+            // 检查用户是否被全局封禁（管理员可以绕过）
+            if !user.role.is_mod() {
+                crate::util::ban_check::check_global_ban(
+                    user.id.into(),
+                    &**pool,
+                    &redis,
+                )
+                .await?;
+            }
             let mut transaction = pool.begin().await?;
 
             if let Some(username) = &new_user.username {
@@ -539,6 +548,16 @@ pub async fn user_icon_edit(
             return Err(ApiError::CustomAuthentication(
                 "您没有权限编辑此用户的头像!".to_string(),
             ));
+        }
+
+        // 检查用户是否被全局封禁（管理员可以绕过）
+        if !user.role.is_mod() {
+            crate::util::ban_check::check_global_ban(
+                user.id.into(),
+                &**pool,
+                &redis,
+            )
+            .await?;
         }
 
         delete_old_images(
