@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT d.id, d.title, d.category, d.state, d.created_at,\n                   COALESCE(reply_stats.reply_count, 0) as \"reply_count!\",\n                   last_reply.content as \"last_reply_content?\",\n                   last_reply.created_at as \"last_reply_time?\",\n                   m.id as \"project_id?\",\n                   COUNT(*) OVER() as \"total_count!\"\n            FROM discussions d\n            LEFT JOIN LATERAL (\n                SELECT COUNT(*) as reply_count\n                FROM posts p\n                WHERE p.discussion_id = d.id AND p.deleted = false\n            ) reply_stats ON true\n            LEFT JOIN LATERAL (\n                SELECT p.content, p.created_at\n                FROM posts p\n                WHERE p.discussion_id = d.id AND p.deleted = false\n                ORDER BY p.created_at DESC\n                LIMIT 1\n            ) last_reply ON true\n            LEFT JOIN mods m ON m.forum = d.id\n            WHERE d.user_id = $1 AND d.deleted = false\n            ORDER BY d.created_at DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "state",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "reply_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_reply_content?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_reply_time?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "project_id?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "5cd9438ab16791b6c0f4a871969939e4d853c3849c8aab8ed9e3cfcb4ff06f73"
+}

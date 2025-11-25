@@ -253,6 +253,168 @@
           </span>
           <span v-else class="text">{{ formatMessage(messages.profileNoCollectionsLabel) }}</span>
         </div>
+
+        <!-- 论坛内容区域 -->
+        <div v-if="route.params.projectType === 'forum'" class="forum-content">
+          <!-- 分类标签 -->
+          <div class="mb-4">
+            <NavTabs :links="forumTabLinks" query="tab" />
+          </div>
+
+          <!-- 加载状态 -->
+          <div v-if="forumLoading" class="forum-loading">
+            <span>加载中...</span>
+          </div>
+
+          <!-- 错误状态 -->
+          <div v-else-if="forumError" class="forum-error">
+            <span>{{ forumError }}</span>
+          </div>
+
+          <!-- 帖子列表 -->
+          <div v-else-if="forumData && forumTab === 'discussions'" class="forum-list">
+            <template v-if="forumData.discussions.length > 0">
+              <nuxt-link
+                v-for="discussion in forumData.discussions"
+                :key="discussion.id"
+                :to="
+                  discussion.project_id
+                    ? `/project/${discussion.project_id}/forum`
+                    : `/d/${discussion.id}`
+                "
+                class="universal-card forum-card discussion-card"
+              >
+                <div class="card-type-badge discussion-badge">
+                  <FileTextIcon class="badge-icon" />
+                  {{ discussion.project_id ? "资源帖" : "帖子" }}
+                </div>
+                <div class="forum-header">
+                  <Avatar
+                    :src="user.avatar_url"
+                    :alt="user.username"
+                    size="40px"
+                    class="user-avatar"
+                  />
+                  <div class="forum-info">
+                    <h2 class="forum-title">{{ discussion.title }}</h2>
+                    <div class="forum-meta">
+                      <span class="meta-item">
+                        <CalendarIcon class="meta-icon" />
+                        {{ formatRelativeTime(discussion.created_at) }}
+                      </span>
+                      <span class="meta-item">
+                        <MessageIcon class="meta-icon" />
+                        {{ discussion.reply_count }} 回复
+                      </span>
+                      <span
+                        v-if="discussion.category && !discussion.project_id"
+                        class="meta-item category-tag"
+                      >
+                        {{ getCategoryName(discussion.category) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="discussion.last_reply_content" class="forum-content-box">
+                  <div class="content-label">
+                    <MessageIcon class="label-icon" />
+                    最新回复
+                  </div>
+                  <p class="content-text">{{ discussion.last_reply_content }}</p>
+                </div>
+                <div v-if="discussion.last_reply_time" class="forum-footer">
+                  <div class="footer-right">
+                    <span class="forum-last-post">
+                      最后活动 {{ formatRelativeTime(discussion.last_reply_time) }}
+                    </span>
+                  </div>
+                </div>
+              </nuxt-link>
+            </template>
+            <div v-else class="forum-empty">
+              <UpToDate class="icon" />
+              <span class="text">暂无发表的帖子</span>
+            </div>
+          </div>
+
+          <!-- 回复列表 -->
+          <div v-else-if="forumData && forumTab === 'posts'" class="forum-list">
+            <template v-if="forumData.posts.length > 0">
+              <nuxt-link
+                v-for="post in forumData.posts"
+                :key="post.id"
+                :to="
+                  post.project_slug
+                    ? `/project/${post.project_slug}/forum?id=${post.floor_number}`
+                    : `/d/${post.discussion_id}?id=${post.floor_number}`
+                "
+                class="universal-card forum-card reply-card"
+              >
+                <div class="card-type-badge reply-badge">
+                  <MessageIcon class="badge-icon" />
+                  回复
+                </div>
+                <div class="forum-header">
+                  <Avatar
+                    :src="user.avatar_url"
+                    :alt="user.username"
+                    size="40px"
+                    class="user-avatar"
+                  />
+                  <div class="forum-info">
+                    <h2 class="forum-title">{{ post.discussion_title }}</h2>
+                    <div class="forum-meta">
+                      <span class="meta-item">
+                        <CalendarIcon class="meta-icon" />
+                        {{ formatRelativeTime(post.created_at) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="forum-content-box my-reply-box">
+                  <div class="content-label">
+                    <EditIcon class="label-icon" />
+                    我的回复
+                  </div>
+                  <p class="content-text">{{ post.content }}</p>
+                </div>
+                <div class="forum-footer">
+                  <div class="footer-left">
+                    <span class="view-thread-hint">
+                      点击查看完整讨论
+                      <ChevronRightIcon class="hint-icon" />
+                    </span>
+                  </div>
+                </div>
+              </nuxt-link>
+            </template>
+            <div v-else class="forum-empty">
+              <UpToDate class="icon" />
+              <span class="text">暂无发表的回复</span>
+            </div>
+          </div>
+
+          <!-- 分页器 -->
+          <div v-if="forumData && forumTotalPages > 1" class="forum-pagination">
+            <button
+              :disabled="forumPage <= 1"
+              class="pagination-btn"
+              @click="goToForumPage(forumPage - 1)"
+            >
+              <ChevronLeftIcon class="pagination-icon" />
+              上一页
+            </button>
+            <span class="pagination-info"> 第 {{ forumPage }} / {{ forumTotalPages }} 页 </span>
+            <button
+              :disabled="forumPage >= forumTotalPages"
+              class="pagination-btn"
+              @click="goToForumPage(forumPage + 1)"
+            >
+              下一页
+              <ChevronRightIcon class="pagination-icon" />
+            </button>
+          </div>
+        </div>
       </div>
       <div class="normal-page__sidebar">
         <div v-if="organizations.length > 0" class="card flex-card">
@@ -297,6 +459,10 @@ import {
   DownloadIcon,
   ClipboardCopyIcon,
   MoreVerticalIcon,
+  MessageIcon,
+  FileTextIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@modrinth/assets";
 import { OverflowMenu, ButtonStyled, ContentPageHeader } from "@modrinth/ui";
 import NavTabs from "~/components/ui/NavTabs.vue";
@@ -455,6 +621,103 @@ if (!user.value) {
 
 if (user.value.username !== route.params.id) {
   await navigateTo(`/user/${user.value.username}`, { redirectCode: 301 });
+}
+
+// 论坛内容状态
+const forumData = ref(null);
+const forumLoading = ref(false);
+const forumError = ref(null);
+const forumPage = ref(1);
+const forumLimit = ref(20);
+
+// 论坛标签 - 从路由 query 参数读取
+const forumTab = computed(() => {
+  const tab = route.query.tab;
+  return tab === "posts" ? "posts" : "discussions";
+});
+
+// 论坛子标签链接
+const forumTabLinks = computed(() => [
+  {
+    label: `发表的帖子${forumData.value ? ` (${forumData.value.total_discussions})` : ""}`,
+    href: "",
+    icon: FileTextIcon,
+  },
+  {
+    label: `发表的回复${forumData.value ? ` (${forumData.value.total_posts})` : ""}`,
+    href: "posts",
+    icon: MessageIcon,
+  },
+]);
+
+// 获取论坛内容
+async function fetchForumContent(page = 1) {
+  forumLoading.value = true;
+  forumError.value = null;
+  try {
+    const data = await useBaseFetch(`user/${user.value.id}/forum`, {
+      query: {
+        page,
+        limit: forumLimit.value,
+      },
+    });
+    forumData.value = data;
+    forumPage.value = page;
+  } catch (err) {
+    console.error("获取论坛内容失败:", err);
+    forumError.value = err.message || "获取论坛内容失败";
+  } finally {
+    forumLoading.value = false;
+  }
+}
+
+// 当路由为 forum 时自动加载论坛数据
+watch(
+  () => route.params.projectType,
+  async (newType) => {
+    if (newType === "forum" && !forumData.value) {
+      await fetchForumContent();
+    }
+  },
+  { immediate: true },
+);
+
+// 计算属性：总页数
+const forumTotalPages = computed(() => {
+  if (!forumData.value) return 1;
+  const total =
+    forumTab.value === "discussions"
+      ? forumData.value.total_discussions
+      : forumData.value.total_posts;
+  return Math.ceil(total / forumLimit.value) || 1;
+});
+
+// 监听 tab 变化时只重置分页（数据已包含两种类型，无需重新请求）
+watch(
+  () => route.query.tab,
+  () => {
+    if (route.params.projectType === "forum") {
+      forumPage.value = 1;
+    }
+  },
+);
+
+// 翻页
+function goToForumPage(page) {
+  if (page >= 1 && page <= forumTotalPages.value) {
+    fetchForumContent(page);
+  }
+}
+
+// 获取分类名称
+function getCategoryName(category) {
+  const categoryMap = {
+    chat: "矿工茶馆",
+    notice: "公告",
+    project: "资源讨论",
+    article: "专栏",
+  };
+  return categoryMap[category] || category;
 }
 
 const title = computed(() => `${user.value.username} - BBSMC资源社区`);
@@ -639,6 +902,10 @@ const navLinks = computed(() => [
     })
     .slice()
     .sort((a, b) => a.label.localeCompare(b.label)),
+  {
+    label: "论坛动态",
+    href: `/user/${user.value.username}/forum`,
+  },
 ]);
 </script>
 <script>
@@ -769,6 +1036,336 @@ export default defineNuxtComponent({
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
+  }
+}
+
+// 论坛内容样式
+.forum-content {
+  width: 100%;
+}
+
+.forum-loading,
+.forum-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-xl);
+  color: var(--color-secondary);
+}
+
+.forum-error {
+  color: var(--color-red);
+}
+
+.forum-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+// 论坛卡片样式
+.forum-card {
+  display: block;
+  text-decoration: none;
+  position: relative;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  transition: all 0.25s ease;
+  background-color: var(--color-raised-bg);
+  border: 1px solid transparent;
+
+  &:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+    border-color: var(--color-brand-highlight);
+  }
+}
+
+// 帖子卡片特定样式
+.discussion-card {
+  // 无左边框
+}
+
+// 回复卡片特定样式
+.reply-card {
+  // 无左边框
+}
+
+// 卡片类型标签
+.card-type-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+
+  .badge-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}
+
+.discussion-badge {
+  background: rgba(var(--color-brand-rgb), 0.15);
+  color: var(--color-brand);
+}
+
+.reply-badge {
+  background: rgba(var(--color-green-rgb), 0.15);
+  color: var(--color-green);
+}
+
+.forum-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.user-avatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.forum-info {
+  flex-grow: 1;
+  min-width: 0;
+  padding-right: 3.5rem;
+}
+
+.reply-to-label {
+  font-size: 0.7rem;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.125rem;
+}
+
+.forum-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-contrast);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.forum-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+  font-size: 0.8rem;
+  color: var(--color-secondary);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.meta-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  opacity: 0.7;
+}
+
+.category-tag {
+  padding: 0.125rem 0.5rem;
+  background: var(--color-button-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+// 内容框样式
+.forum-content-box {
+  margin-top: 0.875rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-divider);
+}
+
+.my-reply-box {
+  background: rgba(var(--color-green-rgb), 0.05);
+  border-color: rgba(var(--color-green-rgb), 0.2);
+}
+
+.content-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  margin-bottom: 0.5rem;
+
+  .label-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--color-brand);
+  }
+}
+
+.my-reply-box .content-label .label-icon {
+  color: var(--color-green);
+}
+
+.content-text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// 底部栏
+.forum-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.875rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-divider);
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.state-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-max);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.state-open {
+  background: rgba(var(--color-green-rgb), 0.15);
+  color: var(--color-green);
+}
+
+.state-closed {
+  background: rgba(var(--color-secondary-rgb), 0.15);
+  color: var(--color-secondary);
+}
+
+.forum-last-post {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+}
+
+.view-thread-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+  transition: color 0.2s;
+
+  .hint-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    transition: transform 0.2s;
+  }
+}
+
+.forum-card:hover .view-thread-hint {
+  color: var(--color-brand);
+
+  .hint-icon {
+    transform: translateX(2px);
+  }
+}
+
+.forum-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-xl);
+  text-align: center;
+
+  .icon {
+    width: 8rem;
+    height: 8rem;
+    margin-bottom: var(--gap-md);
+    opacity: 0.5;
+  }
+
+  .text {
+    color: var(--color-secondary);
+    font-size: var(--font-size-md);
+  }
+}
+
+.forum-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-md);
+  margin-top: var(--gap-lg);
+  padding-top: var(--gap-lg);
+  border-top: 1px solid var(--color-button-bg);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--color-button-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-contrast);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--color-brand);
+    color: white;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .pagination-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.pagination-info {
+  color: var(--color-secondary);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 768px) {
+  .forum-tabs {
+    flex-direction: column;
+  }
+
+  .forum-tab {
+    justify-content: center;
   }
 }
 </style>

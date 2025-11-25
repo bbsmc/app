@@ -35,6 +35,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("{id}", web::get().to(user_get))
             .route("{user_id}/collections", web::get().to(collections_list))
             .route("{user_id}/organizations", web::get().to(orgs_list))
+            .route("{user_id}/forum", web::get().to(user_forum_content))
             .route("{id}", web::patch().to(user_edit))
             .route("{id}/icon", web::patch().to(user_icon_edit))
             .route("{id}", web::delete().to(user_delete))
@@ -360,7 +361,7 @@ pub async fn user_edit(
             if !user.role.is_mod() {
                 crate::util::ban_check::check_global_ban(
                     user.id.into(),
-                    &**pool,
+                    &pool,
                     &redis,
                 )
                 .await?;
@@ -554,7 +555,7 @@ pub async fn user_icon_edit(
         if !user.role.is_mod() {
             crate::util::ban_check::check_global_ban(
                 user.id.into(),
-                &**pool,
+                &pool,
                 &redis,
             )
             .await?;
@@ -730,4 +731,273 @@ pub async fn user_notifications(
     } else {
         Err(ApiError::NotFound)
     }
+}
+
+// ==================== 用户论坛内容 ====================
+
+/// 用户论坛内容缓存命名空间
+pub const USER_FORUM_NAMESPACE: &str = "user_forum";
+
+/// 清除用户论坛内容缓存
+///
+/// 在以下操作时调用：
+/// - 用户发帖
+/// - 用户回复帖子
+/// - 用户删除帖子
+/// - 用户删除回复
+/// - 管理员删除用户的帖子/回复
+pub async fn clear_user_forum_cache(
+    user_id: i64,
+    redis: &RedisPool,
+) -> Result<(), crate::database::models::DatabaseError> {
+    let mut redis_conn = redis.connect().await?;
+    // 使用模式匹配删除该用户的所有论坛缓存
+    // 缓存键格式: user_forum:{user_id}:{type}:{page}:{limit}
+    let pattern = format!("{}:{}:*", USER_FORUM_NAMESPACE, user_id);
+    redis_conn.delete_many_pattern(&pattern).await?;
+    Ok(())
+}
+
+/// 用户论坛内容查询参数
+#[derive(Serialize, Deserialize)]
+pub struct UserForumQuery {
+    /// 内容类型: discussions, posts, all
+    #[serde(rename = "type")]
+    pub content_type: Option<String>,
+    /// 页码，默认 1
+    pub page: Option<i64>,
+    /// 每页数量，默认 20，最大 100
+    pub limit: Option<i64>,
+}
+
+/// 用户论坛内容响应
+#[derive(Serialize, Deserialize, Clone)]
+pub struct UserForumResponse {
+    /// 用户发表的帖子
+    pub discussions: Vec<ForumDiscussionSummary>,
+    /// 用户的回复
+    pub posts: Vec<ForumPostSummary>,
+    /// 帖子总数
+    pub total_discussions: i64,
+    /// 回复总数
+    pub total_posts: i64,
+    /// 当前页码
+    pub page: i64,
+    /// 每页数量
+    pub limit: i64,
+}
+
+/// 帖子摘要
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ForumDiscussionSummary {
+    /// 帖子 ID (Base62)
+    pub id: String,
+    /// 帖子标题
+    pub title: String,
+    /// 帖子分类
+    pub category: String,
+    /// 帖子状态 (open/closed)
+    pub state: String,
+    /// 创建时间
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    /// 回复数量
+    pub reply_count: i64,
+    /// 最后回复内容（截断）
+    pub last_reply_content: Option<String>,
+    /// 最后回复时间
+    pub last_reply_time: Option<chrono::DateTime<chrono::Utc>>,
+    /// 关联的项目 ID (Base62)，如果是资源帖子则有值
+    pub project_id: Option<String>,
+}
+
+/// 回复摘要
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ForumPostSummary {
+    /// 回复 ID (Base62)
+    pub id: String,
+    /// 所属帖子 ID (Base62)
+    pub discussion_id: String,
+    /// 所属帖子标题
+    pub discussion_title: String,
+    /// 回复内容预览（截断）
+    pub content: String,
+    /// 创建时间
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    /// 关联的项目 slug，如果是资源帖子则有值
+    pub project_slug: Option<String>,
+    /// 楼号（在该帖子中的顺序）
+    pub floor_number: i64,
+}
+
+/// 截断内容到指定长度
+fn truncate_content(content: &str, max_len: usize) -> String {
+    // 使用迭代器避免分配额外的 Vec<char>
+    let char_count = content.chars().count();
+    if char_count <= max_len {
+        content.to_string()
+    } else {
+        let truncated: String = content.chars().take(max_len).collect();
+        format!("{}...", truncated)
+    }
+}
+
+/// 获取用户论坛内容
+///
+/// GET /v3/user/{user_id}/forum
+pub async fn user_forum_content(
+    info: web::Path<(String,)>,
+    query: web::Query<UserForumQuery>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+) -> Result<HttpResponse, ApiError> {
+    // 1. 获取用户
+    let user_data = User::get(&info.into_inner().0, &**pool, &redis).await?;
+    let user = user_data.ok_or(ApiError::NotFound)?;
+
+    let page = query.page.unwrap_or(1).max(1);
+    let limit = query.limit.unwrap_or(20).min(100);
+    let content_type = query.content_type.as_deref().unwrap_or("all");
+
+    // 2. 尝试从缓存获取
+    let cache_key =
+        format!("{}:{}:{}:{}", user.id.0, content_type, page, limit);
+    let mut redis_conn = redis.connect().await?;
+
+    if let Ok(Some(cached)) = redis_conn
+        .get_deserialized_from_json::<UserForumResponse>(
+            USER_FORUM_NAMESPACE,
+            &cache_key,
+        )
+        .await
+    {
+        return Ok(HttpResponse::Ok().json(cached));
+    }
+
+    let offset = (page - 1) * limit;
+    let mut discussions = vec![];
+    let mut posts = vec![];
+    let mut total_discussions = 0i64;
+    let mut total_posts = 0i64;
+
+    // 3. 查询用户发表的帖子（使用 LEFT JOIN LATERAL 优化子查询性能）
+    if content_type == "all" || content_type == "discussions" {
+        let disc_rows = sqlx::query!(
+            r#"
+            SELECT d.id, d.title, d.category, d.state, d.created_at,
+                   COALESCE(reply_stats.reply_count, 0) as "reply_count!",
+                   last_reply.content as "last_reply_content?",
+                   last_reply.created_at as "last_reply_time?",
+                   m.id as "project_id?",
+                   COUNT(*) OVER() as "total_count!"
+            FROM discussions d
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) as reply_count
+                FROM posts p
+                WHERE p.discussion_id = d.id AND p.deleted = false
+            ) reply_stats ON true
+            LEFT JOIN LATERAL (
+                SELECT p.content, p.created_at
+                FROM posts p
+                WHERE p.discussion_id = d.id AND p.deleted = false
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ) last_reply ON true
+            LEFT JOIN mods m ON m.forum = d.id
+            WHERE d.user_id = $1 AND d.deleted = false
+            ORDER BY d.created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            user.id.0,
+            limit,
+            offset
+        )
+        .fetch_all(&**pool)
+        .await?;
+
+        if let Some(first) = disc_rows.first() {
+            total_discussions = first.total_count;
+        }
+
+        discussions = disc_rows
+            .into_iter()
+            .map(|r| ForumDiscussionSummary {
+                id: crate::models::ids::base62_impl::to_base62(r.id as u64),
+                title: r.title,
+                category: r.category,
+                state: r.state,
+                created_at: r.created_at,
+                reply_count: r.reply_count,
+                last_reply_content: r
+                    .last_reply_content
+                    .map(|c| truncate_content(&c, 100)),
+                last_reply_time: r.last_reply_time,
+                project_id: r.project_id.map(|id| {
+                    crate::models::ids::base62_impl::to_base62(id as u64)
+                }),
+            })
+            .collect();
+    }
+
+    // 4. 查询用户的回复
+    if content_type == "all" || content_type == "posts" {
+        let post_rows = sqlx::query!(
+            r#"
+            SELECT p.id, p.discussion_id, p.content, p.created_at,
+                   d.title as discussion_title,
+                   (SELECT m.slug FROM mods m WHERE m.forum = d.id LIMIT 1) as "project_slug",
+                   (SELECT COUNT(*) + 1 FROM posts p2 WHERE p2.discussion_id = p.discussion_id AND p2.created_at < p.created_at) as "floor_number!",
+                   COUNT(*) OVER() as "total_count!"
+            FROM posts p
+            JOIN discussions d ON d.id = p.discussion_id
+            WHERE p.user_id = $1 AND p.deleted = false AND d.deleted = false
+            ORDER BY p.created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            user.id.0,
+            limit,
+            offset
+        )
+        .fetch_all(&**pool)
+        .await?;
+
+        if let Some(first) = post_rows.first() {
+            total_posts = first.total_count;
+        }
+
+        posts = post_rows
+            .into_iter()
+            .map(|r| ForumPostSummary {
+                id: crate::models::ids::base62_impl::to_base62(r.id as u64),
+                discussion_id: crate::models::ids::base62_impl::to_base62(
+                    r.discussion_id as u64,
+                ),
+                discussion_title: r.discussion_title,
+                content: truncate_content(&r.content, 200),
+                created_at: r.created_at,
+                project_slug: r.project_slug,
+                floor_number: r.floor_number,
+            })
+            .collect();
+    }
+
+    let response = UserForumResponse {
+        discussions,
+        posts,
+        total_discussions,
+        total_posts,
+        page,
+        limit,
+    };
+
+    // 5. 缓存结果（5分钟过期）
+    let _ = redis_conn
+        .set(
+            USER_FORUM_NAMESPACE,
+            &cache_key,
+            &serde_json::to_string(&response)?,
+            Some(300),
+        )
+        .await;
+
+    Ok(HttpResponse::Ok().json(response))
 }

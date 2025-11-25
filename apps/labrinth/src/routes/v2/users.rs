@@ -24,6 +24,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("user")
             .service(user_get)
             .service(projects_list)
+            .service(user_forum_content)
             .service(user_delete)
             .service(user_edit)
             .service(user_icon_edit)
@@ -271,6 +272,22 @@ pub async fn user_follows(
         }
         Err(response) => Ok(response),
     }
+}
+
+/// 获取用户论坛内容
+///
+/// GET /v2/user/{user_id}/forum
+#[get("{user_id}/forum")]
+pub async fn user_forum_content(
+    info: web::Path<(String,)>,
+    query: web::Query<v3::users::UserForumQuery>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+) -> Result<HttpResponse, ApiError> {
+    // 直接调用 v3 实现，响应格式相同无需转换
+    v3::users::user_forum_content(info, query, pool, redis)
+        .await
+        .or_else(v2_reroute::flatten_404_error)
 }
 
 #[get("{id}/notifications")]

@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.id, p.discussion_id, p.content, p.created_at,\n                   d.title as discussion_title,\n                   (SELECT m.slug FROM mods m WHERE m.forum = d.id LIMIT 1) as \"project_slug\",\n                   (SELECT COUNT(*) + 1 FROM posts p2 WHERE p2.discussion_id = p.discussion_id AND p2.created_at < p.created_at) as \"floor_number!\",\n                   COUNT(*) OVER() as \"total_count!\"\n            FROM posts p\n            JOIN discussions d ON d.id = p.discussion_id\n            WHERE p.user_id = $1 AND p.deleted = false AND d.deleted = false\n            ORDER BY p.created_at DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "discussion_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "discussion_title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "project_slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "floor_number!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "06d0c16b904fe30117a82100f5a4111aab872ac06d1ca78fe1c15b5ad45ae5f9"
+}

@@ -650,6 +650,52 @@ impl RedisConnection {
 
         Ok(())
     }
+
+    /// 使用模式匹配删除多个键
+    ///
+    /// 使用 SCAN + DEL 命令安全地删除匹配模式的键
+    /// pattern 格式: namespace:user_id:*
+    pub async fn delete_many_pattern(
+        &mut self,
+        pattern: &str,
+    ) -> Result<(), DatabaseError> {
+        let full_pattern = format!("{}_{}", self.meta_namespace, pattern);
+
+        // 使用 SCAN 迭代查找匹配的键
+        let mut cursor = 0u64;
+        let mut keys_to_delete = Vec::new();
+
+        loop {
+            let mut scan_cmd = cmd("SCAN");
+            scan_cmd
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&full_pattern)
+                .arg("COUNT")
+                .arg(100);
+
+            let (new_cursor, keys): (u64, Vec<String>) =
+                redis_execute(&mut scan_cmd, &mut self.connection).await?;
+
+            keys_to_delete.extend(keys);
+            cursor = new_cursor;
+
+            if cursor == 0 {
+                break;
+            }
+        }
+
+        // 批量删除找到的键
+        if !keys_to_delete.is_empty() {
+            let mut del_cmd = cmd("DEL");
+            for key in &keys_to_delete {
+                del_cmd.arg(key);
+            }
+            redis_execute::<()>(&mut del_cmd, &mut self.connection).await?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]

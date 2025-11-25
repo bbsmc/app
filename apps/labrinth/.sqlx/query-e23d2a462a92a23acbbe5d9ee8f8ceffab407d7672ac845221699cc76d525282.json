@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, ban_id, user_id, reason, status, created_at,\n                   reviewed_by, reviewed_at, review_notes, thread_id,\n                   COUNT(*) OVER() as total_count\n            FROM user_ban_appeals\n            WHERE status = $1\n            ORDER BY created_at ASC\n            LIMIT $2 OFFSET $3\n            ",
+  "query": "\n            SELECT id, ban_id, user_id, reason, status, created_at,\n                   reviewed_by, reviewed_at, review_notes, thread_id,\n                   COUNT(*) OVER() as total_count\n            FROM user_ban_appeals\n            ORDER BY created_at DESC\n            LIMIT $1 OFFSET $2\n            ",
   "describe": {
     "columns": [
       {
@@ -61,7 +61,6 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
         "Int8",
         "Int8"
       ]
@@ -80,5 +79,5 @@
       null
     ]
   },
-  "hash": "f1dd110e126809ac34c64c1b968e2e1a264b65e6e6260705aabf3a70f5fc66f3"
+  "hash": "e23d2a462a92a23acbbe5d9ee8f8ceffab407d7672ac845221699cc76d525282"
 }

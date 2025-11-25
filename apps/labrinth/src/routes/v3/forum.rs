@@ -368,6 +368,13 @@ pub async fn forum_edit(
     )
     .await?;
 
+    // 清除帖子作者的论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(
+        discussion.inner.user_id.0,
+        &redis,
+    )
+    .await;
+
     Ok(HttpResponse::NoContent().finish())
 }
 pub async fn forum_delete(
@@ -436,6 +443,13 @@ pub async fn forum_delete(
         &redis,
     )
     .await?;
+
+    // 清除帖子作者的论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(
+        discussion.inner.user_id.0,
+        &redis,
+    )
+    .await;
 
     Ok(HttpResponse::NoContent().finish())
 }
@@ -568,6 +582,10 @@ pub async fn forum_create(
         &redis,
     )
     .await?;
+
+    // 清除用户论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(discussion.user_id.0, &redis)
+        .await;
 
     let id: crate::models::v3::forum::DiscussionId = discussion_id.into();
 
@@ -709,6 +727,13 @@ pub async fn posts_post(
     )
     .await?;
 
+    // 清除回复用户的论坛内容缓存
+    let _ = super::users::clear_user_forum_cache(
+        user_option.as_ref().unwrap().id.0 as i64,
+        &redis,
+    )
+    .await;
+
     let posts: Vec<PostResponse> =
         database::models::forum::PostQuery::get_many(
             &[post_id.0],
@@ -800,6 +825,10 @@ pub async fn post_delete(
     // 清理帖子缓存
     crate::database::models::forum::PostQuery::clear_cache(&[post_id], &redis)
         .await?;
+
+    // 清除回复作者的论坛内容缓存
+    let _ =
+        super::users::clear_user_forum_cache(post_info.user_id, &redis).await;
 
     Ok(HttpResponse::NoContent().finish())
 }
