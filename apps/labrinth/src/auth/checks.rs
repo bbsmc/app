@@ -423,20 +423,28 @@ async fn check_user_ban_direct(
 /// 检查用户是否被资源类封禁
 ///
 /// 适用于：创建/编辑/删除项目、上传版本、团队管理等操作
+/// 同时检查全局封禁，因为全局封禁应阻止所有操作
 pub async fn check_resource_ban(
     user: &User,
     pool: &PgPool,
 ) -> Result<(), ApiError> {
+    // 先检查全局封禁
+    check_user_ban_direct(user.id.into(), "global", pool).await?;
+    // 再检查资源封禁
     check_user_ban_direct(user.id.into(), "resource", pool).await
 }
 
 /// 检查用户是否被论坛类封禁
 ///
 /// 适用于：评论、发帖、百科编辑、发送消息、举报等操作
+/// 同时检查全局封禁，因为全局封禁应阻止所有操作
 pub async fn check_forum_ban(
     user: &User,
     pool: &PgPool,
 ) -> Result<(), ApiError> {
+    // 先检查全局封禁
+    check_user_ban_direct(user.id.into(), "global", pool).await?;
+    // 再检查论坛封禁
     check_user_ban_direct(user.id.into(), "forum", pool).await
 }
 

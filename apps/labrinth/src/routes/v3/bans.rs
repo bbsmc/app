@@ -949,6 +949,7 @@ pub async fn list_appeals(
     let status = query.status.as_ref().map(|s| s.as_str());
 
     // 使用窗口函数合并查询，避免双次数据库查询
+    // 按创建时间降序排列，最新的申诉在最上面
     let appeals_with_count = if let Some(status_str) = status {
         sqlx::query_as!(
             AppealRowWithCount,
@@ -958,7 +959,7 @@ pub async fn list_appeals(
                    COUNT(*) OVER() as total_count
             FROM user_ban_appeals
             WHERE status = $1
-            ORDER BY created_at ASC
+            ORDER BY created_at DESC
             LIMIT $2 OFFSET $3
             "#,
             status_str,
@@ -975,7 +976,7 @@ pub async fn list_appeals(
                    reviewed_by, reviewed_at, review_notes, thread_id,
                    COUNT(*) OVER() as total_count
             FROM user_ban_appeals
-            ORDER BY created_at ASC
+            ORDER BY created_at DESC
             LIMIT $1 OFFSET $2
             "#,
             limit,
@@ -1364,6 +1365,21 @@ pub async fn create_appeal(
         project_id: None,
         report_id: None,
         ban_appeal_id: Some(appeal_id),
+    }
+    .insert(&mut transaction)
+    .await?;
+
+    // 将申诉原因作为第一条消息添加到线程中
+    crate::database::models::thread_item::ThreadMessageBuilder {
+        author_id: Some(user_id),
+        body: crate::models::threads::MessageBody::Text {
+            body: body.reason.clone(),
+            private: false,
+            replying_to: None,
+            associated_images: vec![],
+        },
+        thread_id,
+        hide_identity: false,
     }
     .insert(&mut transaction)
     .await?;
