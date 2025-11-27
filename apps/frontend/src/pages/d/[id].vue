@@ -70,7 +70,7 @@
           </div>
         </div>
       </div>
-      <ForumModal :discussion-id="forumId" style="padding: 10px" />
+      <ForumModal :discussion-id="forumId" :is-project="!!forum.project_id" style="padding: 10px" />
     </div>
   </div>
 </template>

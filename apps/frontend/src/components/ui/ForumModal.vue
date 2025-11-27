@@ -292,6 +292,10 @@ const props = defineProps({
     type: String,
     default: () => null,
   },
+  isProject: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // 响应式数据
@@ -299,7 +303,8 @@ const displayedPosts = ref([]);
 const totalPosts = ref(0);
 const currentPage = ref(1);
 const pageSize = 20;
-const sortType = ref("floor_asc");
+// 资源帖子默认按最近回复排序（floor_desc），非资源帖子默认按最早到最近排序（floor_asc）
+const sortType = ref(props.isProject ? "floor_desc" : "floor_asc");
 
 const postToDelete = ref(null);
 

@@ -1,6 +1,6 @@
 <template>
   <template v-if="project.forum">
-    <ForumModal :discussion-id="project.forum" />
+    <ForumModal :discussion-id="project.forum" :is-project="true" />
   </template>
 
   <template v-else>
