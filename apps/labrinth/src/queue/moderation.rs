@@ -3,6 +3,7 @@ use crate::database;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::thread_item::ThreadMessageBuilder;
 use crate::database::redis::RedisPool;
+use sha2::Digest;
 use crate::models::ids::ProjectId;
 use crate::models::notifications::NotificationBody;
 use crate::models::pack::{PackFile, PackFileHash, PackFormat};
@@ -363,7 +364,7 @@ impl AutomatedModerationQueue {
                                             let mut contents = Vec::new();
                                             file.read_to_end(&mut contents)?;
 
-                                            let hash = sha1::Sha1::from(&contents).hexdigest();
+                                            let hash = format!("{:x}", sha1::Sha1::digest(&contents));
                                             let murmur = hash_flame_murmur32(contents);
 
                                             hashes.push((

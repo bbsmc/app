@@ -2,131 +2,137 @@
 name = "labrinth"
 version = "2.7.0"
 authors = ["geometrically <jai@modrinth.com>"]
-edition = "2024"
-license = "AGPL-3.0"
+edition.workspace = true
+license.workspace = true
 
-# This seems redundant, but it's necessary for Docker to work
 [[bin]]
 name = "labrinth"
 path = "src/main.rs"
 
 [dependencies]
-actix-web = "4.4.1"
-actix-rt = "2.9.0"
-actix-multipart = "0.6.1"
-actix-cors = "0.7.0"
-actix-ws = "0.2.5"
-actix-files = "0.6.5"
-actix-web-prom = { version = "0.8.0", features = ["process"] }
-governor = "0.6.3"
+# Web 框架
+actix-web.workspace = true
+actix-rt.workspace = true
+actix-multipart.workspace = true
+actix-cors.workspace = true
+actix-ws.workspace = true
+actix-files.workspace = true
+actix-web-prom.workspace = true
+governor.workspace = true
 
-tokio = { version = "1.35.1", features = ["sync"] }
-tokio-stream = "0.1.14"
+# 异步运行时
+tokio.workspace = true
+tokio-stream.workspace = true
 
-futures = "0.3.30"
-futures-timer = "3.0.2"
-futures-util = "0.3.30"
-async-trait = "0.1.70"
-dashmap = "5.4.0"
+# 异步工具
+futures.workspace = true
+futures-util.workspace = true
+async-trait.workspace = true
+dashmap.workspace = true
 lazy_static = "1.4.0"
 
-meilisearch-sdk = "0.24.3"
-rust-s3 = "0.33.0"
-reqwest = { version = "0.11.18", features = ["json", "multipart"] }
-hyper = { version = "0.14", features = ["full"] }
-hyper-tls = "0.5.0"
+# 搜索和存储
+meilisearch-sdk.workspace = true
+rust-s3.workspace = true
 
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_with = "3.0.0"
-chrono = { version = "0.4.26", features = ["serde"] }
-yaserde = "0.8.0"
-yaserde_derive = "0.8.0"
-xml-rs = "0.8.15"
+# HTTP 客户端
+reqwest.workspace = true
+hyper.workspace = true
+hyper-rustls.workspace = true
 
-rand = "0.8.5"
-rand_chacha = "0.3.1"
-bytes = "1.4.0"
-base64 = "0.21.7"
-sha1 = { version = "0.6.1", features = ["std"] }
-sha2 = "0.10"
-hmac = "0.12"
-argon2 = { version = "0.5.0", features = ["std"] }
-murmur2 = "0.1.0"
-bitflags = "2.4.0"
-hex = "0.4.3"
-zxcvbn = "2.2.2"
-totp-rs = { version = "5.0.2", features = ["gen_secret"] }
+# 序列化
+serde_json.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+chrono.workspace = true
+yaserde.workspace = true
+yaserde_derive.workspace = true
+xml-rs.workspace = true
 
-url = "2.4.0"
-urlencoding = "2.1.2"
+# 加密和安全
+rand.workspace = true
+rand_chacha.workspace = true
+bytes.workspace = true
+base64.workspace = true
+sha1.workspace = true
+sha2.workspace = true
+hmac.workspace = true
+argon2.workspace = true
+murmur2.workspace = true
+bitflags.workspace = true
+hex.workspace = true
+zxcvbn.workspace = true
+totp-rs.workspace = true
+ring.workspace = true
 
-zip = "0.6.6"
+# URL 处理
+url.workspace = true
+urlencoding.workspace = true
 
-itertools = "0.12.0"
+# 压缩和归档
+zip.workspace = true
+flate2.workspace = true
+tar.workspace = true
 
-validator = { version = "0.16.1", features = ["derive", "phone"] }
-regex = "1.10.2"
-censor = "0.3.0"
-spdx = { version = "0.10.3", features = ["text"] }
+# 工具库
+itertools.workspace = true
 
-dotenvy = "0.15.7"
-log = "0.4.20"
-env_logger = "0.10.1"
-thiserror = "1.0.56"
+# 验证
+validator.workspace = true
+regex.workspace = true
+censor.workspace = true
+spdx.workspace = true
 
-sqlx = { version = "0.8.6", features = [
-    "runtime-tokio-rustls",
-    "postgres",
-    "chrono",
-    "macros",
-    "migrate",
-    "rust_decimal",
-    "json",
-] }
-rust_decimal = { version = "1.33.1", features = [
-    "serde-with-float",
-    "serde-with-str",
-] }
-redis = { version = "0.27.5", features = ["tokio-comp", "ahash", "r2d2"] }
-deadpool-redis = "0.18.0"
-clickhouse = { version = "0.11.2", features = ["uuid", "time"] }
-uuid = { version = "1.2.2", features = ["v4", "fast-rng", "serde"] }
+# 日志和错误
+dotenvy.workspace = true
+log.workspace = true
+env_logger.workspace = true
+thiserror.workspace = true
 
-flate2 = "1.0.25"
-tar = "0.4.38"
+# 数据库
+sqlx.workspace = true
+rust_decimal.workspace = true
 
-sentry = { version = "0.34.0", default-features = false, features = [
-    "backtrace",
-    "contexts",
-    "debug-images",
-    "panic",
-    "rustls",
-    "reqwest",
-] }
-sentry-actix = "0.34.0"
+# 缓存
+redis.workspace = true
+deadpool-redis.workspace = true
 
-image = "0.24.6"
-color-thief = "0.2.2"
-webp = "0.3.0"
+# 分析数据库
+clickhouse.workspace = true
+uuid.workspace = true
 
-woothee = "0.13.0"
+# 监控
+sentry.workspace = true
+sentry-actix.workspace = true
 
-lettre = "0.11.3"
+# 图像处理
+image.workspace = true
+color-thief.workspace = true
+webp.workspace = true
 
-derive-new = "0.6.0"
-rust_iso3166 = "0.1.11"
+# 用户代理解析
+woothee.workspace = true
 
-jemallocator = { version = "0.5.4", optional = true }
+# 邮件
+lettre.workspace = true
 
-async-stripe = { version = "0.37.3", features = ["runtime-tokio-hyper-rustls"] }
-rusty-money = "0.4.1"
-json-patch = "*"
-ring = "0.17.3"
-alibaba-cloud-sdk-rust = "0.1.15"
+# 其他
+derive-new.workspace = true
+rust_iso3166.workspace = true
+json-patch.workspace = true
+
+# 支付 (Stripe)
+async-stripe.workspace = true
+rusty-money.workspace = true
+
+# BBSMC 专用依赖
+alibaba-cloud-sdk-rust.workspace = true
+
+# jemalloc (可选)
+tikv-jemallocator = { version = "0.6.0", optional = true }
 
 [dev-dependencies]
-actix-http = "3.4.0"
+actix-http.workspace = true
 
 [features]
-jemalloc = ["jemallocator"]
+jemalloc = ["tikv-jemallocator"]

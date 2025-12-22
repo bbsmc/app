@@ -5,13 +5,166 @@ members = [
   './packages/daedalus',
 ]
 
+[workspace.package]
+edition = "2024"
+license = "AGPL-3.0-only"
+repository = "https://github.com/bbsmc/app"
+
+# Workspace 统一依赖管理
+[workspace.dependencies]
+# Web 框架
+actix-web = "4.11.0"
+actix-rt = "2.11.0"
+actix-multipart = "0.7.2"
+actix-cors = "0.7.1"
+actix-ws = "0.3.0"
+actix-files = "0.6.8"
+actix-http = "3.11.2"
+actix-web-prom = { version = "0.10.0", features = ["process"] }
+governor = "0.6.3"
+
+# 异步运行时
+tokio = { version = "1.47.1", features = ["sync", "rt-multi-thread", "macros"] }
+tokio-stream = "0.1.17"
+tokio-util = "0.7.16"
+
+# 异步工具
+futures = "0.3.31"
+futures-util = "0.3.31"
+futures-timer = "3.0.2"
+async-trait = "0.1.89"
+dashmap = "6.1.0"
+lazy_static = "1.4.0"
+
+# 搜索和存储
+meilisearch-sdk = { version = "0.24.3", default-features = false }
+rust-s3 = { version = "0.37.0", default-features = false, features = ["fail-on-err", "tags", "tokio-rustls-tls"] }
+
+# HTTP 客户端
+reqwest = { version = "0.12.24", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+hyper = { version = "1.7.0", features = ["full"] }
+hyper-rustls = { version = "0.27.7", features = ["aws-lc-rs", "http1", "native-tokio", "tls12"] }
+
+# 序列化
+serde_json = "1.0.145"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_with = "3.15.0"
+chrono = { version = "0.4.42", features = ["serde"] }
+yaserde = "0.10.1"
+yaserde_derive = "0.10.1"
+xml-rs = "0.8.15"
+
+# 加密和安全
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+bytes = "1.10.1"
+base64 = "0.22.1"
+sha1 = { version = "0.10.6", features = ["std"] }
+sha2 = "0.10.9"
+hmac = "0.12.1"
+argon2 = { version = "0.5.3", features = ["std"] }
+murmur2 = "0.1.0"
+bitflags = "2.9.4"
+hex = "0.4.3"
+zxcvbn = "2.2.2"
+totp-rs = { version = "5.7.0", features = ["gen_secret"] }
+ring = "0.17.3"
+
+# URL 处理
+url = "2.5.7"
+urlencoding = "2.1.3"
+
+# 压缩和归档
+zip = { version = "6.0.0", features = ["bzip2", "deflate", "deflate64", "zstd"] }
+flate2 = "1.1.4"
+tar = "0.4.44"
+
+# 工具库
+itertools = "0.14.0"
+
+# 验证
+validator = { version = "0.16.1", features = ["derive"] }
+regex = "1.12.2"
+censor = "0.3.0"
+spdx = { version = "0.12.0", features = ["text"] }
+
+# 日志和错误
+dotenvy = "0.15.7"
+log = "0.4.20"
+env_logger = "0.10.1"
+thiserror = "2.0.17"
+
+# 数据库
+sqlx = { version = "0.8.6", default-features = false, features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+    "macros",
+    "migrate",
+    "rust_decimal",
+    "json",
+] }
+rust_decimal = { version = "1.39.0", features = [
+    "serde-with-float",
+    "serde-with-str",
+] }
+
+# 缓存
+redis = { version = "0.32.7", features = ["tokio-comp", "ahash", "r2d2"] }
+deadpool-redis = "0.22.0"
+
+# 分析数据库
+clickhouse = { version = "0.14.0", features = ["uuid", "time"] }
+uuid = { version = "1.18.1", features = ["v4", "fast-rng", "serde"] }
+
+# 监控
+sentry = { version = "0.45.0", default-features = false, features = [
+    "backtrace",
+    "contexts",
+    "debug-images",
+    "panic",
+    "rustls",
+    "reqwest",
+] }
+sentry-actix = "0.45.0"
+
+# 图像处理
+image = { version = "0.25.8", features = ["rayon"] }
+color-thief = "0.2.2"
+webp = { version = "0.3.1", default-features = false }
+
+# 用户代理解析
+woothee = "0.13.0"
+
+# 邮件
+lettre = { version = "0.11.19", default-features = false, features = ["builder", "hostname", "pool", "rustls-tls", "smtp-transport", "tokio1", "tokio1-rustls-tls"] }
+
+# 其他
+derive-new = "0.6.0"
+rust_iso3166 = "0.1.14"
+json-patch = { version = "4.1.0", default-features = false }
+
+# 支付 (Stripe)
+async-stripe = { version = "0.41.0", features = ["runtime-tokio-hyper-rustls"] }
+rusty-money = "0.4.1"
+
+# jemalloc 内存分配器
+tikv-jemallocator = "0.6.0"
+tikv-jemalloc-ctl = "0.6.0"
+
+# BBSMC 专用依赖
+alibaba-cloud-sdk-rust = "0.1.15"
+
+# 本地包
+daedalus = { path = "./packages/daedalus" }
+
 # Optimize for speed and reduce size on release builds
 [profile.release]
-panic = "abort" # Strip expensive panic clean-up logic
-codegen-units = 1 # Compile crates one after another so the compiler can optimize better
-lto = true # Enables link to optimizations
-opt-level = "s" # Optimize for binary size
-strip = true # Remove debug symbols
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

@@ -4,12 +4,13 @@ use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::images::ImageContext;
 use crate::routes::ApiError;
+use sha2::Digest;
 
 use color_thief::ColorFormat;
 use image::imageops::FilterType;
 use image::{
     DynamicImage, EncodableLayout, GenericImageView, ImageError,
-    ImageOutputFormat,
+    ImageFormat,
 };
 use std::io::Cursor;
 use webp::Encoder;
@@ -71,7 +72,7 @@ pub async fn upload_image_optimized(
 
     let cdn_url = dotenvy::var("CDN_URL")?;
 
-    let hash = sha1::Sha1::from(&bytes).hexdigest();
+    let hash = format!("{:x}", sha1::Sha1::digest(&bytes));
     let (processed_image, processed_image_ext) = process_image(
         bytes.clone(),
         content_type,
@@ -178,7 +179,7 @@ fn process_image(
 
     // 优化和压缩
     let mut output = Vec::new();
-    img.write_to(&mut Cursor::new(&mut output), ImageOutputFormat::WebP)?;
+    img.write_to(&mut Cursor::new(&mut output), ImageFormat::WebP)?;
 
     Ok((bytes::Bytes::from(output), "webp".to_string()))
 }

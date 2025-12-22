@@ -387,7 +387,9 @@ async fn project_create_inner(
                 )))
             })?;
 
-        let content_disposition = field.content_disposition();
+        let content_disposition = field.content_disposition().ok_or_else(|| {
+            CreateError::MissingValueError(String::from("缺少 Content-Disposition"))
+        })?;
         let name = content_disposition.get_name().ok_or_else(|| {
             CreateError::MissingValueError(String::from("缺少内容名称"))
         })?;
@@ -486,7 +488,9 @@ async fn project_create_inner(
         }
 
         let result = async {
-            let content_disposition = field.content_disposition().clone();
+            let content_disposition = field.content_disposition().cloned().ok_or_else(|| {
+                CreateError::MissingValueError(String::from("缺少 Content-Disposition"))
+            })?;
 
             let name = content_disposition.get_name().ok_or_else(|| {
                 CreateError::MissingValueError(String::from("缺少内容名称"))

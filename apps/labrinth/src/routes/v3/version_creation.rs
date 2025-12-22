@@ -1,5 +1,6 @@
 use super::project_creation::{CreateError, UploadedFile};
 use crate::auth::{check_resource_ban, get_user_from_headers};
+use sha2::Digest;
 use crate::database::models::loader_fields::{
     LoaderField, LoaderFieldEnumValue, VersionField,
 };
@@ -189,7 +190,9 @@ async fn version_create_inner(
         }
 
         let result = async {
-            let content_disposition = field.content_disposition().clone();
+            let content_disposition = field.content_disposition().cloned().ok_or_else(|| {
+                CreateError::MissingValueError("缺少 Content-Disposition".to_string())
+            })?;
             let name = content_disposition.get_name().ok_or_else(|| {
                 CreateError::MissingValueError("缺少内容名称".to_string())
             })?;
@@ -863,7 +866,9 @@ async fn upload_file_to_version_inner(
         }
 
         let result = async {
-            let content_disposition = field.content_disposition().clone();
+            let content_disposition = field.content_disposition().cloned().ok_or_else(|| {
+                CreateError::MissingValueError("缺少 Content-Disposition".to_string())
+            })?;
             let name = content_disposition.get_name().ok_or_else(|| {
                 CreateError::MissingValueError("缺少内容名称".to_string())
             })?;
@@ -1000,7 +1005,7 @@ pub async fn upload_file(
         "项目文件超出了 1GB 的上限。请联系版主或管理员以请求上传更大文件的权限。"
     ).await?;
 
-    let hash = sha1::Sha1::from(&data).hexdigest();
+    let hash = format!("{:x}", sha1::Sha1::digest(&data));
     let exists = sqlx::query!(
         "
         SELECT EXISTS(SELECT 1 FROM hashes h
