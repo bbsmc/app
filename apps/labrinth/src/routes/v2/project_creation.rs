@@ -47,7 +47,7 @@ struct ProjectCreateData {
     pub project_type: String,
     #[validate(
         length(min = 3, max = 64),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     #[serde(alias = "mod_slug")]
     /// 项目的 slug，用于 vanity URLs
@@ -67,7 +67,7 @@ struct ProjectCreateData {
     pub server_side: LegacySideType,
 
     #[validate(length(max = 32))]
-    #[validate]
+    #[validate(nested)]
     /// 要上传的初始版本列表
     pub initial_versions: Vec<InitialVersionData>,
     #[validate(length(max = 3))]
@@ -109,7 +109,7 @@ struct ProjectCreateData {
     /// 一个可选的链接，用于提交模组 discord。
     pub discord_url: Option<String>,
     /// 一个可选的列表，用于提交模组的所有捐赠链接。
-    #[validate]
+    #[validate(nested)]
     pub donation_urls: Option<Vec<DonationLink>>,
 
     /// 一个可选的布尔值。如果为 true，则项目将被创建为草稿。
@@ -119,7 +119,7 @@ struct ProjectCreateData {
     pub license_id: String,
 
     #[validate(length(max = 64))]
-    #[validate]
+    #[validate(nested)]
     /// 要上传的画廊项目名称列表
     pub gallery_items: Option<Vec<NewGalleryItem>>,
     #[serde(default = "default_requested_status")]

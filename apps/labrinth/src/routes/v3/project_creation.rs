@@ -178,7 +178,7 @@ pub struct ProjectCreateData {
     pub name: String,
     #[validate(
         length(min = 3, max = 64),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     #[serde(alias = "mod_slug")]
     /// 项目的别名，用于 vanity URLs
@@ -193,7 +193,7 @@ pub struct ProjectCreateData {
     pub description: String,
 
     #[validate(length(max = 32))]
-    #[validate]
+    #[validate(nested)]
     /// 要与创建的项目一起上传的初始版本列表
     pub initial_versions: Vec<InitialVersionData>,
     #[validate(length(max = 3))]
@@ -220,7 +220,7 @@ pub struct ProjectCreateData {
     pub license_id: String,
 
     #[validate(length(max = 64))]
-    #[validate]
+    #[validate(nested)]
     /// 要上传的画廊项目的 multipart 名称
     pub gallery_items: Option<Vec<NewGalleryItem>>,
     #[serde(default = "default_requested_status")]

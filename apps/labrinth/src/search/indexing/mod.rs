@@ -49,7 +49,7 @@ pub async fn remove_documents(
     let mut indexes_next = get_indexes_for_indexing(config, true).await?;
     indexes.append(&mut indexes_next);
 
-    let client = config.make_client();
+    let client = config.make_client()?;
     let client = &client;
     let mut deletion_tasks = FuturesUnordered::new();
 
@@ -182,11 +182,12 @@ pub async fn swap_index(
     config: &SearchConfig,
     index_name: &str,
 ) -> Result<(), IndexingError> {
-    let client = config.make_client();
+    let client = config.make_client()?;
     let index_name_next = config.get_index_name(index_name, true);
     let index_name = config.get_index_name(index_name, false);
     let swap_indices = SwapIndexes {
         indexes: (index_name_next, index_name),
+        rename: None,
     };
     client
         .swap_indexes([&swap_indices])
@@ -201,7 +202,7 @@ pub async fn get_indexes_for_indexing(
     config: &SearchConfig,
     next: bool, // 获取下一个索引
 ) -> Result<Vec<Index>, meilisearch_sdk::errors::Error> {
-    let client = config.make_client();
+    let client = config.make_client()?;
     let project_name = config.get_index_name("projects", next);
     let project_filtered_name =
         config.get_index_name("projects_filtered", next);
@@ -364,7 +365,7 @@ pub async fn add_projects(
     additional_fields: Vec<String>,
     config: &SearchConfig,
 ) -> Result<(), IndexingError> {
-    let client = config.make_client();
+    let client = config.make_client()?;
     for index in indices {
         update_and_add_to_index(&client, index, projects, &additional_fields)
             .await?;
@@ -375,7 +376,7 @@ pub async fn add_projects(
 
 fn default_settings() -> Settings {
     Settings::new()
-        .with_distinct_attribute("project_id") // 设置唯一属性为 project_id
+        .with_distinct_attribute(Some("project_id")) // 设置唯一属性为 project_id
         .with_displayed_attributes(DEFAULT_DISPLAYED_ATTRIBUTES) // 设置显示属性
         .with_searchable_attributes(DEFAULT_SEARCHABLE_ATTRIBUTES) // 设置可搜索属性
         .with_sortable_attributes(DEFAULT_SORTABLE_ATTRIBUTES) // 设置可排序属性

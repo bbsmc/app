@@ -1481,7 +1481,7 @@ pub async fn delete_auth_provider(
 
 #[derive(Deserialize, Validate)]
 pub struct NewAccount {
-    #[validate(length(min = 1, max = 39), regex = "RE_URL_SAFE")]
+    #[validate(length(min = 1, max = 39), regex(path = *RE_URL_SAFE))]
     pub username: String,
     #[validate(length(min = 8, max = 256))]
     pub password: String,
@@ -1526,12 +1526,12 @@ pub async fn create_account_with_password(
     let score = zxcvbn::zxcvbn(
         &new_account.password,
         &[&new_account.username, &new_account.email],
-    )?;
+    );
 
-    if score.score() < 3 {
+    if score.score() < zxcvbn::Score::Three {
         return Err(ApiError::InvalidInput(
             if let Some(feedback) =
-                score.feedback().clone().and_then(|x| x.warning())
+                score.feedback().and_then(|x| x.warning())
             {
                 format!("密码太弱 {}", feedback)
             } else {
@@ -2375,12 +2375,12 @@ pub async fn change_password(
         let score = zxcvbn::zxcvbn(
             new_password,
             &[&user.username, &user.email.clone().unwrap_or_default()],
-        )?;
+        );
 
-        if score.score() < 3 {
+        if score.score() < zxcvbn::Score::Three {
             return Err(ApiError::InvalidInput(
                 if let Some(feedback) =
-                    score.feedback().clone().and_then(|x| x.warning())
+                    score.feedback().and_then(|x| x.warning())
                 {
                     format!("Password too weak: {}", feedback)
                 } else {
