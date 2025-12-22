@@ -253,11 +253,11 @@ impl AutomatedModerationQueue {
                                 .execute(&pool)
                                 .await?;
 
-                                // 清除项目缓存
+                                // 清除项目缓存（包括版本缓存）
                                 database::models::Project::clear_cache(
                                     project.inner.id,
                                     project.inner.slug.clone(),
-                                    None,
+                                    Some(true),
                                     &redis,
                                 )
                                 .await?;
@@ -284,15 +284,23 @@ impl AutomatedModerationQueue {
                             for version in versions {
                                 // 跳过云盘版本（没有实际文件，只有云盘链接）
                                 if version.files.is_empty() && !version.disks.is_empty() {
+                                    log::debug!("跳过云盘版本 {} 的文件检查", version.inner.id.0);
                                     continue;
                                 }
 
                                 let primary_file = version.files.iter().find_or_first(|x| x.primary);
 
                                 if let Some(primary_file) = primary_file {
-                                    // 检查文件 URL 是否为有效的可下载链接
-                                    // 跳过云盘链接（通常是外部链接如网盘）
-                                    if primary_file.url.is_empty() {
+                                    // 检查文件 URL 是否有效
+                                    // 如果 URL 为空或无效，报告为缺少主文件
+                                    if primary_file.url.is_empty() || !primary_file.url.starts_with("http") {
+                                        log::warn!(
+                                            "版本 {} 的文件 URL 无效或为空: '{}'",
+                                            version.inner.id.0,
+                                            primary_file.url
+                                        );
+                                        let val = mod_messages.version_specific.entry(version.inner.version_number.clone()).or_default();
+                                        val.push(ModerationMessage::NoPrimaryFile);
                                         continue;
                                     }
 
