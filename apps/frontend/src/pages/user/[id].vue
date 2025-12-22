@@ -89,7 +89,7 @@
                   { divider: true, shown: auth.user && auth.user.id === user.id },
                   {
                     id: 'report',
-                    action: () => reportUser(user.id),
+                    action: () => (auth.user ? reportUser(user.id) : navigateTo('/auth/sign-in')),
                     color: 'red',
                     hoverOnly: true,
                     shown: auth.user?.id !== user.id,
@@ -467,7 +467,7 @@ import {
 import { OverflowMenu, ButtonStyled, ContentPageHeader } from "@modrinth/ui";
 import NavTabs from "~/components/ui/NavTabs.vue";
 import ProjectCard from "~/components/ui/ProjectCard.vue";
-// import { reportUser } from "~/utils/report-helpers.ts";
+import { reportUser } from "~/utils/report-helpers.ts";
 
 import StaffBadge from "~/assets/images/badges/staff.svg?component";
 import ModBadge from "~/assets/images/badges/mod.svg?component";

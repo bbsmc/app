@@ -8,6 +8,11 @@
         {{ analytics.error.value }}
       </div>
     </div>
+    <div v-else-if="!isInitialized || analytics.loading.value" class="universal-card">
+      <h2>
+        <span class="label__title">Loading analytics...</span>
+      </h2>
+    </div>
     <div v-else class="graphs">
       <div class="graphs__vertical-bar">
         <client-only>
@@ -307,7 +312,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
 dayjs.locale("zh-cn");
 
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 
 import { analyticsSetToCSVString, intToRgba } from "~/utils/analytics.js";
 
@@ -423,7 +428,11 @@ const analytics = useFetchAllAnalytics(
   props.personal,
 );
 
-const { startDate, endDate, timeRange, timeResolution } = analytics;
+const { startDate, endDate, timeRange, timeResolution, isInitialized } = analytics;
+
+onMounted(() => {
+  isInitialized.value = true;
+});
 
 const selectedRange = computed({
   get: () => {
