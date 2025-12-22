@@ -86,6 +86,14 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: "modern-compiler",
+          silenceDeprecations: ["legacy-js-api", "import", "global-builtin"],
+        },
+      },
+    },
     define: {
       global: {},
     },

@@ -167,7 +167,7 @@ const projectType = ref("all");
 const oldestFirst = ref(true);
 
 const projectsFiltered = computed(() =>
-  projects.value.filter(
+  (projects.value ?? []).filter(
     (x) =>
       projectType.value === "all" ||
       app.$getProjectTypeForUrl(x.project_types[0], x.loaders) === projectType.value,

@@ -581,6 +581,7 @@ try {
         () => useBaseFetch(`user/${route.params.id}/projects`),
         {
           transform: (projects) => {
+            if (!projects) return [];
             for (const project of projects) {
               project.categories = project.categories.concat(project.loaders);
               project.project_type = data.$getProjectTypeForUrl(
@@ -741,11 +742,11 @@ useSeoMeta({
 const projectTypes = computed(() => {
   const obj = {};
 
-  if (collections.value.length > 0) {
+  if (collections.value?.length > 0) {
     obj.collection = true;
   }
 
-  for (const project of projects.value) {
+  for (const project of projects.value ?? []) {
     obj[project.project_type] = true;
   }
 
@@ -756,7 +757,7 @@ const projectTypes = computed(() => {
 const sumDownloads = computed(() => {
   let sum = 0;
 
-  for (const project of projects.value) {
+  for (const project of projects.value ?? []) {
     sum += project.downloads;
   }
 

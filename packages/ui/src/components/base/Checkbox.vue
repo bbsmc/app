@@ -10,7 +10,7 @@
       role="checkbox"
       :disabled="disabled"
       :class="{ checked: modelValue, collapsing: collapsingToggleStyle }"
-      :aria-label="description"
+      :aria-label="description || label"
       :aria-checked="modelValue"
     >
       <CheckIcon v-if="modelValue && !collapsingToggleStyle" aria-hidden="true" />
@@ -32,10 +32,10 @@ const emit = defineEmits<{
 
 const props = withDefaults(
   defineProps<{
-    label: string
+    label?: string
     disabled?: boolean
-    description: string
-    modelValue: boolean
+    description?: string
+    modelValue?: boolean
     clickEvent?: () => void
     collapsingToggleStyle?: boolean
   }>(),

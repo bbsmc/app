@@ -489,6 +489,8 @@ import {
   GridIcon,
   LanguagesIcon,
   ShieldIcon,
+  MoonIcon,
+  SunIcon,
 } from "@modrinth/assets";
 import { ButtonStyled, OverflowMenu, Avatar } from "@modrinth/ui";
 

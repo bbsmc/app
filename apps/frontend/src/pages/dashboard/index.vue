@@ -61,7 +61,7 @@
           <div class="grid-display__item">
             <div class="label">下载量</div>
             <div class="value">
-              {{ $formatNumber(projects.reduce((agg, x) => agg + x.downloads, 0)) }}
+              {{ $formatNumber((projects || []).reduce((agg, x) => agg + x.downloads, 0)) }}
             </div>
             <span
               >共
@@ -75,7 +75,7 @@
           <div class="grid-display__item">
             <div class="label">订阅量</div>
             <div class="value">
-              {{ $formatNumber(projects.reduce((agg, x) => agg + x.followers, 0)) }}
+              {{ $formatNumber((projects || []).reduce((agg, x) => agg + x.followers, 0)) }}
             </div>
             <span>
               <span>共 {{ followersProjectCount }} 个资源 </span></span
@@ -106,10 +106,10 @@ const [{ data: projects }] = await Promise.all([
 ]);
 
 const downloadsProjectCount = computed(
-  () => projects.value.filter((project) => project.downloads > 0).length,
+  () => (projects.value ?? []).filter((project) => project.downloads > 0).length,
 );
 const followersProjectCount = computed(
-  () => projects.value.filter((project) => project.followers > 0).length,
+  () => (projects.value ?? []).filter((project) => project.followers > 0).length,
 );
 
 const { data, refresh } = await useAsyncData(async () => {
