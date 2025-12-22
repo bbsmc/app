@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE mods SET license = 'LicenseRef-All-Rights-Reserved' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f7d2e9d3ccb0c815c9e8620808140f45572e39666478f0f057cde6f2397e8853"
+}
