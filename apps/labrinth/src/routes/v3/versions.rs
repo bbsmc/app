@@ -1410,7 +1410,7 @@ pub async fn version_delete(
     )
     .await?;
     transaction.commit().await?;
-    remove_documents(&[version.inner.id.into()], &search_config).await?;
+
     database::models::Project::clear_cache(
         version.inner.project_id,
         None,
@@ -1418,6 +1418,9 @@ pub async fn version_delete(
         &redis,
     )
     .await?;
+    // Modrinth 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
+    // 将搜索索引删除移到缓存清理之后，确保任务完成后再返回响应
+    remove_documents(&[version.inner.id.into()], &search_config).await?;
 
     if result.is_some() {
         Ok(HttpResponse::NoContent().body(""))

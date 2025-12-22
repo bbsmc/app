@@ -1,9 +1,14 @@
 /// 此模块用于从任何来源进行索引。
 pub mod local_import;
 
+use std::error::Error;
+use std::time::Duration;
+
 use crate::database::redis::RedisPool;
 use crate::models::ids::base62_impl::to_base62;
 use crate::search::{SearchConfig, UploadSearchProject};
+use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 use local_import::index_local;
 use log::info;
 use meilisearch_sdk::SwapIndexes;
@@ -11,7 +16,6 @@ use meilisearch_sdk::client::Client;
 use meilisearch_sdk::indexes::Index;
 use meilisearch_sdk::settings::{PaginationSetting, Settings};
 use sqlx::postgres::PgPool;
-use std::error::Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -36,6 +40,8 @@ pub enum IndexingError {
 const MEILISEARCH_CHUNK_SIZE: usize = 10000000;
 const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
+// Modrinth 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
+// 改进删除逻辑，等待 Meilisearch 任务完成后再返回
 pub async fn remove_documents(
     ids: &[crate::models::ids::VersionId],
     config: &SearchConfig,
@@ -44,12 +50,29 @@ pub async fn remove_documents(
     let mut indexes_next = get_indexes_for_indexing(config, true).await?;
     indexes.append(&mut indexes_next);
 
-    for index in indexes {
-        index
-            .delete_documents(
-                &ids.iter().map(|x| to_base62(x.0)).collect::<Vec<_>>(),
-            )
-            .await?;
+    let client = config.make_client();
+    let client = &client;
+    let mut deletion_tasks = FuturesUnordered::new();
+
+    for index in &indexes {
+        deletion_tasks.push(async move {
+            // Meilisearch 任务提交后异步执行，需要等待一定时间确保完成
+            index
+                .delete_documents(
+                    &ids.iter().map(|x| to_base62(x.0)).collect::<Vec<_>>(),
+                )
+                .await?
+                .wait_for_completion(
+                    client,
+                    None,
+                    Some(Duration::from_secs(15)),
+                )
+                .await
+        });
+    }
+
+    while let Some(result) = deletion_tasks.next().await {
+        result?;
     }
 
     Ok(())

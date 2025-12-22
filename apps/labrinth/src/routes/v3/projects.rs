@@ -139,17 +139,19 @@ pub async fn random_projects_get(
         ApiError::Validation(validation_errors_to_string(err, None))
     })?;
 
+    // 使用更高效的随机查询方法
+    // ID 是随机生成的（参见 generate_ids 宏），所以按 ID 排序等同于随机排序
+    // 使用 OFFSET 随机跳过一些行，然后 LIMIT 获取指定数量
     let project_ids = sqlx::query!(
-        "
-            SELECT id FROM mods WHERE status = ANY($2) ORDER BY RANDOM() limit $1
-
-
-            ",
-        count.count as i32,
+        "SELECT id FROM mods WHERE status = ANY($1)
+        ORDER BY id
+        LIMIT $2
+        OFFSET GREATEST(ROUND(RANDOM() * (SELECT COUNT(*) FROM mods WHERE status = ANY($1)))::int8 - $2, 0)",
         &*crate::models::projects::ProjectStatus::iterator()
             .filter(|x| x.is_searchable())
             .map(|x| x.to_string())
             .collect::<Vec<String>>(),
+        count.count as i64,
     )
     .fetch(&**pool)
     .map_ok(|m| db_ids::ProjectId(m.id))
@@ -344,6 +346,9 @@ pub async fn project_edit(
 
         if let Some(perms) = permissions {
             let mut transaction = pool.begin().await?;
+
+            // Modrinth 上游修复 97e4d8e13: 记录需要从搜索索引中删除的版本
+            let mut versions_to_remove: Option<Vec<crate::models::ids::VersionId>> = None;
 
             if let Some(name) = &new_project.name {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
@@ -636,18 +641,18 @@ pub async fn project_edit(
                     }
                 }
 
+                // Modrinth 上游修复 97e4d8e13: 记录需要从搜索索引中删除的版本
+                // 将实际删除操作移到 transaction.commit() 之后
                 if project_item.inner.status.is_searchable()
                     && !status.is_searchable()
                 {
-                    remove_documents(
-                        &project_item
+                    versions_to_remove = Some(
+                        project_item
                             .versions
-                            .into_iter()
-                            .map(|x| x.into())
-                            .collect::<Vec<_>>(),
-                        &search_config,
-                    )
-                    .await?;
+                            .iter()
+                            .map(|x| (*x).into())
+                            .collect::<Vec<_>>()
+                    );
                 }
             }
 
@@ -1102,6 +1107,12 @@ pub async fn project_edit(
                 &redis,
             )
             .await?;
+
+            // Modrinth 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
+            // 在事务提交和缓存清理后再删除搜索索引，确保任务完成后再返回响应
+            if let Some(versions) = versions_to_remove {
+                remove_documents(&versions, &search_config).await?;
+            }
 
             Ok(HttpResponse::NoContent().body(""))
         } else {
