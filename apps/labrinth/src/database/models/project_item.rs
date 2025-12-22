@@ -379,27 +379,8 @@ impl Project {
             .execute(&mut **transaction)
             .await?;
 
-            // 先删除主线程
-            models::Thread::remove_full(project.thread_id, transaction).await?;
-
-            // 再删除所有引用该项目的其他线程（如果有）
-            // 注意：这些线程的 mod_id 字段引用了 mods 表
-            let thread_ids: Vec<i64> = sqlx::query!(
-                "
-                SELECT id FROM threads WHERE mod_id = $1
-                ",
-                id as ProjectId,
-            )
-            .fetch_all(&mut **transaction)
-            .await?
-            .into_iter()
-            .map(|r| r.id)
-            .collect();
-
-            for thread_id in thread_ids {
-                models::Thread::remove_full(ThreadId(thread_id), transaction)
-                    .await?;
-            }
+            // 不删除线程，让线程的 mod_id 通过外键约束自动设置为 NULL
+            // 这样线程可以继续存在，用于历史记录和审计
 
             sqlx::query!(
                 "
