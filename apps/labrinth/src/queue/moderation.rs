@@ -244,8 +244,23 @@ impl AutomatedModerationQueue {
                                 mod_messages.messages.push(ModerationMessage::NoSideTypes);
                             }
 
+                            // 如果没有设置许可证，自动设置为"保留所有权益"
                             if project.inner.license == "LicenseRef-Unknown" || project.inner.license == "LicenseRef-" {
-                                mod_messages.messages.push(ModerationMessage::MissingLicense);
+                                sqlx::query!(
+                                    "UPDATE mods SET license = 'LicenseRef-All-Rights-Reserved' WHERE id = $1",
+                                    project.inner.id.0
+                                )
+                                .execute(&pool)
+                                .await?;
+
+                                // 清除项目缓存
+                                database::models::Project::clear_cache(
+                                    project.inner.id,
+                                    project.inner.slug.clone(),
+                                    None,
+                                    &redis,
+                                )
+                                .await?;
                             } else if project.inner.license.starts_with("LicenseRef-") && project.inner.license != "LicenseRef-All-Rights-Reserved" && project.inner.license_url.is_none() {
                                 mod_messages.messages.push(ModerationMessage::MissingCustomLicenseUrl { license: project.inner.license.clone() });
                             }
@@ -267,9 +282,20 @@ impl AutomatedModerationQueue {
                                     .collect::<Vec<_>>();
 
                             for version in versions {
+                                // 跳过云盘版本（没有实际文件，只有云盘链接）
+                                if version.files.is_empty() && !version.disks.is_empty() {
+                                    continue;
+                                }
+
                                 let primary_file = version.files.iter().find_or_first(|x| x.primary);
 
                                 if let Some(primary_file) = primary_file {
+                                    // 检查文件 URL 是否为有效的可下载链接
+                                    // 跳过云盘链接（通常是外部链接如网盘）
+                                    if primary_file.url.is_empty() {
+                                        continue;
+                                    }
+
                                     let data = reqwest::get(&primary_file.url).await?.bytes().await?;
 
                                     let reader = Cursor::new(data);
