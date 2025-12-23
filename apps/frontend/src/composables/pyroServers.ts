@@ -61,7 +61,7 @@ async function PyroFetch<T>(path: string, options: PyroFetchOptions = {}): Promi
     const response = await $fetch<T>(fullUrl, {
       method,
       headers,
-      body: body && contentType === "application/json" ? JSON.stringify(body) : body ?? undefined,
+      body: body && contentType === "application/json" ? JSON.stringify(body) : (body ?? undefined),
       timeout: 10000,
       retry: options.retry !== false ? (method === "GET" ? 3 : 0) : 0,
     });
