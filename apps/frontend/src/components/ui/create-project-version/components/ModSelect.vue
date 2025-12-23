@@ -12,7 +12,7 @@
 
 <script lang="ts" setup>
 import { Combobox, injectModrinthClient, injectNotificationManager } from '@modrinth/ui'
-import type { DropdownOption } from '@modrinth/ui/src/components/base/Combobox.vue'
+import type { DropdownOption } from '@modrinth/ui'
 import { useDebounceFn } from '@vueuse/core'
 import { defineAsyncComponent, h } from 'vue'
 

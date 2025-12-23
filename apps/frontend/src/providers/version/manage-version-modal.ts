@@ -1,5 +1,5 @@
 import type { Labrinth } from "@modrinth/api-client";
-import { SaveIcon, SpinnerIcon } from "@modrinth/assets";
+import { SaveIcon, UpdatedIcon } from "@modrinth/assets";
 import {
   createContext,
   injectModrinthClient,
@@ -421,7 +421,7 @@ export function createManageVersionContext(
 
   const saveButtonConfig = (): StageButtonConfig => ({
     label: "Save changes",
-    icon: isSubmitting.value ? SpinnerIcon : SaveIcon,
+    icon: isSubmitting.value ? UpdatedIcon : SaveIcon,
     iconPosition: "before",
     iconClass: isSubmitting.value ? "animate-spin" : undefined,
     color: "green",

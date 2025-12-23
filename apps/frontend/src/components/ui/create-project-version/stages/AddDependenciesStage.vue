@@ -90,7 +90,7 @@ import {
 	injectNotificationManager,
 	injectProjectPageContext,
 } from '@modrinth/ui'
-import type { DropdownOption } from '@modrinth/ui/src/components/base/Combobox.vue'
+import type { DropdownOption } from '@modrinth/ui'
 
 import ModSelect from '~/components/ui/create-project-version/components/ModSelect.vue'
 import { injectManageVersionContext } from '~/providers/version/manage-version-modal'

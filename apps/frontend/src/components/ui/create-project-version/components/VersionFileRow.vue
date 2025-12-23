@@ -44,7 +44,7 @@
 					:disabled="editingVersion"
 					@click="primaryFileInput?.click()"
 				>
-					<ArrowLeftRightIcon aria-hidden="true" />
+					<RedoIcon aria-hidden="true" />
 					<input
 						ref="primaryFileInput"
 						class="hidden"
@@ -66,9 +66,9 @@
 
 <script setup lang="ts">
 import type { Labrinth } from '@modrinth/api-client'
-import { ArrowLeftRightIcon, CheckIcon, XIcon } from '@modrinth/assets'
+import { RedoIcon, CheckIcon, XIcon } from '@modrinth/assets'
 import { ButtonStyled, Combobox, injectProjectPageContext } from '@modrinth/ui'
-import type { DropdownOption } from '@modrinth/ui/src/components/base/Combobox.vue'
+import type { DropdownOption } from '@modrinth/ui'
 import { acceptFileFromProjectType } from '@modrinth/utils'
 
 const { projectV2 } = injectProjectPageContext()
