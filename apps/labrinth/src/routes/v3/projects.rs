@@ -15,7 +15,7 @@ use crate::database::redis::RedisPool;
 use crate::database::{self, models as db_models};
 use crate::file_hosting::FileHost;
 use crate::models;
-use crate::models::ids::base62_impl::parse_base62;
+// Modrinth 上游提交 79c263301: 移除 parse_base62，使用数据库 text_id_lower 列检查 slug 冲突
 use crate::models::images::ImageContext;
 use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
@@ -802,23 +802,17 @@ pub async fn project_edit(
                     ));
                 }
 
-                let slug_project_id_option: Option<u64> =
-                    parse_base62(slug).ok();
-                if let Some(slug_project_id) = slug_project_id_option {
-                    let results = sqlx::query!(
-                        "
-                        SELECT EXISTS(SELECT 1 FROM mods WHERE id=$1)
-                        ",
-                        slug_project_id as i64
-                    )
-                    .fetch_one(&mut *transaction)
-                    .await?;
-
-                    if results.exists.unwrap_or(true) {
-                        return Err(ApiError::InvalidInput(
-                            "Slug 与另一个项目的 ID 冲突!".to_string(),
-                        ));
-                    }
+                // Modrinth 上游提交 79c263301: 使用 DBProject::get 检查 slug 是否与现有项目 ID 冲突
+                let existing = db_models::Project::get(
+                    &slug.to_lowercase(),
+                    &mut *transaction,
+                    &redis,
+                )
+                .await?;
+                if existing.is_some() {
+                    return Err(ApiError::InvalidInput(
+                        "Slug 与另一个项目的 ID 冲突!".to_string(),
+                    ));
                 }
 
                 // 确保新 slug 与旧 slug 不同
@@ -829,10 +823,16 @@ pub async fn project_edit(
                     .clone()
                     .unwrap_or_default())
                 {
+                    // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查
                     let results = sqlx::query!(
                         "
-                      SELECT EXISTS(SELECT 1 FROM mods WHERE slug = LOWER($1))
-                      ",
+                        SELECT EXISTS(
+                            SELECT 1 FROM mods
+                            WHERE
+                                slug = LOWER($1)
+                                OR text_id_lower = LOWER($1)
+                        )
+                        ",
                         slug
                     )
                     .fetch_one(&mut *transaction)
@@ -840,8 +840,7 @@ pub async fn project_edit(
 
                     if results.exists.unwrap_or(true) {
                         return Err(ApiError::InvalidInput(
-                            "Slug collides with other project's id!"
-                                .to_string(),
+                            "Slug 与另一个项目的 slug 或 ID 冲突!".to_string(),
                         ));
                     }
                 }

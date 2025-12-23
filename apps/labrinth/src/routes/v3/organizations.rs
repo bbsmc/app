@@ -562,32 +562,31 @@ pub async fn organizations_edit(
                     ));
                 }
 
-                let name_organization_id_option: Option<u64> =
-                    parse_base62(slug).ok();
-                if let Some(name_organization_id) = name_organization_id_option
-                {
-                    let results = sqlx::query!(
-                        "
-                        SELECT EXISTS(SELECT 1 FROM organizations WHERE id=$1)
-                        ",
-                        name_organization_id as i64
-                    )
-                    .fetch_one(&mut *transaction)
-                    .await?;
-
-                    if results.exists.unwrap_or(true) {
-                        return Err(ApiError::InvalidInput(
-                            "slug 与另一个组织的 id 冲突！".to_string(),
-                        ));
-                    }
+                // Modrinth 上游提交 79c263301: 使用 Organization::get 检查 slug 是否与现有组织 ID 冲突
+                let existing = Organization::get(
+                    &slug.to_lowercase(),
+                    &mut *transaction,
+                    &redis,
+                )
+                .await?;
+                if existing.is_some() {
+                    return Err(ApiError::InvalidInput(
+                        "Slug 与另一个组织的 ID 冲突！".to_string(),
+                    ));
                 }
 
                 // Make sure the new name is different from the old one
                 // We are able to unwrap here because the name is always set
                 if !slug.eq(&organization_item.slug.clone()) {
+                    // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查
                     let results = sqlx::query!(
                         "
-                        SELECT EXISTS(SELECT 1 FROM organizations WHERE LOWER(slug) = LOWER($1))
+                        SELECT EXISTS(
+                            SELECT 1 FROM organizations
+                            WHERE
+                                LOWER(slug) = LOWER($1)
+                                OR text_id_lower = LOWER($1)
+                        )
                         ",
                         slug
                     )
@@ -596,7 +595,7 @@ pub async fn organizations_edit(
 
                     if results.exists.unwrap_or(true) {
                         return Err(ApiError::InvalidInput(
-                            "slug 与另一个组织的 id 冲突！".to_string(),
+                            "Slug 与另一个组织的 slug 或 ID 冲突！".to_string(),
                         ));
                     }
                 }
@@ -618,10 +617,11 @@ pub async fn organizations_edit(
                     ));
                 }
 
+                // Modrinth 上游提交 79c263301: slug 存储为小写
                 sqlx::query!(
                     "
                     UPDATE organizations
-                    SET slug = $1
+                    SET slug = LOWER($1)
                     WHERE (id = $2)
                     ",
                     Some(slug),

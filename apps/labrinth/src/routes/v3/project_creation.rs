@@ -412,8 +412,11 @@ async fn project_create_inner(
             CreateError::InvalidInput(validation_errors_to_string(err, None))
         })?;
 
-        let slug_project_id_option: Option<ProjectId> =
-            serde_json::from_str(&format!("\"{}\"", create_data.slug)).ok();
+        // Modrinth 上游提交 79c263301: 添加 .to_lowercase() 确保大小写不敏感
+        let slug_project_id_option: Option<ProjectId> = serde_json::from_str(
+            &format!("\"{}\"", create_data.slug.to_lowercase()),
+        )
+        .ok();
 
         if let Some(slug_project_id) = slug_project_id_option {
             let slug_project_id: models::ids::ProjectId =
@@ -433,10 +436,16 @@ async fn project_create_inner(
             }
         }
 
+        // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查防止与项目 ID 冲突
         {
             let results = sqlx::query!(
                 "
-                SELECT EXISTS(SELECT 1 FROM mods WHERE slug = LOWER($1))
+                SELECT EXISTS(
+                    SELECT 1 FROM mods
+                    WHERE
+                        slug = LOWER($1)
+                        OR text_id_lower = LOWER($1)
+                )
                 ",
                 create_data.slug
             )
