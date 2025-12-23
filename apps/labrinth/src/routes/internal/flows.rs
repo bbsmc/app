@@ -1530,9 +1530,7 @@ pub async fn create_account_with_password(
 
     if score.score() < zxcvbn::Score::Three {
         return Err(ApiError::InvalidInput(
-            if let Some(feedback) =
-                score.feedback().and_then(|x| x.warning())
-            {
+            if let Some(feedback) = score.feedback().and_then(|x| x.warning()) {
                 format!("密码太弱 {}", feedback)
             } else {
                 "密码强度太弱！请提高其强度。".to_string()

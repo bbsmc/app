@@ -80,7 +80,9 @@ impl SearchConfig {
         }
     }
 
-    pub fn make_client(&self) -> Result<Client, meilisearch_sdk::errors::Error> {
+    pub fn make_client(
+        &self,
+    ) -> Result<Client, meilisearch_sdk::errors::Error> {
         Client::new(self.address.as_str(), Some(self.key.as_str()))
     }
 

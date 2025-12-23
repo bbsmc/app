@@ -9,8 +9,7 @@ use sha2::Digest;
 use color_thief::ColorFormat;
 use image::imageops::FilterType;
 use image::{
-    DynamicImage, EncodableLayout, GenericImageView, ImageError,
-    ImageFormat,
+    DynamicImage, EncodableLayout, GenericImageView, ImageError, ImageFormat,
 };
 use std::io::Cursor;
 use webp::Encoder;

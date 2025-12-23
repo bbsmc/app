@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use super::ApiError;
 use crate::auth::{
-    checks::is_visible_organization, filter_visible_projects, get_user_from_headers,
+    checks::is_visible_organization, filter_visible_projects,
+    get_user_from_headers,
 };
 use crate::database::models::team_item::TeamMember;
 use crate::database::models::{
@@ -282,7 +283,8 @@ pub async fn organization_get(
     let organization_data = Organization::get(&id, &**pool, &redis).await?;
     // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性检查
     if let Some(data) = organization_data {
-        if !is_visible_organization(&data, &current_user, &pool, &redis).await? {
+        if !is_visible_organization(&data, &current_user, &pool, &redis).await?
+        {
             return Err(ApiError::NotFound);
         }
 
@@ -384,7 +386,8 @@ pub async fn organizations_get(
     // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性过滤
     for data in organizations_data {
         // 过滤不可见的组织
-        if !is_visible_organization(&data, &current_user, &pool, &redis).await? {
+        if !is_visible_organization(&data, &current_user, &pool, &redis).await?
+        {
             continue;
         }
 

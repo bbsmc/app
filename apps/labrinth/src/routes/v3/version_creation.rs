@@ -1,6 +1,5 @@
 use super::project_creation::{CreateError, UploadedFile};
 use crate::auth::{check_resource_ban, get_user_from_headers};
-use sha2::Digest;
 use crate::database::models::loader_fields::{
     LoaderField, LoaderFieldEnumValue, VersionField,
 };
@@ -33,6 +32,7 @@ use chrono::Utc;
 use futures::stream::StreamExt;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use sqlx::postgres::PgPool;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -866,9 +866,12 @@ async fn upload_file_to_version_inner(
         }
 
         let result = async {
-            let content_disposition = field.content_disposition().cloned().ok_or_else(|| {
-                CreateError::MissingValueError("缺少 Content-Disposition".to_string())
-            })?;
+            let content_disposition =
+                field.content_disposition().cloned().ok_or_else(|| {
+                    CreateError::MissingValueError(
+                        "缺少 Content-Disposition".to_string(),
+                    )
+                })?;
             let name = content_disposition.get_name().ok_or_else(|| {
                 CreateError::MissingValueError("缺少内容名称".to_string())
             })?;

@@ -348,7 +348,9 @@ pub async fn project_edit(
             let mut transaction = pool.begin().await?;
 
             // Modrinth 上游修复 97e4d8e13: 记录需要从搜索索引中删除的版本
-            let mut versions_to_remove: Option<Vec<crate::models::ids::VersionId>> = None;
+            let mut versions_to_remove: Option<
+                Vec<crate::models::ids::VersionId>,
+            > = None;
 
             if let Some(name) = &new_project.name {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
@@ -651,7 +653,7 @@ pub async fn project_edit(
                             .versions
                             .iter()
                             .map(|x| (*x).into())
-                            .collect::<Vec<_>>()
+                            .collect::<Vec<_>>(),
                     );
                 }
             }

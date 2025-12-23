@@ -10,7 +10,10 @@ use validator::Validate;
 use super::{ApiError, oauth_clients::get_user_clients};
 use crate::util::img::delete_old_images;
 use crate::{
-    auth::{checks::is_visible_organization, filter_visible_projects, get_user_from_headers},
+    auth::{
+        checks::is_visible_organization, filter_visible_projects,
+        get_user_from_headers,
+    },
     database::{models::User, redis::RedisPool},
     file_hosting::FileHost,
     models::{
