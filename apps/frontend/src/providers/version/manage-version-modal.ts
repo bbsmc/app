@@ -15,7 +15,7 @@ import type { ComputedRef, Ref, ShallowRef } from "vue";
 import type { ComponentExposed } from "vue-component-type-helpers";
 
 import { stageConfigs } from "./stages";
-import { useGeneratedState } from "~/composables/generated";
+import { useTags } from "~/composables/tag";
 import { inferVersionInfo } from "~/helpers/infer";
 
 // this interface should be in infer.js, but gotta refactor that to ts first
@@ -204,7 +204,7 @@ export function createManageVersionContext(
     [files[0], files[index]] = [files[index], files[0]];
   }
 
-  const tags = useGeneratedState();
+  const tags = useTags();
 
   const hasFile = (entries: string[], name: string) =>
     entries.some((f) => f === name || f.endsWith(`/${name}`));

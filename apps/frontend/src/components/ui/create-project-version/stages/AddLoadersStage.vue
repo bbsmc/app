@@ -49,10 +49,10 @@ import { injectManageVersionContext } from '~/providers/version/manage-version-m
 
 import LoaderPicker from '../components/LoaderPicker.vue'
 
-const generatedState = useGeneratedState()
+const tags = useTags()
 
 const { projectV2 } = injectProjectPageContext()
-const loaders = computed(() => generatedState.value.loaders)
+const loaders = computed(() => tags.value.loaders)
 
 const { draftVersion } = injectManageVersionContext()
 

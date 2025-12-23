@@ -40,8 +40,8 @@ import { injectManageVersionContext } from '~/providers/version/manage-version-m
 
 import McVersionPicker from '../components/McVersionPicker.vue'
 
-const generatedState = useGeneratedState()
-const gameVersions = generatedState.value.gameVersions
+const tags = useTags()
+const gameVersions = tags.value.gameVersions
 
 const { draftVersion } = injectManageVersionContext()
 

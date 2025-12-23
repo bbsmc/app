@@ -158,7 +158,7 @@ import { EditIcon } from '@modrinth/assets'
 import { ButtonStyled, Chips, TagItem } from '@modrinth/ui'
 import { formatCategory } from '@modrinth/utils'
 
-import { useGeneratedState } from '~/composables/generated'
+import { useTags } from '~/composables/tag'
 import { injectManageVersionContext } from '~/providers/version/manage-version-modal'
 
 const {
@@ -171,18 +171,18 @@ const {
 	modal,
 } = injectManageVersionContext()
 
-const generatedState = useGeneratedState()
-const loaders = computed(() => generatedState.value.loaders)
+const tags = useTags()
+const loaders = computed(() => tags.value.loaders)
 const isModpack = computed(() => projectType.value === 'modpack')
 
 const editLoaders = () => {
-	modal.value?.setStage('edit-loaders')
+	modal.value?.setStage('from-details-loaders')
 }
 const editVersions = () => {
-	modal.value?.setStage('edit-mc-versions')
+	modal.value?.setStage('from-details-mc-versions')
 }
 const editEnvironment = () => {
-	modal.value?.setStage('edit-environment')
+	modal.value?.setStage('from-details-environment')
 }
 
 const usingDetectedVersions = computed(() => {

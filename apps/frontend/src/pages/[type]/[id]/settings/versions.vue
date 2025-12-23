@@ -284,7 +284,7 @@ function openModal() {
   modal.value?.show?.();
 }
 
-const tags = useGeneratedState();
+const tags = useTags();
 const flags = useFeatureFlags();
 const auth = await useAuth();
 
