@@ -274,7 +274,7 @@
 import { onMounted, ref, computed, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import dayjs from "dayjs";
-import { MarkdownEditor, ConfirmModal } from "@modrinth/ui";
+import { MarkdownEditor, ConfirmModal, ButtonStyled } from "@modrinth/ui";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import { isDarkTheme } from "~/plugins/theme/themes";
 

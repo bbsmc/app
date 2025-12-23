@@ -51,8 +51,7 @@ const props = defineProps({
   onHide: {
     type: Function,
     default() {
-      return () => {
-      }
+      return () => {}
     },
   },
 })
@@ -72,6 +71,5 @@ function show() {
   }
 }
 
-
-defineExpose({ show,proceed })
+defineExpose({ show, proceed })
 </script>

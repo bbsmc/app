@@ -19,6 +19,7 @@
     "vue": "^3.4.31"
   },
   "dependencies": {
+    "@modrinth/api-client": "workspace:*",
     "@codemirror/commands": "^6.3.2",
     "@codemirror/lang-markdown": "^6.2.3",
     "@codemirror/language": "^6.9.3",

@@ -36,6 +36,7 @@
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.5.4",
     "@ltd/j-toml": "^1.38.0",
+    "@modrinth/api-client": "workspace:*",
     "@modrinth/assets": "workspace:*",
     "@modrinth/ui": "workspace:*",
     "@modrinth/utils": "workspace:*",

@@ -55,6 +55,9 @@ importers:
       '@ltd/j-toml':
         specifier: ^1.38.0
         version: 1.38.0
+      '@modrinth/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@modrinth/assets':
         specifier: workspace:*
         version: link:../../packages/assets
@@ -197,6 +200,25 @@ importers:
 
   apps/labrinth: {}
 
+  packages/api-client:
+    dependencies:
+      '@tauri-apps/plugin-http':
+        specifier: ^2.0.0
+        version: 2.5.4
+      ofetch:
+        specifier: ^1.4.1
+        version: 1.5.1
+    devDependencies:
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.1
+      eslint-config-custom:
+        specifier: workspace:*
+        version: link:../eslint-config-custom
+      tsconfig:
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/app-lib: {}
 
   packages/assets:
@@ -263,6 +285,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.22.1
         version: 6.39.5
+      '@modrinth/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@modrinth/assets':
         specifier: workspace:*
         version: link:../assets
@@ -2132,6 +2157,12 @@ packages:
 
   '@swc/helpers@0.5.17':
     resolution: {integrity: sha512-5IKx/Y13RsYd+sauPb2x+U/xZikHjolzfuDgTAl/Tdf3Q8rslRvC19NKDLgAJQ6wsqADk10ntlv08nPFw/gO/A==}
+
+  '@tauri-apps/api@2.9.1':
+    resolution: {integrity: sha512-IGlhP6EivjXHepbBic618GOmiWe4URJiIeZFlB7x3czM0yDHHYviH1Xvoiv4FefdkQtn6v7TuwWCRfOGdnVUGw==}
+
+  '@tauri-apps/plugin-http@2.5.4':
+    resolution: {integrity: sha512-/i4U/9za3mrytTgfRn5RHneKubZE/dwRmshYwyMvNRlkWjvu1m4Ma72kcbVJMZFGXpkbl+qLyWMGrihtWB76Zg==}
 
   '@trysound/sax@0.2.0':
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
@@ -9255,6 +9286,12 @@ snapshots:
   '@swc/helpers@0.5.17':
     dependencies:
       tslib: 2.8.1
+
+  '@tauri-apps/api@2.9.1': {}
+
+  '@tauri-apps/plugin-http@2.5.4':
+    dependencies:
+      '@tauri-apps/api': 2.9.1
 
   '@trysound/sax@0.2.0': {}
 
