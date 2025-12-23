@@ -54,7 +54,7 @@ const generatedState = useGeneratedState()
 const { projectV2 } = injectProjectPageContext()
 const loaders = computed(() => generatedState.value.loaders)
 
-const { draftVersion, setProjectType } = injectManageVersionContext()
+const { draftVersion } = injectManageVersionContext()
 
 const toggleLoader = (loader: string) => {
 	if (draftVersion.value.loaders.includes(loader)) {
@@ -62,11 +62,9 @@ const toggleLoader = (loader: string) => {
 	} else {
 		draftVersion.value.loaders = [...draftVersion.value.loaders, loader]
 	}
-	setProjectType(projectV2.value)
 }
 
 const onClearAll = () => {
 	draftVersion.value.loaders = []
-	setProjectType(projectV2.value)
 }
 </script>
