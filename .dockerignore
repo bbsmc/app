@@ -1,0 +1,13 @@
+# 排除所有
+*
+
+# 只保留构建 labrinth 需要的文件
+!Cargo.toml
+!Cargo.lock
+!apps/labrinth/
+!packages/daedalus/
+
+# 但仍排除构建产物
+**/target
+**/node_modules
+**/.turbo
