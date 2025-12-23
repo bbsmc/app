@@ -143,7 +143,14 @@ const chartOptions = ref({
     <div class="subtitle">
       {{ title }}
     </div>
-    <VueApexCharts ref="chart" type="area" height="120" :options="chartOptions" :series="data" class="chart" />
+    <VueApexCharts
+      ref="chart"
+      type="area"
+      height="120"
+      :options="chartOptions"
+      :series="data"
+      class="chart"
+    />
   </Card>
 </template>
 

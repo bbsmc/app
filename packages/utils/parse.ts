@@ -27,14 +27,14 @@ export const configuredXss = new FilterXSS({
     picture: [],
     source: ['media', 'sizes', 'src', 'srcset', 'type'],
     p: [...(whiteList.p || []), 'align'],
-    div: [...(whiteList.p || []), 'align']
+    div: [...(whiteList.p || []), 'align'],
   },
   css: {
     whiteList: {
       'image-rendering': /^pixelated$/,
       'text-align': /^center|left|right$/,
-      float: /^left|right$/
-    }
+      float: /^left|right$/,
+    },
   },
   onIgnoreTagAttr: (tag, name, value) => {
     // Allow iframes from acceptable sources
@@ -51,11 +51,11 @@ export const configuredXss = new FilterXSS({
       for (const source of allowedSources) {
         if (source.url.test(url.href)) {
           // Remove all parameters not in the allowed list
-          Array.from(url.searchParams.keys()).forEach(param => {
+          Array.from(url.searchParams.keys()).forEach((param) => {
             if (!source.allowedParameters.includes(param)) {
-              url.searchParams.delete(param);
+              url.searchParams.delete(param)
             }
-          });
+          })
           return `${name}="${escapeAttrValue(url.toString())}"`
         }
       }
@@ -72,8 +72,6 @@ export const configuredXss = new FilterXSS({
       return `${name}="${escapeAttrValue(allowedClasses.join(' '))}"`
     }
   },
-
-
 
   safeAttrValue(tag, name, value, cssFilter) {
     if (
@@ -111,9 +109,9 @@ export const configuredXss = new FilterXSS({
             tag,
             name,
             `https://wsrv.nl/?url=${encodeURIComponent(
-              url.toString().replaceAll('&amp;', '&')
+              url.toString().replaceAll('&amp;', '&'),
             )}&n=-1`,
-            cssFilter
+            cssFilter,
           )
         }
         return safeAttrValue(tag, name, url.toString(), cssFilter)
@@ -123,7 +121,7 @@ export const configuredXss = new FilterXSS({
     }
 
     return safeAttrValue(tag, name, value, cssFilter)
-  }
+  },
 })
 
 export const md = (options = {}) => {
@@ -131,16 +129,16 @@ export const md = (options = {}) => {
     html: true,
     linkify: true,
     breaks: false,
-    ...options
+    ...options,
   })
 
   const defaultLinkOpenRenderer =
     md.renderer.rules.link_open ||
-    function(tokens, idx, options, _env, self) {
+    function (tokens, idx, options, _env, self) {
       return self.renderToken(tokens, idx, options)
     }
 
-  md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
+  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
     const token = tokens[idx]
     const index = token.attrIndex('href')
 

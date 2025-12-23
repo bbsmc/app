@@ -1,6 +1,6 @@
 <template>
   <template v-if="project.forum">
-    <ForumModal :discussion-id="project.forum" />
+    <ForumModal :discussion-id="project.forum" :is-project="true" />
   </template>
 
   <template v-else>
@@ -23,6 +23,7 @@
 
 <script setup>
 import { ButtonStyled } from "@modrinth/ui";
+import { CheckIcon } from "@modrinth/assets";
 import ForumModal from "~/components/ui/ForumModal.vue";
 const data = useNuxtApp();
 const router = useNativeRouter();

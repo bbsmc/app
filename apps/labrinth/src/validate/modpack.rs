@@ -4,7 +4,8 @@ use crate::validate::{
     SupportedGameVersions, ValidationError, ValidationResult,
 };
 use std::io::{Cursor, Read};
-use std::path::Component;
+// 注意：路径验证已迁移到 SafeRelativePath 类型中，在反序列化时自动执行
+// 来源于上游提交 ab6e9dd5d - stricter mrpack file path validation (#4482)
 use validator::Validate;
 use zip::ZipArchive;
 
@@ -115,21 +116,8 @@ impl super::Validator for ModpackValidator {
                 ));
             }
 
-            let path = std::path::Path::new(&file.path)
-                .components()
-                .next()
-                .ok_or_else(|| {
-                    ValidationError::InvalidInput("无效的包文件路径！".into())
-                })?;
-
-            match path {
-                Component::CurDir | Component::Normal(_) => {}
-                _ => {
-                    return Err(ValidationError::InvalidInput(
-                        "无效的包文件路径！".into(),
-                    ));
-                }
-            };
+            // 路径验证已在 SafeRelativePath 反序列化时自动完成
+            // 包括：空路径检查、反斜杠检查、特殊组件检查、Windows 保留名称检查
         }
 
         Ok(ValidationResult::PassWithPackDataAndFiles {

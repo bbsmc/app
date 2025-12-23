@@ -143,13 +143,14 @@ const chartOptions = ref({
         `<div class="seperated-entry title">` +
         `<div class="label">${props.formatLabels(
           w.globals.lastXAxis.categories[dataPointIndex],
-        )}</div>${!props.hideTotal
-          ? `<div class="value">
+        )}</div>${
+          !props.hideTotal
+            ? `<div class="value">
         ${props.prefix}
         ${formatNumber(series.reduce((a, b) => a + b[dataPointIndex], 0).toString(), false)}
         ${props.suffix}
         </div>`
-          : ``
+            : ``
         }</div><hr class="card-divider" />${series
           .map((value, index) =>
             value[dataPointIndex] > 0
@@ -230,9 +231,14 @@ defineExpose({
     </div>
     <VueApexCharts ref="chart" :type="type" :options="chartOptions" :series="data" class="chart" />
     <div v-if="!hideLegend" class="legend">
-      <Checkbox v-for="legend in legendValues" :key="legend.name" class="legend-checkbox"
-        :style="`--color: ${legend.color};`" :model-value="legend.visible"
-        @update:model-value="(newVal) => flipLegend(legend, newVal)">
+      <Checkbox
+        v-for="legend in legendValues"
+        :key="legend.name"
+        class="legend-checkbox"
+        :style="`--color: ${legend.color};`"
+        :model-value="legend.visible"
+        @update:model-value="(newVal) => flipLegend(legend, newVal)"
+      >
         {{ legend.name }}
       </Checkbox>
     </div>

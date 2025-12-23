@@ -12,6 +12,7 @@ use crate::routes::ApiError;
 use dashmap::DashSet;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
@@ -244,8 +245,23 @@ impl AutomatedModerationQueue {
                                 mod_messages.messages.push(ModerationMessage::NoSideTypes);
                             }
 
+                            // 如果没有设置许可证，自动设置为"保留所有权益"
                             if project.inner.license == "LicenseRef-Unknown" || project.inner.license == "LicenseRef-" {
-                                mod_messages.messages.push(ModerationMessage::MissingLicense);
+                                sqlx::query!(
+                                    "UPDATE mods SET license = 'LicenseRef-All-Rights-Reserved' WHERE id = $1",
+                                    project.inner.id.0
+                                )
+                                .execute(&pool)
+                                .await?;
+
+                                // 清除项目缓存（包括版本缓存）
+                                database::models::Project::clear_cache(
+                                    project.inner.id,
+                                    project.inner.slug.clone(),
+                                    Some(true),
+                                    &redis,
+                                )
+                                .await?;
                             } else if project.inner.license.starts_with("LicenseRef-") && project.inner.license != "LicenseRef-All-Rights-Reserved" && project.inner.license_url.is_none() {
                                 mod_messages.messages.push(ModerationMessage::MissingCustomLicenseUrl { license: project.inner.license.clone() });
                             }
@@ -267,9 +283,28 @@ impl AutomatedModerationQueue {
                                     .collect::<Vec<_>>();
 
                             for version in versions {
+                                // 跳过云盘版本（没有实际文件，只有云盘链接）
+                                if version.files.is_empty() && !version.disks.is_empty() {
+                                    log::debug!("跳过云盘版本 {} 的文件检查", version.inner.id.0);
+                                    continue;
+                                }
+
                                 let primary_file = version.files.iter().find_or_first(|x| x.primary);
 
                                 if let Some(primary_file) = primary_file {
+                                    // 检查文件 URL 是否有效
+                                    // 如果 URL 为空或无效，报告为缺少主文件
+                                    if primary_file.url.is_empty() || !primary_file.url.starts_with("http") {
+                                        log::warn!(
+                                            "版本 {} 的文件 URL 无效或为空: '{}'",
+                                            version.inner.id.0,
+                                            primary_file.url
+                                        );
+                                        let val = mod_messages.version_specific.entry(version.inner.version_number.clone()).or_default();
+                                        val.push(ModerationMessage::NoPrimaryFile);
+                                        continue;
+                                    }
+
                                     let data = reqwest::get(&primary_file.url).await?.bytes().await?;
 
                                     let reader = Cursor::new(data);
@@ -303,7 +338,7 @@ impl AutomatedModerationQueue {
                                             let hash = x.hashes.get(&PackFileHash::Sha1);
 
                                             if let Some(hash) = hash {
-                                                let path = x.path.clone();
+                                                let path = x.path.to_string();
                                                 Some((hash.clone(), Some(x), path, None))
                                             } else {
                                                 None
@@ -329,7 +364,7 @@ impl AutomatedModerationQueue {
                                             let mut contents = Vec::new();
                                             file.read_to_end(&mut contents)?;
 
-                                            let hash = sha1::Sha1::from(&contents).hexdigest();
+                                            let hash = format!("{:x}", sha1::Sha1::digest(&contents));
                                             let murmur = hash_flame_murmur32(contents);
 
                                             hashes.push((

@@ -74,9 +74,14 @@ where
 
     if let Some(field) = multipart.next().await {
         let mut field = field?;
-        let content_disposition = field.content_disposition().clone();
-        let field_name = content_disposition.get_name().unwrap_or("");
-        let field_filename = content_disposition.get_filename();
+        let content_disposition = field.content_disposition().cloned();
+        let field_name = content_disposition
+            .as_ref()
+            .and_then(|cd| cd.get_name())
+            .unwrap_or("");
+        let field_filename = content_disposition
+            .as_ref()
+            .and_then(|cd| cd.get_filename());
         let field_content_type = field.content_type();
         let field_content_type = field_content_type.map(|ct| ct.to_string());
 
@@ -101,9 +106,16 @@ where
 
     while let Some(field) = multipart.next().await {
         let mut field = field?;
-        let content_disposition = field.content_disposition().clone();
-        let field_name = content_disposition.get_name().unwrap_or("");
-        let field_filename = content_disposition.get_filename();
+        let content_disposition = field.content_disposition().cloned();
+        let field_name = content_disposition
+            .as_ref()
+            .and_then(|cd| cd.get_name())
+            .unwrap_or("")
+            .to_string();
+        let field_filename = content_disposition
+            .as_ref()
+            .and_then(|cd| cd.get_filename())
+            .map(|s| s.to_string());
         let field_content_type = field.content_type();
         let field_content_type = field_content_type.map(|ct| ct.to_string());
 
@@ -113,10 +125,12 @@ where
             buffer.extend_from_slice(&data);
         }
 
-        content_dispositions.push(content_disposition.clone());
+        if let Some(cd) = content_disposition {
+            content_dispositions.push(cd);
+        }
         segments.push(MultipartSegment {
-            name: field_name.to_string(),
-            filename: field_filename.map(|s| s.to_string()),
+            name: field_name,
+            filename: field_filename,
             content_type: field_content_type,
             data: MultipartSegmentData::Binary(buffer),
         })

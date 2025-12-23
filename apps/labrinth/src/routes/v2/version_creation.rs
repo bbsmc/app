@@ -37,7 +37,7 @@ pub struct InitialVersionData {
     pub file_parts: Vec<String>, // 文件部分
     #[validate(
         length(min = 1, max = 32),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     pub version_number: String, // 版本号
     #[validate(

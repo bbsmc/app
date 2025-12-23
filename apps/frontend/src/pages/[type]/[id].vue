@@ -1320,6 +1320,7 @@ import {
   PopoutMenu,
   ScrollablePanel,
   ContentPageHeader,
+  provideProjectPageContext,
 } from "@modrinth/ui";
 import {
   formatCategory,
@@ -1737,6 +1738,21 @@ try {
   });
 }
 
+// 提供 ProjectPageContext 供子组件使用
+const refreshVersions = async () => {
+  const newVersions = await useBaseFetch(`project/${route.params.id}/version`);
+  if (versions && versions.value) {
+    versions.value = newVersions;
+  }
+};
+
+const projectV2 = computed(() => project.value);
+
+provideProjectPageContext({
+  projectV2,
+  refreshVersions,
+});
+
 // 在 versions 初始化后定义依赖它的 computed 属性
 const possibleGameVersions = computed(() => {
   if (!versions || !versions.value) return [];
@@ -1757,7 +1773,7 @@ const filteredVersions = computed(() => {
   return versions.value.filter(
     (x) =>
       (x.game_versions.length === 0 || x.game_versions.includes(currentGameVersion.value)) &&
-      x.loaders.includes(currentPlatform.value),
+      (x.loaders.includes(currentPlatform.value) || project.value.project_type === "resourcepack"),
   );
 });
 
@@ -1967,10 +1983,10 @@ async function patchProject(resData, quiet = false) {
       project.value[key] = resData[key];
     }
 
-    if (resData.license_id) {
+    if ("license_id" in resData) {
       project.value.license.id = resData.license_id;
     }
-    if (resData.license_url) {
+    if ("license_url" in resData) {
       project.value.license.url = resData.license_url;
     }
 

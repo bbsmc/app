@@ -1,5 +1,6 @@
 use crate::{
     models::v2::projects::LegacySideType, util::env::parse_strings_from_var,
+    util::safe_path::SafeRelativePath,
 };
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -15,7 +16,7 @@ pub struct PackFormat {
     pub name: String,
     #[validate(length(max = 2048))]
     pub summary: Option<String>,
-    #[validate]
+    #[validate(nested)]
     pub files: Vec<PackFile>,
     pub dependencies: std::collections::HashMap<PackDependency, String>,
 }
@@ -23,7 +24,9 @@ pub struct PackFormat {
 #[derive(Serialize, Deserialize, Validate, Eq, PartialEq, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PackFile {
-    pub path: String,
+    /// 文件路径，使用 SafeRelativePath 防止路径遍历攻击
+    /// 来源于上游提交 ab6e9dd5d - stricter mrpack file path validation (#4482)
+    pub path: SafeRelativePath,
     pub hashes: std::collections::HashMap<PackFileHash, String>,
     pub env: Option<std::collections::HashMap<EnvType, LegacySideType>>, // TODO: Should this use LegacySideType? Will probably require a overhaul of mrpack format to change this
     #[validate(custom(function = "validate_download_url"))]

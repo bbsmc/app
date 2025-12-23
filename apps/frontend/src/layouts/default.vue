@@ -489,6 +489,8 @@ import {
   GridIcon,
   LanguagesIcon,
   ShieldIcon,
+  MoonIcon,
+  SunIcon,
 } from "@modrinth/assets";
 import { ButtonStyled, OverflowMenu, Avatar } from "@modrinth/ui";
 
@@ -1143,7 +1145,7 @@ const { cycle: changeTheme } = useTheme();
     padding-bottom: var(--size-rounded-card);
     left: 0;
     background-color: var(--color-raised-bg);
-    z-index: 6;
+    z-index: 11; // Upstream fix #4766: 20 = modals, 10 = svg icons
     transform: translateY(100%);
     transition: transform 0.4s cubic-bezier(0.54, 0.84, 0.42, 1);
     border-radius: var(--size-rounded-card) var(--size-rounded-card) 0 0;
@@ -1224,7 +1226,7 @@ const { cycle: changeTheme } = useTheme();
     bottom: 0;
     background-color: var(--color-raised-bg);
     box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.3);
-    z-index: 7;
+    z-index: 11; // Upstream fix #4766: 20 = modals, 10 = svg icons
     width: 100%;
     align-items: center;
     justify-content: space-between;

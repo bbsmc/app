@@ -3,8 +3,13 @@
     <router-link class="icon" tabindex="-1" :to="`/${projectTypeUrl}/${id}`">
       <Avatar :src="iconUrl" :alt="name" size="md" no-shadow loading="lazy" />
     </router-link>
-    <router-link class="gallery" :class="{ 'no-image': !featuredImage }" tabindex="-1" :to="`/${projectTypeUrl}/${id}`"
-      :style="color ? `background-color: ${toColor};` : ''">
+    <router-link
+      class="gallery"
+      :class="{ 'no-image': !featuredImage }"
+      tabindex="-1"
+      :to="`/${projectTypeUrl}/${id}`"
+      :style="color ? `background-color: ${toColor};` : ''"
+    >
       <img v-if="featuredImage" :src="featuredImage" alt="gallery image" loading="lazy" />
     </router-link>
     <div class="title">
@@ -23,22 +28,28 @@
       {{ description }}
     </p>
     <Categories :categories="categories" :type="type" class="tags">
-      <EnvironmentIndicator :type-only="moderation" :client-side="clientSide" :server-side="serverSide"
-        :type="projectTypeDisplay" :search="search" :categories="categories" />
+      <EnvironmentIndicator
+        :type-only="moderation"
+        :client-side="clientSide"
+        :server-side="serverSide"
+        :type="projectTypeDisplay"
+        :search="search"
+        :categories="categories"
+      />
     </Categories>
     <div class="stats">
       <div v-if="downloads" class="stat">
         <DownloadIcon aria-hidden="true" />
         <p>
-          <strong>{{ formatNumber(downloads) }}</strong><span class="stat-label"> download<span
-              v-if="downloads !== '1'">s</span></span>
+          <strong>{{ formatNumber(downloads) }}</strong
+          ><span class="stat-label"> download<span v-if="downloads !== '1'">s</span></span>
         </p>
       </div>
       <div v-if="follows" class="stat">
         <HeartIcon aria-hidden="true" />
         <p>
-          <strong>{{ formatNumber(follows) }}</strong><span class="stat-label"> follower<span
-              v-if="follows !== '1'">s</span></span>
+          <strong>{{ formatNumber(follows) }}</strong
+          ><span class="stat-label"> follower<span v-if="follows !== '1'">s</span></span>
         </p>
       </div>
       <div class="buttons">
@@ -335,12 +346,12 @@ export default defineComponent({
         margin-left: auto;
       }
 
-      &:first-child> :last-child {
+      &:first-child > :last-child {
         margin-right: auto;
       }
     }
 
-    .buttons:not(:empty)+.date {
+    .buttons:not(:empty) + .date {
       flex-basis: 100%;
     }
   }

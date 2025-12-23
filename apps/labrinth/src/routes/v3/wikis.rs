@@ -34,7 +34,7 @@ pub struct CreateWiki {
     pub title: String,
     #[validate(
         length(min = 1, max = 32),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     pub slug: String,
     pub father_id: Option<i64>,

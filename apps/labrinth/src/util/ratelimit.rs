@@ -167,6 +167,15 @@ where
                         wait_time.as_secs().into(),
                     );
 
+                    // 上游修复: a5427f728 - CORS headers on ratelimited
+                    headers.insert(
+                        actix_web::http::header::HeaderName::from_str(
+                            "Access-Control-Allow-Origin",
+                        )
+                        .unwrap(),
+                        "*".parse().unwrap(),
+                    );
+
                     Box::pin(async {
                         Ok(req.into_response(response.map_into_right_body()))
                     })

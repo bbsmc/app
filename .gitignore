@@ -66,3 +66,9 @@ apps/labrinth/.env.dev
 apps/rust1.82.0_build.tar
 apps/rust_build_tools.tar
 /apps/daedalus_client
+
+# Claude Code related files (keep local only)
+.claude/
+CLAUDE.md
+apps/*/CLAUDE.md
+UPSTREAM_SYNC.md

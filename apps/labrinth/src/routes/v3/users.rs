@@ -10,7 +10,10 @@ use validator::Validate;
 use super::{ApiError, oauth_clients::get_user_clients};
 use crate::util::img::delete_old_images;
 use crate::{
-    auth::{filter_visible_projects, get_user_from_headers},
+    auth::{
+        checks::is_visible_organization, filter_visible_projects,
+        get_user_from_headers,
+    },
     database::{models::User, redis::RedisPool},
     file_hosting::FileHost,
     models::{
@@ -268,7 +271,13 @@ pub async fn orgs_list(
             team_groups.entry(item.team_id).or_insert(vec![]).push(item);
         }
 
+        // 来源: Modrinth 上游提交 6f7618db1 - hide hidden orgs from user profiles (#4452)
         for data in organizations_data {
+            // 过滤不可见的组织
+            if !is_visible_organization(&data, &user, &pool, &redis).await? {
+                continue;
+            }
+
             let members_data =
                 team_groups.remove(&data.team_id).unwrap_or(vec![]);
             let logged_in = user
@@ -314,7 +323,7 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize, Validate)]
 pub struct EditUser {
-    #[validate(length(min = 1, max = 39), regex = "RE_URL_SAFE")]
+    #[validate(length(min = 1, max = 39), regex(path = *RE_URL_SAFE))]
     pub username: Option<String>,
     #[serde(
         default,

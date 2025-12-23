@@ -126,8 +126,6 @@ pub enum ApiError {
     ImageParse(#[from] image::ImageError),
     #[error("密码哈希错误: {0}")]
     PasswordHashing(#[from] argon2::password_hash::Error),
-    #[error("密码强度检查错误: {0}")]
-    PasswordStrengthCheck(#[from] zxcvbn::ZxcvbnError),
     #[error("{0}")]
     Mail(#[from] crate::auth::email::MailError),
     #[error("重新路由请求时出错: {0}")]
@@ -182,7 +180,6 @@ impl ApiError {
                 ApiError::Decoding(..) => "decoding_error",
                 ApiError::ImageParse(..) => "invalid_image",
                 ApiError::PasswordHashing(..) => "password_hashing_error",
-                ApiError::PasswordStrengthCheck(..) => "strength_check_error",
                 ApiError::Mail(..) => "mail_error",
                 ApiError::Clickhouse(..) => "clickhouse_error",
                 ApiError::Reroute(..) => "reroute_error",
@@ -225,7 +222,6 @@ impl actix_web::ResponseError for ApiError {
             ApiError::Decoding(..) => StatusCode::BAD_REQUEST,
             ApiError::ImageParse(..) => StatusCode::BAD_REQUEST,
             ApiError::PasswordHashing(..) => StatusCode::INTERNAL_SERVER_ERROR,
-            ApiError::PasswordStrengthCheck(..) => StatusCode::BAD_REQUEST,
             ApiError::Mail(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Reroute(..) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::NotFound => StatusCode::NOT_FOUND,

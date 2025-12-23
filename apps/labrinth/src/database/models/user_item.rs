@@ -765,11 +765,15 @@ impl User {
             .execute(&mut **transaction)
             .await?;
 
+            // 更新 payouts_values 引用为 deleted_user，而不是直接删除
+            // 这样可以保留支付历史记录
             sqlx::query!(
                 "
-                DELETE FROM payouts_values
-                WHERE user_id = $1
+                UPDATE payouts_values
+                SET user_id = $1
+                WHERE user_id = $2
                 ",
+                deleted_user as UserId,
                 id as UserId,
             )
             .execute(&mut **transaction)

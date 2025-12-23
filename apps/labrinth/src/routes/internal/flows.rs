@@ -1481,7 +1481,7 @@ pub async fn delete_auth_provider(
 
 #[derive(Deserialize, Validate)]
 pub struct NewAccount {
-    #[validate(length(min = 1, max = 39), regex = "RE_URL_SAFE")]
+    #[validate(length(min = 1, max = 39), regex(path = *RE_URL_SAFE))]
     pub username: String,
     #[validate(length(min = 8, max = 256))]
     pub password: String,
@@ -1526,13 +1526,11 @@ pub async fn create_account_with_password(
     let score = zxcvbn::zxcvbn(
         &new_account.password,
         &[&new_account.username, &new_account.email],
-    )?;
+    );
 
-    if score.score() < 3 {
+    if score.score() < zxcvbn::Score::Three {
         return Err(ApiError::InvalidInput(
-            if let Some(feedback) =
-                score.feedback().clone().and_then(|x| x.warning())
-            {
+            if let Some(feedback) = score.feedback().and_then(|x| x.warning()) {
                 format!("密码太弱 {}", feedback)
             } else {
                 "密码强度太弱！请提高其强度。".to_string()
@@ -1880,26 +1878,27 @@ async fn validate_2fa_code(
             .map_err(|_| AuthenticationError::InvalidCredentials)?,
     )
     .map_err(|_| AuthenticationError::InvalidCredentials)?;
-    let token = totp
-        .generate_current()
-        .map_err(|_| AuthenticationError::InvalidCredentials)?;
 
     const TOTP_NAMESPACE: &str = "used_totp";
     let mut conn = redis.connect().await?;
 
     // Check if TOTP has already been used
     if conn
-        .get(TOTP_NAMESPACE, &format!("{}-{}", token, user_id.0))
+        .get(TOTP_NAMESPACE, &format!("{}-{}", input, user_id.0))
         .await?
         .is_some()
     {
         return Err(AuthenticationError::InvalidCredentials);
     }
 
-    if input == token {
+    // 使用 check_current 进行时间偏移容错验证
+    if totp
+        .check_current(input.as_str())
+        .map_err(|_| AuthenticationError::InvalidCredentials)?
+    {
         conn.set(
             TOTP_NAMESPACE,
-            &format!("{}-{}", token, user_id.0),
+            &format!("{}-{}", input, user_id.0),
             "",
             Some(60),
         )
@@ -2374,12 +2373,12 @@ pub async fn change_password(
         let score = zxcvbn::zxcvbn(
             new_password,
             &[&user.username, &user.email.clone().unwrap_or_default()],
-        )?;
+        );
 
-        if score.score() < 3 {
+        if score.score() < zxcvbn::Score::Three {
             return Err(ApiError::InvalidInput(
                 if let Some(feedback) =
-                    score.feedback().clone().and_then(|x| x.warning())
+                    score.feedback().and_then(|x| x.warning())
                 {
                     format!("Password too weak: {}", feedback)
                 } else {

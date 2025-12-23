@@ -178,7 +178,7 @@ pub struct ProjectCreateData {
     pub name: String,
     #[validate(
         length(min = 3, max = 64),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     #[serde(alias = "mod_slug")]
     /// 项目的别名，用于 vanity URLs
@@ -193,7 +193,7 @@ pub struct ProjectCreateData {
     pub description: String,
 
     #[validate(length(max = 32))]
-    #[validate]
+    #[validate(nested)]
     /// 要与创建的项目一起上传的初始版本列表
     pub initial_versions: Vec<InitialVersionData>,
     #[validate(length(max = 3))]
@@ -220,7 +220,7 @@ pub struct ProjectCreateData {
     pub license_id: String,
 
     #[validate(length(max = 64))]
-    #[validate]
+    #[validate(nested)]
     /// 要上传的画廊项目的 multipart 名称
     pub gallery_items: Option<Vec<NewGalleryItem>>,
     #[serde(default = "default_requested_status")]
@@ -387,7 +387,12 @@ async fn project_create_inner(
                 )))
             })?;
 
-        let content_disposition = field.content_disposition();
+        let content_disposition =
+            field.content_disposition().ok_or_else(|| {
+                CreateError::MissingValueError(String::from(
+                    "缺少 Content-Disposition",
+                ))
+            })?;
         let name = content_disposition.get_name().ok_or_else(|| {
             CreateError::MissingValueError(String::from("缺少内容名称"))
         })?;
@@ -410,8 +415,11 @@ async fn project_create_inner(
             CreateError::InvalidInput(validation_errors_to_string(err, None))
         })?;
 
-        let slug_project_id_option: Option<ProjectId> =
-            serde_json::from_str(&format!("\"{}\"", create_data.slug)).ok();
+        // Modrinth 上游提交 79c263301: 添加 .to_lowercase() 确保大小写不敏感
+        let slug_project_id_option: Option<ProjectId> = serde_json::from_str(
+            &format!("\"{}\"", create_data.slug.to_lowercase()),
+        )
+        .ok();
 
         if let Some(slug_project_id) = slug_project_id_option {
             let slug_project_id: models::ids::ProjectId =
@@ -431,10 +439,16 @@ async fn project_create_inner(
             }
         }
 
+        // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查防止与项目 ID 冲突
         {
             let results = sqlx::query!(
                 "
-                SELECT EXISTS(SELECT 1 FROM mods WHERE slug = LOWER($1))
+                SELECT EXISTS(
+                    SELECT 1 FROM mods
+                    WHERE
+                        slug = LOWER($1)
+                        OR text_id_lower = LOWER($1)
+                )
                 ",
                 create_data.slug
             )
@@ -486,7 +500,12 @@ async fn project_create_inner(
         }
 
         let result = async {
-            let content_disposition = field.content_disposition().clone();
+            let content_disposition =
+                field.content_disposition().cloned().ok_or_else(|| {
+                    CreateError::MissingValueError(String::from(
+                        "缺少 Content-Disposition",
+                    ))
+                })?;
 
             let name = content_disposition.get_name().ok_or_else(|| {
                 CreateError::MissingValueError(String::from("缺少内容名称"))
