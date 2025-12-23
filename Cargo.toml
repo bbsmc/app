@@ -3,6 +3,7 @@ resolver = '2'
 members = [
   './apps/labrinth',
   './packages/daedalus',
+  './packages/modrinth-log',
 ]
 
 [workspace.package]
@@ -93,6 +94,11 @@ dotenvy = "0.15.7"
 log = "0.4.20"
 env_logger = "0.10.1"
 thiserror = "2.0.17"
+eyre = "0.6.12"
+tracing = "0.1.41"
+tracing-actix-web = { version = "0.7.19", default-features = false }
+tracing-ecs = "0.5.0"
+tracing-subscriber = "0.3.20"
 
 # 数据库
 sqlx = { version = "0.8.6", default-features = false, features = [
@@ -157,6 +163,7 @@ alibaba-cloud-sdk-rust = "0.1.15"
 
 # 本地包
 daedalus = { path = "./packages/daedalus" }
+modrinth-log = { path = "./packages/modrinth-log" }
 
 # Optimize for speed and reduce size on release builds
 [profile.release]

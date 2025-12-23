@@ -88,6 +88,10 @@ dotenvy.workspace = true
 log.workspace = true
 env_logger.workspace = true
 thiserror.workspace = true
+eyre.workspace = true
+tracing.workspace = true
+tracing-actix-web.workspace = true
+modrinth-log.workspace = true
 
 # 数据库
 sqlx.workspace = true
