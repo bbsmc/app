@@ -19,11 +19,7 @@ pub fn validation_errors_to_string(
 
     let map = errors.into_errors();
 
-    let key_option = map.keys().next().copied();
-
-    if let Some(field) = key_option
-        && let Some(error) = map.get(field)
-    {
+    if let Some((field, error)) = map.iter().next() {
         return match error {
             ValidationErrorsKind::Struct(errors) => {
                 validation_errors_to_string(

@@ -1,6 +1,8 @@
 use crate::database;
 use crate::database::models::Collection;
+use crate::database::models::organization_item::Organization as DBOrganization;
 use crate::database::models::project_item::QueryProject;
+use crate::database::models::team_item::TeamMember as DBTeamMember;
 use crate::database::models::version_item::QueryVersion;
 use crate::database::redis::RedisPool;
 use crate::database::{Project, Version, models};
@@ -456,4 +458,43 @@ pub async fn check_global_ban(
     pool: &PgPool,
 ) -> Result<(), ApiError> {
     check_user_ban_direct(user.id.into(), "global", pool).await
+}
+
+/// 检查组织是否对当前用户可见
+/// 来源: Modrinth 上游提交 290c9fc19 - hide orgs without a purpose (#4426)
+///
+/// 组织可见条件（满足任一即可）：
+/// 1. 组织有可搜索的项目（approved 或 archived 状态）
+/// 2. 组织有超过1个已接受的成员
+/// 3. 当前用户是版主或组织成员
+pub async fn is_visible_organization(
+    organization: &DBOrganization,
+    viewing_user: &Option<User>,
+    pool: &PgPool,
+    redis: &RedisPool,
+) -> Result<bool, ApiError> {
+    let members =
+        DBTeamMember::get_from_team_full(organization.team_id, pool, redis)
+            .await?;
+
+    // 检查组织是否有可搜索的项目
+    let has_searchable_projects = sqlx::query_scalar!(
+        "SELECT TRUE FROM mods WHERE organization_id = $1 AND status IN ('approved', 'archived') LIMIT 1",
+        organization.id as database::models::ids::OrganizationId
+    )
+    .fetch_optional(pool)
+    .await?
+    .flatten()
+    .unwrap_or(false);
+
+    let visible = has_searchable_projects
+        || members.iter().filter(|member| member.accepted).count() > 1
+        || viewing_user.as_ref().is_some_and(|viewing_user| {
+            viewing_user.role.is_mod()
+                || members
+                    .iter()
+                    .any(|member| member.user_id == viewing_user.id.into())
+        });
+
+    Ok(visible)
 }

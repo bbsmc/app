@@ -7,8 +7,10 @@ module.exports = {
     "./src/plugins/**/*.{js,ts}",
     "./src/app.vue",
     "./src/error.vue",
-    // monorepo - TODO: migrate this to its own package
-    "../../packages/**/*.{js,vue,ts}",
+    // monorepo packages - use specific paths to avoid matching node_modules
+    "../../packages/ui/src/**/*.{js,vue,ts}",
+    "../../packages/utils/*.{js,ts}",
+    "../../packages/assets/*.{js,ts}",
   ],
   theme: {
     extend: {

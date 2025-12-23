@@ -27,7 +27,7 @@ impl FileHost for MockHost {
         std::fs::create_dir_all(
             path.parent().ok_or(FileHostingError::InvalidFilename)?,
         )?;
-        let content_sha1 = sha1::Sha1::from(&file_bytes).hexdigest();
+        let content_sha1 = format!("{:x}", sha1::Sha1::digest(&file_bytes));
         let content_sha512 = format!("{:x}", sha2::Sha512::digest(&file_bytes));
 
         std::fs::write(path, &*file_bytes)?;

@@ -1,17 +1,16 @@
 use actix_web::{App, HttpServer};
 use actix_web_prom::PrometheusMetricsBuilder;
-use env_logger::Env;
 use labrinth::database::redis::RedisPool;
 use labrinth::file_hosting::S3Host;
 use labrinth::search;
 use labrinth::util::ratelimit::RateLimit;
 use labrinth::{check_env_vars, clickhouse, database, file_hosting};
-use log::{error, info};
 use std::sync::Arc;
+use tracing::{error, info};
 
 #[cfg(feature = "jemalloc")]
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[derive(Clone)]
 pub struct Pepper {
@@ -21,9 +20,7 @@ pub struct Pepper {
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
-    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
-        .filter_module("actix_web_prom", log::LevelFilter::Error) // 屏蔽 actix_web_prom 的 WARN 日志
-        .init();
+    modrinth_log::init().expect("日志系统初始化失败");
 
     if check_env_vars() {
         error!("某些环境变量丢失！");

@@ -2,11 +2,12 @@
 
 FROM --platform=linux/amd64 rust:1.89.0 AS build
 
-WORKDIR /usr/src/labrinth
+# 使用workspace根目录作为工作目录
+WORKDIR /usr/src/app
 COPY . .
 
 # 设置SQLx离线模式
-RUN --mount=type=cache,target=/usr/src/labrinth/target \
+RUN --mount=type=cache,target=/usr/src/app/target \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry \
     SQLX_OFFLINE=true cargo build --release --package labrinth && \
@@ -20,8 +21,8 @@ FROM build AS artifacts
 
 RUN mkdir /labrinth && \
     cp /usr/local/bin/labrinth /labrinth/labrinth && \
-    cp -r /usr/src/labrinth/migrations /labrinth && \
-    cp -r /usr/src/labrinth/assets /labrinth
+    cp -r /usr/src/app/apps/labrinth/migrations /labrinth && \
+    cp -r /usr/src/app/apps/labrinth/assets /labrinth
 
 # 使用与rust:1.89.0完全相同的基础镜像
 # rust:1.89.0 基于 debian:trixie (Debian 13)

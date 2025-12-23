@@ -389,7 +389,7 @@ const isInvited = computed(() => {
 const projectTypes = computed(() => {
   const obj = {};
 
-  for (const project of projects.value) {
+  for (const project of projects.value ?? []) {
     obj[project.project_types[0] ?? "project"] = true;
   }
 
@@ -400,7 +400,7 @@ const projectTypes = computed(() => {
 const sumDownloads = computed(() => {
   let sum = 0;
 
-  for (const project of projects.value) {
+  for (const project of projects.value ?? []) {
     sum += project.downloads;
   }
 

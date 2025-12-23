@@ -86,6 +86,14 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: "modern-compiler",
+          silenceDeprecations: ["legacy-js-api", "import", "global-builtin"],
+        },
+      },
+    },
     define: {
       global: {},
     },
@@ -433,6 +441,10 @@ export default defineNuxtConfig({
   },
   compatibilityDate: "2024-07-03",
   telemetry: false,
+  experimental: {
+    // 禁用开发模式下的 JSON payload 日志序列化，避免函数序列化警告
+    renderJsonPayloads: false,
+  },
 });
 
 function getApiUrl() {

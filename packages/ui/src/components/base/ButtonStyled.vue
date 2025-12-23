@@ -125,6 +125,12 @@ function setColorFill(
 }
 
 const colorVariables = computed(() => {
+  // Upstream fix #4760: 为 standard 和 highlight 类型按钮添加阴影
+  const defaultShadow =
+    props.type === 'standard' || props.type === 'highlight' || props.highlighted
+      ? 'var(--shadow-button)'
+      : 'none'
+
   if (props.highlighted) {
     let colors = {
       bg:
@@ -138,7 +144,8 @@ const colorVariables = computed(() => {
           : 'var(--color-contrast)',
     }
     let hoverColors = JSON.parse(JSON.stringify(colors))
-    return `--_bg: ${colors.bg}; --_text: ${colors.text}; --_icon: ${colors.icon}; --_hover-bg: ${hoverColors.bg}; --_hover-text: ${hoverColors.text}; --_hover-icon: ${hoverColors.icon};`
+    const boxShadow = defaultShadow
+    return `--_bg: ${colors.bg}; --_text: ${colors.text}; --_icon: ${colors.icon}; --_hover-bg: ${hoverColors.bg}; --_hover-text: ${hoverColors.text}; --_hover-icon: ${hoverColors.icon}; --_box-shadow: ${boxShadow};`
   }
 
   let colors = {
@@ -166,13 +173,17 @@ const colorVariables = computed(() => {
     )
   }
 
-  return `--_bg: ${colors.bg}; --_text: ${colors.text}; --_hover-bg: ${hoverColors.bg}; --_hover-text: ${hoverColors.text};`
+  const boxShadow = defaultShadow
+  return `--_bg: ${colors.bg}; --_text: ${colors.text}; --_hover-bg: ${hoverColors.bg}; --_hover-text: ${hoverColors.text}; --_box-shadow: ${boxShadow};`
 })
 </script>
 
 <template>
-  <div class="btn-wrapper" :class="{ outline: type === 'outlined' }"
-    :style="`${colorVariables}--_height:${height};--_width:${width};--_radius: ${radius};--_padding-x:${paddingX};--_padding-y:${paddingY};--_gap:${gap};--_font-weight:${fontWeight};--_icon-size:${iconSize};`">
+  <div
+    class="btn-wrapper"
+    :class="{ outline: type === 'outlined' }"
+    :style="`${colorVariables}--_height:${height};--_width:${width};--_radius: ${radius};--_padding-x:${paddingX};--_padding-y:${paddingY};--_gap:${gap};--_font-weight:${fontWeight};--_icon-size:${iconSize};`"
+  >
     <slot />
   </div>
 </template>
@@ -184,10 +195,16 @@ const colorVariables = computed(() => {
 
 /* Searches up to 4 children deep for valid button */
 .btn-wrapper :slotted(:is(button, a, .button-like):first-child),
-.btn-wrapper :slotted(*)> :is(button, a, .button-like):first-child,
-.btn-wrapper :slotted(*)>*:first-child> :is(button, a, .button-like):first-child,
-.btn-wrapper :slotted(*)>*:first-child>*:first-child> :is(button, a, .button-like):first-child {
+.btn-wrapper :slotted(*) > :is(button, a, .button-like):first-child,
+.btn-wrapper :slotted(*) > *:first-child > :is(button, a, .button-like):first-child,
+.btn-wrapper
+  :slotted(*)
+  > *:first-child
+  > *:first-child
+  > :is(button, a, .button-like):first-child {
   @apply flex flex-row items-center justify-center border-solid border-2 border-transparent bg-[--_bg] text-[--_text] h-[--_height] min-w-[--_width] rounded-[--_radius] px-[--_padding-x] py-[--_padding-y] gap-[--_gap] font-[--_font-weight];
+  // Upstream fix #4760: 添加按钮阴影以改善浅色模式对比度
+  box-shadow: var(--_box-shadow, none);
   transition:
     scale 0.125s ease-in-out,
     background-color 0.25s ease-in-out,
@@ -216,17 +233,30 @@ const colorVariables = computed(() => {
 }
 
 .btn-wrapper.outline :slotted(:is(button, a, .button-like):first-child),
-.btn-wrapper.outline :slotted(*)> :is(button, a, .button-like):first-child,
-.btn-wrapper.outline :slotted(*)>*:first-child> :is(button, a, .button-like):first-child,
-.btn-wrapper.outline :slotted(*)>*:first-child>*:first-child> :is(button, a, .button-like):first-child {
+.btn-wrapper.outline :slotted(*) > :is(button, a, .button-like):first-child,
+.btn-wrapper.outline :slotted(*) > *:first-child > :is(button, a, .button-like):first-child,
+.btn-wrapper.outline
+  :slotted(*)
+  > *:first-child
+  > *:first-child
+  > :is(button, a, .button-like):first-child {
   @apply border-current;
 }
 
 /*noinspection CssUnresolvedCustomProperty*/
-.btn-wrapper :slotted(:is(button, a, .button-like):first-child)>svg:first-child,
-.btn-wrapper :slotted(*)> :is(button, a, .button-like):first-child>svg:first-child,
-.btn-wrapper :slotted(*)>*:first-child> :is(button, a, .button-like):first-child>svg:first-child,
-.btn-wrapper :slotted(*)>*:first-child>*:first-child> :is(button, a, .button-like):first-child>svg:first-child {
+.btn-wrapper :slotted(:is(button, a, .button-like):first-child) > svg:first-child,
+.btn-wrapper :slotted(*) > :is(button, a, .button-like):first-child > svg:first-child,
+.btn-wrapper
+  :slotted(*)
+  > *:first-child
+  > :is(button, a, .button-like):first-child
+  > svg:first-child,
+.btn-wrapper
+  :slotted(*)
+  > *:first-child
+  > *:first-child
+  > :is(button, a, .button-like):first-child
+  > svg:first-child {
   min-width: var(--_icon-size, 1rem);
   min-height: var(--_icon-size, 1rem);
 }
@@ -235,23 +265,21 @@ const colorVariables = computed(() => {
   display: flex;
   gap: 1px;
 
-  >.btn-wrapper:not(:first-child) {
-
+  > .btn-wrapper:not(:first-child) {
     :slotted(:is(button, a, .button-like):first-child),
-    :slotted(*)> :is(button, a, .button-like):first-child,
-    :slotted(*)>*:first-child> :is(button, a, .button-like):first-child,
-    :slotted(*)>*:first-child>*:first-child> :is(button, a, .button-like):first-child {
+    :slotted(*) > :is(button, a, .button-like):first-child,
+    :slotted(*) > *:first-child > :is(button, a, .button-like):first-child,
+    :slotted(*) > *:first-child > *:first-child > :is(button, a, .button-like):first-child {
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
     }
   }
 
   > :not(:last-child) {
-
     :slotted(:is(button, a, .button-like):first-child),
-    :slotted(*)> :is(button, a, .button-like):first-child,
-    :slotted(*)>*:first-child> :is(button, a, .button-like):first-child,
-    :slotted(*)>*:first-child>*:first-child> :is(button, a, .button-like):first-child {
+    :slotted(*) > :is(button, a, .button-like):first-child,
+    :slotted(*) > *:first-child > :is(button, a, .button-like):first-child,
+    :slotted(*) > *:first-child > *:first-child > :is(button, a, .button-like):first-child {
       border-top-right-radius: 0;
       border-bottom-right-radius: 0;
     }

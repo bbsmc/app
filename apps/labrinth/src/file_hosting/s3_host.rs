@@ -47,7 +47,7 @@ impl S3Host {
         bucket.set_path_style();
         bucket.set_request_timeout(None);
 
-        Ok(S3Host { bucket })
+        Ok(S3Host { bucket: *bucket })
     }
 }
 
@@ -59,7 +59,7 @@ impl FileHost for S3Host {
         file_name: &str,
         file_bytes: Bytes,
     ) -> Result<UploadFileData, FileHostingError> {
-        let content_sha1 = sha1::Sha1::from(&file_bytes).hexdigest();
+        let content_sha1 = format!("{:x}", sha1::Sha1::digest(&file_bytes));
 
         let content_sha512 = format!("{:x}", sha2::Sha512::digest(&file_bytes));
 

@@ -3,23 +3,23 @@
 // @ts-nocheck
 
 import dayjs from 'dayjs'
-import utc from "dayjs/plugin/utc"; // UTC 插件必须在 timezone 之前加载
-import timezone from "dayjs/plugin/timezone";
-import relativeTime from "dayjs/plugin/relativeTime";
-import "dayjs/locale/zh-cn";
+import utc from 'dayjs/plugin/utc' // UTC 插件必须在 timezone 之前加载
+import timezone from 'dayjs/plugin/timezone'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/zh-cn'
 
 // 按照正确的顺序扩展插件
-dayjs.extend(utc);  // 首先扩展 UTC
-dayjs.extend(timezone);  // 然后扩展 timezone
-dayjs.extend(relativeTime);
+dayjs.extend(utc) // 首先扩展 UTC
+dayjs.extend(timezone) // 然后扩展 timezone
+dayjs.extend(relativeTime)
 
 // 设置时区
-dayjs.tz.setDefault("Asia/Shanghai");
+dayjs.tz.setDefault('Asia/Shanghai')
 
 // 设置语言环境
-dayjs.locale("zh-cn");
+dayjs.locale('zh-cn')
 
-export default dayjs;
+export default dayjs
 
 export const external = (cosmetics) => (cosmetics.externalLinksNewTab ? '_blank' : '')
 
@@ -134,23 +134,23 @@ export const formatBytes = (bytes, decimals = 2) => {
 }
 
 export const capitalizeString = (name) => {
-  if (name === 'views'){
-    return "浏览量"
-  }else if (name === 'downloads'){
-    return "下载量"
+  if (name === 'views') {
+    return '浏览量'
+  } else if (name === 'downloads') {
+    return '下载量'
   }
-  return name ? name.charAt(0).toUpperCase() + name.slice(1) : name;
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : name
 }
 
 export const localString = (name) => {
-  if (name === 'grid'){
-    return "网格"
-  }else if (name === 'gallery'){
-    return "渲染图"
-  }else if (name === 'list'){
-    return "列表"
+  if (name === 'grid') {
+    return '网格'
+  } else if (name === 'gallery') {
+    return '渲染图'
+  } else if (name === 'list') {
+    return '列表'
   }
-  return name;
+  return name
 }
 
 export const formatWallet = (name) => {
@@ -209,44 +209,40 @@ export const formatCategory = (name) => {
 }
 
 export const formatCategoryHeader = (name) => {
-  if (name === 'loaders'){
-    return '加载核心';
+  if (name === 'loaders') {
+    return '加载核心'
   }
-  if (name === 'platforms'){
-    return '平台';
+  if (name === 'platforms') {
+    return '平台'
   }
-  if (name === 'Categories'){
-    return '分类';
+  if (name === 'Categories') {
+    return '分类'
   }
-  if (name === 'environment'){
-    return '运行环境';
+  if (name === 'environment') {
+    return '运行环境'
   }
-  if (name === 'license'){
-    return '许可证';
+  if (name === 'license') {
+    return '许可证'
   }
-  if (name === 'views'){
-    return '浏览量';
+  if (name === 'views') {
+    return '浏览量'
   }
-  if (name === 'downloads'){
-    return '下载量';
+  if (name === 'downloads') {
+    return '下载量'
   }
-  return name;
+  return name
 }
 
 export const formatProjectStatus = (name) => {
   if (name === 'approved') {
     return '公开'
-  }
-  else if (name === 'archived') {
+  } else if (name === 'archived') {
     return '停更'
-  }
-  else if (name === 'private') {
+  } else if (name === 'private') {
     return '私有'
-  }
-  else if (name === 'unlisted') {
+  } else if (name === 'unlisted') {
     return '未公开'
-  }
-  else if (name === 'processing') {
+  } else if (name === 'processing') {
     return '正在审核'
   }
 
@@ -256,11 +252,9 @@ export const formatProjectStatus = (name) => {
 export const formatProjectRelease = (name) => {
   if (name === 'release') {
     return '正式版'
-  }
-  else if (name === 'beta') {
+  } else if (name === 'beta') {
     return '测试版'
-  }
-  else if (name === 'alpha') {
+  } else if (name === 'alpha') {
     return '预览版'
   }
   return capitalizeString(name)
@@ -269,17 +263,13 @@ export const formatProjectRelease = (name) => {
 export const formatSearch = (name) => {
   if (name === 'relevance') {
     return '相关'
-  }
-  else if (name === 'downloads') {
+  } else if (name === 'downloads') {
     return '下载量'
-  }
-  else if (name === 'follows') {
+  } else if (name === 'follows') {
     return '关注度'
-  }
-  else if (name === 'updated') {
+  } else if (name === 'updated') {
     return '已更新'
-  }
-  else if (name === 'newest') {
+  } else if (name === 'newest') {
     return '最新'
   }
 
@@ -398,6 +388,9 @@ export const acceptFileFromProjectType = (projectType) => {
   }
 }
 
-export const formatDateTime = (date: string | number | Date, format: string = 'YYYY-MM-DD HH:mm:ss') => {
+export const formatDateTime = (
+  date: string | number | Date,
+  format: string = 'YYYY-MM-DD HH:mm:ss',
+) => {
   return dayjs(date).tz('Asia/Shanghai').format(format)
 }

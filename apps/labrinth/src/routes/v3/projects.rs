@@ -15,7 +15,7 @@ use crate::database::redis::RedisPool;
 use crate::database::{self, models as db_models};
 use crate::file_hosting::FileHost;
 use crate::models;
-use crate::models::ids::base62_impl::parse_base62;
+// Modrinth 上游提交 79c263301: 移除 parse_base62，使用数据库 text_id_lower 列检查 slug 冲突
 use crate::models::images::ImageContext;
 use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
@@ -139,17 +139,19 @@ pub async fn random_projects_get(
         ApiError::Validation(validation_errors_to_string(err, None))
     })?;
 
+    // 使用更高效的随机查询方法
+    // ID 是随机生成的（参见 generate_ids 宏），所以按 ID 排序等同于随机排序
+    // 使用 OFFSET 随机跳过一些行，然后 LIMIT 获取指定数量
     let project_ids = sqlx::query!(
-        "
-            SELECT id FROM mods WHERE status = ANY($2) ORDER BY RANDOM() limit $1
-
-
-            ",
-        count.count as i32,
+        "SELECT id FROM mods WHERE status = ANY($1)
+        ORDER BY id
+        LIMIT $2
+        OFFSET GREATEST(ROUND(RANDOM() * (SELECT COUNT(*) FROM mods WHERE status = ANY($1)))::int8 - $2, 0)",
         &*crate::models::projects::ProjectStatus::iterator()
             .filter(|x| x.is_searchable())
             .map(|x| x.to_string())
             .collect::<Vec<String>>(),
+        count.count as i64,
     )
     .fetch(&**pool)
     .map_ok(|m| db_ids::ProjectId(m.id))
@@ -263,7 +265,7 @@ pub struct EditProject {
     pub license_id: Option<String>,
     #[validate(
         length(min = 3, max = 64),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     pub slug: Option<String>,
     pub status: Option<ProjectStatus>,
@@ -344,6 +346,11 @@ pub async fn project_edit(
 
         if let Some(perms) = permissions {
             let mut transaction = pool.begin().await?;
+
+            // Modrinth 上游修复 97e4d8e13: 记录需要从搜索索引中删除的版本
+            let mut versions_to_remove: Option<
+                Vec<crate::models::ids::VersionId>,
+            > = None;
 
             if let Some(name) = &new_project.name {
                 if !perms.contains(ProjectPermissions::EDIT_DETAILS) {
@@ -636,18 +643,18 @@ pub async fn project_edit(
                     }
                 }
 
+                // Modrinth 上游修复 97e4d8e13: 记录需要从搜索索引中删除的版本
+                // 将实际删除操作移到 transaction.commit() 之后
                 if project_item.inner.status.is_searchable()
                     && !status.is_searchable()
                 {
-                    remove_documents(
-                        &project_item
+                    versions_to_remove = Some(
+                        project_item
                             .versions
-                            .into_iter()
-                            .map(|x| x.into())
+                            .iter()
+                            .map(|x| (*x).into())
                             .collect::<Vec<_>>(),
-                        &search_config,
-                    )
-                    .await?;
+                    );
                 }
             }
 
@@ -797,23 +804,17 @@ pub async fn project_edit(
                     ));
                 }
 
-                let slug_project_id_option: Option<u64> =
-                    parse_base62(slug).ok();
-                if let Some(slug_project_id) = slug_project_id_option {
-                    let results = sqlx::query!(
-                        "
-                        SELECT EXISTS(SELECT 1 FROM mods WHERE id=$1)
-                        ",
-                        slug_project_id as i64
-                    )
-                    .fetch_one(&mut *transaction)
-                    .await?;
-
-                    if results.exists.unwrap_or(true) {
-                        return Err(ApiError::InvalidInput(
-                            "Slug 与另一个项目的 ID 冲突!".to_string(),
-                        ));
-                    }
+                // Modrinth 上游提交 79c263301: 使用 DBProject::get 检查 slug 是否与现有项目 ID 冲突
+                let existing = db_models::Project::get(
+                    &slug.to_lowercase(),
+                    &mut *transaction,
+                    &redis,
+                )
+                .await?;
+                if existing.is_some() {
+                    return Err(ApiError::InvalidInput(
+                        "Slug 与另一个项目的 ID 冲突!".to_string(),
+                    ));
                 }
 
                 // 确保新 slug 与旧 slug 不同
@@ -824,10 +825,16 @@ pub async fn project_edit(
                     .clone()
                     .unwrap_or_default())
                 {
+                    // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查
                     let results = sqlx::query!(
                         "
-                      SELECT EXISTS(SELECT 1 FROM mods WHERE slug = LOWER($1))
-                      ",
+                        SELECT EXISTS(
+                            SELECT 1 FROM mods
+                            WHERE
+                                slug = LOWER($1)
+                                OR text_id_lower = LOWER($1)
+                        )
+                        ",
                         slug
                     )
                     .fetch_one(&mut *transaction)
@@ -835,8 +842,7 @@ pub async fn project_edit(
 
                     if results.exists.unwrap_or(true) {
                         return Err(ApiError::InvalidInput(
-                            "Slug collides with other project's id!"
-                                .to_string(),
+                            "Slug 与另一个项目的 slug 或 ID 冲突!".to_string(),
                         ));
                     }
                 }
@@ -1102,6 +1108,12 @@ pub async fn project_edit(
                 &redis,
             )
             .await?;
+
+            // Modrinth 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
+            // 在事务提交和缓存清理后再删除搜索索引，确保任务完成后再返回响应
+            if let Some(versions) = versions_to_remove {
+                remove_documents(&versions, &search_config).await?;
+            }
 
             Ok(HttpResponse::NoContent().body(""))
         } else {

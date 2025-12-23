@@ -2,7 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::ApiError;
-use crate::auth::{filter_visible_projects, get_user_from_headers};
+use crate::auth::{
+    checks::is_visible_organization, filter_visible_projects,
+    get_user_from_headers,
+};
 use crate::database::models::team_item::TeamMember;
 use crate::database::models::{
     Organization, generate_organization_id, team_item,
@@ -70,6 +73,16 @@ pub async fn organization_projects_get(
 
     let possible_organization_id: Option<u64> = parse_base62(&info).ok();
 
+    // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性检查
+    let organization_data = Organization::get(&info, &**pool, &redis).await?;
+    if let Some(ref org) = organization_data {
+        if !is_visible_organization(org, &current_user, &pool, &redis).await? {
+            return Err(ApiError::NotFound);
+        }
+    } else {
+        return Err(ApiError::NotFound);
+    }
+
     let project_ids: Vec<database::models::ProjectId> = sqlx::query!(
         "
         SELECT m.id FROM organizations o
@@ -101,7 +114,7 @@ pub async fn organization_projects_get(
 pub struct NewOrganization {
     #[validate(
         length(min = 3, max = 64),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     pub slug: String,
     // Title of the organization
@@ -268,7 +281,13 @@ pub async fn organization_get(
     let user_id = current_user.as_ref().map(|x| x.id.into());
 
     let organization_data = Organization::get(&id, &**pool, &redis).await?;
+    // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性检查
     if let Some(data) = organization_data {
+        if !is_visible_organization(&data, &current_user, &pool, &redis).await?
+        {
+            return Err(ApiError::NotFound);
+        }
+
         let members_data =
             TeamMember::get_from_team_full(data.team_id, &**pool, &redis)
                 .await?;
@@ -364,7 +383,14 @@ pub async fn organizations_get(
         team_groups.entry(item.team_id).or_insert(vec![]).push(item);
     }
 
+    // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性过滤
     for data in organizations_data {
+        // 过滤不可见的组织
+        if !is_visible_organization(&data, &current_user, &pool, &redis).await?
+        {
+            continue;
+        }
+
         let members_data = team_groups.remove(&data.team_id).unwrap_or(vec![]);
         let logged_in = current_user
             .as_ref()
@@ -411,7 +437,7 @@ pub struct OrganizationEdit {
     pub description: Option<String>,
     #[validate(
         length(min = 3, max = 64),
-        regex = "crate::util::validate::RE_URL_SAFE"
+        regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     pub slug: Option<String>,
     #[validate(length(min = 3, max = 64))]
@@ -539,32 +565,31 @@ pub async fn organizations_edit(
                     ));
                 }
 
-                let name_organization_id_option: Option<u64> =
-                    parse_base62(slug).ok();
-                if let Some(name_organization_id) = name_organization_id_option
-                {
-                    let results = sqlx::query!(
-                        "
-                        SELECT EXISTS(SELECT 1 FROM organizations WHERE id=$1)
-                        ",
-                        name_organization_id as i64
-                    )
-                    .fetch_one(&mut *transaction)
-                    .await?;
-
-                    if results.exists.unwrap_or(true) {
-                        return Err(ApiError::InvalidInput(
-                            "slug 与另一个组织的 id 冲突！".to_string(),
-                        ));
-                    }
+                // Modrinth 上游提交 79c263301: 使用 Organization::get 检查 slug 是否与现有组织 ID 冲突
+                let existing = Organization::get(
+                    &slug.to_lowercase(),
+                    &mut *transaction,
+                    &redis,
+                )
+                .await?;
+                if existing.is_some() {
+                    return Err(ApiError::InvalidInput(
+                        "Slug 与另一个组织的 ID 冲突！".to_string(),
+                    ));
                 }
 
                 // Make sure the new name is different from the old one
                 // We are able to unwrap here because the name is always set
                 if !slug.eq(&organization_item.slug.clone()) {
+                    // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查
                     let results = sqlx::query!(
                         "
-                        SELECT EXISTS(SELECT 1 FROM organizations WHERE LOWER(slug) = LOWER($1))
+                        SELECT EXISTS(
+                            SELECT 1 FROM organizations
+                            WHERE
+                                LOWER(slug) = LOWER($1)
+                                OR text_id_lower = LOWER($1)
+                        )
                         ",
                         slug
                     )
@@ -573,7 +598,7 @@ pub async fn organizations_edit(
 
                     if results.exists.unwrap_or(true) {
                         return Err(ApiError::InvalidInput(
-                            "slug 与另一个组织的 id 冲突！".to_string(),
+                            "Slug 与另一个组织的 slug 或 ID 冲突！".to_string(),
                         ));
                     }
                 }
@@ -595,10 +620,11 @@ pub async fn organizations_edit(
                     ));
                 }
 
+                // Modrinth 上游提交 79c263301: slug 存储为小写
                 sqlx::query!(
                     "
                     UPDATE organizations
-                    SET slug = $1
+                    SET slug = LOWER($1)
                     WHERE (id = $2)
                     ",
                     Some(slug),

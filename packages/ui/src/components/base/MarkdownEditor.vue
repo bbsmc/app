@@ -16,8 +16,13 @@
       </label>
       <div class="iconified-input">
         <LinkIcon />
-        <input id="insert-link-url" v-model="linkUrl" type="text" placeholder="Enter the link's URL..."
-          @input="validateURL" />
+        <input
+          id="insert-link-url"
+          v-model="linkUrl"
+          type="text"
+          placeholder="Enter the link's URL..."
+          @input="validateURL"
+        />
         <Button class="r-btn" @click="() => (linkUrl = '')">
           <XIcon />
         </Button>
@@ -33,29 +38,34 @@
         <span class="label__description"></span>
       </span>
       <div class="markdown-body-wrapper">
-        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(linkMarkdown)" />
+        <div
+          style="width: 100%"
+          class="markdown-body"
+          v-html="renderHighlightedString(linkMarkdown)"
+        />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => linkModal?.hide()">
-          <XIcon /> Cancel
-        </Button>
-        <Button color="primary" :disabled="linkValidationErrorMessage || !linkUrl" :action="() => {
-            if (editor) markdownCommands.replaceSelection(editor, linkMarkdown)
-            linkModal?.hide()
-          }
-          ">
+        <Button :action="() => linkModal?.hide()"> <XIcon /> Cancel </Button>
+        <Button
+          color="primary"
+          :disabled="linkValidationErrorMessage || !linkUrl"
+          :action="
+            () => {
+              if (editor) markdownCommands.replaceSelection(editor, linkMarkdown)
+              linkModal?.hide()
+            }
+          "
+        >
           <PlusIcon /> Insert
         </Button>
       </div>
     </div>
   </Modal>
   <Modal ref="imageModal" header="插入图片">
-    <div class="modal-insert" style="max-height: 500px;overflow-y: scroll;">
+    <div class="modal-insert" style="max-height: 500px; overflow-y: scroll">
       <label class="label" for="insert-image-alt">
         <span class="label__title">描述<span class="required">*</span></span>
-        <span class="label__description">
-          描述用于向无法加载出图片的人描述
-        </span>
+        <span class="label__description"> 描述用于向无法加载出图片的人描述 </span>
       </label>
       <div class="iconified-input">
         <AlignLeftIcon />
@@ -71,15 +81,26 @@
         <Chips v-model="imageUploadOption" :items="['上传', '链接']" />
       </div>
       <div v-if="props.onImageUpload && imageUploadOption === '上传'" class="btn-input-alternative">
-        <FileInput accept="image/png,image/jpeg,image/gif,image/webp" prompt="拖放即可上传或单击即可选择文件" long-style
-          should-always-reset class="file-input" @change="handleImageUpload">
+        <FileInput
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          prompt="拖放即可上传或单击即可选择文件"
+          long-style
+          should-always-reset
+          class="file-input"
+          @change="handleImageUpload"
+        >
           <UploadIcon />
         </FileInput>
       </div>
       <div v-if="!props.onImageUpload || imageUploadOption === '链接'" class="iconified-input">
         <ImageIcon />
-        <input id="insert-link-url" v-model="linkUrl" type="text" placeholder="请填入被上传到图床得到的静态URL"
-          @input="validateURL" />
+        <input
+          id="insert-link-url"
+          v-model="linkUrl"
+          type="text"
+          placeholder="请填入被上传到图床得到的静态URL"
+          @input="validateURL"
+        />
         <Button class="r-btn" @click="() => (linkUrl = '')">
           <XIcon />
         </Button>
@@ -95,17 +116,24 @@
         <span class="label__description"></span>
       </span>
       <div class="markdown-body-wrapper">
-        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(imageMarkdown)" />
+        <div
+          style="width: 100%"
+          class="markdown-body"
+          v-html="renderHighlightedString(imageMarkdown)"
+        />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => imageModal?.hide()">
-          <XIcon /> Cancel
-        </Button>
-        <Button color="primary" :disabled="!canInsertImage" :action="() => {
-            if (editor) markdownCommands.replaceSelection(editor, imageMarkdown)
-            imageModal?.hide()
-          }
-          ">
+        <Button :action="() => imageModal?.hide()"> <XIcon /> Cancel </Button>
+        <Button
+          color="primary"
+          :disabled="!canInsertImage"
+          :action="
+            () => {
+              if (editor) markdownCommands.replaceSelection(editor, imageMarkdown)
+              imageModal?.hide()
+            }
+          "
+        >
           <PlusIcon /> Insert
         </Button>
       </div>
@@ -119,7 +147,13 @@
       </label>
       <div class="iconified-input">
         <YouTubeIcon />
-        <input id="insert-video-url" v-model="linkUrl" type="text" placeholder="b站视频链接" @input="validateURL" />
+        <input
+          id="insert-video-url"
+          v-model="linkUrl"
+          type="text"
+          placeholder="b站视频链接"
+          @input="validateURL"
+        />
         <Button class="r-btn" @click="() => (linkUrl = '')">
           <XIcon />
         </Button>
@@ -136,17 +170,24 @@
       </span>
 
       <div class="markdown-body-wrapper">
-        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(videoMarkdown)" />
+        <div
+          style="width: 100%"
+          class="markdown-body"
+          v-html="renderHighlightedString(videoMarkdown)"
+        />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => videoModal?.hide()">
-          <XIcon /> Cancel
-        </Button>
-        <Button color="primary" :disabled="linkValidationErrorMessage || !linkUrl" :action="() => {
-            if (editor) markdownCommands.replaceSelection(editor, videoMarkdown)
-            videoModal?.hide()
-          }
-          ">
+        <Button :action="() => videoModal?.hide()"> <XIcon /> Cancel </Button>
+        <Button
+          color="primary"
+          :disabled="linkValidationErrorMessage || !linkUrl"
+          :action="
+            () => {
+              if (editor) markdownCommands.replaceSelection(editor, videoMarkdown)
+              videoModal?.hide()
+            }
+          "
+        >
           <PlusIcon /> Insert
         </Button>
       </div>
@@ -155,12 +196,20 @@
   <div class="resizable-textarea-wrapper">
     <div class="editor-action-row">
       <div class="editor-actions">
-        <template v-for="(buttonGroup, _i) in Object.values(BUTTONS).filter((bg) => bg.display)" :key="_i">
+        <template
+          v-for="(buttonGroup, _i) in Object.values(BUTTONS).filter((bg) => bg.display)"
+          :key="_i"
+        >
           <div class="divider"></div>
           <template v-for="button in buttonGroup.buttons" :key="button.label">
-            <Button v-tooltip="button.label" icon-only :aria-label="button.label"
-              :class="{ 'mobile-hidden-group': !!buttonGroup.hideOnMobile }" :action="() => button.action(editor)"
-              :disabled="previewMode || disabled">
+            <Button
+              v-tooltip="button.label"
+              icon-only
+              :aria-label="button.label"
+              :class="{ 'mobile-hidden-group': !!buttonGroup.hideOnMobile }"
+              :action="() => button.action(editor)"
+              :disabled="previewMode || disabled"
+            >
               <component :is="button.icon" />
             </Button>
           </template>
@@ -194,7 +243,11 @@
     </div>
     <div v-else>
       <div class="markdown-body-wrapper">
-        <div style="width: 100%" class="markdown-body" v-html="renderHighlightedString(currentValue ?? '')" />
+        <div
+          style="width: 100%"
+          class="markdown-body"
+          v-html="renderHighlightedString(currentValue ?? '')"
+        />
       </div>
     </div>
   </div>
@@ -225,7 +278,6 @@ import {
   PlusIcon,
   XIcon,
   UploadIcon,
-
 } from '@modrinth/assets'
 import { markdownCommands, modrinthMarkdownEditorKeymap } from '@modrinth/utils/codemirror'
 import { renderHighlightedString } from '@modrinth/utils/highlight'
@@ -454,11 +506,7 @@ const BUTTONS: ButtonGroupMap = {
     buttons: [
       composeCommandButton('加粗', BoldIcon, markdownCommands.toggleBold),
       composeCommandButton('斜体', ItalicIcon, markdownCommands.toggleItalic),
-      composeCommandButton(
-        '删除线',
-        StrikethroughIcon,
-        markdownCommands.toggleStrikethrough,
-      ),
+      composeCommandButton('删除线', StrikethroughIcon, markdownCommands.toggleStrikethrough),
       composeCommandButton('代码', CodeIcon, markdownCommands.toggleCodeBlock),
       composeCommandButton('折叠', ScanEyeIcon, markdownCommands.toggleSpoiler),
     ],
@@ -675,8 +723,7 @@ const canInsertImage = computed(() => {
   )
 })
 
-const regex = /(?:video\/|bangumi\/play\/)([a-zA-Z0-9]{1,12})/;
-
+const regex = /(?:video\/|bangumi\/play\/)([a-zA-Z0-9]{1,12})/
 
 const videoMarkdown = computed(() => {
   const match = regex.exec(linkUrl.value)

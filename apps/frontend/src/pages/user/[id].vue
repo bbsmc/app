@@ -4,6 +4,77 @@
     <CollectionCreateModal ref="modal_collection_creation" />
     <BanManageModal ref="banManageModal" :user-id="user.id" @updated="refreshUserData" />
 
+    <!-- 用户详情模态框（管理员/版主可见） -->
+    <NewModal v-if="auth.user && isStaff(auth.user)" ref="userDetailsModal" header="用户详情">
+      <div class="flex flex-col gap-3">
+        <!-- Email（仅管理员可见） -->
+        <div v-if="isAdmin(auth.user)" class="flex flex-col gap-1">
+          <span class="text-lg font-bold text-primary">{{
+            formatMessage(messages.emailLabel)
+          }}</span>
+          <div class="flex items-center gap-2">
+            <span>{{ user.email || "未设置" }}</span>
+            <span
+              v-if="user.email"
+              v-tooltip="
+                user.email_verified
+                  ? formatMessage(messages.emailVerifiedTooltip)
+                  : formatMessage(messages.emailNotVerifiedTooltip)
+              "
+              class="flex items-center"
+            >
+              <CheckIcon v-if="user.email_verified" class="h-4 w-4 text-brand" />
+              <XIcon v-else class="h-4 w-4 text-red" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Email 验证状态（仅非管理员的版主可见） -->
+        <div v-if="!isAdmin(auth.user)" class="flex flex-col gap-1">
+          <span class="text-lg font-bold text-primary">{{
+            formatMessage(messages.emailVerifiedLabel)
+          }}</span>
+          <span class="flex w-fit items-center gap-1">
+            <CheckIcon v-if="user.email_verified" class="h-4 w-4 text-brand" />
+            <XIcon v-else class="h-4 w-4 text-red" />
+            {{ user.email_verified ? "是" : "否" }}
+          </span>
+        </div>
+
+        <!-- 认证方式（仅管理员可见） -->
+        <div v-if="isAdmin(auth.user) && user.auth_providers" class="flex flex-col gap-1">
+          <span class="text-lg font-bold text-primary">{{
+            formatMessage(messages.authProvidersLabel)
+          }}</span>
+          <span>{{ user.auth_providers.join(", ") || "无" }}</span>
+        </div>
+
+        <!-- 是否设置密码（仅管理员可见） -->
+        <div v-if="isAdmin(auth.user)" class="flex flex-col gap-1">
+          <span class="text-lg font-bold text-primary">{{
+            formatMessage(messages.hasPasswordLabel)
+          }}</span>
+          <span class="flex w-fit items-center gap-1">
+            <CheckIcon v-if="user.has_password" class="h-4 w-4 text-brand" />
+            <XIcon v-else class="h-4 w-4 text-red" />
+            {{ user.has_password ? "是" : "否" }}
+          </span>
+        </div>
+
+        <!-- 用户角色 -->
+        <div class="flex flex-col gap-1">
+          <span class="text-lg font-bold text-primary">用户角色</span>
+          <span>{{ getUserRoleName(user.role) }}</span>
+        </div>
+
+        <!-- 用户 ID -->
+        <div class="flex flex-col gap-1">
+          <span class="text-lg font-bold text-primary">用户 ID</span>
+          <span class="font-mono text-sm">{{ user.id }}</span>
+        </div>
+      </div>
+    </NewModal>
+
     <div class="new-page sidebar" :class="{ 'alt-layout': cosmetics.leftContentLayout }">
       <div class="normal-page__header py-4">
         <ContentPageHeader>
@@ -71,6 +142,12 @@
               <OverflowMenu
                 :options="[
                   {
+                    id: 'user-details',
+                    action: () => openUserDetailsModal(),
+                    hoverOnly: true,
+                    shown: auth.user && isStaff(auth.user) && auth.user.id !== user.id,
+                  },
+                  {
                     id: 'manage-bans',
                     action: () => openBanModal(),
                     color: 'red',
@@ -89,7 +166,7 @@
                   { divider: true, shown: auth.user && auth.user.id === user.id },
                   {
                     id: 'report',
-                    action: () => reportUser(user.id),
+                    action: () => (auth.user ? reportUser(user.id) : navigateTo('/auth/sign-in')),
                     color: 'red',
                     hoverOnly: true,
                     shown: auth.user?.id !== user.id,
@@ -99,6 +176,10 @@
                 aria-label="More options"
               >
                 <MoreVerticalIcon aria-hidden="true" />
+                <template #user-details>
+                  <InfoIcon aria-hidden="true" />
+                  用户详情
+                </template>
                 <template #manage-bans>
                   <UserXIcon aria-hidden="true" />
                   管理封禁
@@ -463,11 +544,14 @@ import {
   FileTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CheckIcon,
+  InfoIcon,
 } from "@modrinth/assets";
-import { OverflowMenu, ButtonStyled, ContentPageHeader } from "@modrinth/ui";
+import { OverflowMenu, ButtonStyled, ContentPageHeader, NewModal } from "@modrinth/ui";
+import { isStaff, isAdmin } from "~/helpers/users.js";
 import NavTabs from "~/components/ui/NavTabs.vue";
 import ProjectCard from "~/components/ui/ProjectCard.vue";
-// import { reportUser } from "~/utils/report-helpers.ts";
+import { reportUser } from "~/utils/report-helpers.ts";
 
 import StaffBadge from "~/assets/images/badges/staff.svg?component";
 import ModBadge from "~/assets/images/badges/mod.svg?component";
@@ -502,72 +586,92 @@ const formatRelativeTime = useRelativeTime();
 const messages = defineMessages({
   profileProjectsStats: {
     id: "profile.stats.projects",
-    defaultMessage:
-      "{count, plural, one {<stat>{count}</stat> project} other {<stat>{count}</stat> projects}}",
+    defaultMessage: "<stat>{count}</stat> 个资源",
   },
   profileDownloadsStats: {
     id: "profile.stats.downloads",
-    defaultMessage:
-      "{count, plural, one {<stat>{count}</stat> project download} other {<stat>{count}</stat> project downloads}}",
+    defaultMessage: "<stat>{count}</stat> 次下载",
   },
   profileProjectsFollowersStats: {
     id: "profile.stats.projects-followers",
-    defaultMessage:
-      "{count, plural, one {<stat>{count}</stat> project follower} other {<stat>{count}</stat> project followers}}",
+    defaultMessage: "<stat>{count}</stat> 个关注者",
   },
   profileJoinedAt: {
     id: "profile.joined-at",
-    defaultMessage: "Joined <date>{ago}</date>",
+    defaultMessage: "注册于 <date>{ago}</date>",
   },
   profileUserId: {
     id: "profile.user-id",
-    defaultMessage: "User ID: {id}",
+    defaultMessage: "用户 ID: {id}",
   },
   profileDetails: {
     id: "profile.label.details",
-    defaultMessage: "Details",
+    defaultMessage: "详情",
   },
   profileOrganizations: {
     id: "profile.label.organizations",
-    defaultMessage: "Organizations",
+    defaultMessage: "组织",
   },
   profileBadges: {
     id: "profile.label.badges",
-    defaultMessage: "Badges",
+    defaultMessage: "勋章",
   },
   profileManageProjectsButton: {
     id: "profile.button.manage-projects",
-    defaultMessage: "Manage projects",
+    defaultMessage: "管理资源",
   },
   profileMetaDescription: {
     id: "profile.meta.description",
-    defaultMessage: "Download {username}'s projects on BBSMC",
+    defaultMessage: "在 BBSMC 下载 {username} 的资源",
   },
   profileMetaDescriptionWithBio: {
     id: "profile.meta.description-with-bio",
-    defaultMessage: "{bio} - Download {username}'s projects on BBSMC",
+    defaultMessage: "{bio} - 在 BBSMC 下载 {username} 的资源",
   },
   profileNoProjectsLabel: {
     id: "profile.label.no-projects",
-    defaultMessage: "This user has no projects!",
+    defaultMessage: "该用户还没有资源！",
   },
   profileNoProjectsAuthLabel: {
     id: "profile.label.no-projects-auth",
-    defaultMessage:
-      "You don't have any projects.\nWould you like to <create-link>create one</create-link>?",
+    defaultMessage: "你还没有资源。\n想要 <create-link>创建一个</create-link> 吗？",
   },
   profileNoCollectionsLabel: {
     id: "profile.label.no-collections",
-    defaultMessage: "This user has no collections!",
+    defaultMessage: "该用户还没有收藏！",
   },
   profileNoCollectionsAuthLabel: {
     id: "profile.label.no-collections-auth",
-    defaultMessage:
-      "You don't have any collections.\nWould you like to <create-link>create one</create-link>?",
+    defaultMessage: "你还没有收藏。\n想要 <create-link>创建一个</create-link> 吗？",
   },
   userNotFoundError: {
     id: "profile.error.not-found",
-    defaultMessage: "User not found",
+    defaultMessage: "用户不存在",
+  },
+  // 用户详情模态框消息
+  emailLabel: {
+    id: "profile.details.label.email",
+    defaultMessage: "邮箱",
+  },
+  emailVerifiedLabel: {
+    id: "profile.details.label.email-verified",
+    defaultMessage: "邮箱验证",
+  },
+  emailVerifiedTooltip: {
+    id: "profile.details.tooltip.email-verified",
+    defaultMessage: "邮箱已验证",
+  },
+  emailNotVerifiedTooltip: {
+    id: "profile.details.tooltip.email-not-verified",
+    defaultMessage: "邮箱未验证",
+  },
+  hasPasswordLabel: {
+    id: "profile.details.label.has-password",
+    defaultMessage: "是否设置密码",
+  },
+  authProvidersLabel: {
+    id: "profile.details.label.auth-providers",
+    defaultMessage: "认证方式",
   },
 });
 
@@ -581,6 +685,7 @@ try {
         () => useBaseFetch(`user/${route.params.id}/projects`),
         {
           transform: (projects) => {
+            if (!projects) return [];
             for (const project of projects) {
               project.categories = project.categories.concat(project.loaders);
               project.project_type = data.$getProjectTypeForUrl(
@@ -741,11 +846,11 @@ useSeoMeta({
 const projectTypes = computed(() => {
   const obj = {};
 
-  if (collections.value.length > 0) {
+  if (collections.value?.length > 0) {
     obj.collection = true;
   }
 
-  for (const project of projects.value) {
+  for (const project of projects.value ?? []) {
     obj[project.project_type] = true;
   }
 
@@ -756,7 +861,7 @@ const projectTypes = computed(() => {
 const sumDownloads = computed(() => {
   let sum = 0;
 
-  for (const project of projects.value) {
+  for (const project of projects.value ?? []) {
     sum += project.downloads;
   }
 
@@ -820,6 +925,24 @@ const banManageModal = ref(null);
 
 function openBanModal() {
   banManageModal.value?.show();
+}
+
+// 用户详情模态框引用
+const userDetailsModal = ref(null);
+
+function openUserDetailsModal() {
+  userDetailsModal.value?.show();
+}
+
+// 获取用户角色名称
+function getUserRoleName(role) {
+  const roleNames = {
+    admin: "管理员",
+    moderator: "版主",
+    developer: "开发者",
+    user: "用户",
+  };
+  return roleNames[role] || role;
 }
 
 async function refreshUserData() {

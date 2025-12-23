@@ -318,6 +318,7 @@ export const useFetchAllAnalytics = (
   const viewsByCountry = ref(null);
   const loading = ref(true);
   const error = ref(null);
+  const isInitialized = ref(false);
 
   const formattedData = computed(() => ({
     downloads: processNumberAnalytics(downloadData.value, selectedProjects.value),
@@ -391,8 +392,18 @@ export const useFetchAllAnalytics = (
   };
 
   watch(
-    [() => startDate.value, () => endDate.value, () => timeResolution.value, () => projects.value],
+    [
+      () => startDate.value,
+      () => endDate.value,
+      () => timeResolution.value,
+      () => projects.value,
+      () => isInitialized.value,
+    ],
     async () => {
+      if (!isInitialized.value) {
+        return;
+      }
+
       const q = {
         start_date: dayjs(startDate.value).toISOString(),
         end_date: dayjs(endDate.value).toISOString(),
@@ -460,5 +471,6 @@ export const useFetchAllAnalytics = (
     totalData,
     loading,
     error,
+    isInitialized,
   };
 };

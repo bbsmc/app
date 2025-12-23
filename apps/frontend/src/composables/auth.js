@@ -105,16 +105,16 @@ export const initAuth = async (oldToken = null) => {
   return auth;
 };
 
-export const getAuthUrl = (provider, redirect = "") => {
+// Upstream fix e368e35e7: Properly finish auth when redirect URI is supplied
+export const getAuthUrl = (provider, redirect = "/dashboard") => {
   const config = useRuntimeConfig();
   const route = useNativeRoute();
 
-  if (redirect === "") {
-    redirect = route.path;
-  }
-  const fullURL = `${config.public.siteUrl}${redirect}`;
+  const fullURL = route.query.launcher
+    ? "https://launcher-files.modrinth.com"
+    : `${config.public.siteUrl}/auth/sign-in?redirect=${redirect}`;
 
-  return `${config.public.apiBaseUrl}auth/init?provider=${provider}&url=${fullURL}`;
+  return `${config.public.apiBaseUrl}auth/init?provider=${provider}&url=${encodeURIComponent(fullURL)}`;
 };
 
 export const removeAuthProvider = async (provider) => {
