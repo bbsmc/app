@@ -6,6 +6,7 @@
 !Cargo.lock
 !apps/labrinth/
 !packages/daedalus/
+!packages/modrinth-log/
 
 # 但仍排除构建产物
 **/target
