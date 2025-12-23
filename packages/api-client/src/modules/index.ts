@@ -2,6 +2,7 @@ import type { AbstractModrinthClient } from '../core/abstract-client'
 import type { AbstractModule } from '../core/abstract-module'
 import { LabrinthProjectsV2Module } from './labrinth/projects/v2'
 import { LabrinthProjectsV3Module } from './labrinth/projects/v3'
+import { LabrinthVersionsV3Module } from './labrinth/versions/v3'
 
 type ModuleConstructor = new (client: AbstractModrinthClient) => AbstractModule
 
@@ -17,6 +18,7 @@ type ModuleConstructor = new (client: AbstractModrinthClient) => AbstractModule
 export const MODULE_REGISTRY = {
   labrinth_projects_v2: LabrinthProjectsV2Module,
   labrinth_projects_v3: LabrinthProjectsV3Module,
+  labrinth_versions_v3: LabrinthVersionsV3Module,
 } as const satisfies Record<string, ModuleConstructor>
 
 export type ModuleID = keyof typeof MODULE_REGISTRY
