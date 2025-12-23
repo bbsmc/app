@@ -213,19 +213,18 @@ defineExpose({
 
 <style scoped>
 progress {
-  @apply bg-surface-3;
-  background-color: var(--surface-3, rgb(30, 30, 30));
+  background-color: var(--color-button-bg, rgb(30, 30, 30));
 }
 
 progress::-webkit-progress-bar {
-  @apply bg-surface-3;
+  background-color: var(--color-button-bg, rgb(30, 30, 30));
 }
 
 progress::-webkit-progress-value {
-  @apply bg-contrast;
+  background-color: var(--color-contrast, rgb(255, 255, 255));
 }
 
 progress::-moz-progress-bar {
-  @apply bg-contrast;
+  background-color: var(--color-contrast, rgb(255, 255, 255));
 }
 </style>
