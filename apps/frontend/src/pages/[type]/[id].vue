@@ -1320,6 +1320,7 @@ import {
   PopoutMenu,
   ScrollablePanel,
   ContentPageHeader,
+  provideProjectPageContext,
 } from "@modrinth/ui";
 import {
   formatCategory,
@@ -1736,6 +1737,21 @@ try {
     message: "资源不存在",
   });
 }
+
+// 提供 ProjectPageContext 供子组件使用
+const refreshVersions = async () => {
+  const newVersions = await useBaseFetch(`project/${route.params.id}/version`);
+  if (versions && versions.value) {
+    versions.value = newVersions;
+  }
+};
+
+const projectV2 = computed(() => project.value);
+
+provideProjectPageContext({
+  projectV2,
+  refreshVersions,
+});
 
 // 在 versions 初始化后定义依赖它的 computed 属性
 const possibleGameVersions = computed(() => {
