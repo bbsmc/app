@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.loader FROM loaders_versions lv\n             INNER JOIN loaders l ON lv.loader_id = l.id\n             WHERE lv.version_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "loader",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e776a98d4e50f5becbf97e5761a06a22c10ebb6b03234534c6a00b59f57d7808"
+}

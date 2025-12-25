@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM version_fields WHERE version_id = $1 AND field_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "62147324e3336f98a9b5fee07feb9af0e52df4f1af9185e85efca2fd72e36a36"
+}
