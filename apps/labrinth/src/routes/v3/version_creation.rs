@@ -604,18 +604,17 @@ async fn version_create_inner(
             file_type: file.file_type,
         })
         .collect::<Vec<_>>();
-    let mut disk_url = None;
-    if version_data.disk_only && version_data.disk_urls.is_some() {
-        disk_url = version_data.disk_urls.clone();
-    }
-    let mut disk_urls: Vec<QueryDisk> = vec![];
-    if version_data.disk_urls.is_some() {
-        disk_urls = version_data.disk_urls.unwrap();
-    }
+    let disk_urls: Vec<QueryDisk> =
+        version_data.disk_urls.clone().unwrap_or_default();
     if version_data.disk_only {
+        let first_disk = disk_urls.first().ok_or_else(|| {
+            CreateError::InvalidInput(
+                "启用网盘模式时必须提供至少一个网盘链接".to_string(),
+            )
+        })?;
         files.push(VersionFile {
             hashes: HashMap::new(),
-            url: disk_url.unwrap().first().unwrap().url.clone(),
+            url: first_disk.url.clone(),
             filename: "".to_string(),
             primary: false,
             size: 0,

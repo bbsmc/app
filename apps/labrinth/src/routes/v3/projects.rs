@@ -414,7 +414,7 @@ pub async fn project_edit(
                     &user.username,
                     &format!(
                         "/project/{}",
-                        project_item.inner.slug.clone().unwrap()
+                        project_item.inner.slug.clone().unwrap_or_default()
                     ),
                     "项目名称",
                     &redis,
@@ -471,7 +471,7 @@ pub async fn project_edit(
                     &user.username,
                     &format!(
                         "/project/{}",
-                        project_item.inner.slug.clone().unwrap()
+                        project_item.inner.slug.clone().unwrap_or_default()
                     ),
                     "项目摘要",
                     &redis,
@@ -1089,7 +1089,7 @@ pub async fn project_edit(
                     &user.username,
                     &format!(
                         "/project/{}",
-                        project_item.inner.slug.clone().unwrap()
+                        project_item.inner.slug.clone().unwrap_or_default()
                     ),
                     "项目描述",
                     &redis,

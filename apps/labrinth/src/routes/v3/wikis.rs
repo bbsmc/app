@@ -1571,8 +1571,11 @@ pub async fn wiki_submit_again(
             return Err(ApiError::Validation("其他用户正在编辑中".to_string()));
         }
 
+        let cache_id_parsed: i64 = cache_id
+            .parse()
+            .map_err(|_| ApiError::InvalidInput("无效的缓存 ID".to_string()))?;
         let wiki_cache = database::models::WikiCache::get_reject_or_review(
-            cache_id.parse().unwrap(),
+            cache_id_parsed,
             UserId::from(user_option.as_ref().unwrap().id),
             &**pool,
         )
@@ -1638,8 +1641,11 @@ pub async fn wiki_given_up(
             return Err(ApiError::NotFound);
         }
 
+        let cache_id_parsed: i64 = cache_id
+            .parse()
+            .map_err(|_| ApiError::InvalidInput("无效的缓存 ID".to_string()))?;
         let wiki_cache = database::models::WikiCache::get_reject_or_review(
-            cache_id.parse().unwrap(),
+            cache_id_parsed,
             UserId::from(user_option.as_ref().unwrap().id),
             &**pool,
         )

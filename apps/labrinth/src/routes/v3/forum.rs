@@ -82,8 +82,11 @@ pub async fn forum_get(
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
     let discussion_id: String = info.into_inner().0;
-    let discussion_id =
-        DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
+    let discussion_id = DiscussionId(
+        parse_base62(&discussion_id)
+            .map_err(|_| ApiError::InvalidInput("无效的讨论 ID".to_string()))?
+            as i64,
+    );
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         &**pool,
@@ -184,8 +187,11 @@ pub async fn posts_get(
     let sort = params.sort.unwrap_or("floor_asc".to_string());
     let mut exec = pool.acquire().await?;
     let exec_ref = &mut *exec;
-    let discussion_id =
-        DiscussionId(parse_base62(&discussion_id_str).unwrap() as i64);
+    let discussion_id = DiscussionId(
+        parse_base62(&discussion_id_str)
+            .map_err(|_| ApiError::InvalidInput("无效的讨论 ID".to_string()))?
+            as i64,
+    );
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         exec_ref,
@@ -282,8 +288,11 @@ pub async fn forum_edit(
     check_forum_ban(&user, &pool).await?;
 
     let discussion_id: String = info.into_inner().0;
-    let discussion_id =
-        DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
+    let discussion_id = DiscussionId(
+        parse_base62(&discussion_id)
+            .map_err(|_| ApiError::InvalidInput("无效的讨论 ID".to_string()))?
+            as i64,
+    );
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         &**pool,
@@ -405,8 +414,11 @@ pub async fn forum_delete(
     check_forum_ban(&user, &pool).await?;
 
     let discussion_id: String = info.into_inner().0;
-    let discussion_id =
-        DiscussionId(parse_base62(&discussion_id).unwrap() as i64);
+    let discussion_id = DiscussionId(
+        parse_base62(&discussion_id)
+            .map_err(|_| ApiError::InvalidInput("无效的讨论 ID".to_string()))?
+            as i64,
+    );
     let discussion = crate::database::models::forum::Discussion::get_id(
         discussion_id.0,
         &**pool,
@@ -696,7 +708,13 @@ pub async fn posts_post(
         replied_to: body
             .replied_to
             .clone()
-            .map(|x| parse_base62(&x).unwrap() as i64),
+            .map(|x| {
+                parse_base62(&x).map_err(|_| {
+                    ApiError::InvalidInput("无效的回复 ID".to_string())
+                })
+            })
+            .transpose()?
+            .map(|x| x as i64),
     };
     discussion.last_post_time = chrono::Utc::now();
     discussion.update_last_post_time(&mut transaction).await?;

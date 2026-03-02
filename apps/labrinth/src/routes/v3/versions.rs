@@ -339,7 +339,12 @@ pub async fn version_download(
         //     return Err(ApiError::NotFound);
         // }
         if version_item.disks.is_empty() {
-            let url = version_item.files.first().unwrap().url.clone();
+            let url = version_item
+                .files
+                .first()
+                .ok_or(ApiError::NotFound)?
+                .url
+                .clone();
             let url = url::Url::parse(&url).map_err(|_| {
                 ApiError::InvalidInput("无效的下载URL!".to_string())
             })?;
@@ -511,7 +516,11 @@ pub async fn version_edit_helper(
 
             if let Some(disk_only) = &new_version.disk_only {
                 if *disk_only {
-                    let urls = new_version.disk_urls.unwrap();
+                    let urls = new_version.disk_urls.ok_or_else(|| {
+                        ApiError::InvalidInput(
+                            "启用网盘模式时必须提供网盘链接".to_string(),
+                        )
+                    })?;
                     // for u in urls {
                     //     if u.is_empty(){
                     //         return Err(ApiError::InvalidInput(
