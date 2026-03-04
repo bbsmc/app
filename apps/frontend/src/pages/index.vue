@@ -706,13 +706,6 @@ const heroBanners = ref([
     slug: "/modpack/lzmx",
   },
   {
-    image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
-    title: "PCL2 启动器",
-    description: "超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面",
-    badge: "推荐软件",
-    slug: "/software/pcl",
-  },
-  {
     image:
       "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
     title: "愚者 - The Fool",
