@@ -20,10 +20,10 @@
     </div>
     <div class="flex gap-2">
       <ButtonStyled color="brand">
-        <button><DownloadIcon /> Download</button>
+        <button><DownloadIcon /> 下载</button>
       </ButtonStyled>
       <ButtonStyled>
-        <button><ShareIcon /> Share</button>
+        <button><ShareIcon /> 分享</button>
       </ButtonStyled>
       <ButtonStyled circular type="transparent">
         <button>
@@ -32,7 +32,7 @@
       </ButtonStyled>
     </div>
     <div>
-      <h2 class="text-lg font-extrabold text-contrast">Files</h2>
+      <h2 class="text-lg font-extrabold text-contrast">文件</h2>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div
           v-for="(file, index) in version.files"
@@ -46,7 +46,7 @@
           </div>
           <div class="flex flex-grow flex-col">
             <span class="font-extrabold text-contrast">{{
-              file.primary ? "Primary file" : "Supplementary resource"
+              file.primary ? "主文件" : "附属资源"
             }}</span>
             <span class="text-sm font-semibold text-secondary"
               >{{ file.filename }} • {{ formatBytes(file.size) }}</span
@@ -61,12 +61,12 @@
           </div>
         </div>
       </div>
-      <h2 class="text-lg font-extrabold text-contrast">Dependencies</h2>
-      <h2 class="text-lg font-extrabold text-contrast">Changes</h2>
+      <h2 class="text-lg font-extrabold text-contrast">依赖</h2>
+      <h2 class="text-lg font-extrabold text-contrast">更新日志</h2>
       <div class="rounded-2xl bg-bg-raised px-6 py-4">
         <div
           class="markdown-body"
-          v-html="renderHighlightedString(version.changelog ?? 'No changelog provided')"
+          v-html="renderHighlightedString(version.changelog ?? '暂无更新日志')"
         />
       </div>
     </div>
@@ -120,7 +120,7 @@ const version = computed(() => {
     throw createError({
       fatal: true,
       statusCode: 404,
-      message: "Version not found",
+      message: "未找到该版本",
     });
   }
 
@@ -153,11 +153,11 @@ const { formatMessage } = useVIntl();
 const messages = defineMessages({
   backToVersions: {
     id: "project.version.back-to-versions",
-    defaultMessage: "Back to versions",
+    defaultMessage: "返回版本列表",
   },
   allVersions: {
     id: "project.version.all-versions",
-    defaultMessage: "All versions",
+    defaultMessage: "所有版本",
   },
 });
 </script>

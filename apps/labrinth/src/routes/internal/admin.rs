@@ -1,8 +1,8 @@
 use crate::auth::validate::get_user_record_from_bearer_token;
 use crate::database::redis::RedisPool;
 use crate::models::analytics::Download;
-use crate::models::ids::base62_impl::{parse_base62, to_base62};
 use crate::models::ids::ProjectId;
+use crate::models::ids::base62_impl::{parse_base62, to_base62};
 use crate::models::pats::Scopes;
 use crate::queue::analytics::AnalyticsQueue;
 use crate::queue::session::AuthQueue;
@@ -99,13 +99,11 @@ pub async fn count_download(
     {
         (version.id, version.mod_id)
     } else {
-        return Err(ApiError::InvalidInput(
-            "Specified version does not exist!".to_string(),
-        ));
+        return Err(ApiError::InvalidInput("指定的版本不存在！".to_string()));
     };
 
     let url = url::Url::parse(&download_body.url).map_err(|_| {
-        ApiError::InvalidInput("invalid download URL specified!".to_string())
+        ApiError::InvalidInput("指定的下载链接无效！".to_string())
     })?;
 
     let ip = crate::util::ip::convert_to_ip_v6(&download_body.ip)
@@ -236,7 +234,9 @@ pub async fn fix_modpack_loaders(
         .await?;
 
         if versions.is_empty() {
-            return Err(ApiError::InvalidInput("项目不存在或没有版本".to_string()));
+            return Err(ApiError::InvalidInput(
+                "项目不存在或没有版本".to_string(),
+            ));
         }
 
         versions.into_iter().map(|v| v.id).collect()
@@ -263,10 +263,13 @@ pub async fn fix_modpack_loaders(
     }
 
     // 2. 获取 mrpack loader 的 ID
-    let mrpack_loader = sqlx::query!("SELECT id FROM loaders WHERE loader = 'mrpack'")
-        .fetch_optional(&mut *transaction)
-        .await?
-        .ok_or_else(|| ApiError::InvalidInput("mrpack loader 不存在".to_string()))?;
+    let mrpack_loader =
+        sqlx::query!("SELECT id FROM loaders WHERE loader = 'mrpack'")
+            .fetch_optional(&mut *transaction)
+            .await?
+            .ok_or_else(|| {
+                ApiError::InvalidInput("mrpack loader 不存在".to_string())
+            })?;
     let mrpack_loader_id = mrpack_loader.id;
 
     // 3. 获取 mrpack_loaders 字段的 ID 和枚举类型
@@ -275,13 +278,16 @@ pub async fn fix_modpack_loaders(
     )
     .fetch_optional(&mut *transaction)
     .await?
-    .ok_or_else(|| ApiError::InvalidInput("mrpack_loaders 字段不存在".to_string()))?;
+    .ok_or_else(|| {
+        ApiError::InvalidInput("mrpack_loaders 字段不存在".to_string())
+    })?;
     let mrpack_loaders_field_id = mrpack_loaders_field.id;
     let mrpack_loaders_enum_type = mrpack_loaders_field.enum_type;
 
     // 4. 获取枚举值映射 (loader_name -> enum_value_id)
-    let enum_values: HashMap<String, i32> = if let Some(enum_type) = mrpack_loaders_enum_type {
-        sqlx::query!(
+    let enum_values: HashMap<String, i32> =
+        if let Some(enum_type) = mrpack_loaders_enum_type {
+            sqlx::query!(
             "SELECT id, value FROM loader_field_enum_values WHERE enum_id = $1",
             enum_type
         )
@@ -290,9 +296,9 @@ pub async fn fix_modpack_loaders(
         .into_iter()
         .map(|v| (v.value, v.id))
         .collect()
-    } else {
-        HashMap::new()
-    };
+        } else {
+            HashMap::new()
+        };
 
     // 5. 需要修复的 mod loader 列表
     let mod_loader_names = ["forge", "fabric", "neoforge", "quilt"];
@@ -305,7 +311,8 @@ pub async fn fix_modpack_loaders(
         reindexed: false,
     };
 
-    let mut project_ids_to_clear: std::collections::HashSet<i64> = std::collections::HashSet::new();
+    let mut project_ids_to_clear: std::collections::HashSet<i64> =
+        std::collections::HashSet::new();
 
     for version_id in version_ids {
         // 获取版本当前的 loaders
@@ -447,7 +454,12 @@ pub async fn fix_modpack_loaders(
         if body.reindex && result.fixed_count > 0 {
             use crate::search::indexing::index_projects;
             let redis_ref = redis.get_ref();
-            index_projects(pool.as_ref().clone(), redis_ref.clone(), &search_config).await?;
+            index_projects(
+                pool.as_ref().clone(),
+                redis_ref.clone(),
+                &search_config,
+            )
+            .await?;
             result.reindexed = true;
             log::info!("已重新索引搜索");
         }

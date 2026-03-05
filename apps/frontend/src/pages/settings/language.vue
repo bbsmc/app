@@ -6,6 +6,11 @@ import WarningIcon from "~/assets/images/utils/issues.svg?component";
 import { isModifierKeyDown } from "~/helpers/events.ts";
 import { commonSettingsMessages } from "~/utils/common-messages.ts";
 
+useHead({
+  title: "语言设置 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
+
 const vintl = useVIntl();
 const { formatMessage } = vintl;
 
@@ -13,63 +18,62 @@ const messages = defineMessages({
   languagesDescription: {
     id: "settings.language.description",
     defaultMessage:
-      "Choose your preferred language for the site. Translations are contributed by volunteers <crowdin-link>on Crowdin</crowdin-link>.",
+      "选择您的首选语言。翻译由志愿者在 <crowdin-link>Crowdin</crowdin-link> 上贡献。",
   },
   automaticLocale: {
     id: "settings.language.languages.automatic",
-    defaultMessage: "Sync with the system language",
+    defaultMessage: "与系统语言同步",
   },
   noResults: {
     id: "settings.language.languages.search.no-results",
-    defaultMessage: "No languages match your search.",
+    defaultMessage: "没有匹配的语言。",
   },
   searchFieldDescription: {
     id: "settings.language.languages.search-field.description",
-    defaultMessage: "Submit to focus the first search result",
+    defaultMessage: "按回车选择第一个搜索结果",
   },
   searchFieldPlaceholder: {
     id: "settings.language.languages.search-field.placeholder",
-    defaultMessage: "Search for a language...",
+    defaultMessage: "搜索语言...",
   },
   searchResultsAnnouncement: {
     id: "settings.language.languages.search-results-announcement",
-    defaultMessage:
-      "{matches, plural, =0 {No languages match} one {# language matches} other {# languages match}} your search.",
+    defaultMessage: "{matches, plural, =0 {没有匹配的语言} other {# 个语言匹配您的搜索}}。",
   },
   loadFailed: {
     id: "settings.language.languages.load-failed",
-    defaultMessage: "Cannot load this language. Try again in a bit.",
+    defaultMessage: "无法加载此语言，请稍后再试。",
   },
   languageLabelApplying: {
     id: "settings.language.languages.language-label-applying",
-    defaultMessage: "{label}. Applying...",
+    defaultMessage: "{label}。应用中...",
   },
   languageLabelError: {
     id: "settings.language.languages.language-label-error",
-    defaultMessage: "{label}. Error",
+    defaultMessage: "{label}。错误",
   },
 });
 
 const categoryNames = defineMessages({
   auto: {
     id: "settings.language.categories.auto",
-    defaultMessage: "Automatic",
+    defaultMessage: "自动",
   },
   default: {
     id: "settings.language.categories.default",
-    defaultMessage: "Standard languages",
+    defaultMessage: "标准语言",
   },
   fun: {
     id: "settings.language.categories.fun",
-    defaultMessage: "Fun languages",
+    defaultMessage: "趣味语言",
   },
   experimental: {
     id: "settings.language.categories.experimental",
-    defaultMessage: "Experimental languages",
+    defaultMessage: "实验性语言",
   },
   searchResult: {
     id: "settings.language.categories.search-result",
-    defaultMessage: "Search results",
+    defaultMessage: "搜索结果",
   },
 });
 

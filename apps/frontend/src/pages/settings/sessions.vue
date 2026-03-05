@@ -69,37 +69,38 @@ const formatRelativeTime = useRelativeTime();
 const messages = defineMessages({
   currentSessionLabel: {
     id: "settings.sessions.current-session",
-    defaultMessage: "Current session",
+    defaultMessage: "当前会话",
   },
   revokeSessionButton: {
     id: "settings.sessions.action.revoke-session",
-    defaultMessage: "Revoke session",
+    defaultMessage: "撤销会话",
   },
   createdAgoLabel: {
     id: "settings.sessions.created-ago",
-    defaultMessage: "Created {ago}",
+    defaultMessage: "创建于 {ago}",
   },
   sessionsDescription: {
     id: "settings.sessions.description",
     defaultMessage:
-      "Here are all the devices that are currently logged in with your BBSMC account. You can log out of each one individually.\n\nIf you see an entry you don't recognize, log out of that device and change your Modrinth account password immediately.",
+      "以下是当前登录您 BBSMC 账号的所有设备，您可以逐一注销。\n\n如果发现不认识的设备，请立即撤销该会话并修改密码。",
   },
   lastAccessedAgoLabel: {
     id: "settings.sessions.last-accessed-ago",
-    defaultMessage: "Last accessed {ago}",
+    defaultMessage: "上次访问 {ago}",
   },
   unknownOsLabel: {
     id: "settings.sessions.unknown-os",
-    defaultMessage: "Unknown OS",
+    defaultMessage: "未知系统",
   },
   unknownPlatformLabel: {
     id: "settings.sessions.unknown-platform",
-    defaultMessage: "Unknown platform",
+    defaultMessage: "未知平台",
   },
 });
 
 useHead({
   title: () => `${formatMessage(commonSettingsMessages.sessions)} - BBSMC资源社区`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const data = useNuxtApp();

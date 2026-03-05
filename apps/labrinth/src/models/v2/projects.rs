@@ -72,6 +72,29 @@ pub struct LegacyProject {
     pub wiki_open: bool,
     pub issues_type: i32,
     pub forum: Option<DiscussionId>,
+    /// 汉化追踪标记
+    pub translation_tracking: bool,
+    /// 汉化资源 slug
+    pub translation_tracker: Option<String>,
+    /// 汉化来源：哪个项目将当前项目作为汉化目标
+    pub translation_source: Option<String>,
+    /// 是否为付费资源
+    pub is_paid: bool,
+
+    /// 当前用户是否已购买此项目
+    /// - 已登录且已购买: Some(true)
+    /// - 已登录未购买: Some(false)
+    /// - 未登录: None
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_has_purchased: Option<bool>,
+
+    /// 付费资源价格（单位：元）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price: Option<rust_decimal::Decimal>,
+
+    /// 付费资源有效期（天数），None 表示永久
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validity_days: Option<i32>,
 }
 
 impl LegacyProject {
@@ -256,6 +279,13 @@ impl LegacyProject {
             server_side,
             game_versions,
             forum: data.forum,
+            translation_tracking: data.translation_tracking,
+            translation_tracker: data.translation_tracker.clone(),
+            translation_source: data.translation_source.clone(),
+            is_paid: data.is_paid,
+            user_has_purchased: data.user_has_purchased,
+            price: data.price,
+            validity_days: data.validity_days,
         }
     }
 

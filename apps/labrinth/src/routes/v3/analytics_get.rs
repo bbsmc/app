@@ -321,7 +321,7 @@ pub async fn revenue_get(
     let duration: PgInterval = Duration::minutes(resolution_minutes as i64)
         .try_into()
         .map_err(|_| {
-            ApiError::InvalidInput("Invalid resolution_minutes".to_string())
+            ApiError::InvalidInput("无效的 resolution_minutes 参数".to_string())
         })?;
     // 获取收入数据
     let project_ids = project_ids.unwrap_or_default();

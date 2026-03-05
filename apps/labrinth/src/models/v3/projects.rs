@@ -116,6 +116,33 @@ pub struct Project {
     pub issues_type: i32,
 
     pub forum: Option<DiscussionId>,
+
+    /// 汉化追踪标记
+    pub translation_tracking: bool,
+
+    /// 汉化资源 slug（当 translation_tracking 为 true 时有值）
+    pub translation_tracker: Option<String>,
+
+    /// 汉化来源：哪个项目将当前项目作为汉化目标
+    pub translation_source: Option<String>,
+
+    /// 是否为付费资源
+    pub is_paid: bool,
+
+    /// 当前用户是否已购买此项目
+    /// - 已登录且已购买: Some(true)
+    /// - 已登录未购买: Some(false)
+    /// - 未登录: None
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_has_purchased: Option<bool>,
+
+    /// 付费资源价格（单位：元）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price: Option<rust_decimal::Decimal>,
+
+    /// 付费资源有效期（天数），None 表示永久
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validity_days: Option<i32>,
 }
 
 fn remove_duplicates(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
@@ -245,7 +272,34 @@ impl From<QueryProject> for Project {
             issues_type: m.issues_type,
             fields,
             forum: m.forum.map(|x| x.into()),
+            translation_tracking: m.translation_tracking,
+            translation_tracker: m.translation_tracker.clone(),
+            translation_source: m.translation_source.clone(),
+            is_paid: m.is_paid,
+            // 默认为 None，需要在路由层根据用户登录状态设置
+            user_has_purchased: None,
+            price: None,
+            validity_days: None,
         }
+    }
+}
+
+impl Project {
+    /// 设置用户购买状态
+    pub fn with_purchase_status(mut self, purchased: Option<bool>) -> Self {
+        self.user_has_purchased = purchased;
+        self
+    }
+
+    /// 设置定价信息
+    pub fn with_pricing(
+        mut self,
+        price: Option<rust_decimal::Decimal>,
+        validity_days: Option<i32>,
+    ) -> Self {
+        self.price = price;
+        self.validity_days = validity_days;
+        self
     }
 }
 
@@ -509,16 +563,16 @@ impl ProjectStatus {
     }
     pub fn as_friendly_str(&self) -> &'static str {
         match self {
-            ProjectStatus::Approved => "Listed",
-            ProjectStatus::Rejected => "Rejected",
-            ProjectStatus::Draft => "Draft",
-            ProjectStatus::Unlisted => "Unlisted",
-            ProjectStatus::Processing => "Under review",
-            ProjectStatus::Unknown => "Unknown",
-            ProjectStatus::Archived => "Archived",
-            ProjectStatus::Withheld => "Withheld",
-            ProjectStatus::Scheduled => "Scheduled",
-            ProjectStatus::Private => "Private",
+            ProjectStatus::Approved => "已发布",
+            ProjectStatus::Rejected => "已拒绝",
+            ProjectStatus::Draft => "草稿",
+            ProjectStatus::Unlisted => "未列出",
+            ProjectStatus::Processing => "审核中",
+            ProjectStatus::Unknown => "未知",
+            ProjectStatus::Archived => "已归档",
+            ProjectStatus::Withheld => "已暂扣",
+            ProjectStatus::Scheduled => "已计划",
+            ProjectStatus::Private => "私有",
         }
     }
 

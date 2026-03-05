@@ -59,63 +59,62 @@ const { formatMessage } = useVIntl();
 const messages = defineMessages({
   title: {
     id: "auth.verify-email.title",
-    defaultMessage: "Verify Email",
+    defaultMessage: "验证邮箱",
   },
   accountSettings: {
     id: "auth.verify-email.action.account-settings",
-    defaultMessage: "Account settings",
+    defaultMessage: "账户设置",
   },
   signIn: {
     id: "auth.verify-email.action.sign-in",
-    defaultMessage: "Sign in",
+    defaultMessage: "登录",
   },
 });
 
 const alreadyVerifiedMessages = defineMessages({
   title: {
     id: "auth.verify-email.already-verified.title",
-    defaultMessage: "Email already verified",
+    defaultMessage: "邮箱已验证",
   },
   description: {
     id: "auth.verify-email.already-verified.description",
-    defaultMessage: "Your email is already verified!",
+    defaultMessage: "您的邮箱已完成验证！",
   },
 });
 
 const postVerificationMessages = defineMessages({
   title: {
     id: "auth.verify-email.post-verification.title",
-    defaultMessage: "Email verification",
+    defaultMessage: "邮箱验证",
   },
   description: {
     id: "auth.verify-email.post-verification.description",
-    defaultMessage: "Your email address has been successfully verified!",
+    defaultMessage: "您的邮箱地址已成功验证！",
   },
 });
 
 const failedVerificationMessages = defineMessages({
   title: {
     id: "auth.verify-email.failed-verification.title",
-    defaultMessage: "Email verification failed",
+    defaultMessage: "邮箱验证失败",
   },
   description: {
     id: "auth.verify-email.failed-verification.description",
-    defaultMessage:
-      "We were unable to verify your email. Try re-sending the verification email through your dashboard by signing in.",
+    defaultMessage: "无法验证您的邮箱，请登录后通过控制面板重新发送验证邮件。",
   },
   loggedInDescription: {
     id: "auth.verify-email.failed-verification.description.logged-in",
-    defaultMessage:
-      "We were unable to verify your email. Try re-sending the verification email through the button below.",
+    defaultMessage: "无法验证您的邮箱，请点击下方按钮重新发送验证邮件。",
   },
   action: {
     id: "auth.verify-email.failed-verification.action",
-    defaultMessage: "Resend verification email",
+    defaultMessage: "重新发送验证邮件",
   },
 });
 
 useHead({
   title: () => `${formatMessage(messages.title)} - BBSMC`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();

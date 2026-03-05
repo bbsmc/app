@@ -1,0 +1,119 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT r.id, r.image_url, r.raw_image_url, r.risk_image_url,\n               r.uploader_id, r.source_type, r.source_id, r.project_id,\n               r.risk_labels, r.status, r.created_at,\n               r.reviewed_by, r.reviewed_at, r.review_notes,\n               u.username, u.avatar_url,\n               m.name as \"project_name?\"\n        FROM image_content_reviews r\n        JOIN users u ON u.id = r.uploader_id\n        LEFT JOIN mods m ON m.id = r.project_id\n        WHERE ($1 = 'all' OR r.status = $1)\n        ORDER BY r.created_at DESC\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "raw_image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "risk_image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "uploader_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "source_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "source_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "risk_labels",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "reviewed_by",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 12,
+        "name": "reviewed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "review_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 16,
+        "name": "project_name?",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "2e64732faeb2b887f678b233a8c88c97545d156f593f7c06148fa9d43f4e0c11"
+}

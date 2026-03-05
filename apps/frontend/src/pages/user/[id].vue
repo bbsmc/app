@@ -4,10 +4,10 @@
     <CollectionCreateModal ref="modal_collection_creation" />
     <BanManageModal ref="banManageModal" :user-id="user.id" @updated="refreshUserData" />
 
-    <!-- 用户详情模态框（管理员/版主可见） -->
+    <!-- 用户详情模态框（超级管理员/社区管理员可见） -->
     <NewModal v-if="auth.user && isStaff(auth.user)" ref="userDetailsModal" header="用户详情">
       <div class="flex flex-col gap-3">
-        <!-- Email（仅管理员可见） -->
+        <!-- Email（仅超级管理员可见） -->
         <div v-if="isAdmin(auth.user)" class="flex flex-col gap-1">
           <span class="text-lg font-bold text-primary">{{
             formatMessage(messages.emailLabel)
@@ -29,7 +29,7 @@
           </div>
         </div>
 
-        <!-- Email 验证状态（仅非管理员的版主可见） -->
+        <!-- Email 验证状态（仅非超级管理员的社区管理员可见） -->
         <div v-if="!isAdmin(auth.user)" class="flex flex-col gap-1">
           <span class="text-lg font-bold text-primary">{{
             formatMessage(messages.emailVerifiedLabel)
@@ -41,7 +41,7 @@
           </span>
         </div>
 
-        <!-- 认证方式（仅管理员可见） -->
+        <!-- 认证方式（仅超级管理员可见） -->
         <div v-if="isAdmin(auth.user) && user.auth_providers" class="flex flex-col gap-1">
           <span class="text-lg font-bold text-primary">{{
             formatMessage(messages.authProvidersLabel)
@@ -49,7 +49,7 @@
           <span>{{ user.auth_providers.join(", ") || "无" }}</span>
         </div>
 
-        <!-- 是否设置密码（仅管理员可见） -->
+        <!-- 是否设置密码（仅超级管理员可见） -->
         <div v-if="isAdmin(auth.user)" class="flex flex-col gap-1">
           <span class="text-lg font-bold text-primary">{{
             formatMessage(messages.hasPasswordLabel)
@@ -128,7 +128,7 @@
             >
               <CalendarIcon class="h-6 w-6 text-secondary" />
               注册日期
-              {{ formatRelativeTime(user.created) }}
+              {{ formatDate(user.created) }}
             </div>
           </template>
           <template #actions>
@@ -582,6 +582,7 @@ const { formatMessage } = vintl;
 const formatCompactNumber = useCompactNumber();
 
 const formatRelativeTime = useRelativeTime();
+const formatDate = (date) => data.$dayjs(date).format("YYYY-MM-DD");
 
 const messages = defineMessages({
   profileProjectsStats: {
@@ -622,11 +623,13 @@ const messages = defineMessages({
   },
   profileMetaDescription: {
     id: "profile.meta.description",
-    defaultMessage: "在 BBSMC 下载 {username} 的资源",
+    defaultMessage:
+      "访问 {username} 的 BBSMC 主页，浏览和下载 {username} 发布的 Minecraft 模组、整合包、光影和其他资源。加入 BBSMC 社区，发现更多创作者和资源。",
   },
   profileMetaDescriptionWithBio: {
     id: "profile.meta.description-with-bio",
-    defaultMessage: "{bio} - 在 BBSMC 下载 {username} 的资源",
+    defaultMessage:
+      "{bio} - 访问 {username} 的 BBSMC 主页，下载 {username} 发布的 Minecraft 模组、整合包和其他资源。",
   },
   profileNoProjectsLabel: {
     id: "profile.label.no-projects",
@@ -708,11 +711,25 @@ try {
         useBaseFetch(`user/${route.params.id}/collections`, { apiVersion: 3 }),
       ),
     ]);
-} catch {
+} catch (err) {
+  // 检查是否为 FetchError 并提取状态码
+  const statusCode = err?.response?.status || err?.statusCode || err?.data?.statusCode || 404;
+  const errorType = err?.data?.error;
+
+  // 如果是限流错误，使用 429 状态码
+  if (statusCode === 429 || errorType === "ratelimit_error") {
+    throw createError({
+      fatal: true,
+      statusCode: 429,
+      message: err?.data?.description || "请求过于频繁",
+    });
+  }
+
+  // 其他错误使用原状态码或默认 404
   throw createError({
     fatal: true,
-    statusCode: 404,
-    message: formatMessage(messages.userNotFoundError),
+    statusCode,
+    message: err?.data?.description || err?.message || formatMessage(messages.userNotFoundError),
   });
 }
 
@@ -825,7 +842,9 @@ function getCategoryName(category) {
   return categoryMap[category] || category;
 }
 
-const title = computed(() => `${user.value.username} - BBSMC资源社区`);
+const title = computed(
+  () => `${user.value.username} 的主页 - BBSMC 我的世界资源社区 | 创作者资源下载`,
+);
 const description = computed(() =>
   user.value.bio
     ? formatMessage(messages.profileMetaDescriptionWithBio, {
@@ -841,6 +860,26 @@ useSeoMeta({
   ogTitle: () => title.value,
   ogDescription: () => description.value,
   ogImage: () => user.value.avatar_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
+});
+
+useHead({
+  script: [
+    {
+      type: "application/ld+json",
+      children: () =>
+        JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ProfilePage",
+          mainEntity: {
+            "@type": "Person",
+            name: user.value.username,
+            description: user.value.bio || undefined,
+            image: user.value.avatar_url || undefined,
+            url: `https://bbsmc.net/user/${user.value.username}`,
+          },
+        }),
+    },
+  ],
 });
 
 const projectTypes = computed(() => {
@@ -937,8 +976,8 @@ function openUserDetailsModal() {
 // 获取用户角色名称
 function getUserRoleName(role) {
   const roleNames = {
-    admin: "管理员",
-    moderator: "版主",
+    admin: "超级管理员",
+    moderator: "社区管理员",
     developer: "开发者",
     user: "用户",
   };

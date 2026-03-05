@@ -1,315 +1,700 @@
 <template>
-  <div :style="themeVars">
-    <!-- <div class="game-header">
-      <div class="hero-container">
-        <img src="https://cdn.bbsmc.net/raw/top.jpeg" alt="header" />
-        <div class="desktop-only"></div>
-      </div>
-    </div> -->
-    <div class="game-page container">
-      <!-- <div class="game-description">
-        <div class="game-title">
-          <h1 class="section-title">BBSMC</h1>
-          <span class="num-projects">Minecraft资源社区</span>
+  <div class="home-page">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">
+          <span class="hero-title-line">发现最好的</span>
+          <span class="hero-title-line"><span class="hero-title-highlight">Minecraft</span></span>
+          <span class="hero-title-line">中文资源</span>
+        </h1>
+
+        <p class="hero-desc">
+          探索数十万个模组、整合包、光影和资源包。下载、分享、与百万玩家共建最活跃的中文 MC 社区。
+        </p>
+
+        <div class="hero-actions">
+          <NuxtLink to="/mods" class="hero-btn hero-btn-primary">开始探索</NuxtLink>
+          <NuxtLink to="/dashboard/projects" class="hero-btn hero-btn-secondary"
+            >创作者入驻</NuxtLink
+          >
         </div>
-      </div> -->
-      <!-- Banner 轮播区域 -->
-      <section
-        class="group relative mb-12 h-[450px] select-none overflow-hidden rounded-xl"
-        :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
-        @mouseenter="handleMouseEnter"
-        @mouseleave="handleMouseLeave"
-        @mousedown="handleDragStart"
-        @touchstart="handleDragStart"
-        @touchmove="handleDragMove"
-        @touchend="handleDragEnd"
-      >
-        <div
-          v-for="(item, index) in carouselItems"
-          :key="index"
-          :class="[
-            'absolute inset-0 h-full w-full select-none transition-opacity duration-500',
-            { 'z-10 opacity-100': index === currentSlide, 'z-0 opacity-0': index !== currentSlide },
-          ]"
-          @click="handleBannerClick($event, item.slug)"
-        >
-          <img
-            :src="item.image"
-            :alt="item.title"
-            class="user-select-none absolute inset-0 h-full w-full object-cover"
-            :class="{ 'transition-transform duration-500 group-hover:scale-105': !isDragging }"
-            draggable="false"
-          />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-          <div class="pointer-events-none absolute bottom-0 left-0 p-8 text-white md:p-12">
-            <h2 class="banner-title">{{ item.title }}</h2>
-            <p class="banner-description">{{ item.description }}</p>
+
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-value">{{ formatStatNumber(stats.projects) }}+</div>
+            <div class="hero-stat-label">资源总数</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">{{ formatStatNumber(stats.downloads) }}+</div>
+            <div class="hero-stat-label">累计下载</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">{{ formatStatNumber(stats.users) }}</div>
+            <div class="hero-stat-label">注册用户</div>
           </div>
         </div>
-        <div class="absolute bottom-6 right-6 z-20 flex space-x-2">
-          <button
-            v-for="(_, index) in carouselItems"
+      </div>
+
+      <div class="hero-visual">
+        <div
+          class="hero-banner"
+          :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
+          @mouseenter="handleMouseEnter"
+          @mouseleave="handleMouseLeave"
+          @mousedown="handleDragStart"
+          @touchstart="handleDragStart"
+          @touchmove="handleDragMove"
+          @touchend="handleDragEnd"
+        >
+          <div
+            v-for="(item, index) in heroBanners"
             :key="index"
             :class="[
-              'h-2 w-2 rounded-full transition-all duration-300',
-              currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white',
+              'hero-slide',
+              {
+                active: index === currentHeroSlide,
+              },
             ]"
-            @click="goToSlide(index)"
-          ></button>
-        </div>
-      </section>
-
-      <!-- 搜索框区域 -->
-      <section class="mb-12">
-        <div class="mx-auto max-w-2xl px-4">
-          <form class="relative" @submit.prevent="handleSearch">
-            <input
-              v-model="searchQuery"
-              type="search"
-              placeholder="搜索模组、资源包、整合包..."
-              class="search-input w-full rounded-full py-4 pl-12 pr-4 outline-none transition-all"
-              style="background: var(--color-raised-bg); color: var(--color-text)"
-              @input="handleSearchInput"
-            />
-            <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
-              <svg
-                class="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                style="color: var(--color-text)"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      <section class="mb-12">
-        <div class="px-4">
-          <h2 class="mb-6 text-2xl font-bold" style="color: var(--color-text-dark)">热门资源</h2>
-        </div>
-        <div class="grid grid-cols-1 gap-8 px-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div
-            v-for="project in modpacks"
-            :key="project.project_id"
-            class="group overflow-hidden rounded-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-lg"
-            style="
-              background: var(--color-raised-bg);
-              box-shadow:
-                0 10px 15px -3px rgba(0, 0, 0, 0.05),
-                0 4px 6px -2px rgba(0, 0, 0, 0.03);
-            "
+            @click="handleBannerClick($event, index)"
           >
-            <a :href="getProjectLink(project)" target="_blank" class="block">
-              <div class="relative h-56">
-                <img
-                  :src="project.featured_gallery"
-                  :alt="project.title"
-                  class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-
-                <!-- 下载量统计 -->
-                <div
-                  class="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 backdrop-blur-sm"
-                >
-                  <svg
-                    class="h-4 w-4 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
-                  <span class="text-sm font-medium text-white">{{
-                    formatNumber(project.downloads)
-                  }}</span>
-                </div>
-
-                <div class="absolute bottom-4 left-4 text-white">
-                  <h3 class="card-title">{{ project.title }}</h3>
-                  <p v-if="project.author !== 'BBSMC'" class="card-author">
-                    By {{ project.author }}
-                  </p>
-                </div>
-              </div>
-            </a>
+            <img
+              :src="item.image"
+              :alt="item.title"
+              class="hero-slide-image"
+              :class="{ 'scale-effect': !isDragging }"
+              draggable="false"
+              width="800"
+              height="400"
+              loading="eager"
+              fetchpriority="high"
+            />
+            <div class="hero-slide-overlay">
+              <span class="hero-slide-badge">{{ item.badge }}</span>
+              <h3 class="hero-slide-title">{{ item.title }}</h3>
+              <p class="hero-slide-desc">{{ item.description }}</p>
+            </div>
+          </div>
+          <div class="hero-banner-nav">
+            <button
+              v-for="(_, index) in heroBanners"
+              :key="index"
+              :class="['hero-nav-dot', { active: currentHeroSlide === index }]"
+              @click.stop="goToHeroSlide(index)"
+            ></button>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- 矿工茶馆区域 -->
-      <section class="mb-16">
-        <div class="px-4">
-          <h2 class="mb-6 text-2xl font-bold" style="color: var(--color-text-dark)">矿工茶馆</h2>
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <a
-              v-for="forum in forums"
-              :key="forum.id"
-              :href="forum.project_id ? `/project/${forum.project_id}/forum` : `/d/${forum.id}`"
-              class="forum-card group"
+    <!-- Categories -->
+    <section class="categories">
+      <div class="categories-track">
+        <NuxtLink to="/" class="cat-chip active"><StarIcon class="cat-icon" /> 热门推荐</NuxtLink>
+        <NuxtLink to="/mods" class="cat-chip"><BoxIcon class="cat-icon" /> 模组</NuxtLink>
+        <NuxtLink to="/plugins" class="cat-chip"><PlugIcon class="cat-icon" /> 插件</NuxtLink>
+        <NuxtLink to="/modpacks" class="cat-chip"
+          ><PackageClosedIcon class="cat-icon" /> 整合包</NuxtLink
+        >
+        <NuxtLink to="/shaders" class="cat-chip"><GlassesIcon class="cat-icon" /> 光影</NuxtLink>
+        <NuxtLink to="/resourcepacks" class="cat-chip"
+          ><PaintBrushIcon class="cat-icon" /> 资源包</NuxtLink
+        >
+        <NuxtLink to="/languages" class="cat-chip"
+          ><LanguagesIcon class="cat-icon" /> 汉化</NuxtLink
+        >
+        <NuxtLink to="/datapacks" class="cat-chip"><BracesIcon class="cat-icon" /> 数据包</NuxtLink>
+        <NuxtLink to="/softwares" class="cat-chip"><WrenchIcon class="cat-icon" /> 工具</NuxtLink>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="content-area">
+        <!-- Hot Resources -->
+        <section class="section">
+          <header class="section-header">
+            <div class="section-title-group">
+              <span class="section-label">{{ searchQuery ? "SEARCH" : "TRENDING" }}</span>
+              <h2 class="section-title">{{ searchQuery ? "搜索结果" : "热门资源" }}</h2>
+            </div>
+            <div class="section-header-right">
+              <div class="home-search">
+                <SearchIcon class="home-search-icon" aria-hidden="true" />
+                <input
+                  v-model="searchQuery"
+                  type="search"
+                  placeholder="搜索资源..."
+                  class="home-search-input"
+                  autocomplete="off"
+                />
+                <button v-if="searchQuery" class="home-search-clear" @click="searchQuery = ''">
+                  <XIcon />
+                </button>
+              </div>
+              <NuxtLink v-if="!searchQuery" to="/mods" class="section-more">浏览全部 →</NuxtLink>
+            </div>
+          </header>
+
+          <!-- 搜索加载状态 -->
+          <div v-if="searchLoading" class="search-loading">
+            <span class="search-loading-spinner" />
+            <span>搜索中...</span>
+          </div>
+
+          <!-- 搜索无结果 -->
+          <div v-else-if="searchQuery && displayProjects.length === 0" class="search-empty">
+            <SearchIcon class="search-empty-icon" />
+            <p>未找到与「{{ searchQuery }}」相关的资源</p>
+            <button class="search-empty-btn" @click="searchQuery = ''">清除搜索</button>
+          </div>
+
+          <div v-else class="resource-grid">
+            <NuxtLink
+              v-for="project in displayProjects"
+              :key="project.project_id"
+              :to="getProjectLink(project)"
+              class="resource-card"
             >
-              <div class="flex items-start gap-3">
-                <!-- 用户头像 -->
-                <img :src="forum.avatar" :alt="forum.user_name" class="forum-avatar" />
+              <!-- Gallery Image -->
+              <div class="resource-gallery" :style="getGalleryStyle(project)">
+                <div class="resource-type-badge">
+                  {{ getProjectTypeLabel(project.project_type) }}
+                </div>
+              </div>
 
-                <!-- 中间内容区 -->
-                <div class="min-w-0 flex-1">
-                  <h3 class="forum-card-title">{{ forum.title }}</h3>
-                  <div class="mt-1 flex items-center gap-2">
-                    <span class="forum-username">{{ forum.user_name }}</span>
-                    <span class="forum-replies">{{ forum.replies }} 回复</span>
+              <!-- Card Body -->
+              <div class="resource-body">
+                <!-- Header: Icon + Title -->
+                <div class="resource-header">
+                  <img
+                    v-if="project.icon_url"
+                    :src="project.icon_url"
+                    :alt="project.title"
+                    class="resource-icon"
+                    loading="lazy"
+                    width="48"
+                    height="48"
+                  />
+                  <span v-else class="resource-icon-placeholder"><PackageClosedIcon /></span>
+                  <div class="resource-title-wrap">
+                    <div class="resource-name">{{ project.title }}</div>
+                    <div class="resource-author">by {{ project.author }}</div>
                   </div>
                 </div>
 
-                <!-- 右侧时间和箭头 -->
-                <div class="flex flex-shrink-0 flex-col items-end gap-1">
-                  <p class="forum-card-time">{{ fromNow(forum.last_post_time) }}</p>
-                  <svg
-                    class="h-5 w-5 transform transition-transform group-hover:translate-x-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    style="color: var(--color-brand)"
+                <!-- Description -->
+                <p class="resource-desc">{{ project.description }}</p>
+
+                <!-- Tags: Loaders + Version -->
+                <div class="resource-tags">
+                  <span
+                    v-for="loader in (project.loaders || []).slice(0, 3)"
+                    :key="loader"
+                    class="tag loader"
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
+                    {{ formatLoader(loader) }}
+                  </span>
+                  <span v-if="project.versions?.[0]" class="tag version">{{
+                    project.versions[0]
+                  }}</span>
+                </div>
+
+                <!-- Footer Stats -->
+                <div class="resource-footer">
+                  <div class="resource-stat">
+                    <DownloadIcon class="stat-icon" />
+                    <span>{{ formatNumber(project.downloads) }}</span>
+                  </div>
+                  <div class="resource-stat">
+                    <HeartIcon class="stat-icon" />
+                    <span>{{ formatNumber(project.follows) }}</span>
+                  </div>
+                  <div class="resource-stat update">
+                    <UpdatedIcon class="stat-icon" />
+                    <span>{{ formatDate(project.date_modified) }}</span>
+                  </div>
                 </div>
               </div>
+            </NuxtLink>
+          </div>
+        </section>
+
+        <!-- 热门汉化包 -->
+        <section v-if="latestModpackTranslations.length > 0" class="section">
+          <header class="section-header">
+            <div class="section-title-group">
+              <span class="section-label">HOT</span>
+              <h2 class="section-title">热门汉化包</h2>
+            </div>
+            <NuxtLink to="/languages" class="section-more">浏览全部 →</NuxtLink>
+          </header>
+
+          <div class="resource-grid">
+            <NuxtLink
+              v-for="project in latestModpackTranslations"
+              :key="project.project_id"
+              :to="getProjectLink(project)"
+              class="resource-card"
+            >
+              <!-- Gallery Image -->
+              <div class="resource-gallery" :style="getGalleryStyle(project)">
+                <div class="resource-type-badge">汉化</div>
+              </div>
+
+              <!-- Card Body -->
+              <div class="resource-body">
+                <!-- Header: Icon + Title -->
+                <div class="resource-header">
+                  <img
+                    v-if="project.icon_url"
+                    :src="project.icon_url"
+                    :alt="project.title"
+                    class="resource-icon"
+                    loading="lazy"
+                    width="48"
+                    height="48"
+                  />
+                  <span v-else class="resource-icon-placeholder"><PackageClosedIcon /></span>
+                  <div class="resource-title-wrap">
+                    <div class="resource-name">{{ project.title }}</div>
+                    <div class="resource-author">by {{ project.author }}</div>
+                  </div>
+                </div>
+
+                <!-- Description -->
+                <p class="resource-desc">{{ project.description }}</p>
+
+                <!-- Tags: Loaders + Version -->
+                <div class="resource-tags">
+                  <span
+                    v-for="loader in (project.loaders || []).slice(0, 3)"
+                    :key="loader"
+                    class="tag loader"
+                  >
+                    {{ formatLoader(loader) }}
+                  </span>
+                  <span v-if="project.versions?.[0]" class="tag version">{{
+                    project.versions[0]
+                  }}</span>
+                </div>
+
+                <!-- Footer Stats -->
+                <div class="resource-footer">
+                  <div class="resource-stat">
+                    <DownloadIcon class="stat-icon" />
+                    <span>{{ formatNumber(project.downloads) }}</span>
+                  </div>
+                  <div class="resource-stat">
+                    <HeartIcon class="stat-icon" />
+                    <span>{{ formatNumber(project.follows) }}</span>
+                  </div>
+                  <div class="resource-stat update">
+                    <UpdatedIcon class="stat-icon" />
+                    <span>{{ formatDate(project.date_modified) }}</span>
+                  </div>
+                </div>
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+
+        <!-- 社区资讯 - 暂时隐藏
+        <section v-if="notices.length > 0" class="section">
+          <header class="section-header">
+            <div class="section-title-group">
+              <span class="section-label">NEWS</span>
+              <h2 class="section-title">社区资讯</h2>
+            </div>
+            <NuxtLink to="/forums/notice" class="section-more">查看全部 →</NuxtLink>
+          </header>
+
+          <div class="notice-list">
+            <NuxtLink
+              v-for="notice in notices"
+              :key="notice.id"
+              :to="`/d/${notice.id}`"
+              class="notice-item"
+            >
+              <img :src="notice.avatar" :alt="notice.user_name" class="notice-avatar" />
+              <div class="notice-content">
+                <div class="notice-title">{{ notice.title }}</div>
+                <div class="notice-meta">
+                  <span class="notice-author">{{ notice.user_name }}</span>
+                  <span class="notice-time">{{ fromNow(notice.last_post_time) }}</span>
+                </div>
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+        -->
+
+        <!-- 热门讨论 - 暂时隐藏
+        <section class="section">
+          <header class="section-header">
+            <div class="section-title-group">
+              <span class="section-label">COMMUNITY</span>
+              <h2 class="section-title">热门讨论</h2>
+            </div>
+            <NuxtLink to="/forums/chat" class="section-more">进入论坛 →</NuxtLink>
+          </header>
+
+          <div class="discussion-list">
+            <NuxtLink
+              v-for="forum in forums"
+              :key="forum.id"
+              :to="forum.project_id ? `/project/${forum.project_id}/forum` : `/d/${forum.id}`"
+              class="discussion-item"
+            >
+              <img :src="forum.avatar" :alt="forum.user_name" class="discussion-avatar" />
+              <div class="discussion-content">
+                <div class="discussion-header">
+                  <span :class="['discussion-category', `cat-${forum.category}`]">
+                    {{ getCategoryLabel(forum.category) }}
+                  </span>
+                  <span class="discussion-time">{{ fromNow(forum.last_post_time) }}</span>
+                </div>
+                <div class="discussion-title">{{ forum.title }}</div>
+                <div class="discussion-meta">
+                  <span class="discussion-author">{{ forum.user_name }}</span>
+                  <span class="discussion-replies"
+                    ><MessageIcon class="stat-icon" /> {{ forum.replies }} 回复</span
+                  >
+                </div>
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+        -->
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <!-- 汉化包推荐 -->
+        <div v-if="translations.length > 0" class="sidebar-card">
+          <div class="sidebar-header">
+            <h3 class="sidebar-title"><LanguagesIcon class="sidebar-icon" /> 最近更新汉化</h3>
+            <NuxtLink to="/languages" class="sidebar-more">更多 →</NuxtLink>
+          </div>
+          <div class="sidebar-body">
+            <div class="translation-list">
+              <NuxtLink
+                v-for="item in translations"
+                :key="item.project_id"
+                :to="`/language/${item.slug}`"
+                class="translation-item"
+                :title="item.title"
+              >
+                <img
+                  :src="item.icon_url"
+                  :alt="item.title"
+                  class="translation-icon"
+                  loading="lazy"
+                  width="40"
+                  height="40"
+                />
+                <div class="translation-info">
+                  <div class="translation-title">{{ item.title }}</div>
+                  <div class="translation-meta">
+                    <span class="meta-item">
+                      <DownloadIcon class="stat-icon" /> {{ formatNumber(item.downloads) }}
+                    </span>
+                    <span class="meta-item">
+                      <UpdatedIcon class="stat-icon" /> {{ fromNow(item.date_modified) }}
+                    </span>
+                  </div>
+                </div>
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- 测评专栏 - 暂时隐藏
+        <div class="sidebar-card">
+          <div class="sidebar-header">
+            <h3 class="sidebar-title"><StarIcon class="sidebar-icon" /> 测评专栏</h3>
+            <NuxtLink to="/forums/article" class="sidebar-more">更多 →</NuxtLink>
+          </div>
+          <div class="sidebar-body">
+            <div class="article-list">
+              <NuxtLink
+                v-for="article in articles"
+                :key="article.id"
+                :to="`/d/${article.id}`"
+                class="article-item"
+              >
+                <img :src="article.avatar" :alt="article.user_name" class="article-avatar" />
+                <div class="article-info">
+                  <div class="article-title">{{ article.title }}</div>
+                  <div class="article-meta">
+                    {{ article.user_name }} · {{ fromNow(article.last_post_time) }}
+                  </div>
+                </div>
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+        -->
+
+        <!-- 服务器插件推荐 -->
+        <div v-if="latestPlugins.length > 0" class="sidebar-card plugin-recommend-card">
+          <div class="sidebar-header plugin-header">
+            <h3 class="sidebar-title"><PlugIcon class="sidebar-icon" /> 服务器插件</h3>
+            <NuxtLink to="/plugins" class="sidebar-more">更多 →</NuxtLink>
+          </div>
+          <div class="mini-resource-list">
+            <NuxtLink
+              v-for="plugin in latestPlugins"
+              :key="plugin.project_id"
+              :to="getProjectLink(plugin)"
+              class="mini-resource-item"
+            >
+              <img
+                v-if="plugin.icon_url"
+                :src="plugin.icon_url"
+                :alt="plugin.title"
+                class="mini-resource-icon"
+                loading="lazy"
+                width="48"
+                height="48"
+              />
+              <span v-else class="mini-resource-icon-placeholder"><PlugIcon /></span>
+              <div class="mini-resource-info">
+                <div class="mini-resource-title">{{ plugin.title }}</div>
+                <div class="mini-resource-author">
+                  {{ plugin.author === "BBSMC" ? "社区搬运" : `by ${plugin.author}` }}
+                </div>
+                <div class="mini-resource-desc">{{ plugin.description }}</div>
+                <div class="mini-resource-tags">
+                  <span
+                    v-for="loader in (plugin.loaders || []).slice(0, 2)"
+                    :key="loader"
+                    class="mini-tag"
+                  >
+                    {{ formatLoader(loader) }}
+                  </span>
+                  <span v-if="plugin.versions?.[0]" class="mini-tag version-tag">
+                    {{ plugin.versions[0] }}
+                  </span>
+                </div>
+                <div class="mini-resource-stats">
+                  <span class="mini-stat-item">
+                    <DownloadIcon class="mini-stat-icon" />
+                    {{ formatNumber(plugin.downloads) }}
+                  </span>
+                  <span class="mini-stat-item">
+                    <HeartIcon class="mini-stat-icon" />
+                    {{ formatNumber(plugin.follows) }}
+                  </span>
+                  <span class="mini-stat-item update-time">
+                    <UpdatedIcon class="mini-stat-icon" />
+                    {{ formatDate(plugin.date_modified) }}
+                  </span>
+                </div>
+              </div>
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- 友情链接 -->
+        <div class="sidebar-card">
+          <div class="sidebar-header">
+            <h3 class="sidebar-title"><LinkIcon class="sidebar-icon" /> 友情链接</h3>
+          </div>
+          <div class="quick-links">
+            <a
+              href="https://www.mcmod.cn/"
+              target="_blank"
+              rel="nofollow noopener"
+              class="quick-link"
+            >
+              <img
+                src="https://www.mcmod.cn/images/links/mcmod.gif"
+                alt="MC百科"
+                class="friend-link-logo"
+                loading="lazy"
+                width="88"
+                height="31"
+              />
+              <span class="quick-link-text">MC百科</span>
+            </a>
+            <a
+              href="https://bbs.mc9y.net/"
+              target="_blank"
+              rel="nofollow noopener"
+              class="quick-link"
+            >
+              <img
+                src="https://bbs.mc9y.net/styles/io_dark/io/images/logo.png"
+                alt="九域资源社区"
+                class="friend-link-logo"
+                loading="lazy"
+                width="88"
+                height="31"
+              />
+              <span class="quick-link-text">九域资源社区</span>
             </a>
           </div>
         </div>
-      </section>
-    </div>
+      </aside>
+    </main>
   </div>
 </template>
 
 <script setup>
-// import { homePageSearch } from "~/generated/state.json";
-
-// const searchQuery = ref("");
-// const sortType = ref("relevance");
-
-// const searchProjects = ref(homePageSearch.hits ?? []);
-
-// async function updateSearchProjects() {
-//   const res = await useBaseFetch(
-//     `search?limit=3&query=${searchQuery.value}&index=${sortType.value}`,
-//   );
-
-//   searchProjects.value = res.hits ?? [];
-// }
 import dayjs from "dayjs";
-import { isDarkTheme } from "~/plugins/theme/themes.ts";
-const modpacks = ref([]);
-const searchQuery = ref("");
-const forums = ref([]);
+import {
+  BoxIcon,
+  PackageClosedIcon,
+  LanguagesIcon,
+  StarIcon,
+  PlugIcon,
+  GlassesIcon,
+  PaintBrushIcon,
+  BracesIcon,
+  WrenchIcon,
+  LinkIcon,
+  HeartIcon,
+  DownloadIcon,
+  UpdatedIcon,
+  SearchIcon,
+  XIcon,
+} from "@modrinth/assets";
 
-// 获取当前主题并设置CSS变量
-const { $theme } = useNuxtApp();
-const themeVars = computed(() => {
-  if (isDarkTheme($theme?.active)) {
-    return {
-      "--carousel-gradient-end": "rgba(0, 0, 0, 0.8)",
-      "--carousel-dot-bg": "rgba(255, 255, 255, 0.5)",
-      "--carousel-dot-active": "var(--color-text-dark)",
-      "--carousel-text-color": "var(--color-text-dark)",
-    };
-  } else {
-    return {
-      "--carousel-gradient-end": "rgba(255, 255, 255, 0.9)",
-      "--carousel-dot-bg": "rgba(100, 100, 100, 0.5)",
-      "--carousel-dot-active": "var(--color-brand)",
-      "--carousel-text-color": "var(--color-text)",
-    };
-  }
+useSeoMeta({
+  title: "BBSMC - 我的世界中文资源社区 | Minecraft 模组、整合包、光影下载",
+  description:
+    "BBSMC 是最活跃的 Minecraft 我的世界中文资源社区。提供海量模组、整合包、光影、资源包、数据包和插件的免费下载，支持 Forge、Fabric、NeoForge 等主流加载器。加入百万玩家共同打造最好的中文 Minecraft 内容平台。",
+  ogTitle: "BBSMC - 我的世界中文资源社区 | Minecraft 模组、整合包、光影下载",
+  ogDescription:
+    "BBSMC 是最活跃的 Minecraft 我的世界中文资源社区。提供海量模组、整合包、光影、资源包、数据包和插件的免费下载，支持 Forge、Fabric、NeoForge 等主流加载器。加入百万玩家共同打造最好的中文 Minecraft 内容平台。",
+  ogImage: "https://cdn.bbsmc.net/raw/bbsmc-logo.png",
 });
 
-async function getProjects() {
-  const [modpacksResponse, forumsResponse] = await Promise.all([
-    useBaseFetch(`search?limit=8&index=relevance&facets=[["project_type:modpack"]]`),
+useHead({
+  script: [
+    {
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "BBSMC",
+        alternateName: "BBSMC 我的世界资源社区",
+        url: "https://bbsmc.net",
+        description:
+          "BBSMC 是最活跃的 Minecraft 我的世界中文资源社区，提供模组、整合包、光影、资源包和插件下载。",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://bbsmc.net/mods?q={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
+      }),
+    },
+  ],
+});
+
+// 使用 useAsyncData 获取所有主页数据，支持 SSR
+const { data: pageData } = await useAsyncData("homepage-data", async () => {
+  const [
+    projectsResponse,
+    forumsResponse,
+    noticesResponse,
+    articlesResponse,
+    translationsResponse,
+    latestModpackTranslationsResponse,
+    latestPluginsResponse,
+  ] = await Promise.all([
+    useBaseFetch(`search?limit=6&index=relevance`),
     useBaseFetch(`forum`, { apiVersion: 3 }),
+    useBaseFetch(`forum/notice/lists`, { apiVersion: 3 }),
+    useBaseFetch(`forum/article/lists`, { apiVersion: 3 }),
+    useBaseFetch(`search?limit=5&index=updated&facets=[["project_type:language"]]`),
+    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:language"]]`),
+    useBaseFetch(`search?limit=5&index=updated&facets=[["project_type:plugin"]]`),
   ]);
 
-  modpacks.value =
-    modpacksResponse.hits?.map((modpack) => ({
-      ...modpack,
-      slug: modpack.slug || modpack.project_id,
-      featured_gallery:
-        modpack.featured_gallery ||
-        (modpack.gallery?.length > 0 ? modpack.gallery[0] : modpack.icon_url),
-    })) ?? [];
+  return {
+    hotProjects: projectsResponse.hits ?? [],
+    forums: (forumsResponse.forums ?? []).slice(0, 5),
+    notices: (noticesResponse.forums ?? []).slice(0, 5),
+    articles: (articlesResponse.forums ?? []).slice(0, 3),
+    translations: translationsResponse.hits ?? [],
+    latestModpackTranslations: latestModpackTranslationsResponse.hits ?? [],
+    latestPlugins: (latestPluginsResponse.hits ?? []).map((plugin) => ({
+      ...plugin,
+      project_type: plugin.project_type || "plugin", // 确保插件类型正确
+    })),
+  };
+});
 
-  forums.value = (forumsResponse.forums ?? []).slice(0, 6); // 只显示6个
-}
-await getProjects();
+// 从 pageData 中提取数据
+const hotProjects = computed(() => pageData.value?.hotProjects ?? []);
+// forums, notices, articles available from pageData if needed
+const translations = computed(() => pageData.value?.translations ?? []);
+const latestModpackTranslations = computed(() => pageData.value?.latestModpackTranslations ?? []);
+const latestPlugins = computed(() => pageData.value?.latestPlugins ?? []);
 
-// 时间格式化
-const fromNow = (date) => {
-  const currentDate = useCurrentDate();
-  return dayjs(date).from(currentDate.value);
+// 搜索功能
+const searchQuery = ref("");
+const searchResults = ref([]);
+const searchLoading = ref(false);
+let searchDebounceTimer = null;
+
+const displayProjects = computed(() => {
+  if (searchQuery.value && searchResults.value.length > 0) {
+    return searchResults.value;
+  }
+  return hotProjects.value;
+});
+
+const performSearch = async (query) => {
+  if (!query.trim()) {
+    searchResults.value = [];
+    searchLoading.value = false;
+    return;
+  }
+  searchLoading.value = true;
+  try {
+    const res = await useBaseFetch(
+      `search?query=${encodeURIComponent(query.trim())}&limit=12&index=relevance`,
+    );
+    searchResults.value = res.hits ?? [];
+  } catch {
+    searchResults.value = [];
+  } finally {
+    searchLoading.value = false;
+  }
 };
 
-// 初始化的时候就打乱carouselItems的顺序
+watch(searchQuery, (val) => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  if (!val.trim()) {
+    searchResults.value = [];
+    searchLoading.value = false;
+    return;
+  }
+  searchLoading.value = true;
+  searchDebounceTimer = setTimeout(() => performSearch(val), 300);
+});
 
-const carouselItems = ref([
-  {
-    image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
-    title: "PCL2",
-    description:
-      "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
-    slug: "/software/pcl",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
-    title: "PCL CE",
-    description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
-    slug: "/software/pcl",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/1p2TFl6X/images/73cc070ff496b26f2674eb5928b021cb2ef93426_350.webp",
-    title: "乌托邦探险之旅",
-    description: "乌托邦探险之旅",
-    slug: "/modpack/utopia-journey",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/NxtrWNas/images/329b6261d797271622386b146078d7130a5438c0_350.webp",
-    title: "探索自然2",
-    description: "通过探索，种田来发展经济，提升实力，面临不断增强的怪物",
-    slug: "/modpack/tansuoziran2",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/dL0Tbr7N/images/19f25c62f6bcc1d068c9b35e4e603e81991754f9_350.webp",
-    title: "脆骨症：黯光",
-    description: "脆骨症的维度分支，引入了大量的新维度作为内容的补充。",
-    slug: "/modpack/no-flesh-within-chest-dim",
-  },
+const stats = ref({
+  projects: 12580,
+  downloads: 1580000,
+  users: 89234,
+  modpacks: 1247,
+  mods: 3842,
+  languages: 4521,
+  forums: 28000,
+});
+
+// Hero Banners - 来自整合包页面的内容
+const heroBanners = ref([
   {
     image:
       "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1_350.webp",
     title: "剑与王国",
     description: "围绕模拟殖民地与村民招募玩法的深度魔改整合包",
+    badge: "热门整合包",
     slug: "/modpack/snk",
   },
   {
@@ -317,164 +702,66 @@ const carouselItems = ref([
       "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94_350.webp",
     title: "龙之冒险：新征程",
     description: "面对众多怪物的冒险之旅，你做好准备了吗？",
+    badge: "精选整合包",
     slug: "/modpack/lzmx",
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/OIIWCwpQ/images/fce31aca660ea4b6cf77ce8e51468d4e6585c0d8_350.webp",
-    title: "机械动力:齿轮盛宴",
-    description:
-      "欢迎来到齿轮盛宴的世界,欢迎来到齿轮盛宴的世界,也能体验到沉浸式做菜的欢乐,更能体验到丰富的世界之旅，怪物、美景层出不穷，美不胜收,愿齿轮盛宴能给你带来盛宴一般的感受.",
-    slug: "/modpack/create-delight",
+      "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
+    title: "愚者 - The Fool",
+    description: "愚弄、伪装、欺诈，屠龙者终成恶龙。",
+    badge: "精选整合包",
+    slug: "/modpack/the-fool",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/e11vzqXl/images/346fd8930411f592c94acce68b8290a5266843e3_350.webp",
+    title: "香草纪元:食旅纪行",
+    description: "农夫乐事全附属与异界冒险",
+    badge: "热门整合包",
+    slug: "/modpack/vefc",
   },
 ]);
 
-const currentSlide = ref(0);
-
-// 拖动相关状态
+const currentHeroSlide = ref(0);
+const autoPlayInterval = ref(null);
+const isClient = ref(false);
 const isDragging = ref(false);
 const dragStartX = ref(0);
 const dragCurrentX = ref(0);
-const hasDragged = ref(false); // 标记是否发生了拖动
+const hasDragged = ref(false);
 
-// 处理拖动开始
-const handleDragStart = (e) => {
-  const isTouchEvent = e.type.includes("touch");
-
-  isDragging.value = true;
-  hasDragged.value = false; // 重置拖动标志
-  dragStartX.value = isTouchEvent ? e.touches[0].clientX : e.clientX;
-  dragCurrentX.value = dragStartX.value;
-  stopAutoPlay(); // 停止自动播放
-
-  if (!isTouchEvent) {
-    e.preventDefault(); // 阻止默认行为
-    // 桌面端：在 document 上监听 mousemove 和 mouseup
-    document.addEventListener("mousemove", handleDragMove);
-    document.addEventListener("mouseup", handleDragEnd);
-  }
+// Time formatting
+const fromNow = (date) => {
+  const currentDate = useCurrentDate();
+  return dayjs(date).from(currentDate.value);
 };
 
-// 处理拖动中
-const handleDragMove = (e) => {
-  if (!isDragging.value) return;
-
-  const isTouchEvent = e.type.includes("touch");
-  const currentX = isTouchEvent ? e.touches[0].clientX : e.clientX;
-  dragCurrentX.value = currentX;
-
-  // 如果拖动距离超过5px，标记为已拖动
-  const distance = Math.abs(currentX - dragStartX.value);
-  if (distance > 5) {
-    hasDragged.value = true;
-    e.preventDefault();
-  }
+const formatDate = (date) => {
+  return dayjs(date).format("YYYY-MM-DD");
 };
 
-// 处理拖动结束
-const handleDragEnd = (_e) => {
-  if (!isDragging.value) return;
-
-  const dragDistance = dragCurrentX.value - dragStartX.value;
-  const threshold = 50; // 拖动超过50px才切换
-
-  if (Math.abs(dragDistance) > threshold) {
-    if (dragDistance > 0) {
-      // 向右拖动，显示上一张
-      prevSlide();
-    } else {
-      // 向左拖动，显示下一张
-      nextSlide();
-    }
-  }
-
-  isDragging.value = false;
-  startAutoPlay(); // 恢复自动播放
-
-  // 移除 document 上的监听器
-  document.removeEventListener("mousemove", handleDragMove);
-  document.removeEventListener("mouseup", handleDragEnd);
-
-  // 延迟重置拖动位置，让 click 事件能正确判断
-  setTimeout(() => {
-    dragStartX.value = 0;
-    dragCurrentX.value = 0;
-  }, 10);
-};
-
-// 上一张
-const prevSlide = () => {
-  currentSlide.value =
-    currentSlide.value === 0 ? carouselItems.value.length - 1 : currentSlide.value - 1;
-  startAutoPlay(); // 重置自动播放计时器
-};
-
-// 处理 Banner 点击（防止拖动后触发跳转）
-const handleBannerClick = (e, url) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  // 如果发生了拖动，不跳转
-  if (hasDragged.value) {
-    hasDragged.value = false; // 重置标志
-    return;
-  }
-
-  // 否则正常跳转
-  window.open(url, "_blank");
-};
-
-// 搜索功能
-const handleSearch = async () => {
-  const query = searchQuery.value.trim();
-
-  if (query) {
-    // 调用搜索API，不限制项目类型
-    const searchResponse = await useBaseFetch(
-      `search?limit=8&index=relevance&query=${encodeURIComponent(query)}`,
-    );
-
-    modpacks.value =
-      searchResponse.hits?.map((project) => ({
-        ...project,
-        slug: project.slug || project.project_id,
-        featured_gallery:
-          project.featured_gallery ||
-          (project.gallery?.length > 0 ? project.gallery[0] : project.icon_url),
-      })) ?? [];
-  } else {
-    // 搜索框为空时，恢复显示热门整合包
-    await getProjects();
-  }
-};
-
-// 防抖定时器
-let searchTimeout = null;
-
-// 实时搜索
-const handleSearchInput = () => {
-  // 清除之前的定时器
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-
-  // 设置新的定时器，300ms 后执行搜索
-  searchTimeout = setTimeout(() => {
-    handleSearch();
-  }, 300);
-};
-
-// 格式化数字显示（下载量等）
+// Number formatting
 const formatNumber = (num) => {
   if (!num) return "0";
-
   if (num >= 10000) {
     return (num / 10000).toFixed(1).replace(/\.0$/, "") + "万";
   }
-  return num.toString();
+  return num.toLocaleString();
 };
 
-// 根据项目类型生成链接
+const formatStatNumber = (num) => {
+  if (!num) return "0";
+  if (num >= 10000) {
+    return (num / 10000).toFixed(0) + "万";
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  }
+  return num.toLocaleString();
+};
+
+// Project link
 const getProjectLink = (project) => {
   const typeMap = {
     mod: "mod",
@@ -483,29 +770,105 @@ const getProjectLink = (project) => {
     resourcepack: "resourcepack",
     shader: "shader",
     datapack: "datapack",
+    software: "software",
+    language: "language",
   };
-  const type = typeMap[project.project_type] || project.project_type;
-  return `/${type}/${project.slug}`;
+
+  // 获取项目类型,如果没有则使用 mod 作为默认值
+  let projectType = project.project_type;
+
+  // 如果 project_type 不存在,尝试从其他字段推断
+  if (!projectType && project.loaders) {
+    // 根据 loaders 判断类型
+    const loaders = Array.isArray(project.loaders) ? project.loaders : [];
+    if (
+      loaders.some((l) =>
+        ["bukkit", "spigot", "paper", "purpur", "folia"].includes(l.toLowerCase()),
+      )
+    ) {
+      projectType = "plugin";
+    }
+  }
+
+  const type = typeMap[projectType] || projectType || "mod";
+  return `/${type}/${project.slug || project.project_id}`;
 };
 
-const autoPlayInterval = ref(null);
-const autoPlayDelay = 5000;
+// Project type label
+const getProjectTypeLabel = (type) => {
+  const labels = {
+    mod: "模组",
+    modpack: "整合包",
+    plugin: "插件",
+    resourcepack: "资源包",
+    shader: "光影",
+    datapack: "数据包",
+    software: "软件",
+    language: "汉化",
+  };
+  return labels[type] || type;
+};
 
-// 添加一个标志来判断是否在客户端
-const isClient = ref(false);
+// Get gallery image URL (handles different API response formats)
+const getGalleryStyle = (project) => {
+  // Try different possible gallery formats
+  let imageUrl = null;
 
-// 开始自动播放
+  // Format 1: gallery is array of strings
+  if (project.gallery?.[0] && typeof project.gallery[0] === "string") {
+    imageUrl = project.gallery[0];
+  }
+  // Format 2: gallery is array of objects with url property
+  else if (project.gallery?.[0]?.url) {
+    imageUrl = project.gallery[0].url;
+  }
+  // Format 3: featured_gallery field
+  else if (project.featured_gallery) {
+    imageUrl = project.featured_gallery;
+  }
+  // Format 4: icon_url as fallback for software
+  else if (project.project_type === "software" && project.icon_url) {
+    imageUrl = project.icon_url;
+  }
+
+  return imageUrl ? `background-image: url(${imageUrl})` : "";
+};
+
+// getCategoryLabel available if needed for forum categories
+
+// Loader formatting
+const formatLoader = (loader) => {
+  const loaderNames = {
+    fabric: "Fabric",
+    forge: "Forge",
+    neoforge: "NeoForge",
+    quilt: "Quilt",
+    bukkit: "Bukkit",
+    spigot: "Spigot",
+    paper: "Paper",
+    purpur: "Purpur",
+    sponge: "Sponge",
+    bungeecord: "BungeeCord",
+    velocity: "Velocity",
+    waterfall: "Waterfall",
+    folia: "Folia",
+    canvas: "Canvas",
+    iris: "Iris",
+    optifine: "OptiFine",
+    vanilla: "原版",
+  };
+  return loaderNames[loader] || loader;
+};
+
+// Hero Banner controls
 const startAutoPlay = () => {
-  // 只在客户端执行
   if (!isClient.value) return;
-
   stopAutoPlay();
   autoPlayInterval.value = setInterval(() => {
-    nextSlide();
-  }, autoPlayDelay);
+    currentHeroSlide.value = (currentHeroSlide.value + 1) % heroBanners.value.length;
+  }, 5000);
 };
 
-// 停止自动播放
 const stopAutoPlay = () => {
   if (autoPlayInterval.value) {
     clearInterval(autoPlayInterval.value);
@@ -513,43 +876,93 @@ const stopAutoPlay = () => {
   }
 };
 
-// 修改 nextSlide 和 prevSlide 函数，添加重置自动播放
-const nextSlide = () => {
-  currentSlide.value = (currentSlide.value + 1) % carouselItems.value.length;
-  startAutoPlay(); // 重置自动播放计时器
+const goToHeroSlide = (index) => {
+  if (index === currentHeroSlide.value) {
+    navigateTo(heroBanners.value[index].slug);
+    return;
+  }
+  currentHeroSlide.value = index;
+  startAutoPlay();
 };
 
-// const prevSlide = () => {
-//   currentSlide.value =
-//     currentSlide.value === 0 ? carouselItems.value.length - 1 : currentSlide.value - 1;
-//   startAutoPlay(); // 重置自动播放计时器
-// };
+const prevHeroSlide = () => {
+  currentHeroSlide.value =
+    (currentHeroSlide.value - 1 + heroBanners.value.length) % heroBanners.value.length;
+  startAutoPlay();
+};
 
-const goToSlide = (index) => {
-  if (index === currentSlide.value) {
-    // 打开链接
-    window.open(`${carouselItems.value[index].slug}`, "_blank");
+const nextHeroSlide = () => {
+  currentHeroSlide.value = (currentHeroSlide.value + 1) % heroBanners.value.length;
+  startAutoPlay();
+};
+
+// Banner 拖拽处理函数
+const handleDragStart = (e) => {
+  const isTouchEvent = e.type.includes("touch");
+  isDragging.value = true;
+  hasDragged.value = false;
+  dragStartX.value = isTouchEvent ? e.touches[0].clientX : e.clientX;
+  dragCurrentX.value = dragStartX.value;
+  stopAutoPlay();
+
+  if (!isTouchEvent) {
+    e.preventDefault();
+    document.addEventListener("mousemove", handleDragMove);
+    document.addEventListener("mouseup", handleDragEnd);
+  }
+};
+
+const handleDragMove = (e) => {
+  if (!isDragging.value) return;
+  const isTouchEvent = e.type.includes("touch");
+  const currentX = isTouchEvent ? e.touches[0].clientX : e.clientX;
+  dragCurrentX.value = currentX;
+
+  const distance = Math.abs(currentX - dragStartX.value);
+  if (distance > 5) {
+    hasDragged.value = true;
+    e.preventDefault();
+  }
+};
+
+const handleDragEnd = () => {
+  if (!isDragging.value) return;
+
+  const dragDistance = dragCurrentX.value - dragStartX.value;
+  const threshold = 50;
+
+  if (Math.abs(dragDistance) > threshold) {
+    if (dragDistance > 0) {
+      prevHeroSlide();
+    } else {
+      nextHeroSlide();
+    }
+  }
+
+  isDragging.value = false;
+  startAutoPlay();
+
+  document.removeEventListener("mousemove", handleDragMove);
+  document.removeEventListener("mouseup", handleDragEnd);
+
+  setTimeout(() => {
+    dragStartX.value = 0;
+    dragCurrentX.value = 0;
+  }, 10);
+};
+
+const handleBannerClick = (e, index) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (hasDragged.value) {
+    hasDragged.value = false;
     return;
   }
 
-  currentSlide.value = index;
-  startAutoPlay(); // 重置自动播放计时器
+  navigateTo(heroBanners.value[index].slug);
 };
 
-// 在组件挂载时启动自动播放
-onMounted(() => {
-  isClient.value = true;
-  currentSlide.value = Math.floor(Math.random() * carouselItems.value.length);
-  startAutoPlay();
-});
-
-// 确保在组件卸载时清除定时器
-onUnmounted(() => {
-  stopAutoPlay();
-  isClient.value = false;
-});
-
-// 鼠标事件处理
 const handleMouseEnter = () => {
   if (!isClient.value) return;
   stopAutoPlay();
@@ -559,193 +972,1620 @@ const handleMouseLeave = () => {
   if (!isClient.value) return;
   startAutoPlay();
 };
+
+onMounted(() => {
+  isClient.value = true;
+  currentHeroSlide.value = Math.floor(Math.random() * heroBanners.value.length);
+  startAutoPlay();
+});
+
+onUnmounted(() => {
+  stopAutoPlay();
+  isClient.value = false;
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+});
 </script>
 
-<style scoped>
-.container {
-  max-width: 1224px;
-  margin: auto;
-  min-height: 724px;
+<style scoped lang="scss">
+.home-page {
+  min-height: 100vh;
 }
 
-.game-page {
+// ==========================================
+// HERO SECTION
+// ==========================================
+.hero {
+  min-height: 90vh;
+  padding: 120px 40px 80px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  max-width: 1600px;
+  margin: 0 auto;
   position: relative;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 28px;
+  color: var(--color-text-dark);
+  animation: reveal-up 0.8s var(--ease-out) 0.1s both;
+}
+
+.hero-title-line {
+  display: block;
+}
+
+.hero-title-highlight {
+  color: var(--flame, #f16436);
+  position: relative;
+}
+
+.hero-title-highlight::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0.05em;
+  width: 100%;
+  height: 0.12em;
+  background: var(--flame, #f16436);
+  opacity: 0.3;
+  border-radius: 4px;
+}
+
+.hero-desc {
+  font-size: 1.15rem;
+  color: var(--color-secondary);
+  line-height: 1.8;
+  max-width: 500px;
+  margin-bottom: 40px;
+  animation: reveal-up 0.8s var(--ease-out) 0.2s both;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 60px;
+  animation: reveal-up 0.8s var(--ease-out) 0.3s both;
+}
+
+.hero-btn {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 16px 32px;
+  border-radius: 16px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.4s var(--ease-spring);
+  text-decoration: none;
+}
+
+.hero-btn-primary {
+  background: var(--flame, #f16436);
+  color: #000;
+
+  &:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 20px 40px var(--accent-glow, rgba(241, 100, 54, 0.4));
+  }
+}
+
+.hero-btn-secondary {
+  background: var(--color-raised-bg);
+  border: 2px solid var(--color-divider);
+  color: var(--color-text-dark);
+
+  &:hover {
+    border-color: var(--color-divider-dark);
+    transform: translateY(-4px);
+  }
+}
+
+.hero-stats {
+  display: flex;
+  gap: 48px;
+  animation: reveal-up 0.8s var(--ease-out) 0.4s both;
+}
+
+.hero-stat {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -24px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 40px;
+    background: var(--color-divider);
+  }
+
+  &:last-child::after {
+    display: none;
+  }
+}
+
+.hero-stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--color-text-dark);
+  letter-spacing: -0.02em;
+}
+
+.hero-stat-label {
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+  margin-top: 4px;
+}
+
+// Hero Visual - Banner Carousel
+.hero-visual {
+  position: relative;
+  z-index: 1;
+  animation: reveal-scale 1s var(--ease-out) 0.3s both;
+}
+
+.hero-banner {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  user-select: none;
+
+  &.cursor-grab {
+    cursor: grab;
+  }
+
+  &.cursor-grabbing {
+    cursor: grabbing;
+  }
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+  transform: scale(1.02);
+
+  &.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+}
+
+.hero-slide-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+
+  &.scale-effect {
+    transition: transform 0.5s ease;
+
+    .hero-banner:hover & {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.hero-slide-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 40px 32px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.4) 60%,
+    transparent 100%
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hero-slide-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.hero-slide-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hero-slide-desc {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.hero-slide-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.hero-banner-nav {
+  position: absolute;
+  bottom: 20px;
+  right: 32px;
+  display: flex;
+  gap: 8px;
   z-index: 2;
 }
 
-/* Banner 标题样式 */
-.banner-title {
-  font-size: 3rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  line-height: 1.2;
-  font-family:
-    "Space Grotesk",
-    var(--montserrat-font),
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: #ffffff !important;
-}
-
-.banner-description {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  max-width: 42rem;
-  color: #d1d5db !important;
-}
-
-/* 卡片标题样式 */
-.card-title {
-  font-weight: 700;
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  font-family:
-    "Space Grotesk",
-    var(--montserrat-font),
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: #ffffff !important;
-}
-
-.card-author {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  color: #d1d5db !important;
-  margin-top: 0.25rem;
-}
-
-/* 矿工茶馆卡片样式 */
-.forum-card {
-  display: block;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: var(--color-raised-bg);
-  box-shadow:
-    0 1px 3px 0 rgba(0, 0, 0, 0.1),
-    0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
-  text-decoration: none;
-  border: 1px solid transparent;
-}
-
-.forum-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border-color: var(--color-brand);
-}
-
-/* 用户头像 */
-.forum-avatar {
-  width: 40px;
-  height: 40px;
+.hero-nav-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  object-fit: cover;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  &.active {
+    background: var(--flame, #f16436);
+    width: 28px;
+    border-radius: 5px;
+  }
+}
+
+.hero-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  opacity: 0;
+  z-index: 2;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    background: var(--flame, #f16436);
+    border-color: var(--flame, #f16436);
+  }
+
+  &.prev {
+    left: 16px;
+  }
+
+  &.next {
+    right: 16px;
+  }
+}
+
+// ==========================================
+// CATEGORIES
+// ==========================================
+.categories {
+  max-width: 1600px;
+  margin: 0 auto 60px;
+  padding: 0 40px;
+  overflow: hidden;
+}
+
+.categories-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 20px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 1400px) {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+.cat-chip {
   flex-shrink: 0;
-  border: 2px solid var(--color-divider);
-  transition: border-color 0.2s;
-}
-
-.forum-card:hover .forum-avatar {
-  border-color: var(--color-brand);
-}
-
-/* 标题 */
-.forum-card-title {
-  font-size: 0.9375rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
   font-weight: 600;
+  padding: 14px 24px;
+  background: var(--color-raised-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 100px;
+  color: var(--color-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s var(--ease-out);
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    border-color: var(--flame, #f16436);
+    color: var(--color-text-dark);
+    transform: translateY(-3px);
+  }
+
+  &.active {
+    background: var(--flame, #f16436);
+    border-color: var(--flame, #f16436);
+    color: #000;
+  }
+}
+
+.cat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+// ==========================================
+// MAIN CONTENT
+// ==========================================
+.main-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 48px;
+}
+
+.content-area {
+  min-width: 0;
+}
+
+// Section Headers
+.section {
+  margin-bottom: 48px;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.section-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--flame, #f16436);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--color-text-dark);
   margin: 0;
+}
+
+.section-more {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--flame, #f16436);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: gap 0.3s var(--ease-out);
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    gap: 14px;
+  }
+}
+
+.section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+// 主页搜索框
+.home-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.home-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s;
+
+  .home-search:focus-within & {
+    opacity: 1;
+    color: var(--color-brand);
+  }
+}
+
+.home-search-input {
+  width: 220px;
+  height: 36px;
+  padding: 0 32px 0 34px;
+  border: 1px solid var(--color-divider);
+  border-radius: 18px;
+  background: var(--color-raised-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    width 0.3s;
+
+  &::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.6;
+  }
+
+  &:focus {
+    width: 280px;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px rgba(var(--color-brand-rgb, 241, 100, 54), 0.15);
+  }
+}
+
+.home-search-clear {
+  position: absolute;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    background: var(--color-button-bg);
+    color: var(--color-text);
+  }
+}
+
+// 搜索状态
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.search-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-divider);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.search-empty-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.3;
+  margin-bottom: 12px;
+}
+
+.search-empty p {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+}
+
+.search-empty-btn {
+  padding: 8px 20px;
+  border: 1px solid var(--color-divider);
+  border-radius: 20px;
+  background: var(--color-raised-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+
+  &:hover {
+    background: var(--color-button-bg);
+    border-color: var(--color-brand);
+  }
+}
+
+// Resource Grid - Card Layout
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.resource-card {
+  background: var(--bg-card, var(--color-raised-bg));
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    border-color: var(--flame, #f16436);
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px var(--accent-glow, rgba(241, 100, 54, 0.15));
+
+    .resource-gallery {
+      &::after {
+        opacity: 0.3;
+      }
+    }
+  }
+}
+
+.resource-gallery {
+  height: 120px;
+  background-color: var(--bg-elevated, #1a1d23);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--color-divider) 0%, var(--bg-elevated, #1a1d23) 100%);
+    z-index: 0;
+  }
+
+  // Hide fallback gradient when image is loaded
+  &[style*="background-image"] {
+    &::before {
+      display: none;
+    }
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+    opacity: 0.5;
+    transition: opacity 0.3s;
+    z-index: 1;
+  }
+}
+
+.resource-type-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.resource-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.resource-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resource-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--color-divider);
+}
+
+.resource-icon-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--bg-elevated, #12151a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--color-secondary);
+  }
+}
+
+.resource-title-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.resource-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resource-author {
+  font-size: 0.8rem;
+  color: var(--color-secondary);
+}
+
+.resource-desc {
+  font-size: 0.85rem;
+  color: var(--color-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  flex: 1;
+}
+
+.resource-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: var(--bg-elevated, #12151a);
+  border-radius: 4px;
+  color: var(--color-secondary);
+  letter-spacing: 0.02em;
+
+  &.loader {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+    color: var(--flame, #f16436);
+  }
+
+  &.version {
+    background: rgba(45, 212, 191, 0.1);
+    color: var(--teal, #2dd4bf);
+  }
+}
+
+.resource-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-divider);
+  margin-top: auto;
+}
+
+.resource-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--color-secondary);
+
+  .stat-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    color: var(--color-secondary);
+  }
+
+  &.update {
+    margin-left: auto;
+    font-size: 0.75rem;
+  }
+}
+
+// Notice List
+.notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notice-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--bg-card, var(--color-raised-bg));
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--flame, #f16436) 0%, #ff8a5c 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover {
+    border-color: var(--flame, #f16436);
+    background: var(--accent-muted, rgba(241, 100, 54, 0.06));
+
+    &::before {
+      opacity: 1;
+    }
+
+    .notice-badge {
+      background: var(--flame, #f16436);
+      color: #fff;
+    }
+  }
+}
+
+.notice-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+
+  .notice-item:hover & {
+    transform: scale(1.05);
+  }
+}
+
+.notice-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--color-secondary);
+}
+
+.notice-author {
+  font-weight: 500;
+}
+
+.notice-time {
+  opacity: 0.8;
+}
+
+// Discussion List
+.discussion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.discussion-item {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg-card, var(--color-raised-bg));
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+
+  &:hover {
+    border-color: var(--color-divider-dark);
+    background: var(--bg-card-hover, var(--color-raised-bg));
+    transform: translateX(4px);
+
+    .discussion-avatar {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.discussion-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.discussion-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.discussion-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discussion-category {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  // Default style
+  background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+  color: var(--flame, #f16436);
+
+  // Category specific colors
+  &.cat-project {
+    background: rgba(45, 212, 191, 0.12);
+    color: #2dd4bf;
+  }
+
+  &.cat-chat {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+  }
+
+  &.cat-article {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+  }
+
+  &.cat-notice {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+    color: var(--flame, #f16436);
+  }
+
+  &.cat-help {
+    background: rgba(255, 179, 71, 0.12);
+    color: #ffb347;
+  }
+
+  &.cat-share {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+  }
+}
+
+.discussion-time {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+  opacity: 0.7;
+}
+
+.discussion-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.discussion-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--color-secondary);
+}
+
+.discussion-author {
+  font-weight: 500;
+}
+
+.discussion-replies {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.8;
+}
+
+.stat-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--color-secondary);
+}
+
+// ==========================================
+// SIDEBAR
+// ==========================================
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sidebar-card {
+  background: var(--bg-card, var(--color-raised-bg));
+  border: 1px solid var(--color-divider);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.sidebar-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.sidebar-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-dark);
+  margin: 0;
+}
+
+.sidebar-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: var(--flame, #f16436);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-more {
+  font-size: 0.8rem;
+  color: var(--flame, #f16436);
+  text-decoration: none;
+  font-weight: 500;
+  transition: gap 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.sidebar-body {
+  padding: 16px 20px;
+}
+
+// Article List
+.article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.article-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-elevated, #12151a);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+    transform: translateX(4px);
+  }
+}
+
+.article-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.article-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.article-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.article-meta {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+}
+
+// Translation List
+.translation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.translation-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-elevated, #12151a);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+    transform: translateX(4px);
+  }
+}
+
+.translation-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.translation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.translation-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.translation-meta {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .stat-icon {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+// Mini Resource List (服务器插件推荐) - 丰富内容版样式
+.mini-resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.mini-resource-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-elevated, #12151a);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+    border-color: var(--color-divider);
+    transform: translateX(4px);
+
+    .mini-resource-title {
+      color: var(--flame, #f16436);
+    }
+  }
+}
+
+.mini-resource-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-elevated, #12151a);
+  border: 1px solid var(--color-divider);
+}
+
+.mini-resource-icon-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: var(--bg-elevated, #12151a);
+  border: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-secondary);
+
+  svg {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.mini-resource-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mini-resource-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  transition: color 0.3s ease;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.mini-resource-author {
+  font-size: 0.75rem;
+  color: var(--color-secondary);
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.mini-resource-desc {
+  font-size: 0.8rem;
+  color: var(--color-text);
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  line-height: 1.4;
-  transition: color 0.2s;
+  margin: 2px 0;
 }
 
-.forum-card:hover .forum-card-title {
-  color: var(--color-brand);
+.mini-resource-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
 }
 
-/* 用户名 */
-.forum-username {
+.mini-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: var(--accent-muted, rgba(241, 100, 54, 0.15));
+  border: 1px solid var(--flame, rgba(241, 100, 54, 0.3));
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--flame, #f16436);
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+
+.version-tag {
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
+  border-color: var(--color-divider);
+  color: var(--color-secondary);
+}
+
+.mini-resource-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.mini-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.75rem;
-  color: var(--color-text);
+  color: var(--color-secondary);
   font-weight: 500;
+
+  .mini-stat-icon {
+    width: 13px;
+    height: 13px;
+    color: var(--flame, #f16436);
+    opacity: 0.8;
+  }
+
+  &.update-time {
+    color: var(--color-text-inactive);
+
+    .mini-stat-icon {
+      color: var(--color-secondary);
+    }
+  }
 }
 
-/* 回复数 */
-.forum-replies {
-  font-size: 0.75rem;
-  color: var(--color-text);
-  opacity: 0.7;
+// Quick Links
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 20px;
 }
 
-/* 时间 */
-.forum-card-time {
-  font-size: 0.75rem;
-  color: var(--color-text);
-  margin: 0;
-  white-space: nowrap;
-  text-align: right;
+.quick-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  background: var(--bg-elevated, #12151a);
+  border-radius: 12px;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.12));
+    transform: translateY(-4px);
+  }
 }
 
-/* 搜索框样式 */
-.search-input {
-  border: 1px solid rgba(128, 128, 128, 0.3) !important;
-  box-shadow: none !important;
+.quick-link-icon {
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    color: var(--flame, #f16436);
+  }
 }
 
-.search-input:focus {
-  border: 1px solid rgba(128, 128, 128, 0.6) !important;
-  box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.1) !important;
+.quick-link-text {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-secondary);
 }
 
-/* Banner 链接样式重置 */
-section a:focus {
-  outline: none;
-  box-shadow: none;
+// Friend Links
+.friend-link-logo {
+  width: auto;
+  height: 32px;
+  max-width: 120px;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
-section a:active {
-  outline: none;
-  box-shadow: none;
+// ==========================================
+// ANIMATIONS
+// ==========================================
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.user-select-none {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+@keyframes reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-/* 响应式调整 */
+@keyframes glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px var(--accent-glow, rgba(241, 100, 54, 0.4)));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px var(--accent-glow, rgba(241, 100, 54, 0.4)));
+  }
+}
+
+// ==========================================
+// RESPONSIVE
+// ==========================================
+@media (max-width: 1200px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 120px 32px 60px;
+    min-height: auto;
+  }
+
+  .hero-visual {
+    max-width: 100%;
+  }
+
+  .hero-banner {
+    height: 400px;
+  }
+
+  .main-content {
+    grid-template-columns: 1fr;
+    padding: 0 32px 60px;
+  }
+
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
 @media (max-width: 768px) {
-  .container {
-    padding: 0 8px;
+  .hero {
+    padding: 100px 24px 40px;
   }
 
-  .banner-title {
-    font-size: 2.25rem;
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 2.5rem);
   }
 
-  .banner-description {
-    font-size: 1.125rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .banner-title {
-    font-size: 3rem;
+  .hero-banner {
+    height: 320px;
   }
 
-  .banner-description {
-    font-size: 1.25rem;
+  .hero-slide-title {
+    font-size: 1.4rem;
+  }
+
+  .hero-slide-desc {
+    font-size: 0.9rem;
+    display: none;
+  }
+
+  .hero-slide-overlay {
+    padding: 24px 20px;
+  }
+
+  .hero-nav-arrow {
+    width: 40px;
+    height: 40px;
+    opacity: 1;
+  }
+
+  .hero-stats {
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
+  .hero-stat::after {
+    display: none;
+  }
+
+  .categories {
+    padding: 0 24px;
+  }
+
+  .main-content {
+    padding: 0 24px 40px;
+  }
+
+  .resource-item {
+    grid-template-columns: 56px 1fr;
+  }
+
+  .resource-icon-wrap {
+    width: 56px;
+    height: 56px;
+  }
+
+  .resource-stats {
+    display: none;
+  }
+
+  .sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .section-header-right {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .home-search-input {
+    width: 100%;
+
+    &:focus {
+      width: 100%;
+    }
+  }
+
+  .section-more {
+    justify-content: center;
   }
 }
 </style>

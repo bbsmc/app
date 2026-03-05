@@ -13,6 +13,7 @@ definePageMeta({
 
 useHead({
   title: "分析 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();

@@ -40,7 +40,7 @@ pub struct CreateReport {
     pub item_id: String,
     pub item_type: ItemType,
     pub body: String,
-    // Associations to uploaded images
+    // 关联的已上传图片
     #[validate(length(max = 10))]
     #[serde(default)]
     pub uploaded_images: Vec<ImageId>,
@@ -85,7 +85,7 @@ pub async fn report_create(
     .await?
     .ok_or_else(|| {
         ApiError::InvalidInput(format!(
-            "报告类型无效: {}",
+            "无效的举报类型: {}",
             new_report.report_type
         ))
     })?;
@@ -136,7 +136,7 @@ pub async fn report_create(
 
             if !result.exists.unwrap_or(false) {
                 return Err(ApiError::InvalidInput(format!(
-                    "Version could not be found: {}",
+                    "版本未找到: {}",
                     new_report.item_id
                 )));
             }
@@ -155,7 +155,7 @@ pub async fn report_create(
 
             if !result.exists.unwrap_or(false) {
                 return Err(ApiError::InvalidInput(format!(
-                    "User could not be found: {}",
+                    "用户未找到: {}",
                     new_report.item_id
                 )));
             }
@@ -164,7 +164,7 @@ pub async fn report_create(
         }
         ItemType::Unknown => {
             return Err(ApiError::InvalidInput(format!(
-                "Invalid report item type: {}",
+                "无效的举报项目类型: {}",
                 new_report.item_type.as_str()
             )));
         }
@@ -182,7 +182,7 @@ pub async fn report_create(
                 || image.context.inner_id().is_some()
             {
                 return Err(ApiError::InvalidInput(format!(
-                    "图片 {} 未使用且在 'report' 上下文中",
+                    "图片 {} 不是未使用的举报上下文图片",
                     image_id
                 )));
             }
@@ -214,11 +214,15 @@ pub async fn report_create(
         project_id: None,
         report_id: Some(report.id),
         ban_appeal_id: None,
+        creator_application_id: None,
     }
     .insert(&mut transaction)
     .await?;
 
     transaction.commit().await?;
+
+    crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+        .await;
 
     Ok(HttpResponse::Ok().json(Report {
         id: id.into(),
@@ -442,7 +446,7 @@ pub async fn report_edit(
         if let Some(edit_closed) = edit_report.closed {
             if !user.role.is_mod() {
                 return Err(ApiError::InvalidInput(
-                    "您不能重新打开报告!".to_string(),
+                    "只有管理员可以更改举报的关闭状态".to_string(),
                 ));
             }
 
@@ -490,6 +494,9 @@ pub async fn report_edit(
 
         transaction.commit().await?;
 
+        crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+            .await;
+
         Ok(HttpResponse::NoContent().body(""))
     } else {
         Err(ApiError::NotFound)
@@ -531,6 +538,9 @@ pub async fn report_delete(
     )
     .await?;
     transaction.commit().await?;
+
+    crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+        .await;
 
     if result.is_some() {
         Ok(HttpResponse::NoContent().body(""))

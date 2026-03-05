@@ -26,6 +26,8 @@ import _CurseforgeIcon from './external/curseforge.svg?component'
 import _SpigotmcIcon from './external/spigotmc.svg?component'
 import _QuarkIcon from './external/quark.svg?component'
 import _BaiduIcon from './external/baidu.svg?component'
+import _McmodIcon from './external/mcmod.svg?component'
+import _Mc9yIcon from './external/mc9y.svg?component'
 import _MastodonIcon from './external/mastodon.svg?component'
 import _OpenCollectiveIcon from './external/opencollective.svg?component'
 import _PatreonIcon from './external/patreon.svg?component'
@@ -210,6 +212,8 @@ export const BiliBiliIcon = _BiliBiliIcon
 export const SpigotMcIcon = _SpigotmcIcon
 export const QuarkIcon = _QuarkIcon
 export const BaiduIcon = _BaiduIcon
+export const McmodIcon = _McmodIcon
+export const Mc9yIcon = _Mc9yIcon
 export const CurseforgeIcon = _CurseforgeIcon
 export const ModrinthIcon2 = _ModrinthIcon2
 export const QQPDIcon = _QQPDIcon

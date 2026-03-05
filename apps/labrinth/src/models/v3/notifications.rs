@@ -112,6 +112,40 @@ pub enum NotificationBody {
         thread_id: ThreadId,
         message_id: ThreadMessageId,
     },
+    /// 创作者申请线程有新消息
+    CreatorApplicationMessage {
+        application_id: i64,
+        thread_id: ThreadId,
+        message_id: ThreadMessageId,
+    },
+    /// 创作者申请已批准
+    CreatorApplicationApproved {
+        application_id: i64,
+    },
+    /// 创作者申请已拒绝
+    CreatorApplicationRejected {
+        application_id: i64,
+        reason: Option<String>,
+    },
+    /// 用户资料修改已提交审核
+    ProfileReviewPending {
+        review_id: i64,
+        review_type: String,
+    },
+    /// 用户资料修改审核结果
+    ProfileReviewResult {
+        review_id: i64,
+        review_type: String,
+        status: String,
+        review_notes: Option<String>,
+    },
+    /// 图片内容审核结果（仅拒绝时发送）
+    ImageReviewResult {
+        review_id: i64,
+        source_type: String,
+        status: String,
+        review_notes: Option<String>,
+    },
     Unknown,
 }
 
@@ -341,6 +375,108 @@ impl From<DBNotification> for Notification {
                     "/settings/account".to_string(),
                     vec![],
                 ),
+                NotificationBody::CreatorApplicationMessage { .. } => (
+                    "您的创作者申请有新回复".to_string(),
+                    "管理员在您的高级创作者申请中发送了新消息，请查看。"
+                        .to_string(),
+                    "/settings/creator".to_string(),
+                    vec![],
+                ),
+                NotificationBody::CreatorApplicationApproved { .. } => (
+                    "恭喜！您的高级创作者申请已通过".to_string(),
+                    "您现在可以发布付费插件了。".to_string(),
+                    "/settings/creator".to_string(),
+                    vec![],
+                ),
+                NotificationBody::CreatorApplicationRejected {
+                    reason, ..
+                } => (
+                    "您的高级创作者申请未通过".to_string(),
+                    reason
+                        .clone()
+                        .unwrap_or_else(|| "请查看详情。".to_string()),
+                    "/settings/creator".to_string(),
+                    vec![],
+                ),
+                NotificationBody::ProfileReviewPending {
+                    review_type, ..
+                } => {
+                    let type_display = match review_type.as_str() {
+                        "avatar" => "头像",
+                        "username" => "用户名",
+                        "bio" => "简介",
+                        _ => "资料",
+                    };
+                    (
+                        "资料修改已提交审核".to_string(),
+                        format!(
+                            "您的{}修改已提交管理员审核，请耐心等待。",
+                            type_display
+                        ),
+                        "/settings/profile".to_string(),
+                        vec![],
+                    )
+                }
+                NotificationBody::ProfileReviewResult {
+                    review_type,
+                    status,
+                    review_notes,
+                    ..
+                } => {
+                    let type_display = match review_type.as_str() {
+                        "avatar" => "头像",
+                        "username" => "用户名",
+                        "bio" => "简介",
+                        _ => "资料",
+                    };
+                    let status_display = match status.as_str() {
+                        "approved" => "已通过",
+                        "rejected" => "已拒绝",
+                        _ => "已处理",
+                    };
+                    let notes_text = match review_notes {
+                        Some(notes) => format!("。审核备注：{}", notes),
+                        None => String::new(),
+                    };
+                    (
+                        format!("{}修改审核结果", type_display),
+                        format!(
+                            "您的{}修改审核结果：{}{}",
+                            type_display, status_display, notes_text
+                        ),
+                        "/settings/profile".to_string(),
+                        vec![],
+                    )
+                }
+                NotificationBody::ImageReviewResult {
+                    source_type,
+                    status,
+                    review_notes,
+                    ..
+                } => {
+                    let type_display = match source_type.as_str() {
+                        "markdown" => "Markdown图片",
+                        "gallery" => "项目渲染图",
+                        _ => "图片",
+                    };
+                    let status_display = match status.as_str() {
+                        "rejected" => "已被删除",
+                        _ => "已处理",
+                    };
+                    let notes_text = match review_notes {
+                        Some(notes) => format!("。原因：{}", notes),
+                        None => String::new(),
+                    };
+                    (
+                        format!("{}审核结果", type_display),
+                        format!(
+                            "您上传的{}因违规{}{}",
+                            type_display, status_display, notes_text
+                        ),
+                        "#".to_string(),
+                        vec![],
+                    )
+                }
                 NotificationBody::Unknown => {
                     ("".to_string(), "".to_string(), "#".to_string(), vec![])
                 }

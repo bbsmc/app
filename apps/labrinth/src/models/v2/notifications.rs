@@ -115,6 +115,40 @@ pub enum LegacyNotificationBody {
         thread_id: ThreadId,
         message_id: ThreadMessageId,
     },
+    /// 创作者申请线程有新消息
+    CreatorApplicationMessage {
+        application_id: i64,
+        thread_id: ThreadId,
+        message_id: ThreadMessageId,
+    },
+    /// 创作者申请已批准
+    CreatorApplicationApproved {
+        application_id: i64,
+    },
+    /// 创作者申请已拒绝
+    CreatorApplicationRejected {
+        application_id: i64,
+        reason: Option<String>,
+    },
+    /// 用户资料修改已提交审核
+    ProfileReviewPending {
+        review_id: i64,
+        review_type: String,
+    },
+    /// 用户资料修改审核结果
+    ProfileReviewResult {
+        review_id: i64,
+        review_type: String,
+        status: String,
+        review_notes: Option<String>,
+    },
+    /// 图片内容审核结果
+    ImageReviewResult {
+        review_id: i64,
+        source_type: String,
+        status: String,
+        review_notes: Option<String>,
+    },
     Unknown,
 }
 
@@ -151,6 +185,24 @@ impl LegacyNotification {
             }
             NotificationBody::BanAppealMessage { .. } => {
                 Some("ban_appeal_message".to_string())
+            }
+            NotificationBody::CreatorApplicationMessage { .. } => {
+                Some("creator_application_message".to_string())
+            }
+            NotificationBody::CreatorApplicationApproved { .. } => {
+                Some("creator_application_approved".to_string())
+            }
+            NotificationBody::CreatorApplicationRejected { .. } => {
+                Some("creator_application_rejected".to_string())
+            }
+            NotificationBody::ProfileReviewPending { .. } => {
+                Some("profile_review_pending".to_string())
+            }
+            NotificationBody::ProfileReviewResult { .. } => {
+                Some("profile_review_result".to_string())
+            }
+            NotificationBody::ImageReviewResult { .. } => {
+                Some("image_review_result".to_string())
             }
             NotificationBody::LegacyMarkdown {
                 notification_type, ..
@@ -288,6 +340,56 @@ impl LegacyNotification {
                 appeal_id,
                 thread_id,
                 message_id,
+            },
+            NotificationBody::CreatorApplicationMessage {
+                application_id,
+                thread_id,
+                message_id,
+            } => LegacyNotificationBody::CreatorApplicationMessage {
+                application_id,
+                thread_id,
+                message_id,
+            },
+            NotificationBody::CreatorApplicationApproved { application_id } => {
+                LegacyNotificationBody::CreatorApplicationApproved {
+                    application_id,
+                }
+            }
+            NotificationBody::CreatorApplicationRejected {
+                application_id,
+                reason,
+            } => LegacyNotificationBody::CreatorApplicationRejected {
+                application_id,
+                reason,
+            },
+            NotificationBody::ProfileReviewPending {
+                review_id,
+                review_type,
+            } => LegacyNotificationBody::ProfileReviewPending {
+                review_id,
+                review_type,
+            },
+            NotificationBody::ProfileReviewResult {
+                review_id,
+                review_type,
+                status,
+                review_notes,
+            } => LegacyNotificationBody::ProfileReviewResult {
+                review_id,
+                review_type,
+                status,
+                review_notes,
+            },
+            NotificationBody::ImageReviewResult {
+                review_id,
+                source_type,
+                status,
+                review_notes,
+            } => LegacyNotificationBody::ImageReviewResult {
+                review_id,
+                source_type,
+                status,
+                review_notes,
             },
             NotificationBody::Unknown => LegacyNotificationBody::Unknown,
         };

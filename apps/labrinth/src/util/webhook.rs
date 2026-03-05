@@ -120,7 +120,7 @@ async fn get_webhook_metadata(
 
         let formatted_game_versions = get_gv_range(versions, all_game_versions);
 
-        let mut project_type = project.project_types.pop().unwrap_or_default(); // TODO: Should this grab a not-first?
+        let mut project_type = project.project_types.pop().unwrap_or_default(); // TODO: 是否应该获取非第一个？
 
         if project
             .inner
@@ -133,9 +133,13 @@ async fn get_webhook_metadata(
             project_type = "datapack".to_string();
         }
 
-        let mut display_project_type = match &*project_type {
-            "datapack" => "data pack",
-            "resourcepack" => "resource pack",
+        let display_project_type = match &*project_type {
+            "datapack" => "数据包",
+            "resourcepack" => "资源包",
+            "mod" => "模组",
+            "modpack" => "整合包",
+            "shader" => "光影",
+            "plugin" => "插件",
             _ => &*project_type,
         }
         .to_string();
@@ -153,27 +157,24 @@ async fn get_webhook_metadata(
             ),
             project_title: project.inner.name,
             project_summary: project.inner.summary,
-            display_project_type: format!(
-                "{}{display_project_type}",
-                display_project_type.remove(0).to_uppercase()
-            ),
+            display_project_type: capitalize_first(&display_project_type),
             project_icon_url: project.inner.icon_url,
             color: project.inner.color,
             author: owner,
             categories_formatted: project
                 .categories
                 .into_iter()
-                .map(|mut x| format!("{}{x}", x.remove(0).to_uppercase()))
+                .map(|x| capitalize_first(&x))
                 .collect::<Vec<_>>(),
             loaders_formatted: project
                 .inner
                 .loaders
                 .into_iter()
                 .map(|loader| {
-                    let mut x = if &*loader == "datapack" {
-                        "Data Pack".to_string()
+                    let x = if &*loader == "datapack" {
+                        "数据包".to_string()
                     } else if &*loader == "mrpack" {
-                        "Modpack".to_string()
+                        "整合包".to_string()
                     } else {
                         loader.clone()
                     };
@@ -206,11 +207,11 @@ async fn get_webhook_metadata(
                         };
 
                         format!(
-                            "<:{loader}:{emoji_id}> {}{x}",
-                            x.remove(0).to_uppercase()
+                            "<:{loader}:{emoji_id}> {}",
+                            capitalize_first(&x)
                         )
                     } else {
-                        format!("{}{x}", x.remove(0).to_uppercase())
+                        capitalize_first(&x)
                     }
                 })
                 .collect(),
@@ -255,7 +256,7 @@ pub async fn send_slack_webhook(
                 elements.push(serde_json::json!({
                     "type": "image",
                     "image_url": icon_url,
-                    "alt_text": "Author"
+                    "alt_text": "作者"
                 }));
             }
 
@@ -275,7 +276,7 @@ pub async fn send_slack_webhook(
             "text": {
                 "type": "mrkdwn",
                 "text": format!(
-                    "*<{}|{}>*\n\n{}\n\n*Categories:* {}\n\n*Loaders:* {}\n\n*Versions:* {}",
+                    "*<{}|{}>*\n\n{}\n\n*分类:* {}\n\n*加载器:* {}\n\n*版本:* {}",
                     metadata.project_url,
                     metadata.project_title,
                     metadata.project_summary,
@@ -294,7 +295,7 @@ pub async fn send_slack_webhook(
                 serde_json::json!({
                     "type": "image",
                     "image_url": icon_url,
-                    "alt_text": metadata.project_title
+                    "alt_text": "项目图标"
                 }),
             );
         }
@@ -305,7 +306,7 @@ pub async fn send_slack_webhook(
             blocks.push(serde_json::json!({
                 "type": "image",
                 "image_url": gallery_image,
-                "alt_text": metadata.project_title
+                "alt_text": "项目展示图"
             }));
         }
 
@@ -316,11 +317,11 @@ pub async fn send_slack_webhook(
                     {
                         "type": "image",
                         "image_url": "https://cdn.bbsmc.net/raw/bbsmc-logo.png",
-                        "alt_text": "Author"
+                        "alt_text": "BBSMC"
                     },
                     {
                         "type": "mrkdwn",
-                        "text": format!("{} on BBSMC • <!date^{}^{{date_short_pretty}} at {{time}}|Unknown date>", metadata.display_project_type, Utc::now().timestamp())
+                        "text": format!("{} 发布于 BBSMC • <!date^{}^{{date_short_pretty}} {{time}}|未知日期>", metadata.display_project_type, Utc::now().timestamp())
                     }
                 ]
             })
@@ -336,9 +337,7 @@ pub async fn send_slack_webhook(
             .send()
             .await
             .map_err(|_| {
-                ApiError::Discord(
-                    "Error while sending projects webhook".to_string(),
-                )
+                ApiError::Discord("发送项目 Webhook 通知时出错".to_string())
             })?;
     }
 
@@ -410,7 +409,7 @@ pub async fn send_discord_webhook(
         let mut fields = vec![];
         if !project.categories_formatted.is_empty() {
             fields.push(DiscordEmbedField {
-                name: "Categories",
+                name: "分类",
                 value: project.categories_formatted.join("\n"),
                 inline: true,
             });
@@ -418,7 +417,7 @@ pub async fn send_discord_webhook(
 
         if !project.loaders_formatted.is_empty() {
             fields.push(DiscordEmbedField {
-                name: "Loaders",
+                name: "加载器",
                 value: project.loaders_formatted.join("\n"),
                 inline: true,
             });
@@ -426,7 +425,7 @@ pub async fn send_discord_webhook(
 
         if !project.versions_formatted.is_empty() {
             fields.push(DiscordEmbedField {
-                name: "Versions",
+                name: "版本",
                 value: project.versions_formatted.join("\n"),
                 inline: true,
             });
@@ -451,7 +450,7 @@ pub async fn send_discord_webhook(
                 .gallery_image
                 .map(|x| DiscordEmbedImage { url: Some(x) }),
             footer: Some(DiscordEmbedFooter {
-                text: format!("{} on BBSMC", project.display_project_type),
+                text: format!("{} 发布于 BBSMC", project.display_project_type),
                 icon_url: Some(
                     "https://cdn.bbsmc.net/raw/bbsmc-logo.png".to_string(),
                 ),
@@ -464,17 +463,16 @@ pub async fn send_discord_webhook(
             .post(&webhook_url)
             .json(&DiscordWebhook {
                 avatar_url: Some(
-                    "https://cdn.modrinth.com/Modrinth_Dark_Logo.png"
-                        .to_string(),
+                    "https://cdn.bbsmc.net/raw/bbsmc-logo.png".to_string(),
                 ),
-                username: Some("Modrinth Release".to_string()),
+                username: Some("BBSMC 资源发布".to_string()),
                 embeds: vec![embed],
                 content: message,
             })
             .send()
             .await
             .map_err(|_| {
-                ApiError::Discord("发送项目 webhook 时出错".to_string())
+                ApiError::Discord("发送项目 Webhook 通知时出错".to_string())
             })?;
     }
 
@@ -485,7 +483,7 @@ fn get_gv_range(
     mut game_versions: Vec<MinecraftGameVersion>,
     mut all_game_versions: Vec<MinecraftGameVersion>,
 ) -> Vec<String> {
-    // both -> least to greatest
+    // 两者都按从小到大排序
     game_versions.sort_by(|a, b| a.created.cmp(&b.created));
     game_versions.dedup_by(|a, b| a.version == b.version);
 
@@ -620,4 +618,16 @@ fn get_gv_range(
     }
 
     output
+}
+
+/// 将字符串首字母大写（对中文字符串则原样返回）
+fn capitalize_first(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => {
+            let upper: String = first.to_uppercase().collect();
+            format!("{}{}", upper, chars.as_str())
+        }
+    }
 }

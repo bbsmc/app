@@ -190,16 +190,23 @@ const title = ref(
 const forumContent = ref("");
 const forumTitle = ref("");
 
-const ogTitle = computed(() => `论坛 ${query.value ? " | " + query.value : ""}`);
-const description = computed(() => `快速在BBSMC上发帖讨论`);
+const ogTitle = computed(
+  () => `${title.value} - BBSMC 我的世界社区论坛${query.value ? " | " + query.value : ""}`,
+);
+const description = computed(
+  () =>
+    `在 BBSMC 我的世界社区浏览和参与${title.value}讨论，与其他 Minecraft 玩家交流经验、分享心得，获取最新资讯和攻略。`,
+);
 if (route.query.o) {
   currentPage.value = Math.ceil(route.query.o / maxResults.value) + 1;
 }
 
 useSeoMeta({
+  title: ogTitle,
   description,
   ogTitle,
   ogDescription: description,
+  ogImage: "https://cdn.bbsmc.net/raw/bbsmc-logo.png",
 });
 
 // 假设这里有一个方法来获取论坛数据

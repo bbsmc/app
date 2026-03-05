@@ -427,13 +427,14 @@ const themeVars = computed(() => {
 });
 
 // SEO 设置
-const title = `${props.project.title} - Issues`;
-const description = `浏览 ${props.project.title} 的Issues`;
+const title = `${props.project.title} 问题追踪 - 我的世界资源反馈 | BBSMC`;
+const description = `查看和提交 ${props.project.title} 的问题反馈和功能建议。在 BBSMC 参与资源改进，帮助创作者完善 Minecraft 资源。`;
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
+  ogImage: props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
 });
 
 // 响应式数据

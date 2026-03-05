@@ -3,7 +3,7 @@ use crate::{
     models::{
         ids::UserId,
         users::{Badges, Role, UserPayoutData},
-        v3::users::UserBanSummary,
+        v3::users::{ProfileReviewSummary, UserBanSummary},
     },
 };
 use chrono::{DateTime, Utc};
@@ -31,9 +31,19 @@ pub struct LegacyUser {
     // DEPRECATED. Always returns None
     pub github_id: Option<u64>,
 
+    /// 是否为高级创作者（可发布付费插件）
+    pub is_premium_creator: bool,
+    /// 高级创作者认证时间
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creator_verified_at: Option<DateTime<Utc>>,
+
     /// 用户当前的活跃封禁列表
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_bans: Option<Vec<UserBanSummary>>,
+
+    /// 用户待审核的资料修改（仅本人和管理员可见）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pending_profile_reviews: Option<Vec<ProfileReviewSummary>>,
 }
 
 impl From<crate::models::v3::users::User> for LegacyUser {
@@ -55,7 +65,10 @@ impl From<crate::models::v3::users::User> for LegacyUser {
             has_phonenumber: data.has_phonenumber,
             has_totp: data.has_totp,
             github_id: data.github_id,
+            is_premium_creator: data.is_premium_creator,
+            creator_verified_at: data.creator_verified_at,
             active_bans: data.active_bans,
+            pending_profile_reviews: data.pending_profile_reviews,
         }
     }
 }

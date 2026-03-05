@@ -83,7 +83,7 @@
                   class="radio"
                 />
                 <RadioButtonIcon v-else class="radio" />
-                Rows
+                列表
               </div>
             </button>
             <button
@@ -107,7 +107,7 @@
                   class="radio"
                 />
                 <RadioButtonIcon v-else class="radio" />
-                Grid
+                网格
               </div>
             </button>
             <button
@@ -129,7 +129,7 @@
                   class="radio"
                 />
                 <RadioButtonIcon v-else class="radio" />
-                Gallery
+                相册
               </div>
             </button>
           </div>
@@ -233,6 +233,7 @@ import { isDarkTheme, type Theme } from "~/plugins/theme/index.ts";
 
 useHead({
   title: "外观设置 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const { formatMessage } = useVIntl();
@@ -241,7 +242,7 @@ const developerModeBanner = defineMessages({
   description: {
     id: "settings.display.banner.developer-mode.description",
     defaultMessage:
-      "<strong>开发者模式</strong> 已启用. This will allow you to view the internal IDs of various things throughout BBSMC that may be helpful if you're a developer using the Modrinth API. Click on the Modrinth logo at the bottom of the page 5 times to toggle developer mode.",
+      "<strong>开发者模式</strong> 已启用。这将允许您查看 BBSMC 各处的内部 ID，如果您是使用 BBSMC API 的开发者，这可能会有所帮助。在页面底部点击 BBSMC 图标 5 次可切换开发者模式。",
   },
   deactivate: {
     id: "settings.display.banner.developer-mode.button",
@@ -264,11 +265,11 @@ const colorTheme = defineMessages({
   },
   light: {
     id: "settings.display.theme.light",
-    defaultMessage: "Light",
+    defaultMessage: "浅色",
   },
   dark: {
     id: "settings.display.theme.dark",
-    defaultMessage: "Dark",
+    defaultMessage: "深色",
   },
   oled: {
     id: "settings.display.theme.oled",
@@ -276,101 +277,107 @@ const colorTheme = defineMessages({
   },
   retro: {
     id: "settings.display.theme.retro",
-    defaultMessage: "Retro",
+    defaultMessage: "复古",
   },
   preferredLight: {
     id: "settings.display.theme.preferred-light-theme",
-    defaultMessage: "Preferred light theme",
+    defaultMessage: "首选亮色主题",
   },
   preferredDark: {
     id: "settings.display.theme.preferred-dark-theme",
-    defaultMessage: "Preferred dark theme",
+    defaultMessage: "首选暗色主题",
   },
 });
 
 const projectListLayouts = defineMessages({
   title: {
     id: "settings.display.project-list-layouts.title",
-    defaultMessage: "Project list layouts",
+    defaultMessage: "项目列表布局",
   },
   description: {
     id: "settings.display.project-list-layouts.description",
-    defaultMessage:
-      "Select your preferred layout for each page that displays project lists on this device.",
+    defaultMessage: "选择此设备上各项目列表页面的首选布局。",
   },
   mod: {
     id: "settings.display.project-list-layouts.mod",
-    defaultMessage: "Mods page",
+    defaultMessage: "模组",
   },
   plugin: {
     id: "settings.display.project-list-layouts.plugin",
-    defaultMessage: "Plugins page",
+    defaultMessage: "插件",
   },
   datapack: {
     id: "settings.display.project-list-layouts.datapack",
-    defaultMessage: "Data Packs page",
+    defaultMessage: "数据包",
   },
   shader: {
     id: "settings.display.project-list-layouts.shader",
-    defaultMessage: "Shaders page",
+    defaultMessage: "光影",
   },
   resourcepack: {
     id: "settings.display.project-list-layouts.resourcepack",
-    defaultMessage: "Resource Packs page",
+    defaultMessage: "资源包",
   },
   modpack: {
     id: "settings.display.project-list-layouts.modpack",
-    defaultMessage: "Modpacks page",
+    defaultMessage: "整合包",
   },
   user: {
     id: "settings.display.project-list-layouts.user",
-    defaultMessage: "User profile pages",
+    defaultMessage: "用户主页",
   },
   collection: {
     id: "settings.display.project-list.layouts.collection",
-    defaultMessage: "Collection",
+    defaultMessage: "收藏夹",
+  },
+  software: {
+    id: "settings.display.project-list-layouts.software",
+    defaultMessage: "软件",
+  },
+  language: {
+    id: "settings.display.project-list-layouts.language",
+    defaultMessage: "汉化",
   },
 });
 
 const toggleFeatures = defineMessages({
   title: {
     id: "settings.display.flags.title",
-    defaultMessage: "Toggle features",
+    defaultMessage: "功能开关",
   },
   description: {
     id: "settings.display.flags.description",
-    defaultMessage: "Enable or disable certain features on this device.",
+    defaultMessage: "启用或禁用此设备上的特定功能。",
   },
   advancedRenderingTitle: {
     id: "settings.display.sidebar.advanced-rendering.title",
-    defaultMessage: "Advanced rendering",
+    defaultMessage: "高级渲染",
   },
   advancedRenderingDescription: {
     id: "settings.display.sidebar.advanced-rendering.description",
-    defaultMessage:
-      "Enables advanced rendering such as blur effects that may cause performance issues without hardware-accelerated rendering.",
+    defaultMessage: "启用模糊等高级渲染效果，可能在无硬件加速时影响性能。",
   },
   externalLinksNewTabTitle: {
     id: "settings.display.sidebar.external-links-new-tab.title",
-    defaultMessage: "Open external links in new tab",
+    defaultMessage: "在新标签页中打开外部链接",
   },
   externalLinksNewTabDescription: {
     id: "settings.display.sidebar.external-links-new-tab.description",
     defaultMessage:
-      "Make links which go outside of Modrinth open in a new tab. No matter this setting, links on the same domain and in Markdown descriptions will open in the same tab, and links on ads and edit pages will open in a new tab.",
+      "使指向 BBSMC 站外的链接在新标签页中打开。无论此设置如何，同域名链接和 Markdown 描述中的链接始终在当前标签页打开，广告和编辑页面中的链接始终在新标签页打开。",
   },
   hideModrinthAppPromosTitle: {
     id: "settings.display.sidebar.hide-app-promos.title",
-    defaultMessage: "Hide Modrinth App promotions",
+    defaultMessage: "隐藏 BBSMC 客户端推广",
   },
   hideModrinthAppPromosDescription: {
     id: "settings.display.sidebar.hide-app-promos.description",
     defaultMessage:
-      'Hides the "Get Modrinth App" buttons from primary navigation. The Modrinth App page can still be found on the landing page or in the footer.',
+      '隐藏主导航中的"获取 BBSMC 客户端"按钮。BBSMC 客户端页面仍可在首页或页脚中找到。',
   },
   rightAlignedFiltersSidebarTitle: {
     id: "settings.display.sidebar.right-aligned-filters-sidebar.title",
-    defaultMessage: "搜索页面上右对齐的过滤器侧栏s",
+    defaultMessage: "搜索页面上右对齐的过滤器侧栏",
   },
   rightAlignedFiltersSidebarDescription: {
     id: "settings.display.sidebar.right-aligned-filters-sidebar.description",
@@ -434,7 +441,7 @@ function disableDeveloperMode() {
   addNotification({
     group: "main",
     title: "开发者模式已停用",
-    text: "Developer mode has been disabled",
+    text: "开发者模式已停用",
     type: "success",
   });
 }
@@ -450,8 +457,8 @@ const listTypes = computed(() => {
 
   types.push({
     id: "user" as DisplayLocation,
-    name: "User profiles",
-    display: "user pages",
+    name: "用户主页",
+    display: "用户页面",
   });
 
   return types;

@@ -13,5 +13,6 @@ const route = useNativeRoute();
 
 useHead({
   title: `举报 ${route.params.id} - BBSMC`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 </script>

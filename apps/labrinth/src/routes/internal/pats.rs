@@ -84,14 +84,10 @@ pub async fn create_pat(
     })?;
 
     if info.scopes.is_restricted() {
-        return Err(ApiError::InvalidInput(
-            "Invalid scopes requested!".to_string(),
-        ));
+        return Err(ApiError::InvalidInput("请求的权限范围无效！".to_string()));
     }
     if info.expires < Utc::now() {
-        return Err(ApiError::InvalidInput(
-            "Expire date must be in the future!".to_string(),
-        ));
+        return Err(ApiError::InvalidInput("过期时间必须在未来！".to_string()));
     }
 
     let user = get_user_from_headers(
@@ -193,7 +189,7 @@ pub async fn edit_pat(
         if let Some(scopes) = &info.scopes {
             if scopes.is_restricted() {
                 return Err(ApiError::InvalidInput(
-                    "Invalid scopes requested!".to_string(),
+                    "请求的权限范围无效！".to_string(),
                 ));
             }
 
@@ -225,7 +221,7 @@ pub async fn edit_pat(
         if let Some(expires) = &info.expires {
             if expires < &Utc::now() {
                 return Err(ApiError::InvalidInput(
-                    "Expire date must be in the future!".to_string(),
+                    "过期时间必须在未来！".to_string(),
                 ));
             }
 

@@ -224,42 +224,42 @@ const formatRelativeTime = useRelativeTime();
 const createModalMessages = defineMessages({
   createTitle: {
     id: "settings.pats.modal.create.title",
-    defaultMessage: "Create personal access token",
+    defaultMessage: "创建个人访问令牌",
   },
   editTitle: {
     id: "settings.pats.modal.edit.title",
-    defaultMessage: "Edit personal access token",
+    defaultMessage: "编辑个人访问令牌",
   },
   nameLabel: {
     id: "settings.pats.modal.create.name.label",
-    defaultMessage: "Name",
+    defaultMessage: "名称",
   },
   namePlaceholder: {
     id: "settings.pats.modal.create.name.placeholder",
-    defaultMessage: "Enter the PAT's name...",
+    defaultMessage: "请输入令牌名称...",
   },
   expiresLabel: {
     id: "settings.pats.modal.create.expires.label",
-    defaultMessage: "Expires",
+    defaultMessage: "过期时间",
   },
   action: {
     id: "settings.pats.modal.create.action",
-    defaultMessage: "Create PAT",
+    defaultMessage: "创建令牌",
   },
 });
 
 const deleteModalMessages = defineMessages({
   title: {
     id: "settings.pats.modal.delete.title",
-    defaultMessage: "Are you sure you want to delete this token?",
+    defaultMessage: "确定要删除此令牌吗？",
   },
   description: {
     id: "settings.pats.modal.delete.description",
-    defaultMessage: "This will remove this token forever (like really forever).",
+    defaultMessage: "此操作将永久删除该令牌（真的是永久）。",
   },
   action: {
     id: "settings.pats.modal.delete.action",
-    defaultMessage: "Delete this token",
+    defaultMessage: "删除此令牌",
   },
 });
 
@@ -267,38 +267,38 @@ const messages = defineMessages({
   description: {
     id: "settings.pats.description",
     defaultMessage:
-      "PATs can be used to access BBSMC API. For more information, see <doc-link>BBSMC API documentation</doc-link>. They can be created and revoked at any time.",
+      "个人访问令牌可用于访问 BBSMC API。更多信息请参阅<doc-link>BBSMC API 文档</doc-link>。令牌可以随时创建和撤销。",
   },
   create: {
     id: "settings.pats.action.create",
-    defaultMessage: "Create a PAT",
+    defaultMessage: "创建令牌",
   },
 });
 
 const tokenMessages = defineMessages({
   edit: {
     id: "settings.pats.token.action.edit",
-    defaultMessage: "Edit token",
+    defaultMessage: "编辑令牌",
   },
   revoke: {
     id: "settings.pats.token.action.revoke",
-    defaultMessage: "Revoke token",
+    defaultMessage: "撤销令牌",
   },
   lastUsed: {
     id: "settings.pats.token.last-used",
-    defaultMessage: "Last used {ago}",
+    defaultMessage: "上次使用 {ago}",
   },
   neverUsed: {
     id: "settings.pats.token.never-used",
-    defaultMessage: "Never used",
+    defaultMessage: "从未使用",
   },
   expiresIn: {
     id: "settings.pats.token.expires-in",
-    defaultMessage: "Expires {inTime}",
+    defaultMessage: "{inTime}后过期",
   },
   expiredAgo: {
     id: "settings.pats.token.expired-ago",
-    defaultMessage: "Expired {ago}",
+    defaultMessage: "已于 {ago} 过期",
   },
 });
 
@@ -308,6 +308,7 @@ definePageMeta({
 
 useHead({
   title: `${formatMessage(commonSettingsMessages.pats)} - BBSMC资源社区`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const data = useNuxtApp();

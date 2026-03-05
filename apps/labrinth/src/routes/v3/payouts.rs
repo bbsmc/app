@@ -47,36 +47,28 @@ pub async fn paypal_webhook(
         .get("PAYPAL-AUTH-ALGO")
         .and_then(|x| x.to_str().ok())
         .ok_or_else(|| {
-            ApiError::InvalidInput("missing auth algo".to_string())
+            ApiError::InvalidInput("缺少认证算法参数".to_string())
         })?;
     let cert_url = req
         .headers()
         .get("PAYPAL-CERT-URL")
         .and_then(|x| x.to_str().ok())
-        .ok_or_else(|| {
-            ApiError::InvalidInput("missing cert url".to_string())
-        })?;
+        .ok_or_else(|| ApiError::InvalidInput("缺少证书 URL".to_string()))?;
     let transmission_id = req
         .headers()
         .get("PAYPAL-TRANSMISSION-ID")
         .and_then(|x| x.to_str().ok())
-        .ok_or_else(|| {
-            ApiError::InvalidInput("missing transmission ID".to_string())
-        })?;
+        .ok_or_else(|| ApiError::InvalidInput("缺少传输 ID".to_string()))?;
     let transmission_sig = req
         .headers()
         .get("PAYPAL-TRANSMISSION-SIG")
         .and_then(|x| x.to_str().ok())
-        .ok_or_else(|| {
-            ApiError::InvalidInput("missing transmission sig".to_string())
-        })?;
+        .ok_or_else(|| ApiError::InvalidInput("缺少传输签名".to_string()))?;
     let transmission_time = req
         .headers()
         .get("PAYPAL-TRANSMISSION-TIME")
         .and_then(|x| x.to_str().ok())
-        .ok_or_else(|| {
-            ApiError::InvalidInput("missing transmission time".to_string())
-        })?;
+        .ok_or_else(|| ApiError::InvalidInput("缺少传输时间".to_string()))?;
 
     #[derive(Deserialize)]
     struct WebHookResponse {
@@ -88,7 +80,7 @@ pub async fn paypal_webhook(
             Method::POST,
             "notifications/verify-webhook-signature",
             None,
-            // This is needed as serde re-orders fields, which causes the validation to fail for PayPal.
+            // 这里需要手动构建 JSON 字符串，因为 serde 会重新排序字段，导致 PayPal 验证失败
             Some(format!(
                 "{{
                     \"auth_algo\": \"{auth_algo}\",
@@ -106,9 +98,7 @@ pub async fn paypal_webhook(
         .await?;
 
     if &webhook_res.verification_status != "SUCCESS" {
-        return Err(ApiError::InvalidInput(
-            "Invalid webhook signature".to_string(),
-        ));
+        return Err(ApiError::InvalidInput("Webhook 签名无效".to_string()));
     }
 
     #[derive(Deserialize)]
@@ -201,20 +191,18 @@ pub async fn tremendous_webhook(
         .and_then(|x| x.to_str().ok())
         .and_then(|x| x.split('=').next_back())
         .ok_or_else(|| {
-            ApiError::InvalidInput("missing webhook signature".to_string())
+            ApiError::InvalidInput("缺少 Webhook 签名".to_string())
         })?;
 
     let mut mac: Hmac<Sha256> = Hmac::new_from_slice(
         dotenvy::var("TREMENDOUS_PRIVATE_KEY")?.as_bytes(),
     )
-    .map_err(|_| ApiError::Payments("error initializing HMAC".to_string()))?;
+    .map_err(|_| ApiError::Payments("初始化 HMAC 失败".to_string()))?;
     mac.update(body.as_bytes());
     let request_signature = mac.finalize().into_bytes().encode_hex::<String>();
 
     if &*request_signature != signature {
-        return Err(ApiError::InvalidInput(
-            "Invalid webhook signature".to_string(),
-        ));
+        return Err(ApiError::InvalidInput("Webhook 签名无效".to_string()));
     }
 
     #[derive(Deserialize)]
@@ -381,7 +369,7 @@ pub async fn create_payout(
     let balance = get_user_balance(user.id, &pool).await?;
     if balance.available < body.amount || body.amount < Decimal::ZERO {
         return Err(ApiError::InvalidInput(
-            "You do not have enough funds to make this payout!".to_string(),
+            "您的余额不足，无法完成此提现！".to_string(),
         ));
     }
 
@@ -391,9 +379,7 @@ pub async fn create_payout(
         .into_iter()
         .find(|x| x.id == body.method_id)
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "Invalid payment method specified!".to_string(),
-            )
+            ApiError::InvalidInput("指定的支付方式无效！".to_string())
         })?;
 
     let fee = std::cmp::min(
@@ -407,7 +393,7 @@ pub async fn create_payout(
     let transfer = (body.amount - fee).round_dp(2);
     if transfer <= Decimal::ZERO {
         return Err(ApiError::InvalidInput(
-            "You need to withdraw more to cover the fee!".to_string(),
+            "提现金额不足以支付手续费，请增加提现金额！".to_string(),
         ));
     }
 
@@ -415,50 +401,47 @@ pub async fn create_payout(
 
     let payout_item = match body.method {
         PayoutMethodType::Venmo | PayoutMethodType::PayPal => {
-            let (wallet, wallet_type, address, display_address) = if body.method
-                == PayoutMethodType::Venmo
-            {
-                if let Some(venmo) = user.venmo_handle {
-                    ("Venmo", "user_handle", venmo.clone(), venmo)
-                } else {
-                    return Err(ApiError::InvalidInput(
-                        "Venmo address has not been set for account!"
-                            .to_string(),
-                    ));
-                }
-            } else if let Some(paypal_id) = user.paypal_id {
-                if let Some(paypal_country) = user.paypal_country {
-                    if &*paypal_country == "US"
-                        && &*body.method_id != "paypal_us"
-                    {
+            let (wallet, wallet_type, address, display_address) =
+                if body.method == PayoutMethodType::Venmo {
+                    if let Some(venmo) = user.venmo_handle {
+                        ("Venmo", "user_handle", venmo.clone(), venmo)
+                    } else {
                         return Err(ApiError::InvalidInput(
-                            "Please use the US PayPal transfer option!"
-                                .to_string(),
+                            "该账户尚未设置 Venmo 地址！".to_string(),
                         ));
-                    } else if &*paypal_country != "US"
-                        && &*body.method_id == "paypal_us"
-                    {
-                        return Err(ApiError::InvalidInput(
-                                "Please use the International PayPal transfer option!".to_string(),
-                            ));
                     }
+                } else if let Some(paypal_id) = user.paypal_id {
+                    if let Some(paypal_country) = user.paypal_country {
+                        if &*paypal_country == "US"
+                            && &*body.method_id != "paypal_us"
+                        {
+                            return Err(ApiError::InvalidInput(
+                                "请使用美国 PayPal 转账选项！".to_string(),
+                            ));
+                        } else if &*paypal_country != "US"
+                            && &*body.method_id == "paypal_us"
+                        {
+                            return Err(ApiError::InvalidInput(
+                                "请使用国际 PayPal 转账选项！".to_string(),
+                            ));
+                        }
 
-                    (
-                        "PayPal",
-                        "paypal_id",
-                        paypal_id.clone(),
-                        user.paypal_email.unwrap_or(paypal_id),
-                    )
+                        (
+                            "PayPal",
+                            "paypal_id",
+                            paypal_id.clone(),
+                            user.paypal_email.unwrap_or(paypal_id),
+                        )
+                    } else {
+                        return Err(ApiError::InvalidInput(
+                            "请重新绑定您的 PayPal 账户！".to_string(),
+                        ));
+                    }
                 } else {
                     return Err(ApiError::InvalidInput(
-                        "Please re-link your PayPal account!".to_string(),
+                        "您尚未绑定 PayPal 账户！".to_string(),
                     ));
-                }
-            } else {
-                return Err(ApiError::InvalidInput(
-                    "You have not linked a PayPal account!".to_string(),
-                ));
-            };
+                };
 
             #[derive(Deserialize)]
             struct PayPalLink {
@@ -490,8 +473,8 @@ pub async fn create_payout(
                     json! ({
                         "sender_batch_header": {
                             "sender_batch_id": format!("{}-payouts", Utc::now().to_rfc3339()),
-                            "email_subject": "You have received a payment from Modrinth!",
-                            "email_message": "Thank you for creating projects on Modrinth. Please claim this payment within 30 days.",
+                            "email_subject": "您收到了一笔来自 BBSMC 的付款！",
+                            "email_message": "感谢您在 BBSMC 上创建项目。请在 30 天内领取此付款。",
                         },
                         "items": [{
                             "amount": {
@@ -499,7 +482,7 @@ pub async fn create_payout(
                                 "value": transfer.to_string()
                             },
                             "receiver": address,
-                            "note": "Payment from Modrinth creator monetization program",
+                            "note": "来自 BBSMC 创作者收益计划的付款",
                             "recipient_type": wallet_type,
                             "recipient_wallet": wallet,
                             "sender_item_id": crate::models::ids::PayoutId::from(payout_id),
@@ -604,21 +587,17 @@ pub async fn create_payout(
                     payout_item
                 } else {
                     return Err(ApiError::InvalidInput(
-                        "You must verify your account email to proceed!"
-                            .to_string(),
+                        "您必须先验证账户邮箱才能继续操作！".to_string(),
                     ));
                 }
             } else {
                 return Err(ApiError::InvalidInput(
-                    "You must add an email to your account to proceed!"
-                        .to_string(),
+                    "您必须先为账户添加邮箱才能继续操作！".to_string(),
                 ));
             }
         }
         PayoutMethodType::Unknown => {
-            return Err(ApiError::Payments(
-                "Invalid payment method specified!".to_string(),
-            ));
+            return Err(ApiError::Payments("指定的支付方式无效！".to_string()));
         }
     };
 
@@ -664,7 +643,7 @@ pub async fn cancel_payout(
             if let Some(method) = payout.method {
                 if payout.status != PayoutStatus::InTransit {
                     return Err(ApiError::InvalidInput(
-                        "Payout cannot be cancelled!".to_string(),
+                        "该提现无法取消！".to_string(),
                     ));
                 }
 
@@ -694,7 +673,7 @@ pub async fn cancel_payout(
                     }
                     PayoutMethodType::Unknown => {
                         return Err(ApiError::InvalidInput(
-                            "Payout cannot be cancelled!".to_string(),
+                            "该提现无法取消！".to_string(),
                         ));
                     }
                 }
@@ -715,14 +694,10 @@ pub async fn cancel_payout(
 
                 Ok(HttpResponse::NoContent().finish())
             } else {
-                Err(ApiError::InvalidInput(
-                    "Payout cannot be cancelled!".to_string(),
-                ))
+                Err(ApiError::InvalidInput("该提现无法取消！".to_string()))
             }
         } else {
-            Err(ApiError::InvalidInput(
-                "Payout cannot be cancelled!".to_string(),
-            ))
+            Err(ApiError::InvalidInput("该提现无法取消！".to_string()))
         }
     } else {
         Ok(HttpResponse::NotFound().finish())
@@ -923,21 +898,21 @@ pub async fn platform_revenue(
 
         if let Some((revenue, impressions)) = points_map.remove(&(start as u64))
         {
-            // Before 9/5/24, when legacy payouts were in effect.
+            // 2024/9/5 之前，旧版提现机制生效期间
             if start >= 1725494400 {
                 let revenue = revenue.unwrap_or(Decimal::ZERO);
                 let impressions = impressions.unwrap_or(0);
 
-                // Modrinth's share of ad revenue
-                let modrinth_cut = Decimal::from(1) / Decimal::from(4);
-                // Clean.io fee (ad antimalware). Per 1000 impressions.
+                // BBSMC 的广告收入分成
+                let platform_cut = Decimal::from(1) / Decimal::from(4);
+                // Clean.io 费用（广告反恶意软件），按每千次展示计算
                 let clean_io_fee = Decimal::from(8) / Decimal::from(1000);
 
                 let net_revenue = revenue
                     - (clean_io_fee * Decimal::from(impressions)
                         / Decimal::from(1000));
 
-                let payout = net_revenue * (Decimal::from(1) - modrinth_cut);
+                let payout = net_revenue * (Decimal::from(1) - platform_cut);
 
                 revenue_data.push(RevenueData {
                     time: start as u64,

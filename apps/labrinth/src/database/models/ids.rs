@@ -335,6 +335,31 @@ generate_ids!(
     BanAppealId
 );
 
+generate_ids!(
+    pub generate_creator_application_id,
+    CreatorApplicationId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM creator_applications WHERE id=$1)",
+    CreatorApplicationId
+);
+
+// 付费资源相关 ID 生成
+generate_ids!(
+    pub generate_user_purchase_id,
+    UserPurchaseId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM user_purchases WHERE id=$1)",
+    UserPurchaseId
+);
+
+generate_ids!(
+    pub generate_payment_order_id,
+    PaymentOrderId,
+    8,
+    "SELECT EXISTS(SELECT 1 FROM payment_orders WHERE id=$1)",
+    PaymentOrderId
+);
+
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Type, Hash, Serialize, Deserialize,
 )]
@@ -923,3 +948,22 @@ impl From<BanAppealId> for ids::BanAppealId {
         ids::BanAppealId(id.0 as u64)
     }
 }
+
+#[derive(
+    Copy, Clone, Debug, Type, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[sqlx(transparent)]
+pub struct CreatorApplicationId(pub i64);
+
+// 付费资源相关 ID
+#[derive(
+    Copy, Clone, Debug, Type, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[sqlx(transparent)]
+pub struct UserPurchaseId(pub i64);
+
+#[derive(
+    Copy, Clone, Debug, Type, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[sqlx(transparent)]
+pub struct PaymentOrderId(pub i64);

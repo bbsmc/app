@@ -1,5 +1,8 @@
 <template>
-  <div v-if="route.name.startsWith('type-id-settings')" class="normal-page">
+  <div v-if="!route.name">
+    <!-- 加载中或错误状态，不渲染任何内容 -->
+  </div>
+  <div v-else-if="route.name?.startsWith('type-id-settings')" class="normal-page">
     <div class="normal-page__sidebar">
       <aside class="universal-card">
         <Breadcrumbs
@@ -80,6 +83,24 @@
           >
             <UsersIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem
+            v-if="project.is_paid"
+            :link="`/${project.project_type}/${
+              project.slug ? project.slug : project.id
+            }/settings/pricing`"
+            label="定价"
+          >
+            <CurrencyIcon aria-hidden="true" />
+          </NavStackItem>
+          <NavStackItem
+            v-if="project.is_paid"
+            :link="`/${project.project_type}/${
+              project.slug ? project.slug : project.id
+            }/settings/purchasers`"
+            label="购买用户"
+          >
+            <UsersIcon aria-hidden="true" />
+          </NavStackItem>
           <h3>视图</h3>
           <NavStackItem
             :link="`/${project.project_type}/${
@@ -122,7 +143,7 @@
         :project="project"
         :versions="versions"
         :current-member="currentMember"
-        :is-settings="route.name.startsWith('type-id-settings')"
+        :is-settings="route.name?.startsWith('type-id-settings')"
         :route-name="route.name"
         :set-processing="setProcessing"
         :collapsed="collapsedChecklist"
@@ -614,19 +635,286 @@
             @navigate="navigateToTranslation"
           />
 
+          <!-- 汉化包未及时更新提示：需要选择了版本且有可下载版本时才显示 -->
+          <div
+            v-else-if="
+              project.translation_tracking &&
+              !translationRecommendation &&
+              currentGameVersion &&
+              (filteredRelease || filteredBeta || filteredAlpha)
+            "
+            class="translation-pending-notice border-orange-500/50 bg-orange-500/10 rounded-2xl border border-solid p-4"
+          >
+            <div class="flex items-start gap-3">
+              <InfoIcon class="text-orange-400 mt-0.5 size-5 shrink-0" />
+              <div class="flex flex-col gap-1">
+                <span class="font-bold text-contrast">当前版本暂无汉化包</span>
+                <span class="text-sm text-secondary">
+                  该版本的汉化包还未及时上传，可前往 QQ 群
+                  <span class="text-orange-400 font-mono font-bold">1073724937</span>
+                  反馈，我们将及时响应处理。
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 资源未被汉化提示：组织 6FNyvmc5 的资源且未开启汉化追踪 -->
+          <div
+            v-else-if="
+              organization &&
+              organization.id === '6FNyvmc5' &&
+              !project.translation_tracking &&
+              currentGameVersion &&
+              (filteredRelease || filteredBeta || filteredAlpha)
+            "
+            class="translation-pending-notice rounded-2xl border border-solid border-gray-500/50 bg-gray-500/10 p-4"
+          >
+            <div class="flex items-start gap-3">
+              <InfoIcon class="mt-0.5 size-5 shrink-0 text-gray-400" />
+              <div class="flex flex-col gap-1">
+                <span class="font-bold text-contrast">该资源暂未汉化</span>
+                <span class="text-sm text-secondary">
+                  如果需要汉化此资源，可前往 QQ 群
+                  <span class="font-mono font-bold text-gray-400">1073724937</span>
+                  反馈，我们将评估后进行汉化。
+                </span>
+              </div>
+            </div>
+          </div>
+
           <!-- 服务器推荐 -->
-          <ServerPromo v-if="affs[project.id]" @navigate="navigateToServer" />
+          <ServerPromo v-if="projectAffKey" @navigate="navigateToServer" />
         </div>
       </template>
     </NewModal>
     <CollectionCreateModal ref="modal_collection" :project-ids="[project.id]" />
     <div
-      class="new-page sidebar"
+      class="new-page sidebar revolution-layout"
       :class="{
         'alt-layout': route.fullPath.includes('/wikis') || route.fullPath.includes('/wiki/'),
       }"
     >
-      <div class="normal-page__header relative my-4">
+      <!-- ==================== IMMERSIVE HERO SECTION ==================== -->
+      <div class="hero-section">
+        <!-- Hero Background with Gallery Image -->
+        <div class="hero-background">
+          <img
+            v-if="project.gallery && project.gallery.length > 0"
+            :src="project.gallery[0].url"
+            :alt="project.title"
+            class="hero-bg-image"
+          />
+          <div class="hero-gradient-overlay"></div>
+        </div>
+
+        <!-- Hero Content -->
+        <div class="hero-content">
+          <div class="hero-main">
+            <!-- Project Icon -->
+            <div class="hero-icon-wrapper">
+              <Avatar :src="project.icon_url" :alt="project.title" size="120px" class="hero-icon" />
+            </div>
+
+            <!-- Project Info -->
+            <div class="hero-info">
+              <div class="hero-title-row">
+                <h1 class="hero-title">{{ project.title }}</h1>
+                <Badge
+                  v-if="auth.user && currentMember"
+                  :type="project.status"
+                  class="hero-status-badge"
+                />
+              </div>
+              <p class="hero-description">{{ project.description }}</p>
+
+              <!-- Tags & Stats Combined -->
+              <div class="hero-meta">
+                <!-- Quick Tags -->
+                <div class="hero-tags">
+                  <span
+                    v-for="(category, index) in project.categories.slice(0, 3)"
+                    :key="index"
+                    class="hero-tag"
+                  >
+                    {{ formatCategory(category) }}
+                  </span>
+                  <span v-if="project.categories.length > 3" class="hero-tag hero-tag--more">
+                    +{{ project.categories.length - 3 }}
+                  </span>
+                </div>
+
+                <!-- Stats Inline -->
+                <div class="hero-stats-inline">
+                  <span class="stat-item"
+                    ><DownloadIcon class="stat-icon" />{{ $formatNumber(project.downloads) }}</span
+                  >
+                  <span class="stat-item"
+                    ><HeartIcon class="stat-icon" />{{ $formatNumber(project.followers) }}</span
+                  >
+                  <span class="stat-item"
+                    ><CalendarIcon class="stat-icon" />{{
+                      fromNow(project.approved || project.published)
+                    }}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Actions -->
+          <div class="hero-actions">
+            <!-- 可以下载时显示下载按钮 -->
+            <ButtonStyled v-if="canDownload" size="large" color="green" class="hero-download-btn">
+              <button @click="(event) => onDownloadClick(event)">
+                <DownloadIcon aria-hidden="true" />
+                下载
+              </button>
+            </ButtonStyled>
+            <!-- 需要购买时显示购买按钮 -->
+            <ButtonStyled
+              v-else-if="needsPurchase"
+              size="large"
+              color="brand"
+              class="hero-download-btn"
+            >
+              <button @click="handlePurchaseClick">
+                <CurrencyIcon aria-hidden="true" />
+                购买
+              </button>
+            </ButtonStyled>
+            <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
+              <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
+                <ServerIcon aria-hidden="true" />
+                联机
+              </nuxt-link>
+              <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+                <ServerIcon aria-hidden="true" />
+                联机
+              </nuxt-link>
+            </ButtonStyled>
+            <ButtonStyled size="large" circular :color="following ? 'red' : 'standard'">
+              <button v-if="auth.user" @click="userFollowProject(project)">
+                <HeartIcon :fill="following ? 'currentColor' : 'none'" aria-hidden="true" />
+              </button>
+              <nuxt-link v-else to="/auth/sign-in">
+                <HeartIcon aria-hidden="true" />
+              </nuxt-link>
+            </ButtonStyled>
+            <ButtonStyled size="large" circular>
+              <PopoutMenu v-if="auth.user" from="top-right">
+                <BookmarkIcon
+                  :fill="
+                    collections.some((x) => x.projects.includes(project.id))
+                      ? 'currentColor'
+                      : 'none'
+                  "
+                />
+                <template #menu>
+                  <input
+                    v-model="displayCollectionsSearch"
+                    type="text"
+                    placeholder="搜索收藏..."
+                    class="search-input menu-search"
+                  />
+                  <div v-if="collections.length > 0" class="collections-list">
+                    <Checkbox
+                      v-for="option in collections
+                        .slice()
+                        .sort((a, b) => a.name.localeCompare(b.name))"
+                      :key="option.id"
+                      :model-value="option.projects.includes(project.id)"
+                      class="popout-checkbox"
+                      @update:model-value="() => onUserCollectProject(option, project.id)"
+                      >{{ option.name }}</Checkbox
+                    >
+                  </div>
+                  <div v-else class="menu-text"><p class="popout-text">未找到任何收藏夹</p></div>
+                  <button
+                    class="btn collection-button"
+                    @click="(event) => $refs.modal_collection.show(event)"
+                  >
+                    <PlusIcon aria-hidden="true" />创建收藏夹
+                  </button>
+                </template>
+              </PopoutMenu>
+              <nuxt-link v-else to="/auth/sign-in"><BookmarkIcon aria-hidden="true" /></nuxt-link>
+            </ButtonStyled>
+            <!-- Settings Button -->
+            <ButtonStyled v-if="auth.user && currentMember" size="large" circular>
+              <nuxt-link
+                :to="`/${project.project_type}/${project.slug ? project.slug : project.id}/settings`"
+              >
+                <SettingsIcon aria-hidden="true" />
+              </nuxt-link>
+            </ButtonStyled>
+            <!-- More Options Menu -->
+            <ButtonStyled size="large" circular type="transparent">
+              <OverflowMenu
+                :options="[
+                  {
+                    id: 'analytics',
+                    link: `/${project.project_type}/${project.slug ? project.slug : project.id}/settings/analytics`,
+                    hoverOnly: true,
+                    shown: auth.user && !!currentMember,
+                  },
+                  {
+                    divider: true,
+                    shown: auth.user && !!currentMember,
+                  },
+                  {
+                    id: 'moderation-checklist',
+                    action: () => (showModerationChecklist = true),
+                    color: 'orange',
+                    hoverOnly: true,
+                    shown:
+                      auth.user &&
+                      tags.staffRoles.includes(auth.user.role) &&
+                      !showModerationChecklist,
+                  },
+                  {
+                    divider: true,
+                    shown:
+                      auth.user &&
+                      tags.staffRoles.includes(auth.user.role) &&
+                      !showModerationChecklist,
+                  },
+                  {
+                    id: 'report',
+                    action: () =>
+                      auth.user ? reportProject(project.id) : navigateTo('/auth/sign-in'),
+                    color: 'red',
+                    hoverOnly: true,
+                    shown: !currentMember,
+                  },
+                  { id: 'copy-id', action: () => copyId() },
+                ]"
+                aria-label="More options"
+              >
+                <MoreVerticalIcon aria-hidden="true" />
+                <template #analytics>
+                  <ChartIcon aria-hidden="true" />
+                  分析
+                </template>
+                <template #moderation-checklist>
+                  <ScaleIcon aria-hidden="true" />
+                  审查项目
+                </template>
+                <template #report>
+                  <ReportIcon aria-hidden="true" />
+                  举报
+                </template>
+                <template #copy-id>
+                  <ClipboardCopyIcon aria-hidden="true" />
+                  复制资源 ID
+                </template>
+              </OverflowMenu>
+            </ButtonStyled>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== LEGACY HEADER (HIDDEN, KEPT FOR COMPATIBILITY) ==================== -->
+      <div class="normal-page__header relative my-4" style="display: none">
         <ContentPageHeader>
           <template #icon>
             <Avatar :src="project.icon_url" :alt="project.title" size="96px" />
@@ -670,7 +958,8 @@
           </template>
           <template #actions>
             <div class="hidden sm:contents">
-              <ButtonStyled size="large" color="green">
+              <!-- 可以下载时显示下载按钮 -->
+              <ButtonStyled v-if="canDownload" size="large" color="green">
                 <button
                   @click="
                     (event) => {
@@ -682,20 +971,29 @@
                   下载
                 </button>
               </ButtonStyled>
+              <!-- 需要购买时显示购买按钮 -->
+              <ButtonStyled v-else-if="needsPurchase" size="large" color="brand">
+                <button @click="scrollToPurchase">
+                  <CurrencyIcon aria-hidden="true" />
+                  购买
+                </button>
+              </ButtonStyled>
 
-              <ButtonStyled v-if="affs[project.id]" size="large" color="purple" type="transparent">
-                <nuxt-link v-if="affs[project.id] === 'pcl'" :to="`/pcl`" target="_blank">
+              <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
+                <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
-                <nuxt-link v-else :to="`/server?aff=${affs[project.id]}`" target="_blank">
+                <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
               </ButtonStyled>
             </div>
             <div class="contents sm:hidden">
+              <!-- 可以下载时显示下载按钮 -->
               <ButtonStyled
+                v-if="canDownload"
                 size="large"
                 circular
                 :color="route.name === 'type-id-version-version' ? `standard` : `brand`"
@@ -708,13 +1006,19 @@
                   <DownloadIcon aria-hidden="true" />
                 </button>
               </ButtonStyled>
+              <!-- 需要购买时显示购买按钮 -->
+              <ButtonStyled v-else-if="needsPurchase" size="large" circular color="brand">
+                <button aria-label="Purchase" class="flex sm:hidden" @click="handlePurchaseClick">
+                  <CurrencyIcon aria-hidden="true" />
+                </button>
+              </ButtonStyled>
 
-              <ButtonStyled v-if="affs[project.id]" size="large" color="purple" type="transparent">
-                <nuxt-link v-if="affs[project.id] === 'pcl'" :to="`/pcl`" target="_blank">
+              <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
+                <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
-                <nuxt-link v-else :to="`/server?aff=${affs[project.id]}`" target="_blank">
+                <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
@@ -860,7 +1164,7 @@
           :project="project"
           :versions="versions"
           :current-member="currentMember"
-          :is-settings="route.name.startsWith('type-id-settings')"
+          :is-settings="route.name?.startsWith('type-id-settings')"
           :route-name="route.name"
           :set-processing="setProcessing"
           :collapsed="collapsedChecklist"
@@ -931,11 +1235,31 @@
               />
             </div>
           </NavStack>
+          <!-- Wiki 页面付费提示 -->
+          <PurchaseButton
+            v-if="wikis.requires_purchase"
+            :project="project"
+            :current-member="currentMember"
+            class="mt-4"
+            @purchase-success="() => router.go(0)"
+          />
         </aside>
       </div>
       <!--      侧边栏-->
       <div v-else class="normal-page__sidebar">
-        <div class="card flex-card experimental-styles-within">
+        <!-- 付费资源购买区域 -->
+        <PurchaseButton
+          v-if="project.is_paid"
+          :project="project"
+          :current-member="currentMember"
+          class="purchase-card"
+          @purchase-success="() => router.go(0)"
+        />
+
+        <div
+          v-if="project.project_type !== 'language'"
+          class="card flex-card experimental-styles-within"
+        >
           <h2>{{ formatMessage(compatibilityMessages.title) }}</h2>
           <section>
             <h3>{{ formatMessage(compatibilityMessages.minecraftJava) }}</h3>
@@ -1086,6 +1410,8 @@
               <QuarkIcon v-else-if="donation.id === 'quark'" aria-hidden="true" />
               <BaiduIcon v-else-if="donation.id === 'baidu'" aria-hidden="true" />
               <CurseforgeIcon v-else-if="donation.id === 'curseforge'" aria-hidden="true" />
+              <McmodIcon v-else-if="donation.id === 'mcmod'" aria-hidden="true" />
+              <Mc9yIcon v-else-if="donation.id === 'mc9y'" aria-hidden="true" />
               <KoFiIcon v-else-if="donation.id === 'ko-fi'" aria-hidden="true" />
               <PayPalIcon v-else-if="donation.id === 'paypal'" aria-hidden="true" />
               <OpenCollectiveIcon
@@ -1104,7 +1430,7 @@
           <h2>
             {{
               organization
-                ? ["bbsmc", "bbsmc-2", "bbsmc-3", "bbsmc-cn"].includes(organization.slug)
+                ? ["bbsmc", "bbsmc-2", "bbsmc-3"].includes(organization.slug)
                   ? "搬运团队"
                   : "创作团队"
                 : "创作者"
@@ -1147,16 +1473,93 @@
             </nuxt-link>
           </div>
         </div>
+        <!-- 汉化追踪标记 -->
+        <div v-if="project.translation_tracking" class="card flex-card experimental-styles-within">
+          <div class="flex items-center gap-2">
+            <TranslateIcon class="h-5 w-5 text-brand-green" aria-hidden="true" />
+            <h2 class="!mb-0">汉化追踪中</h2>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0">
+            此项目正在进行汉化追踪，将会定期同步上游更新并更新汉化内容。
+          </p>
+          <!-- 汉化包项目卡片 -->
+          <nuxt-link
+            v-if="translationPackProject"
+            :to="`/${translationPackProject.project_type}/${translationPackProject.slug || translationPackProject.id}`"
+            class="translation-pack-card"
+          >
+            <Avatar :src="translationPackProject.icon_url" alt="translation-pack-icon" size="sm" />
+            <div class="translation-pack-info">
+              <span class="translation-pack-title">{{ translationPackProject.title }}</span>
+              <span class="translation-pack-desc">{{ translationPackProject.description }}</span>
+            </div>
+          </nuxt-link>
+        </div>
+
+        <!-- 为目标追踪资源标记（当前项目是某个项目的汉化包） -->
+        <div v-if="translationSourceProject" class="card flex-card experimental-styles-within">
+          <div class="flex items-center gap-2">
+            <TranslateIcon class="h-5 w-5 text-brand-green" aria-hidden="true" />
+            <h2 class="!mb-0">追踪汉化包</h2>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0">
+            此资源是以下整合包的汉化包。
+          </p>
+          <!-- 原始项目卡片 -->
+          <nuxt-link
+            :to="`/${translationSourceProject.project_type}/${translationSourceProject.slug || translationSourceProject.id}`"
+            class="translation-pack-card"
+          >
+            <Avatar :src="translationSourceProject.icon_url" alt="source-project-icon" size="sm" />
+            <div class="translation-pack-info">
+              <span class="translation-pack-title">{{ translationSourceProject.title }}</span>
+              <span class="translation-pack-desc">{{ translationSourceProject.description }}</span>
+            </div>
+          </nuxt-link>
+        </div>
+
+        <!-- 资源未被汉化提示：组织 6FNyvmc5 的资源且未开启汉化追踪 -->
         <div
           v-if="
-            organization && ['bbsmc', 'bbsmc-2', 'bbsmc-3', 'bbsmc-cn'].includes(organization.slug)
+            organization &&
+            organization.id === '6FNyvmc5' &&
+            !project.translation_tracking &&
+            !translationSourceProject
           "
+          class="card flex-card experimental-styles-within"
+        >
+          <div class="flex items-center gap-2">
+            <TranslateIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+            <h2 class="!mb-0">暂未汉化</h2>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0">
+            该资源暂未进行汉化，如果需要汉化此资源，可前往 QQ 群
+            <span class="font-mono font-bold">1073724937</span>
+            反馈，我们将评估后进行汉化。
+          </p>
+        </div>
+
+        <div
+          v-if="organization && ['bbsmc', 'bbsmc-2', 'bbsmc-3'].includes(organization.slug)"
           class="card flex-card experimental-styles-within"
         >
           <h2>搬运资源声明</h2>
           <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0">
             对于可进行 JAR
             文件搬运的许可证，我们提供站内下载服务；其他资源会跳转到原帖下载。资源更新可能不及时，建议前往资源内提供的原帖链接下载最新版本。
+          </p>
+        </div>
+        <div
+          v-if="organization && organization.slug === 'bbsmc-cn'"
+          class="card flex-card experimental-styles-within"
+        >
+          <h2>BBSMC汉化组</h2>
+          <p style="font-size: 0.875rem; color: var(--color-text); line-height: 1.6; margin: 0">
+            BBSMC汉化组是一个专注于Minecraft整合包汉化的团队，我们借助AI翻译技术 +
+            1000万文本的MC专业词汇结合人工校对，力求在效率与质量之间找到最佳平衡。我们针对每个资源的版本进行针对性汉化，在下载的时候一定要针对特定的版本下载特定版本的汉化包，不要使用跨版本的汉化包。比如整合包的版本是
+            1.0.1 就不要使用针对 1.0.0
+            版本的汉化包，会导致很多问题无法正常游戏游玩。缺少版本需求请加入汉化组的QQ群
+            <span class="font-mono font-bold">1073724937</span> 提需求，我们会快速响应。
           </p>
         </div>
         <div class="card flex-card experimental-styles-within">
@@ -1197,13 +1600,13 @@
               class="details-list__item"
             >
               <CalendarIcon aria-hidden="true" />
-              <div>发布于 {{ fromNow(project.approved) }}</div>
+              <div>发布于 {{ formatDate(project.approved) }}</div>
             </div>
 
             <!--            提交-->
             <div v-else v-tooltip="formatDateTime(project.published)" class="details-list__item">
               <CalendarIcon aria-hidden="true" />
-              <div>提交于 {{ fromNow(project.published) }}</div>
+              <div>提交于 {{ formatDate(project.published) }}</div>
             </div>
 
             <!--            发布-->
@@ -1213,7 +1616,7 @@
               class="details-list__item"
             >
               <ScaleIcon aria-hidden="true" />
-              <div>发布于 {{ fromNow(project.queued) }}</div>
+              <div>发布于 {{ formatDate(project.queued) }}</div>
             </div>
 
             <!--            更新-->
@@ -1223,7 +1626,7 @@
               class="details-list__item"
             >
               <VersionIcon aria-hidden="true" />
-              <div>更新于 {{ fromNow(project.updated) }}</div>
+              <div>更新于 {{ formatDate(project.updated) }}</div>
             </div>
           </div>
         </div>
@@ -1299,6 +1702,8 @@ import {
   QuarkIcon,
   BaiduIcon,
   CurseforgeIcon,
+  McmodIcon,
+  Mc9yIcon,
   ModrinthIcon2,
   AifadianIcon,
   QQPDIcon,
@@ -1347,9 +1752,26 @@ import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import TranslationPromo from "~/components/ui/TranslationPromo.vue";
 import ServerPromo from "~/components/ui/ServerPromo.vue";
+import PurchaseButton from "~/components/ui/PurchaseButton.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
+import { projectAffiliates } from "~/config/affiliates.ts";
 const data = useNuxtApp();
 const route = useNativeRoute();
+
+// Remove main padding for immersive hero effect
+onMounted(() => {
+  const mainEl = document.querySelector("main");
+  if (mainEl) {
+    mainEl.style.paddingTop = "0";
+  }
+});
+
+onUnmounted(() => {
+  const mainEl = document.querySelector("main");
+  if (mainEl) {
+    mainEl.style.paddingTop = "";
+  }
+});
 
 const auth = await useAuth();
 const user = await useUser();
@@ -1398,42 +1820,27 @@ const gameVersionAccordion = ref();
 const platformAccordion = ref();
 const WikiFatherAccordion = ref();
 
-const affs = ref({
-  YJBkhCZM: "pcl", // PCL2
-  "1p2TFl6X": "wutuobang", // 乌托邦
-  NxtrWNas: "wuye", // 探索自然2
-  Z1Z1xI1K: "wuye", // 自然之旅3
-  Gd9LgTCW: "wuye", // 悠然人生1
-  TJTmchrm: "wuye", // 悠然人生2
-  w71BhsmT: "wuye", // 灾难降临
-  yHBuGZk1: "wuye", // 悠然人生3
-  tFpySPqY: "wuye", // 自然之旅1
-  pC0EfVWW: "wuye", // 探索自然1
-  fZSAKVSg: "cuiguzheng", // 脆骨症
-  dL0Tbr7N: "cuiguzheng", // 脆骨症：黯光
-  r0WJ4XSq: "grannixie", // 群峦：重生
-  hICODOh4: "luge", // 路哥[植物大战僵尸 畸变帝国]
-  tRR4pnOA: "Unknown_Entity_", // 机械动力，无限构件
-  EIrkPpcm: "ruoling", // 龙之冒险：新征程
-  e11vzqXl: "JQKA326", // 香草纪元
-  S5mhiSMC: "song_5007", // 香草纪元
-  CFqHhpsh: "Puikre", // 锻造大师
-  KGIfMlOP: "Puikre", // 赏金猎人
-  F4xIzfIX: "ZangHeRo", // 机械殖民地
-  G23dLUsP: "snk", // 剑与王国
-  XMUypeti: "thefool", // 愚者
-  YgvldBV8: "skillet_man", // 平底锅侠
-  aa8zTitm: "Latxx", // 沉浸战斗
-  k5OmCs1S: "Karashok_Leo", // 咒次元
-  KgeSn4uG: "Lovin", // 勇者之章
-  OIIWCwpQ: "JasonQ", // 齿轮盛宴
-  FkZiwq64: "Altnoir", // 空中厕所2
-  UJBwwyq3: "wuwei", // 真实地球
-  YtS91hhr: "ft_wt", // 农场物语
-  "2cDBzlDs": "martyredroad", // 真实地球
-  "92pKuCHs": "tfg", // 锻造之旅
-  ZSSC3pSh: "shenhuaqiyuan", // 神话起源
-  zT3k10EZ: "unfinished-path", // 未尽之路
+// 组织级别的联机搭建配置
+const ORG_AFFILIATES = {
+  K1ZYxGDQ: "LaotouY",
+  "6FNyvmc5": "LaotouY",
+};
+
+// 获取项目的联机搭建 affiliate key
+const projectAffKey = computed(() => {
+  if (!project.value) return null;
+
+  // 首先检查项目级别的配置
+  const projectAff = projectAffiliates[project.value.id];
+  if (projectAff) return projectAff;
+
+  // 然后检查组织级别的配置
+  if (organization?.value?.id) {
+    const orgAff = ORG_AFFILIATES[organization.value.id];
+    if (orgAff) return orgAff;
+  }
+
+  return null;
 });
 const compatibilityMessages = defineMessages({
   title: {
@@ -1551,7 +1958,7 @@ const webDisplayLabel = (x) => {
       return "发布地址";
 
     case "modrinth":
-      return "Modrinth地址";
+      return "Modrinth";
 
     case "bilibili":
       return "哔哩哔哩";
@@ -1577,6 +1984,10 @@ const webDisplayLabel = (x) => {
       return "夸克网盘";
     case "baidu":
       return "百度网盘";
+    case "mcmod":
+      return "MC百科";
+    case "mc9y":
+      return "九域资源社区";
     default:
       return x;
   }
@@ -1585,6 +1996,10 @@ const webDisplayLabel = (x) => {
 const fromNow = (date) => {
   const currentDate = useCurrentDate();
   return dayjs(date).from(currentDate.value);
+};
+
+const formatDate = (date) => {
+  return dayjs(date).format("YYYY-MM-DD");
 };
 
 const licenseIdDisplay = computed(() => {
@@ -1672,17 +2087,69 @@ let project,
   versions,
   wikis,
   organization,
-  resetOrganization;
+  resetOrganization,
+  translationPackProject,
+  translationSourceProject;
+
+/**
+ * 检查错误消息是否为网络相关错误
+ * @param {string} message - 错误消息
+ * @returns {boolean}
+ */
+const isNetworkError = (message) => {
+  const networkErrorPatterns = [
+    "Failed to fetch",
+    "CORS",
+    "NetworkError",
+    "timeout",
+    "ECONNREFUSED",
+    "ENOTFOUND",
+    "ETIMEDOUT",
+    "Network request failed",
+  ];
+  return networkErrorPatterns.some((pattern) => message.includes(pattern));
+};
+
+/**
+ * 处理 API 错误并抛出适当的 createError
+ * @param {Error} error - 错误对象
+ * @throws {H3Error} - 抛出格式化的错误
+ */
+const handleApiError = (error) => {
+  const statusCode =
+    error?.statusCode || error?.status || error?.response?.status || error?.data?.statusCode || 404;
+  const errorData = error?.data;
+  const errorType = errorData?.error;
+  const message = error?.message || "";
+
+  // 优先检查限流错误
+  if (statusCode === 429 || errorType === "ratelimit_error") {
+    throw createError({
+      fatal: true,
+      statusCode: 429,
+      message: errorData?.description || "请求过于频繁",
+    });
+  }
+
+  // 检查网络错误（CORS、连接失败、超时等）
+  if (isNetworkError(message)) {
+    throw createError({
+      fatal: true,
+      statusCode: 503,
+      message: "服务暂时不可用，请稍后重试",
+    });
+  }
+
+  // 其他错误使用原状态码
+  throw createError({
+    fatal: true,
+    statusCode,
+    message: errorData?.description || error?.statusMessage || message || "资源不存在",
+  });
+};
+
 try {
-  [
-    { data: project, refresh: resetProject },
-    { data: allMembers, refresh: resetMembers },
-    { data: dependencies },
-    { data: featuredVersions },
-    { data: versions },
-    { data: wikis },
-    { data: organization, refresh: resetOrganization },
-  ] = await Promise.all([
+  const results = await Promise.allSettled([
     useAsyncData(`project/${route.params.id}`, () => useBaseFetch(`project/${route.params.id}`), {
       transform: (project) => {
         if (project) {
@@ -1728,14 +2195,96 @@ try {
     ),
   ]);
 
+  /**
+   * 从 Promise.allSettled 结果中提取数据
+   * @param {PromiseSettledResult} result - Promise.allSettled 的单个结果
+   * @param {boolean} needRefresh - 是否需要返回 refresh 函数
+   * @returns {{ data: Ref, refresh?: Function, error?: Ref }}
+   */
+  const extractResult = (result, needRefresh = false) => {
+    if (result.status === "fulfilled") {
+      return result.value;
+    }
+    return needRefresh
+      ? { data: ref(null), refresh: () => {}, error: ref(result.reason) }
+      : { data: ref(null), error: ref(result.reason) };
+  };
+
+  const [
+    projectResult,
+    membersResult,
+    dependenciesResult,
+    featuredVersionsResult,
+    versionsResult,
+    wikisResult,
+    organizationResult,
+  ] = results;
+
+  // 提取各个请求的结果
+  let projectError;
+  ({
+    data: project,
+    refresh: resetProject,
+    error: projectError,
+  } = extractResult(projectResult, true));
+  ({ data: allMembers, refresh: resetMembers } = extractResult(membersResult, true));
+  ({ data: dependencies } = extractResult(dependenciesResult));
+  ({ data: featuredVersions } = extractResult(featuredVersionsResult));
+  ({ data: versions } = extractResult(versionsResult));
+  ({ data: wikis } = extractResult(wikisResult));
+  ({ data: organization, refresh: resetOrganization } = extractResult(organizationResult, true));
+
+  // 只检查主要资源（project）的错误
+  // organization、wiki 等返回 404 是正常的，不应触发错误页面
+  /**
+   * 获取错误值，处理 ref 和普通值两种情况
+   * @param {Ref|Error|null} err - 可能是 ref 或普通错误对象
+   * @returns {Error|null}
+   */
+  const getErrorValue = (err) => (err?.value !== undefined ? err.value : err);
+  const mainError = getErrorValue(projectError);
+
+  if (mainError) {
+    handleApiError(mainError);
+  }
+
   versions = shallowRef(toRaw(versions));
   featuredVersions = shallowRef(toRaw(featuredVersions));
-} catch {
-  throw createError({
-    fatal: true,
-    statusCode: 404,
-    message: "资源不存在",
-  });
+
+  // 如果项目启用了汉化追踪且有 translation_tracker，获取汉化包项目信息
+  if (project.value && project.value.translation_tracker) {
+    try {
+      const { data: packProject } = await useAsyncData(
+        `project/${project.value.translation_tracker}`,
+        () => useBaseFetch(`project/${project.value.translation_tracker}`),
+      );
+      translationPackProject = packProject;
+    } catch {
+      // 汉化包项目不存在或获取失败，忽略错误
+      translationPackProject = ref(null);
+    }
+  } else {
+    translationPackProject = ref(null);
+  }
+
+  // 如果项目有 translation_source，获取原始项目信息（当前项目是汉化包）
+  if (project.value && project.value.translation_source) {
+    try {
+      const { data: sourceProject } = await useAsyncData(
+        `project/${project.value.translation_source}`,
+        () => useBaseFetch(`project/${project.value.translation_source}`),
+      );
+      translationSourceProject = sourceProject;
+    } catch {
+      // 原始项目不存在或获取失败，忽略错误
+      translationSourceProject = ref(null);
+    }
+  } else {
+    translationSourceProject = ref(null);
+  }
+} catch (err) {
+  // 使用通用错误处理函数
+  handleApiError(err);
 }
 
 // 提供 ProjectPageContext 供子组件使用
@@ -1888,13 +2437,16 @@ const currentMember = computed(() => {
   return val;
 });
 
-versions.value = data.$computeVersions(versions.value, allMembers.value);
+// 上游修复: 防止 labrinth 下线时页面崩溃
+versions.value = data.$computeVersions(versions.value ?? [], allMembers.value);
 
 // 问：为什么要这样做，而不是计算 featuredVersions 的版本？
 // 答：它会错误地生成版本 slug，因为它没有所有版本的完整上下文。例如，如果 Forge 的版本 1.1.0 是特色版本，
 // 但 Fabric 的版本 1.1.0 不是，但 Fabric 版本先上传，则 Forge 版本将链接到 Fabric 版本
-const featuredIds = featuredVersions.value.map((x) => x.id);
-featuredVersions.value = versions.value.filter((version) => featuredIds.includes(version.id));
+const featuredIds = (featuredVersions.value ?? []).map((x) => x.id);
+featuredVersions.value = (versions.value ?? []).filter((version) =>
+  featuredIds.includes(version.id),
+);
 
 featuredVersions.value.sort((a, b) => {
   const aLatest = a.game_versions[a.game_versions.length - 1];
@@ -1918,28 +2470,91 @@ const following = computed(
     user.value.follows.find((x) => x.id === project.value.id),
 );
 
+// 判断是否有访问权限（已购买/团队成员/管理员）
+const hasAccessToProject = computed(() => {
+  // 后端返回的购买状态（已包含团队成员和管理员判断）
+  if (project.value?.user_has_purchased === true) return true;
+  // 前端额外检查 currentMember（处理 SSR 和缓存情况）
+  if (currentMember.value) return true;
+  return false;
+});
+
+// 判断是否可以下载：非付费资源或有访问权限的付费资源
+const canDownload = computed(() => {
+  if (!project?.value) return false;
+  // 非付费资源可以下载
+  if (!project.value.is_paid) return true;
+  // 付费资源需要有访问权限
+  return hasAccessToProject.value;
+});
+
+// 判断是否需要购买（付费资源且无访问权限）
+const needsPurchase = computed(() => {
+  if (!project?.value) return false;
+  return project.value.is_paid && !hasAccessToProject.value;
+});
+
 const title = computed(() => {
   if (!project || !project.value) return "";
-  return `${project.value.title} - 我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value}`;
+  return `${project.value.title} - 我的世界${projectTypeDisplay.value} | BBSMC 下载`;
 });
 const description = computed(() => {
   if (!project || !project.value) return "";
-  return `${project.value.description} - 下载我的世界 ${projectTypeDisplay.value === "Modpack" ? "整合包" : projectTypeDisplay.value} ${
-    project.value.title
-  } by ${members.value.find((x) => x.is_owner)?.user?.username || "创作者"} 在 BBSMC`;
+  const owner = members.value.find((x) => x.is_owner)?.user?.username || "创作者";
+  const desc = project.value.description?.trim();
+  return desc
+    ? `${desc} - 在 BBSMC 下载我的世界${projectTypeDisplay.value} ${project.value.title}，由 ${owner} 创建。`
+    : `在 BBSMC 下载我的世界${projectTypeDisplay.value} ${project.value.title}，由 ${owner} 创建。浏览详情、版本列表和社区评价。`;
 });
 
-if (!route.name.startsWith("type-id-settings")) {
+if (!route.name?.startsWith("type-id-settings")) {
   useSeoMeta({
     title: () => title.value,
     description: () => description.value,
     ogTitle: () => title.value,
-    ogDescription: () => project.value.description,
+    ogDescription: () => description.value,
     ogImage: () => project.value.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
     robots: () =>
       project.value.status === "approved" || project.value.status === "archived"
         ? "all"
         : "noindex",
+  });
+
+  useHead({
+    script: [
+      {
+        type: "application/ld+json",
+        children: () =>
+          JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: project.value.title,
+            description: project.value.description,
+            image: project.value.icon_url || undefined,
+            url: `https://bbsmc.net/${route.params.type}/${project.value.slug || project.value.id}`,
+            applicationCategory: "GameApplication",
+            operatingSystem: "Windows, macOS, Linux",
+            author: {
+              "@type": "Person",
+              name: members.value.find((x) => x.is_owner)?.user?.username || "",
+            },
+            interactionStatistic: [
+              {
+                "@type": "InteractionCounter",
+                interactionType: "https://schema.org/DownloadAction",
+                userInteractionCount: project.value.downloads,
+              },
+              {
+                "@type": "InteractionCounter",
+                interactionType: "https://schema.org/FollowAction",
+                userInteractionCount: project.value.followers,
+              },
+            ],
+            datePublished: project.value.published,
+            dateModified: project.value.updated,
+          }),
+      },
+    ],
   });
 }
 
@@ -2439,7 +3054,7 @@ function navigateToTranslation(translationData) {
 
 function navigateToServer() {
   // 跳转到服务器页面，与联机搭建按钮的跳转逻辑一致
-  const affId = affs.value[project.value.id];
+  const affId = projectAffKey.value;
   if (affId === "pcl") {
     window.open("/pcl", "_blank");
   } else if (affId) {
@@ -2472,6 +3087,30 @@ function onDownloadClick(event) {
   // 打开下载弹框时获取汉化包推荐
   fetchTranslationRecommendation();
   downloadModal.value.show(event);
+}
+
+// 处理购买按钮点击
+function handlePurchaseClick() {
+  // 未登录时跳转到登录页面
+  if (!auth.value.user) {
+    navigateTo("/auth/sign-in");
+    return;
+  }
+  // 已登录时滚动到购买区域
+  scrollToPurchase();
+}
+
+// 滚动到购买区域
+function scrollToPurchase() {
+  const purchaseCard = document.querySelector(".purchase-card");
+  if (purchaseCard) {
+    purchaseCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    // 添加高亮动画效果
+    purchaseCard.classList.add("highlight-pulse");
+    setTimeout(() => {
+      purchaseCard.classList.remove("highlight-pulse");
+    }, 2000);
+  }
 }
 
 const navLinks = computed(() => {
@@ -2525,6 +3164,11 @@ const navLinks = computed(() => {
 });
 </script>
 <style lang="scss" scoped>
+// ==========================================
+// FLAME THEME - Project Detail Page
+// ==========================================
+
+// Settings Header (for settings page mode)
 .settings-header {
   display: flex;
   flex-direction: row;
@@ -2545,6 +3189,7 @@ const navLinks = computed(() => {
   }
 }
 
+// Popout Menu Styles
 .popout-checkbox {
   padding: var(--gap-sm) var(--gap-md);
   white-space: nowrap;
@@ -2595,6 +3240,7 @@ const navLinks = computed(() => {
   --scrollable-pane-bg: var(--color-bg);
 }
 
+// Download Animation
 .over-the-top-download-animation {
   position: fixed;
   z-index: 100;
@@ -2648,6 +3294,1472 @@ const navLinks = computed(() => {
 @media (hover: none) and (max-width: 767px) {
   .modrinth-app-section {
     display: none;
+  }
+}
+
+// Translation Pack Card
+.translation-pack-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-card-sm);
+  padding: var(--spacing-card-sm);
+  margin-top: var(--spacing-card-sm);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: all 0.3s var(--ease-out, ease);
+
+  &:hover {
+    background-color: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    border-color: var(--flame, #f16436);
+  }
+
+  .translation-pack-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-card-xs);
+    min-width: 0;
+
+    .translation-pack-title {
+      font-weight: bold;
+      color: var(--color-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .translation-pack-desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+// ==========================================
+// FLAME THEME OVERRIDES
+// ==========================================
+
+// Page Header Enhancement
+:deep(.normal-page__header) {
+  position: relative;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-divider);
+
+  // Status Badge Styling
+  .status-badge {
+    margin-left: 12px;
+  }
+}
+
+// Enhanced ContentPageHeader
+:deep(.content-page-header) {
+  position: relative;
+
+  // Large Icon with glow effect
+  .icon,
+  [class*="avatar"] {
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transition:
+      transform 0.3s var(--ease-out, ease),
+      box-shadow 0.3s var(--ease-out, ease);
+
+    &:hover {
+      transform: scale(1.02);
+      box-shadow: 0 12px 32px rgba(241, 100, 54, 0.2);
+    }
+  }
+
+  // Title Enhancement
+  h1,
+  .title {
+    font-family: var(--font-display, inherit);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--color-text-dark, var(--color-text));
+  }
+
+  // Summary/Description
+  .summary,
+  .description {
+    color: var(--color-secondary);
+    line-height: 1.7;
+  }
+}
+
+// Stats Enhancement
+:deep(.stats),
+:deep([class*="stats"]) {
+  .stat-icon,
+  svg {
+    color: var(--color-secondary);
+    transition: color 0.2s ease;
+  }
+
+  &:hover .stat-icon,
+  &:hover svg {
+    color: var(--flame, #f16436);
+  }
+}
+
+// Tag List Enhancement - Clean design
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-list__item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--color-divider);
+  transition: all 0.2s ease;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    color: var(--_color, var(--color-secondary));
+  }
+
+  // Platform tags with color - keep background style
+  &[style*="--_color"] {
+    background: color-mix(in srgb, var(--_color) 12%, transparent);
+    border-color: color-mix(in srgb, var(--_color) 30%, transparent);
+    color: var(--_color);
+
+    &:hover {
+      background: color-mix(in srgb, var(--_color) 20%, transparent);
+      border-color: var(--_color);
+    }
+  }
+
+  &:hover {
+    border-color: var(--flame, #f16436);
+    color: var(--flame, #f16436);
+  }
+}
+
+// ==========================================
+// SIDEBAR CARDS - FLAME THEME
+// ==========================================
+
+// Base Card Styling
+:deep(.card.flex-card) {
+  background: var(--bg-card, var(--color-raised-bg));
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  padding: 16px 18px;
+  transition: all 0.3s var(--ease-out, ease);
+
+  &:hover {
+    border-color: rgba(241, 100, 54, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  // Card Titles
+  h2 {
+    font-family: var(--font-display, inherit);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text-dark, var(--color-text));
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--color-divider);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &::before {
+      content: "";
+      width: 3px;
+      height: 16px;
+      background: linear-gradient(180deg, var(--flame, #f16436) 0%, #ff8a5c 100%);
+      border-radius: 2px;
+    }
+  }
+
+  // Card Section Spacing
+  section {
+    margin-bottom: 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // Section Subtitles
+  h3 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-secondary);
+    margin: 0 0 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+}
+
+// Details List Enhancement - Clean, no background
+:deep(.details-list) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+:deep(.details-list__item) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  transition: all 0.2s ease;
+  text-decoration: none;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: var(--color-secondary);
+    flex-shrink: 0;
+    transition: color 0.2s ease;
+  }
+
+  &:hover {
+    color: var(--flame, #f16436);
+
+    svg {
+      color: var(--flame, #f16436);
+    }
+  }
+}
+
+// Large variant (for members) - keep subtle background
+:deep(.details-list__item--type-large) {
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border-radius: 10px;
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    span:first-child {
+      font-weight: 600;
+      color: var(--color-text-dark, var(--color-text));
+    }
+  }
+
+  &:hover {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+  }
+}
+
+:deep(.details-list__item__text--style-secondary) {
+  font-size: 0.8rem;
+  color: var(--color-secondary);
+}
+
+// External Links Enhancement
+:deep(.details-list__item) {
+  a,
+  .text-link {
+    color: var(--flame, #f16436);
+    text-decoration: none;
+    transition: all 0.2s ease;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .external-icon {
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+  }
+}
+
+// ==========================================
+// NAVIGATION TABS - FLAME THEME
+// ==========================================
+
+// NavTabs component now handles its own underline indicator
+// Only apply basic styling overrides here
+:deep(.nav-tabs-underline) {
+  margin-bottom: 16px;
+}
+
+// ==========================================
+// BUTTONS - FLAME THEME
+// ==========================================
+
+// Download Button Enhancement
+:deep([class*="button"][class*="green"]),
+:deep(.btn-green),
+:deep(button[class*="green"]) {
+  background: linear-gradient(135deg, var(--flame, #f16436) 0%, #ff8a5c 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(241, 100, 54, 0.35);
+  transition: all 0.3s var(--ease-out, ease);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(241, 100, 54, 0.45);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Action Buttons
+:deep([class*="button"][class*="circular"]),
+:deep(.btn-circular) {
+  border-radius: 12px;
+  transition: all 0.25s var(--ease-out, ease);
+
+  &:hover {
+    border-color: var(--flame, #f16436);
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+
+    svg {
+      color: var(--flame, #f16436);
+    }
+  }
+}
+
+// Follow Button (Heart)
+:deep([class*="button"][class*="red"]) {
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+// Purple Button (Server)
+:deep([class*="button"][class*="purple"]) {
+  color: var(--purple, #a855f7);
+  border-color: var(--purple, #a855f7);
+
+  &:hover {
+    background: rgba(168, 85, 247, 0.1);
+  }
+}
+
+// ==========================================
+// WIKI SIDEBAR - FLAME THEME
+// ==========================================
+
+:deep(.wiki-sidebar),
+:deep([class*="wiki"]) {
+  .wiki-nav-item,
+  a {
+    padding: 10px 14px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    }
+
+    &.active,
+    &[aria-current="page"] {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.12));
+      color: var(--flame, #f16436);
+      font-weight: 600;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 60%;
+        background: var(--flame, #f16436);
+        border-radius: 2px;
+      }
+    }
+  }
+}
+
+// ==========================================
+// COMPATIBILITY SECTION
+// ==========================================
+
+:deep(.compatibility-info),
+:deep([class*="compatibility"]) {
+  .game-version-tag,
+  .platform-tag,
+  .environment-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--color-bg);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-text);
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+      color: var(--flame, #f16436);
+    }
+  }
+}
+
+// Version Display Enhancement
+:deep(.version-display),
+:deep([class*="version"]:not(.nav-tabs)) {
+  .version-badge {
+    background: rgba(45, 212, 191, 0.12);
+    color: var(--teal, #2dd4bf);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+}
+
+// ==========================================
+// RESPONSIVE DESIGN
+// ==========================================
+
+@media (max-width: 1200px) {
+  :deep(.nav-tabs) {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  :deep(.card.flex-card) {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  :deep(.details-list__item) {
+    padding: 10px 12px;
+  }
+
+  .tag-list__item {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+}
+
+// ==========================================
+// DARK/LIGHT THEME ADAPTATIONS
+// ==========================================
+
+// These use CSS variables that automatically adapt to theme
+:root {
+  --flame: #f16436;
+  --accent-muted: rgba(241, 100, 54, 0.1);
+  --accent-glow: rgba(241, 100, 54, 0.3);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+// Light theme specific overrides
+:global(.light-mode),
+:global([data-theme="light"]) {
+  --bg-card: #ffffff;
+  --color-text-dark: #1a1a2e;
+  --accent-muted: rgba(241, 100, 54, 0.08);
+}
+
+// Dark theme specific overrides
+:global(.dark-mode),
+:global([data-theme="dark"]) {
+  --bg-card: #1e2128;
+  --color-text-dark: #ffffff;
+  --accent-muted: rgba(241, 100, 54, 0.12);
+}
+
+// ==========================================
+// HOVER ANIMATIONS
+// ==========================================
+
+@keyframes gentle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Apply entrance animations to cards
+:deep(.card.flex-card) {
+  animation: slide-up 0.4s var(--ease-out, ease) both;
+
+  &:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+  &:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  &:nth-child(3) {
+    animation-delay: 0.15s;
+  }
+  &:nth-child(4) {
+    animation-delay: 0.2s;
+  }
+  &:nth-child(5) {
+    animation-delay: 0.25s;
+  }
+  &:nth-child(6) {
+    animation-delay: 0.3s;
+  }
+}
+
+// ==========================================
+// DOWNLOAD MODAL - FLAME THEME
+// ==========================================
+
+:deep(.modal),
+:deep([class*="modal"]) {
+  // Modal backdrop
+  .modal-backdrop {
+    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  // Modal container
+  .modal-container,
+  .modal-content {
+    background: var(--bg-card, var(--color-raised-bg));
+    border: 1px solid var(--color-divider);
+    border-radius: 20px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+
+  // Modal header
+  .modal-header,
+  [class*="modal-header"] {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--color-divider);
+    background: linear-gradient(
+      135deg,
+      var(--accent-muted, rgba(241, 100, 54, 0.05)) 0%,
+      transparent 100%
+    );
+
+    .icon {
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  // Modal body
+  .modal-body,
+  [class*="modal-body"] {
+    padding: 24px;
+  }
+}
+
+// Accordion in Modal Enhancement
+:deep(.accordion-with-bg) {
+  background: var(--color-bg) !important;
+  border: 1px solid var(--color-divider);
+  border-radius: 14px !important;
+  overflow: hidden;
+
+  // Accordion Header
+  [class*="accordion-header"],
+  summary {
+    padding: 14px 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+
+    svg {
+      width: 20px;
+      height: 20px;
+      color: var(--flame, #f16436);
+    }
+
+    &:hover {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.06));
+    }
+  }
+
+  // Accordion Content
+  [class*="accordion-content"],
+  .accordion-body {
+    padding: 12px;
+    border-top: 1px solid var(--color-divider);
+    background: var(--color-bg);
+  }
+}
+
+// Version/Platform Selection Buttons in Modal
+:deep(.accordion-with-bg) {
+  button,
+  [class*="button"] {
+    margin: 4px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+
+    &:hover:not(.looks-disabled) {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+      color: var(--flame, #f16436);
+    }
+
+    // Selected state
+    &[class*="brand"],
+    &.selected {
+      background: var(--flame, #f16436) !important;
+      color: #fff !important;
+    }
+
+    // Disabled/incompatible state
+    &.looks-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Version Summary Cards in Download Modal
+:deep(.version-summary),
+:deep([class*="version-summary"]) {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  padding: 16px;
+  transition: all 0.25s var(--ease-out, ease);
+
+  &:hover {
+    border-color: var(--flame, #f16436);
+    box-shadow: 0 4px 16px rgba(241, 100, 54, 0.15);
+  }
+
+  // Version type badge
+  .version-type-badge,
+  [class*="type-badge"] {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    &.release,
+    &[class*="release"] {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    &.beta,
+    &[class*="beta"] {
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
+    }
+
+    &.alpha,
+    &[class*="alpha"] {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+  }
+
+  // Download button in version card
+  .download-btn,
+  [class*="download"] {
+    background: linear-gradient(135deg, var(--flame, #f16436) 0%, #ff8a5c 100%);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+
+    &:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(241, 100, 54, 0.4);
+    }
+  }
+}
+
+// Search Input in Modal
+:deep(.iconified-input) {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: var(--color-secondary);
+  }
+
+  input {
+    background: transparent;
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--color-text);
+
+    &::placeholder {
+      color: var(--color-secondary);
+    }
+  }
+
+  &:focus-within {
+    border-color: var(--flame, #f16436);
+    box-shadow: 0 0 0 3px rgba(241, 100, 54, 0.15);
+  }
+}
+
+// Translation Promo Enhancement
+:deep(.translation-promo),
+:deep([class*="translation-promo"]) {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 14px;
+  padding: 16px;
+
+  &:hover {
+    border-color: rgba(34, 197, 94, 0.4);
+  }
+}
+
+// Server Promo Enhancement
+:deep(.server-promo),
+:deep([class*="server-promo"]) {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0.02) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 14px;
+  padding: 16px;
+
+  &:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+  }
+}
+
+// ==========================================
+// PAGE LAYOUT ENHANCEMENT
+// ==========================================
+
+// Main page wrapper
+:deep(.new-page.sidebar) {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 40px 60px;
+
+  @media (max-width: 1200px) {
+    padding: 20px 24px 48px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 16px 16px 40px;
+  }
+}
+
+// Sidebar Enhancement
+:deep(.normal-page__info) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// Content Area
+:deep(.normal-page__content) {
+  min-width: 0;
+}
+
+// Horizontal Rule Enhancement
+:deep(hr) {
+  border: none;
+  height: 1px;
+  background: var(--color-divider);
+  margin: 12px 0;
+}
+
+// Crown Icon (Owner Badge)
+:deep(.text-brand-orange) {
+  color: var(--flame, #f16436) !important;
+}
+
+// ==========================================
+// MESSAGE BANNERS
+// ==========================================
+
+:deep(.message-banner),
+:deep([class*="message-banner"]) {
+  border-radius: 14px;
+  padding: 16px 20px;
+  border: 1px solid;
+
+  &.warning,
+  &[class*="warning"] {
+    background: rgba(249, 115, 22, 0.08);
+    border-color: rgba(249, 115, 22, 0.3);
+    color: #f97316;
+  }
+
+  &.error,
+  &[class*="error"] {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+  }
+
+  &.info,
+  &[class*="info"] {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+  }
+
+  &.success,
+  &[class*="success"] {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+  }
+}
+
+// ==========================================
+// OVERFLOW MENU ENHANCEMENT
+// ==========================================
+
+:deep(.overflow-menu),
+:deep([class*="overflow-menu"]) {
+  background: var(--bg-card, var(--color-raised-bg));
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+
+  .menu-item,
+  [class*="menu-item"] {
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+    }
+  }
+}
+
+// ==========================================
+// WIKI CREATE MODAL
+// ==========================================
+
+:deep(.wiki-create-modal),
+:deep([class*="wiki-create"]) {
+  input,
+  textarea {
+    background: var(--color-bg);
+    border: 1px solid var(--color-divider);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+
+    &:focus {
+      border-color: var(--flame, #f16436);
+      box-shadow: 0 0 0 3px rgba(241, 100, 54, 0.15);
+      outline: none;
+    }
+  }
+}
+
+// ==========================================
+// REVOLUTIONARY LAYOUT - IMMERSIVE HERO
+// ==========================================
+
+// Revolution Layout Container
+// The .new-page.sidebar grid template is:
+//   "header header" auto
+//   "content sidebar" auto
+//   "content dummy" 1fr
+//   / 1fr 18.75rem
+// We use the header area for the hero section
+.revolution-layout {
+  // Hero section takes the header grid area and breaks out to full viewport width
+  .hero-section {
+    grid-area: header;
+    // Break out of container to full viewport width (FTB style)
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+
+  // Keep sidebar and content in their original positions
+  .normal-page__sidebar {
+    grid-area: sidebar;
+  }
+
+  .normal-page__content {
+    grid-area: content;
+  }
+}
+
+// ==========================================
+// HERO SECTION STYLES
+// ==========================================
+
+.hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  margin-bottom: 24px;
+}
+
+// Hero Background - Clean, minimal design
+// No blurred gallery image, just pure theme background
+.hero-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--color-bg);
+
+  // Hide the background image entirely for clean look
+  .hero-bg-image {
+    display: none;
+  }
+
+  // No gradient overlay needed
+  .hero-gradient-overlay {
+    display: none;
+  }
+}
+
+// No gallery fallback
+.hero-section:not(:has(.hero-bg-image)) {
+  .hero-background {
+    background: linear-gradient(
+      135deg,
+      var(--accent-muted, rgba(241, 100, 54, 0.15)) 0%,
+      transparent 50%,
+      var(--accent-muted, rgba(241, 100, 54, 0.08)) 100%
+    );
+
+    .hero-gradient-overlay {
+      background: linear-gradient(180deg, transparent 0%, var(--color-bg, #0f0f0f) 100%);
+    }
+  }
+}
+
+// Hero Content Container
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 40px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+
+  @media (max-width: 1200px) {
+    padding: 24px 24px 16px;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    padding: 20px 16px 16px;
+    gap: 20px;
+  }
+}
+
+// Hero Main (Icon + Info)
+.hero-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+}
+
+// Hero Icon Wrapper
+.hero-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+
+  :deep(.hero-icon) {
+    border-radius: 20px !important;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 0 0 3px rgba(255, 255, 255, 0.1);
+    transition:
+      transform 0.3s var(--ease-out, ease),
+      box-shadow 0.3s var(--ease-out, ease);
+
+    &:hover {
+      transform: scale(1.03);
+      box-shadow:
+        0 12px 40px rgba(241, 100, 54, 0.3),
+        0 0 0 3px rgba(241, 100, 54, 0.3);
+    }
+  }
+}
+
+// Hero Info
+.hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dark, #1a1a1a);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.hero-status-badge {
+  flex-shrink: 0;
+}
+
+.hero-description {
+  font-size: 1rem;
+  color: var(--color-secondary, #666);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 600px;
+
+  @media (max-width: 640px) {
+    font-size: 0.9rem;
+  }
+}
+
+// Hero Tags
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+
+  @media (max-width: 640px) {
+    justify-content: center;
+  }
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--color-button-bg, #f0f0f0);
+  border: 1px solid var(--color-divider, #e0e0e0);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text, #333);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--flame, #f16436);
+    border-color: var(--flame, #f16436);
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  &--more {
+    background: rgba(241, 100, 54, 0.15);
+    border-color: rgba(241, 100, 54, 0.3);
+    color: var(--flame, #f16436);
+  }
+}
+
+// Hero Actions
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  @media (max-width: 640px) {
+    flex-wrap: wrap;
+  }
+
+  :deep(.hero-download-btn) {
+    button {
+      padding: 14px 28px !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+      border-radius: 14px !important;
+      background: linear-gradient(135deg, var(--flame, #f16436) 0%, #ff8a5c 100%) !important;
+      box-shadow:
+        0 8px 24px rgba(241, 100, 54, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+
+      &:hover {
+        transform: translateY(-3px) !important;
+        box-shadow:
+          0 12px 32px rgba(241, 100, 54, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.15) inset !important;
+      }
+    }
+  }
+}
+
+// ==========================================
+// HERO META (TAGS + STATS COMBINED)
+// ==========================================
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+
+  @media (max-width: 768px) {
+    gap: 10px;
+    margin-top: 8px;
+  }
+}
+
+.hero-stats-inline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    gap: 12px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 10px;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-secondary, #666);
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--color-text, #333);
+
+      .stat-icon {
+        color: var(--flame, #f16436);
+      }
+    }
+
+    .stat-icon {
+      width: 14px;
+      height: 14px;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+    }
+
+    @media (max-width: 480px) {
+      font-size: 0.8rem;
+      gap: 4px;
+
+      .stat-icon {
+        width: 12px;
+        height: 12px;
+      }
+    }
+  }
+}
+
+// ==========================================
+// DARK THEME HERO ADAPTATIONS
+// ==========================================
+// Note: Using :global with high specificity to override scoped styles
+
+// ==========================================
+// ENHANCED SIDEBAR FOR REVOLUTION LAYOUT
+// ==========================================
+
+.revolution-layout {
+  :deep(.normal-page__sidebar) {
+    padding-top: 8px;
+
+    .card.flex-card {
+      background: var(--bg-card, var(--color-raised-bg));
+      border: 1px solid var(--color-divider);
+      border-radius: 20px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      transition: all 0.3s var(--ease-out, ease);
+
+      &:hover {
+        border-color: rgba(241, 100, 54, 0.3);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+      }
+
+      // Enhanced Card Headers
+      h2 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        &::before {
+          content: "";
+          width: 4px;
+          height: 18px;
+          background: linear-gradient(180deg, var(--flame, #f16436) 0%, #ff8a5c 100%);
+          border-radius: 2px;
+        }
+      }
+
+      // Enhanced Tag List - Clean, minimal background
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+
+        .tag-list__item {
+          padding: 4px 10px;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          background: transparent;
+          border: 1px solid var(--color-divider);
+          color: var(--color-text);
+          transition: all 0.2s ease;
+
+          svg {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            color: var(--_color, var(--color-secondary));
+          }
+
+          // Platform tags with color - keep colored background
+          &[style*="--_color"] {
+            background: color-mix(in srgb, var(--_color) 12%, transparent);
+            border-color: color-mix(in srgb, var(--_color) 30%, transparent);
+            color: var(--_color);
+
+            &:hover {
+              background: color-mix(in srgb, var(--_color) 20%, transparent);
+              border-color: var(--_color);
+            }
+          }
+
+          &:hover {
+            border-color: var(--flame, #f16436);
+            color: var(--flame, #f16436);
+          }
+        }
+      }
+
+      // Enhanced Details List - Clean, no background
+      .details-list {
+        gap: 2px;
+
+        .details-list__item {
+          padding: 6px 4px;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+
+          &:hover {
+            color: var(--flame, #f16436);
+
+            svg {
+              color: var(--flame, #f16436);
+            }
+          }
+        }
+
+        // Keep background only for member cards
+        .details-list__item--type-large {
+          padding: 10px 12px;
+          background: var(--color-bg);
+          border-radius: 10px;
+
+          &:hover {
+            background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+          }
+        }
+      }
+
+      // Enhanced Links List - Clean, no background
+      .links-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        a {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 6px 4px;
+          background: transparent;
+          border-radius: 8px;
+          color: var(--color-text);
+          text-decoration: none;
+          transition: all 0.2s ease;
+
+          svg {
+            width: 18px;
+            height: 18px;
+            color: var(--flame, #f16436);
+          }
+
+          .external-icon {
+            margin-left: auto;
+            opacity: 0.4;
+            width: 14px;
+            height: 14px;
+            color: var(--color-secondary);
+          }
+
+          &:hover {
+            color: var(--flame, #f16436);
+
+            .external-icon {
+              opacity: 0.8;
+              color: var(--flame, #f16436);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // NavTabs component handles its own underline indicator
+  :deep(.nav-tabs-underline) {
+    margin-bottom: 20px;
+  }
+}
+</style>
+
+<style lang="scss">
+// Non-scoped styles to override parent layout padding for immersive hero
+// This cannot be in scoped styles because it needs to affect the parent main element
+body main:has(.revolution-layout) {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+// Override .new-page container padding for immersive hero
+.new-page.revolution-layout {
+  padding-top: 0 !important;
+}
+
+// ==========================================
+// DARK THEME HERO ADAPTATIONS (Non-scoped)
+// ==========================================
+.dark-mode,
+.oled-mode {
+  .hero-section {
+    .hero-title {
+      color: #fff !important;
+    }
+
+    .hero-description {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+
+    .hero-tag {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+      color: rgba(255, 255, 255, 0.9) !important;
+
+      &:hover {
+        background: var(--flame, #f16436) !important;
+        border-color: var(--flame, #f16436) !important;
+        color: #fff !important;
+      }
+    }
+
+    .hero-stats-inline .stat-item {
+      color: rgba(255, 255, 255, 0.65) !important;
+
+      &:hover {
+        color: rgba(255, 255, 255, 0.9) !important;
+      }
+    }
   }
 }
 </style>

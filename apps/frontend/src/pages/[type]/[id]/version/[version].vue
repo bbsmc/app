@@ -85,6 +85,31 @@
           @on-navigate="$refs.downloadModal.hide"
           @on-download="onDownload(version.id)"
         />
+
+        <!-- 汉化包推荐 -->
+        <TranslationPromo
+          v-if="translationVersions.length > 0"
+          :translation-version="translationVersions"
+          @navigate="navigateToTranslation"
+        />
+
+        <!-- 汉化包未及时更新提示 -->
+        <div
+          v-else-if="project.translation_tracker && translationVersions.length === 0"
+          class="translation-pending-notice border-orange-500/50 bg-orange-500/10 rounded-2xl border border-solid p-4"
+        >
+          <div class="flex items-start gap-3">
+            <InfoIcon class="text-orange-400 mt-0.5 size-5 shrink-0" />
+            <div class="flex flex-col gap-1">
+              <span class="font-bold text-contrast">当前版本暂无汉化包</span>
+              <span class="text-sm text-secondary">
+                该版本的汉化包还未及时上传，可前往 QQ 群
+                <span class="text-orange-400 font-mono font-bold">1073724937</span>
+                反馈，我们将及时响应处理。
+              </span>
+            </div>
+          </div>
+        </div>
       </AutomaticAccordion>
     </NewModal>
 
@@ -667,9 +692,9 @@
             <UndoIcon aria-hidden="true" />
             重新提交
           </button>
-          <!-- 消息按钮（非编辑模式下显示，即使没有thread_id也显示） -->
+          <!-- 消息按钮（仅项目成员在非编辑模式下显示） -->
           <button
-            v-if="!isEditing"
+            v-if="!isEditing && currentMember"
             class="btn btn-secondary btn-small message-toggle"
             @click.stop="toggleThread(link)"
           >
@@ -678,9 +703,9 @@
           </button>
         </div>
 
-        <!-- Thread 消息区域 -->
+        <!-- Thread 消息区域（仅项目成员可见） -->
         <div
-          v-show="!isEditing && expandedThreads.includes(getLinkId(link))"
+          v-show="!isEditing && currentMember && expandedThreads.includes(getLinkId(link))"
           class="thread-section"
           @click.stop
         >
@@ -809,13 +834,13 @@
             <p><strong>版本链接审核说明：</strong></p>
             <p>以下情况将<span class="highlight-green">自动通过审核</span>，无需等待：</p>
             <ul>
-              <li>您是<strong>平台管理员</strong>或<strong>版主</strong></li>
+              <li>您是<strong>超级管理员</strong>或<strong>社区管理员</strong></li>
               <li>您是<strong>目标项目的团队成员</strong>（拥有上传版本权限）</li>
               <li>您是<strong>目标项目所属组织的成员</strong>（拥有上传版本权限）</li>
             </ul>
             <p>
               其他情况需要<span class="highlight-orange">等待审核</span
-              >。审核将由<strong>目标项目的团队成员</strong>（拥有审核权限）或<strong>平台管理员/版主</strong>进行处理，通过后您的翻译才会在目标版本显示。
+              >。审核将由<strong>目标项目的团队成员</strong>（拥有审核权限）或<strong>超级管理员/社区管理员</strong>进行处理，通过后您的翻译才会在目标版本显示。
             </p>
           </div>
         </div>
@@ -878,7 +903,9 @@
       v-if="
         isEditing ||
         isCreating ||
-        version.files.filter((x) => x.url.includes('cdn.bbsmc.net')).length > 0
+        version.files.filter(
+          (x) => x.url.includes('cdn.bbsmc.net') || x.url.startsWith('private://'),
+        ).length > 0
       "
       class="version-page__files universal-card"
     >
@@ -904,7 +931,9 @@
       </div>
       <!--      非编辑-->
       <div
-        v-for="(file, index) in version.files.filter((x) => x.url.includes('cdn.bbsmc.net'))"
+        v-for="(file, index) in version.files.filter(
+          (x) => x.url.includes('cdn.bbsmc.net') || x.url.startsWith('private://'),
+        )"
         :key="file.hashes.sha1"
         :class="{
           file: true,
@@ -965,6 +994,7 @@
           </button>
         </ButtonStyled>
         <ButtonStyled v-else>
+          <!-- CDN 文件直接下载 -->
           <a
             v-if="file.url.includes('cdn.bbsmc.net')"
             :href="file.url"
@@ -975,6 +1005,22 @@
             <DownloadIcon aria-hidden="true" />
           </a>
 
+          <!-- 私有文件通过 API 获取下载链接 -->
+          <a
+            v-else-if="isPrivateUrl(file.url)"
+            :href="privateDownload.getHref(file)"
+            class="raised-button"
+            :class="{ 'cursor-wait': privateDownload.isDownloading.value }"
+            :title="`Download ${file.filename}`"
+            tabindex="0"
+            @click="privateDownload.getDownloadHandler(file)($event)"
+          >
+            <span v-if="privateDownload.isDownloading.value" class="animate-spin">...</span>
+            <DownloadIcon v-else aria-hidden="true" />
+            付费下载
+          </a>
+
+          <!-- 外部文件在新标签页打开 -->
           <a
             v-else
             :href="file.url"
@@ -1280,11 +1326,14 @@ import BoxIcon from "~/assets/images/utils/box.svg?component";
 import RightArrowIcon from "~/assets/images/utils/right-arrow.svg?component";
 import InfoIcon from "~/assets/images/utils/info.svg?component";
 import UndoIcon from "~/assets/images/utils/undo.svg?component";
+// SendIcon removed - unused
 import Modal from "~/components/ui/Modal.vue";
 import ChevronRightIcon from "~/assets/images/utils/chevron-right.svg?component";
 import { useBaseFetchFile } from "~/composables/fetch.js";
 import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
+import TranslationPromo from "~/components/ui/TranslationPromo.vue";
+import { usePrivateDownload, isPrivateUrl } from "~/composables/usePrivateDownload.ts";
 
 export default defineNuxtComponent({
   components: {
@@ -1324,6 +1373,7 @@ export default defineNuxtComponent({
     UndoIcon,
     ConfirmModal,
     ButtonStyled,
+    TranslationPromo,
   },
   props: {
     project: {
@@ -1725,25 +1775,29 @@ export default defineNuxtComponent({
     oldFileTypes = version.files.map((x) => fileTypes.find((y) => y.value === x.file_type));
 
     const title = computed(
-      () => `${isCreating ? "Create Version" : version.name} - ${props.project.title}`,
-    );
-    const description = computed(
       () =>
-        `Download ${props.project.title} ${
-          version.version_number
-        } on BBSMC. Supports ${data.$formatVersion(version.game_versions)} ${version.loaders
-          .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
-          .join(" & ")}. Published on ${data
-          .$dayjs(version.date_published)
-          .format("YYYY-MM-DD")}. ${version.downloads} downloads.`,
+        `${isCreating ? "创建版本" : version.name} - ${props.project.title} | BBSMC 我的世界资源下载`,
     );
+    const description = computed(() => {
+      const gameVersionStr = data.$formatVersion(version.game_versions);
+      const loaderStr = version.loaders.length
+        ? version.loaders.map((x) => x.charAt(0).toUpperCase() + x.slice(1)).join(" & ")
+        : "";
+      const supportStr = [gameVersionStr, loaderStr].filter(Boolean).join(" ");
+      return `下载 ${props.project.title} ${version.version_number}。${supportStr ? `支持 ${supportStr}。` : ""}发布于 ${data.$dayjs(version.date_published).format("YYYY-MM-DD")}，已有 ${version.downloads} 次下载。在 BBSMC 获取最新版本。`;
+    });
 
     useSeoMeta({
       title,
       description,
       ogTitle: title,
       ogDescription: description,
+      ogImage: () => props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
+      robots: isCreating ? "noindex, nofollow" : undefined,
     });
+
+    // 私有文件下载支持
+    const privateDownload = usePrivateDownload();
 
     return {
       auth,
@@ -1767,6 +1821,10 @@ export default defineNuxtComponent({
       versionLinksLoading: ref(versionLinksLoading),
       translationVersions: ref(translationVersions),
       translationVersionsLoading: ref(translationVersionsLoading),
+
+      // 私有文件下载
+      isPrivateUrl,
+      privateDownload,
     };
   },
   data() {
@@ -1844,6 +1902,16 @@ export default defineNuxtComponent({
     // 数据已在setup中初始化，无需重复操作
   },
   methods: {
+    // 导航到汉化包版本页面
+    navigateToTranslation(translationData) {
+      if (translationData && translationData.project && translationData.version) {
+        const projectType = translationData.project.project_type;
+        const projectId = translationData.project.slug || translationData.project.id;
+        const versionId = translationData.version.version_number || translationData.version.id;
+        this.$router.push(`/${projectType}/${projectId}/version/${encodeURI(versionId)}`);
+        this.$refs.downloadModal.hide();
+      }
+    },
     // 打开重新提交对话框
     openResubmitDialog(link) {
       this.pendingResubmitLink = link;

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM user_purchases\n            WHERE user_id = $1 AND project_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f018d0ed75b5c8e92b4933f9e642207c1a01be00d1c0cef3e9b8e1f519000c7"
+}

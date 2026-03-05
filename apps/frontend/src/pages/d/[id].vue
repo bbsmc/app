@@ -24,7 +24,7 @@
     </div>
     <div class="normal-page__content">
       <div class="card">
-        <h2 v-if="!isEdit">{{ forum.title }}</h2>
+        <h1 v-if="!isEdit" class="forum-title">{{ forum.title }}</h1>
         <input
           v-else
           id="name"
@@ -273,5 +273,10 @@ async function onUploadHandler(file) {
 .delete-button:hover {
   color: var(--color-text-dark);
   background-color: var(--hover-bg);
+}
+
+.forum-title {
+  font-size: 1.5em;
+  margin: 0 0 0.5em 0;
 }
 </style>

@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, user_id, real_name, contact_info, id_card_number,\n                   portfolio_links, application_reason, status,\n                   reviewer_id, review_note, created_at, reviewed_at, thread_id\n            FROM creator_applications\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "real_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "contact_info",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "id_card_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "portfolio_links",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "application_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "reviewer_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "review_note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "reviewed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "b2caefaa27098245dc0f3efada7fa129ac75515edae7b188d19a852fb9142223"
+}

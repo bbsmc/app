@@ -15,6 +15,7 @@ use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::time::Duration;
+use std::time::Instant;
 
 pub const DEFAULT_EXPIRY: i64 = 60 * 60 * 12; // 12 hour
 const ACTUAL_EXPIRY: i64 = 60 * 30; // 30 minutess
@@ -35,7 +36,20 @@ impl RedisPool {
     // testing pool uses a hashmap to mimic redis behaviour for very small data sizes (ie: tests)
     // PANICS: production pool will panic if redis url is not set
 
+    // 上游优化: 添加 REDIS_WAIT_TIMEOUT_MS 配置和连接空闲清理
     pub fn new(meta_namespace: Option<String>) -> Self {
+        let wait_timeout =
+            dotenvy::var("REDIS_WAIT_TIMEOUT_MS").ok().map_or_else(
+                || Duration::from_millis(15000),
+                |x| {
+                    Duration::from_millis(
+                        x.parse::<u64>().expect(
+                            "REDIS_WAIT_TIMEOUT_MS must be a valid u64",
+                        ),
+                    )
+                },
+            );
+
         let redis_url = dotenvy::var("REDIS_URL").expect("Redis URL not set");
         let connection_info: ConnectionInfo =
             redis_url.into_connection_info().expect("Invalid Redis URL");
@@ -49,14 +63,30 @@ impl RedisPool {
                     .and_then(|x| x.parse().ok())
                     .unwrap_or(10000),
             )
+            .wait_timeout(Some(wait_timeout))
             .runtime(Runtime::Tokio1)
             .build()
             .expect("Redis connection failed");
 
-        RedisPool {
+        let pool = RedisPool {
             pool: redis_pool,
             meta_namespace: meta_namespace.unwrap_or("".to_string()),
-        }
+        };
+
+        // 上游优化: 定期清理空闲超过 5 分钟的连接
+        let interval = Duration::from_secs(30);
+        let max_age = Duration::from_secs(5 * 60); // 5 minutes
+        let pool_ref = pool.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(interval).await;
+                pool_ref
+                    .pool
+                    .retain(|_, metrics| metrics.last_used() < max_age);
+            }
+        });
+
+        pool
     }
 
     pub async fn connect(&self) -> Result<RedisConnection, DatabaseError> {
@@ -441,41 +471,64 @@ impl RedisPool {
             }));
         }
 
+        // 上游优化: 使用指数退避和更详细的错误信息
         if !subscribe_ids.is_empty() {
             fetch_tasks.push(Box::pin(async {
-                let mut connection = self.pool.get().await?;
-
-                let mut interval =
-                    tokio::time::interval(Duration::from_millis(100));
+                let mut wait_time_ms = 50;
                 let start = Utc::now();
-                loop {
-                    let results = cmd("MGET")
-                        .arg(
-                            subscribe_ids
-                                .iter()
-                                .map(|x| {
-                                    format!(
-                                        "{}_{namespace}:{}/lock",
-                                        self.meta_namespace,
-                                        x.key()
-                                    )
-                                })
-                                .collect::<Vec<_>>(),
-                        )
-                        .query_async::<Vec<Option<String>>>(&mut connection)
-                        .await?;
+                let mut redis_budget = Duration::ZERO;
 
-                    if results.into_iter().all(|x| x.is_none()) {
+                loop {
+                    let results = {
+                        let acquire_start = Instant::now();
+                        let mut connection = self.pool.get().await?;
+                        redis_budget += acquire_start.elapsed();
+                        cmd("MGET")
+                            .arg(
+                                subscribe_ids
+                                    .iter()
+                                    .map(|x| {
+                                        format!(
+                                            "{}_{namespace}:{}/lock",
+                                            self.meta_namespace,
+                                            x.key()
+                                        )
+                                    })
+                                    .collect::<Vec<_>>(),
+                            )
+                            .query_async::<Vec<Option<String>>>(&mut connection)
+                            .await?
+                    };
+
+                    let exist_count =
+                        results.into_iter().filter(|x| x.is_some()).count();
+
+                    // None of the locks exist anymore, we can continue
+                    if exist_count == 0 {
                         break;
                     }
 
-                    if (Utc::now() - start) > chrono::Duration::seconds(5) {
-                        return Err(DatabaseError::CacheTimeout);
+                    let spinning = Utc::now() - start;
+                    if spinning > chrono::Duration::seconds(5) {
+                        return Err(DatabaseError::CacheTimeout {
+                            locks_released: subscribe_ids.len() - exist_count,
+                            locks_waiting: subscribe_ids.len(),
+                            time_spent_pool_wait_ms: redis_budget.as_millis()
+                                as u64,
+                            time_spent_total_ms: spinning
+                                .num_milliseconds()
+                                .max(0)
+                                as u64,
+                        });
                     }
 
-                    interval.tick().await;
+                    tokio::time::sleep(Duration::from_millis(wait_time_ms))
+                        .await;
+                    wait_time_ms *= 2; // 50, 100, 200, 400, 800, 1600, 3200
                 }
 
+                // 重新获取连接用于获取缓存值
+                let connection = self.pool.get().await?;
                 let (return_values, _, _) =
                     get_cached_values(subscribe_ids, connection).await?;
 

@@ -30,7 +30,7 @@
         </NuxtLink>
       </div>
       <p>
-        By uploading projects to Modrinth and withdrawing money from your account, you agree to the
+        By uploading projects to BBSMC and withdrawing money from your account, you agree to the
         <nuxt-link to="/legal2/cmp" class="text-link">Rewards Program Terms</nuxt-link>. For more
         information on how the rewards system works, see our information page
         <nuxt-link to="/legal2/cmp-info" class="text-link">here</nuxt-link>.
@@ -58,8 +58,7 @@
       </template>
       <h3>Tremendous</h3>
       <p>
-        Tremendous payments are sent to your Modrinth email. To change/set your Modrinth email,
-        visit
+        Tremendous payments are sent to your BBSMC email. To change/set your BBSMC email, visit
         <nuxt-link to="/settings/account" class="text-link">here</nuxt-link>.
       </p>
       <h3>Venmo</h3>
@@ -80,6 +79,11 @@
 </template>
 <script setup>
 import { TransferIcon, HistoryIcon, PayPalIcon, SaveIcon, XIcon } from "@modrinth/assets";
+
+useHead({
+  title: "收入 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
 
 const auth = await useAuth();
 const minWithdraw = ref(0.01);

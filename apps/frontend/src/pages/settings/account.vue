@@ -187,46 +187,44 @@
     </Modal>
     <Modal
       ref="manageTwoFactorModal"
-      :header="`${
-        auth.user.has_totp && twoFactorStep === 0 ? 'Remove' : 'Setup'
-      } two-factor authentication`"
+      :header="`${auth.user.has_totp && twoFactorStep === 0 ? '移除' : '设置'} 双重验证`"
     >
       <div class="universal-modal">
         <template v-if="auth.user.has_totp && twoFactorStep === 0">
           <label for="two-factor-code">
-            <span class="label__title">Enter two-factor code</span>
-            <span class="label__description">Please enter a two-factor code to proceed.</span>
+            <span class="label__title">输入双重验证码</span>
+            <span class="label__description">请输入双重验证码以继续。</span>
           </label>
           <input
             id="two-factor-code"
             v-model="twoFactorCode"
             maxlength="11"
             type="text"
-            placeholder="Enter code..."
+            placeholder="输入验证码..."
             @keyup.enter="removeTwoFactor()"
           />
-          <p v-if="twoFactorIncorrect" class="known-errors">The code entered is incorrect!</p>
+          <p v-if="twoFactorIncorrect" class="known-errors">输入的验证码不正确！</p>
           <div class="input-group push-right">
             <button class="iconified-button" @click="$refs.manageTwoFactorModal.hide()">
               <XIcon />
-              Cancel
+              取消
             </button>
             <button class="iconified-button danger-button" @click="removeTwoFactor">
               <TrashIcon />
-              Remove 2FA
+              移除双重验证
             </button>
           </div>
         </template>
         <template v-else>
           <template v-if="twoFactorStep === 0">
             <p>
-              Two-factor authentication keeps your account secure by requiring access to a second
-              device in order to sign in.
+              双重验证通过要求访问第二设备来保护您的账号安全。
               <br /><br />
-              Scan the QR code with <a href="https://authy.com/">Authy</a>,
-              <a href="https://www.microsoft.com/en-us/security/mobile-authenticator-app">
-                Microsoft Authenticator</a
-              >, or any other 2FA app to begin.
+              使用 <a href="https://authy.com/">Authy</a>、<a
+                href="https://www.microsoft.com/en-us/security/mobile-authenticator-app"
+                >Microsoft Authenticator</a
+              >
+              或其他双重验证应用扫描二维码。
             </p>
             <qrcode-vue
               v-if="twoFactorSecret"
@@ -238,16 +236,14 @@
               level="H"
             />
             <p>
-              If the QR code does not scan, you can manually enter the secret:
+              如果无法扫描二维码，您可以手动输入密钥：
               <strong>{{ twoFactorSecret }}</strong>
             </p>
           </template>
           <template v-if="twoFactorStep === 1">
             <label for="verify-code">
-              <span class="label__title">Verify code</span>
-              <span class="label__description"
-                >Enter the one-time code from authenticator to verify access.
-              </span>
+              <span class="label__title">验证码</span>
+              <span class="label__description">输入验证器中的一次性验证码以确认。 </span>
             </label>
             <input
               id="verify-code"
@@ -255,18 +251,16 @@
               maxlength="6"
               type="text"
               autocomplete="one-time-code"
-              placeholder="Enter code..."
+              placeholder="输入验证码..."
               @keyup.enter="verifyTwoFactorCode()"
             />
-            <p v-if="twoFactorIncorrect" class="known-errors">The code entered is incorrect!</p>
+            <p v-if="twoFactorIncorrect" class="known-errors">输入的验证码不正确！</p>
           </template>
           <template v-if="twoFactorStep === 2">
             <p>
-              Download and save these back-up codes in a safe place. You can use these in-place of a
-              2FA code if you ever lose access to your device! You should protect these codes like
-              your password.
+              请下载并妥善保存这些备用码。如果您丢失了设备，可以使用这些备用码替代双重验证码！请像保护密码一样保护这些备用码。
             </p>
-            <p>Backup codes can only be used once.</p>
+            <p>备用码只能使用一次。</p>
             <ul>
               <li v-for="code in backupCodes" :key="code">{{ code }}</li>
             </ul>
@@ -274,7 +268,7 @@
           <div class="input-group push-right">
             <button v-if="twoFactorStep === 1" class="iconified-button" @click="twoFactorStep = 0">
               <LeftArrowIcon />
-              Back
+              返回
             </button>
             <button
               v-if="twoFactorStep !== 2"
@@ -282,7 +276,7 @@
               @click="$refs.manageTwoFactorModal.hide()"
             >
               <XIcon />
-              Cancel
+              取消
             </button>
             <button
               v-if="twoFactorStep <= 1"
@@ -290,7 +284,7 @@
               @click="twoFactorStep === 1 ? verifyTwoFactorCode() : (twoFactorStep = 1)"
             >
               <RightArrowIcon />
-              Continue
+              继续
             </button>
             <button
               v-if="twoFactorStep === 2"
@@ -298,18 +292,18 @@
               @click="$refs.manageTwoFactorModal.hide()"
             >
               <CheckIcon />
-              Complete setup
+              完成设置
             </button>
           </div>
         </template>
       </div>
     </Modal>
-    <Modal ref="manageProvidersModal" header="Authentication providers">
+    <Modal ref="manageProvidersModal" header="第三方登录管理">
       <div class="universal-modal">
         <div class="table">
           <div class="table-head table-row">
-            <div class="table-text table-cell">Provider</div>
-            <div class="table-text table-cell">Actions</div>
+            <div class="table-text table-cell">登录方式</div>
+            <div class="table-text table-cell">操作</div>
           </div>
           <div v-for="provider in authProviders" :key="provider.id" class="table-row">
             <div class="table-text table-cell">
@@ -321,14 +315,14 @@
                 class="btn"
                 @click="removeAuthProvider(provider.id)"
               >
-                <TrashIcon /> Remove
+                <TrashIcon /> 解绑
               </button>
               <a
                 v-else
                 class="btn"
                 :href="`${getAuthUrl(provider.id, '/settings/account')}&token=${auth.token}`"
               >
-                <ExternalIcon /> Add
+                <ExternalIcon /> 绑定
               </a>
             </div>
           </div>
@@ -337,7 +331,7 @@
         <div class="input-group push-right">
           <button class="iconified-button" @click="$refs.manageProvidersModal.hide()">
             <XIcon />
-            Close
+            关闭
           </button>
         </div>
       </div>
@@ -436,20 +430,19 @@
       <!--          </button>-->
       <!--        </div>-->
       <!--      </div>-->
-      <!--      <div class="adjacent-input">-->
-      <!--        <label for="theme-selector">-->
-      <!--          <span class="label__title">Manage authentication providers</span>-->
-      <!--          <span class="label__description">-->
-      <!--            Add or remove sign-on methods from your account, including GitHub, GitLab, Microsoft,-->
-      <!--            Discord, Steam, and Google.-->
-      <!--          </span>-->
-      <!--        </label>-->
-      <!--        <div>-->
-      <!--          <button class="iconified-button" @click="$refs.manageProvidersModal.show()">-->
-      <!--            <SettingsIcon /> Manage providers-->
-      <!--          </button>-->
-      <!--        </div>-->
-      <!--      </div>-->
+      <div class="adjacent-input">
+        <label>
+          <span class="label__title">管理第三方登录</span>
+          <span class="label__description">
+            添加或移除您账户的第三方登录方式，包括 GitHub、Microsoft、 哔哩哔哩 和 Google。
+          </span>
+        </label>
+        <div>
+          <button class="iconified-button" @click="$refs.manageProvidersModal.show()">
+            <ExternalIcon /> 管理登录方式
+          </button>
+        </div>
+      </div>
     </section>
 
     <!--    <section id="data-export" class="universal-card">-->
@@ -571,7 +564,7 @@
       <div class="flex flex-col gap-3">
         <div class="flex flex-col gap-2">
           <span class="text-secondary">
-            请说明您认为此封禁存在问题的原因。管理员将会审核您的申诉并通过消息线程与您沟通。
+            请说明您认为此封禁存在问题的原因。超级管理员将会审核您的申诉并通过消息线程与您沟通。
           </span>
         </div>
         <div class="flex flex-col gap-2">
@@ -631,18 +624,18 @@ import QrcodeVue from "qrcode.vue";
 import { NewModal, ButtonStyled } from "@modrinth/ui";
 import GitHubIcon from "assets/icons/auth/sso-github.svg";
 import MicrosoftIcon from "assets/icons/auth/sso-microsoft.svg";
-import GoogleIcon from "assets/icons/auth/sso-google.svg";
-import SteamIcon from "assets/icons/auth/sso-steam.svg";
-import DiscordIcon from "assets/icons/auth/sso-discord.svg";
+import BilibiliIcon from "assets/icons/auth/sso-bilibili.svg";
+// import GoogleIcon from "assets/icons/auth/sso-google.svg";
+import QQIcon from "assets/icons/auth/sso-qq.svg";
 import KeyIcon from "assets/icons/auth/key.svg";
-import GitLabIcon from "assets/icons/auth/sso-gitlab.svg";
 import ModalConfirm from "~/components/ui/ModalConfirm.vue";
 import Modal from "~/components/ui/Modal.vue";
 import TACaptcha from "@/components/ui/TACaptcha.vue";
 import ConversationThread from "~/components/ui/thread/ConversationThread.vue";
 
 useHead({
-  title: "Account settings - Modrinth",
+  title: "账户与安全 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 definePageMeta({
@@ -870,7 +863,7 @@ async function submitAppeal() {
     data.$notify({
       group: "main",
       title: "申诉已提交",
-      text: "您的申诉已提交，管理员将会审核并通过消息线程与您沟通",
+      text: "您的申诉已提交，超级管理员将会审核并通过消息线程与您沟通",
       type: "success",
     });
 
@@ -929,29 +922,24 @@ const authProviders = [
     icon: GitHubIcon,
   },
   {
-    id: "gitlab",
-    display: "GitLab",
-    icon: GitLabIcon,
-  },
-  {
-    id: "steam",
-    display: "Steam",
-    icon: SteamIcon,
-  },
-  {
-    id: "discord",
-    display: "Discord",
-    icon: DiscordIcon,
-  },
-  {
     id: "microsoft",
     display: "Microsoft",
     icon: MicrosoftIcon,
   },
+  // {
+  //   id: "google",
+  //   display: "Google",
+  //   icon: GoogleIcon,
+  // },
   {
-    id: "google",
-    display: "Google",
-    icon: GoogleIcon,
+    id: "bilibili",
+    display: "哔哩哔哩",
+    icon: BilibiliIcon,
+  },
+  {
+    id: "qq",
+    display: "QQ",
+    icon: QQIcon,
   },
 ];
 
@@ -971,7 +959,7 @@ async function deleteAccount() {
   }
 
   useCookie("auth-token").value = null;
-  window.location.href = "/";
+  await navigateTo("/", { external: true });
 
   stopLoading();
 }

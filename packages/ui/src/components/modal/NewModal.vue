@@ -119,6 +119,7 @@ function hide() {
 defineExpose({
   show,
   hide,
+  isOpen: open,
 })
 
 const mouseX = ref(-1)

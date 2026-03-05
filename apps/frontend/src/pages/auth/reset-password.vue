@@ -75,35 +75,34 @@ const { formatMessage } = useVIntl();
 const methodChoiceMessages = defineMessages({
   description: {
     id: "auth.reset-password.method-choice.description",
-    defaultMessage:
-      "Enter your email below and we'll send a recovery link to allow you to recover your account.",
+    defaultMessage: "请在下方输入您的邮箱，我们将发送恢复链接帮助您找回账号。",
   },
   emailUsernameLabel: {
     id: "auth.reset-password.method-choice.email-username.label",
-    defaultMessage: "Email or username",
+    defaultMessage: "邮箱或用户名",
   },
   emailUsernamePlaceholder: {
     id: "auth.reset-password.method-choice.email-username.placeholder",
-    defaultMessage: "Email",
+    defaultMessage: "邮箱",
   },
   action: {
     id: "auth.reset-password.method-choice.action",
-    defaultMessage: "Send recovery email",
+    defaultMessage: "发送恢复邮件",
   },
 });
 
 const postChallengeMessages = defineMessages({
   description: {
     id: "auth.reset-password.post-challenge.description",
-    defaultMessage: "Enter your new password below to gain access to your account.",
+    defaultMessage: "请在下方输入新密码以恢复您的账号。",
   },
   confirmPasswordLabel: {
     id: "auth.reset-password.post-challenge.confirm-password.label",
-    defaultMessage: "Confirm password",
+    defaultMessage: "确认密码",
   },
   action: {
     id: "auth.reset-password.post-challenge.action",
-    defaultMessage: "Reset password",
+    defaultMessage: "重置密码",
   },
 });
 
@@ -113,39 +112,39 @@ const postChallengeMessages = defineMessages({
 const emailSentNotificationMessages = defineMessages({
   title: {
     id: "auth.reset-password.notification.email-sent.title",
-    defaultMessage: "Email sent",
+    defaultMessage: "邮件已发送",
   },
   text: {
     id: "auth.reset-password.notification.email-sent.text",
-    defaultMessage:
-      "An email with instructions has been sent to you if the email was previously saved on your account.",
+    defaultMessage: "包含操作说明的邮件已发送（如果该邮箱已绑定账号）。",
   },
 });
 
 const passwordResetNotificationMessages = defineMessages({
   title: {
     id: "auth.reset-password.notification.password-reset.title",
-    defaultMessage: "Password successfully reset",
+    defaultMessage: "密码重置成功",
   },
   text: {
     id: "auth.reset-password.notification.password-reset.text",
-    defaultMessage: "You can now log-in into your account with your new password.",
+    defaultMessage: "您现在可以使用新密码登录了。",
   },
 });
 
 const messages = defineMessages({
   title: {
     id: "auth.reset-password.title",
-    defaultMessage: "Reset Password",
+    defaultMessage: "重置密码",
   },
   longTitle: {
     id: "auth.reset-password.title.long",
-    defaultMessage: "Reset your password",
+    defaultMessage: "重置您的密码",
   },
 });
 
 useHead({
   title: () => `${formatMessage(messages.title)} - BBSMC`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();

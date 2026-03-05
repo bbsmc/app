@@ -12,6 +12,7 @@ const route = useNativeRoute();
 const auth = await useAuth();
 
 useHead({
-  title: `Report ${route.params.id} - BBSMC`,
+  title: `举报详情 ${route.params.id} - BBSMC 我的世界资源社区`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 </script>

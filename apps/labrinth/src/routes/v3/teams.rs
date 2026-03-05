@@ -199,7 +199,7 @@ pub async fn team_members_get_organization(
     }
 }
 
-// Returns all members of a team, but not necessarily those of a project-team's organization (unlike team_members_get_project)
+// 返回团队的所有成员，但不一定包括项目团队所属组织的成员（与 team_members_get_project 不同）
 pub async fn team_members_get(
     req: HttpRequest,
     info: web::Path<(TeamId,)>,
@@ -450,9 +450,7 @@ pub async fn add_team_member(
     let team_association = Team::get_association(team_id, &**pool)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "The team specified does not exist".to_string(),
-            )
+            ApiError::InvalidInput("指定的团队不存在".to_string())
         })?;
     let member =
         TeamMember::get_from_user_id(team_id, current_user.id.into(), &**pool)
@@ -490,13 +488,13 @@ pub async fn add_team_member(
             }
             if !permissions.contains(new_member.permissions) {
                 return Err(ApiError::InvalidInput(
-                    "新成员具有您没有的权限".to_string(),
+                    "不能赋予新成员您自身不具备的权限".to_string(),
                 ));
             }
 
             if new_member.organization_permissions.is_some() {
                 return Err(ApiError::InvalidInput(
-                    "项目团队成员的组织权限不能设置".to_string(),
+                    "不能为项目团队成员设置组织权限".to_string(),
                 ));
             }
         }
@@ -519,7 +517,7 @@ pub async fn add_team_member(
                 new_member.organization_permissions.unwrap_or_default(),
             ) {
                 return Err(ApiError::InvalidInput(
-                    "新成员具有您没有的组织权限".to_string(),
+                    "不能赋予新成员您自身不具备的组织权限".to_string(),
                 ));
             }
             if !organization_permissions.contains(
@@ -527,7 +525,7 @@ pub async fn add_team_member(
             ) && !new_member.permissions.is_empty()
             {
                 return Err(ApiError::CustomAuthentication(
-                    "您没有权限给予此用户默认项目权限。确保 'permissions' 设置为空 (0) 如果它不是。".to_string(),
+                    "您没有权限给予此用户默认项目权限，请确保 permissions 设置为空 (0)".to_string(),
                 ));
             }
         }
@@ -537,7 +535,7 @@ pub async fn add_team_member(
         || new_member.payouts_split > Decimal::from(5000)
     {
         return Err(ApiError::InvalidInput(
-            "Payouts split 必须在 0 和 5000 之间!".to_string(),
+            "收益分成比例必须在 0 到 5000 之间".to_string(),
         ));
     }
 
@@ -593,7 +591,7 @@ pub async fn add_team_member(
             && new_member.permissions != ProjectPermissions::all()
         {
             return Err(ApiError::InvalidInput(
-                "您不能覆盖项目团队中组织所有者的权限".to_string(),
+                "不能在项目团队中限制组织所有者的权限".to_string(),
             ));
         }
 
@@ -718,7 +716,7 @@ pub async fn edit_team_member(
             || edit_member.organization_permissions.is_some())
     {
         return Err(ApiError::InvalidInput(
-            "团队所有者的权限不能编辑".to_string(),
+            "不能编辑团队所有者的权限".to_string(),
         ));
     }
 
@@ -764,7 +762,7 @@ pub async fn edit_team_member(
                     .unwrap_or(false)
             {
                 return Err(ApiError::CustomAuthentication(
-                    "您不能覆盖组织所有者的项目权限!".to_string(),
+                    "不能限制组织所有者的项目权限".to_string(),
                 ));
             }
 
@@ -776,7 +774,7 @@ pub async fn edit_team_member(
             .unwrap_or_default();
             if !permissions.contains(ProjectPermissions::EDIT_MEMBER) {
                 return Err(ApiError::CustomAuthentication(
-                    "你没有权限编辑成员的权限".to_string(),
+                    "您没有权限编辑成员的权限".to_string(),
                 ));
             }
 
@@ -784,13 +782,13 @@ pub async fn edit_team_member(
                 && !permissions.contains(new_permissions)
             {
                 return Err(ApiError::InvalidInput(
-                    "新权限具有您没有的权限".to_string(),
+                    "不能赋予您自身不具备的权限".to_string(),
                 ));
             }
 
             if edit_member.organization_permissions.is_some() {
                 return Err(ApiError::InvalidInput(
-                    "项目团队成员的组织权限无法编辑".to_string(),
+                    "不能编辑项目团队成员的组织权限".to_string(),
                 ));
             }
         }
@@ -814,7 +812,7 @@ pub async fn edit_team_member(
                 && !organization_permissions.contains(new_permissions)
             {
                 return Err(ApiError::InvalidInput(
-                    "新组织权限具有您没有的权限".to_string(),
+                    "不能赋予您自身不具备的组织权限".to_string(),
                 ));
             }
 
@@ -824,7 +822,7 @@ pub async fn edit_team_member(
                 )
             {
                 return Err(ApiError::CustomAuthentication(
-                    "您没有权限给予此用户默认项目权限。".to_string(),
+                    "您没有权限编辑此用户的默认项目权限".to_string(),
                 ));
             }
         }
@@ -835,7 +833,7 @@ pub async fn edit_team_member(
             || payouts_split > Decimal::from(5000))
     {
         return Err(ApiError::InvalidInput(
-            "Payouts split 必须在 0 和 5000 之间!".to_string(),
+            "收益分成比例必须在 0 到 5000 之间".to_string(),
         ));
     }
 
@@ -913,7 +911,7 @@ pub async fn transfer_ownership(
             && project_item.inner.organization_id.is_some()
         {
             return Err(ApiError::InvalidInput(
-                "您不能转移项目团队的所有权，这些团队由组织拥有".to_string(),
+                "不能转移属于组织的项目团队的所有权".to_string(),
             ));
         }
     }
@@ -945,7 +943,7 @@ pub async fn transfer_ownership(
     )
     .await?
     .ok_or_else(|| {
-        ApiError::InvalidInput("指定的新的所有者不存在".to_string())
+        ApiError::InvalidInput("指定的新所有者不是团队成员".to_string())
     })?;
 
     if !new_member.accepted {
@@ -956,7 +954,7 @@ pub async fn transfer_ownership(
 
     let mut transaction = pool.begin().await?;
 
-    // The following are the only places new_is_owner is modified.
+    // 以下是修改 is_owner 的唯一位置
     TeamMember::edit_team_member(
         id.into(),
         current_user.id.into(),
@@ -1077,7 +1075,7 @@ pub async fn remove_team_member(
 
     if let Some(delete_member) = delete_member {
         if delete_member.is_owner {
-            // The owner cannot be removed from a team
+            // 团队所有者不能被移除
             return Err(ApiError::CustomAuthentication(
                 "团队所有者不能被移除".to_string(),
             ));

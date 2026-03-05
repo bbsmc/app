@@ -96,14 +96,19 @@ const props = defineProps({
   },
 });
 
-const title = `${props.project.title} - 更新日志`;
-const description = `查看 ${props.project.title}的 ${props.versions.length} 个版本的更新日志.`;
+const title = `${props.project.title} 更新日志 - 我的世界资源版本记录 | BBSMC`;
+const versionCount = props.versions.length;
+const description =
+  versionCount > 0
+    ? `查看 ${props.project.title} 的完整更新日志，追踪 ${versionCount} 个版本的所有更新内容和改进。在 BBSMC 了解项目的开发进展和最新变化。`
+    : `查看 ${props.project.title} 的更新日志和开发进展。在 BBSMC 关注项目动态，获取最新的 Minecraft 资源版本信息和更新内容。`;
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
+  ogImage: props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
 });
 
 const router = useNativeRouter();

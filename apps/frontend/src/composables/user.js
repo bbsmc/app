@@ -1,15 +1,17 @@
 export const useUser = async (force = false) => {
+  const nuxtApp = useNuxtApp();
   const user = useState("user", () => {});
 
   if (!user.value || force || (user.value && Date.now() - user.value.lastUpdated > 300000)) {
-    user.value = await initUser();
+    user.value = await nuxtApp.runWithContext(() => initUser());
   }
 
   return user;
 };
 
 export const initUser = async () => {
-  const auth = (await useAuth()).value;
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
 
   const user = {
     collections: [],
@@ -18,21 +20,22 @@ export const initUser = async () => {
     lastUpdated: 0,
   };
 
-  if (auth.user && auth.user.id) {
+  if (auth.value?.user && auth.value?.user.id) {
     try {
       const headers = {
-        Authorization: auth.token,
+        Authorization: auth.value.token,
       };
 
-      const [follows, collections, subscriptions] = await Promise.all([
-        useBaseFetch(`user/${auth.user.id}/follows`, { headers }, true),
-        useBaseFetch(`user/${auth.user.id}/collections`, { apiVersion: 3, headers }, true),
-        // useBaseFetch(`billing/subscriptions`, { internal: true, headers }, true),
+      const userId = auth.value.user.id;
+      const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+
+      const [follows, collections] = await Promise.all([
+        $fetch(`${base}user/${userId}/follows`, { headers }),
+        $fetch(`${base.replace(/\/v\d\/?$/, "/v3/")}user/${userId}/collections`, { headers }),
       ]);
 
       user.collections = collections;
       user.follows = follows;
-      user.subscriptions = subscriptions;
       user.lastUpdated = Date.now();
     } catch (err) {
       console.error(err);
@@ -43,12 +46,17 @@ export const initUser = async () => {
 };
 
 export const initUserCollections = async () => {
-  const auth = (await useAuth()).value;
-  const user = (await useUser()).value;
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
+  const userState = useState("user");
 
-  if (auth.user && auth.user.id) {
+  if (auth.value?.user && auth.value?.user.id) {
     try {
-      user.collections = await useBaseFetch(`user/${auth.user.id}/collections`, { apiVersion: 3 });
+      let base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+      base = base.replace(/\/v\d\/?$/, "/v3/");
+      userState.value.collections = await $fetch(`${base}user/${auth.value.user.id}/collections`, {
+        headers: { Authorization: auth.value.token },
+      });
     } catch (err) {
       console.error(err);
     }
@@ -56,12 +64,16 @@ export const initUserCollections = async () => {
 };
 
 export const initUserFollows = async () => {
-  const auth = (await useAuth()).value;
-  const user = (await useUser()).value;
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
+  const userState = useState("user");
 
-  if (auth.user && auth.user.id) {
+  if (auth.value?.user && auth.value?.user.id) {
     try {
-      user.follows = await useBaseFetch(`user/${auth.user.id}/follows`);
+      const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+      userState.value.follows = await $fetch(`${base}user/${auth.value.user.id}/follows`, {
+        headers: { Authorization: auth.value.token },
+      });
     } catch (err) {
       console.error(err);
     }
@@ -69,12 +81,16 @@ export const initUserFollows = async () => {
 };
 
 export const initUserProjects = async () => {
-  const auth = (await useAuth()).value;
-  const user = (await useUser()).value;
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
+  const userState = useState("user");
 
-  if (auth.user && auth.user.id) {
+  if (auth.value?.user && auth.value?.user.id) {
     try {
-      user.projects = await useBaseFetch(`user/${auth.user.id}/projects`);
+      const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+      userState.value.projects = await $fetch(`${base}user/${auth.value.user.id}/projects`, {
+        headers: { Authorization: auth.value.token },
+      });
     } catch (err) {
       console.error(err);
     }
@@ -82,10 +98,14 @@ export const initUserProjects = async () => {
 };
 
 export const userCollectProject = async (collection, projectId) => {
-  const user = (await useUser()).value;
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
+  const userState = useState("user");
+
   await initUserCollections();
 
   const collectionId = collection.id;
+  const user = userState.value;
 
   const latestCollection = user.collections.find((x) => x.id === collectionId);
   if (!latestCollection) {
@@ -102,25 +122,33 @@ export const userCollectProject = async (collection, projectId) => {
     user.collections[idx].projects = projects;
   }
 
-  await useBaseFetch(`collection/${collection.id}`, {
+  let base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+  base = base.replace(/\/v\d\/?$/, "/v3/");
+  await $fetch(`${base}collection/${collection.id}`, {
     method: "PATCH",
     body: {
       new_projects: projects,
     },
-    apiVersion: 3,
+    headers: { Authorization: auth.value.token },
   });
 };
 
-export const userFollowProject = async (project) => {
-  const user = (await useUser()).value;
+export const userFollowProject = (project) => {
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
+  const userState = useState("user");
+  const user = userState.value;
+
+  const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
 
   if (user.follows.find((x) => x.id === project.id)) {
     user.follows = user.follows.filter((x) => x.id !== project.id);
     project.followers--;
 
     setTimeout(() => {
-      useBaseFetch(`project/${project.id}/follow`, {
+      $fetch(`${base}project/${project.id}/follow`, {
         method: "DELETE",
+        headers: { Authorization: auth.value.token },
       });
     });
   } else {
@@ -128,22 +156,27 @@ export const userFollowProject = async (project) => {
     project.followers++;
 
     setTimeout(() => {
-      useBaseFetch(`project/${project.id}/follow`, {
+      $fetch(`${base}project/${project.id}/follow`, {
         method: "POST",
+        headers: { Authorization: auth.value.token },
       });
     });
   }
 };
+
 export const resendVerifyEmail = async () => {
   const app = useNuxtApp();
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
 
   startLoading();
   try {
-    await useBaseFetch("auth/email/resend_verify", {
+    const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+    await $fetch(`${base}auth/email/resend_verify`, {
       method: "POST",
+      headers: { Authorization: auth.value.token },
     });
 
-    const auth = await useAuth();
     app.$notify({
       group: "main",
       title: "邮件已发送",
@@ -162,17 +195,23 @@ export const resendVerifyEmail = async () => {
 };
 
 export const logout = async () => {
+  const config = useRuntimeConfig();
+  const auth = useState("auth");
+  const authCookie = useCookie("auth-token");
+
   startLoading();
-  const auth = await useAuth();
   try {
-    await useBaseFetch(`session/${auth.value.token}`, {
+    const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
+    await $fetch(`${base}session/${auth.value.token}`, {
       method: "DELETE",
+      headers: { Authorization: auth.value.token },
     });
   } catch {
     /* empty */
   }
 
-  await useAuth("none");
-  useCookie("auth-token").value = null;
+  auth.value = { user: null, token: "", headers: {} };
+  authCookie.value = null;
   stopLoading();
+  await navigateTo("/");
 };

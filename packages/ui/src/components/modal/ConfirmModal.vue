@@ -60,17 +60,17 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'No title defined',
+    default: '未定义标题',
     required: true,
   },
   description: {
     type: String,
-    default: 'No description defined',
+    default: '未定义描述',
     required: true,
   },
   proceedLabel: {
     type: String,
-    default: 'Proceed',
+    default: '确认',
   },
   noblur: {
     type: Boolean,

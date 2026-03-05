@@ -305,6 +305,10 @@ const props = defineProps({
   },
 });
 
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
+
 const route = useRoute();
 const auth = useAuth();
 const app = useNuxtApp();

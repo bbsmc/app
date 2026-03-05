@@ -76,6 +76,10 @@ impl From<crate::models::v3::threads::ThreadType> for LegacyThreadType {
                 // Ban appeal threads映射为Report类型，因为v2没有这个类型
                 LegacyThreadType::Report
             }
+            crate::models::v3::threads::ThreadType::CreatorApplication => {
+                // Creator application threads映射为Report类型，因为v2没有这个类型
+                LegacyThreadType::Report
+            }
         }
     }
 }

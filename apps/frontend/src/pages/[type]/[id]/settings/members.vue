@@ -580,6 +580,10 @@ const props = defineProps({
   },
 });
 
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
+
 const cosmetics = useCosmetics();
 const auth = await useAuth();
 

@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT pr.id, pr.user_id, pr.review_type, pr.new_value,\n               u.username, u.avatar_url, u.raw_avatar_url\n        FROM user_profile_reviews pr\n        JOIN users u ON u.id = pr.user_id\n        WHERE pr.status = 'pending'\n        ORDER BY pr.created_at ASC\n        FOR UPDATE OF pr\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "review_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "new_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "raw_avatar_url",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "bd941fd0ba469a56a2af493149c43ccce431cd86a427465a3f61eb3bb612fe0b"
+}

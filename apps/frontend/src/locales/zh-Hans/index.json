@@ -216,7 +216,7 @@
     "message": "你确定要删除该收藏夹吗？"
   },
   "collection.description": {
-    "message": "{description} - 前往 BBSMC 查看 {username} 的收藏夹 {name}"
+    "message": "{description} - 在 BBSMC 浏览 {username} 创建的收藏集 {name}，发现精选的 Minecraft 资源。"
   },
   "collection.description.following": {
     "message": "自动生成你关注的所有资源的收藏夹。"
@@ -252,7 +252,7 @@
     "message": "更新于 {ago}"
   },
   "collection.title": {
-    "message": "{name} - 收藏夹"
+    "message": "{name} - BBSMC 我的世界资源收藏集"
   },
   "dashboard.collections.button.create-new": {
     "message": "新建"
@@ -459,10 +459,10 @@
     "message": "团队"
   },
   "profile.meta.description": {
-    "message": "前往 BBSMC 下载 {username} 的资源"
+    "message": "访问 {username} 的 BBSMC 主页，浏览和下载 {username} 发布的 Minecraft 模组、整合包、光影和其他资源。加入 BBSMC 社区，发现更多创作者和资源。"
   },
   "profile.meta.description-with-bio": {
-    "message": "{bio} - 前往 BBSMC 下载 {username} 的资源"
+    "message": "{bio} - 访问 {username} 的 BBSMC 主页，下载 {username} 发布的 Minecraft 模组、整合包和其他资源。"
   },
   "profile.stats.downloads": {
     "message": "{count, plural,other {<stat>{count}</stat> 次下载}}"

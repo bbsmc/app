@@ -815,8 +815,8 @@ pub async fn process_payout(
         })
         .sum();
 
-    // Modrinth's share of ad revenue
-    let modrinth_cut = Decimal::from(1) / Decimal::from(4);
+    // BBSMC 的广告收入分成
+    let platform_cut = Decimal::from(1) / Decimal::from(4);
     // Clean.io fee (ad antimalware). Per 1000 impressions.
     let clean_io_fee = Decimal::from(8) / Decimal::from(1000);
 
@@ -824,7 +824,7 @@ pub async fn process_payout(
         - (clean_io_fee * Decimal::from(aditude_impressions)
             / Decimal::from(1000));
 
-    let payout = net_revenue * (Decimal::from(1) - modrinth_cut);
+    let payout = net_revenue * (Decimal::from(1) - platform_cut);
 
     // Ad payouts are Net 60 from the end of the month
     let available = {

@@ -21,10 +21,16 @@ pub fn send_email_raw(
     subject: String,
     body: String,
 ) -> Result<(), MailError> {
+    let from_name =
+        dotenvy::var("SMTP_FROM_NAME").unwrap_or_else(|_| "BBSMC".to_string());
+    let from_user = dotenvy::var("SMTP_FROM_USER")
+        .unwrap_or_else(|_| "noreply".to_string());
+    let from_domain = dotenvy::var("SMTP_FROM_DOMAIN")?;
+
     let email = Message::builder()
         .from(Mailbox::new(
-            Some("BBSMC".to_string()),
-            Address::new("bbsmc", "mc9y.net")?,
+            Some(from_name),
+            Address::new(&from_user, &from_domain)?,
         ))
         .to(to.parse()?)
         .subject(subject)

@@ -394,81 +394,81 @@ const formatCompactNumber = useCompactNumber();
 const messages = defineMessages({
   collectionDescription: {
     id: "collection.description",
-    defaultMessage: "{description} - View the collection {name} by {username} on BBSMC",
+    defaultMessage:
+      "{description} - 在 BBSMC 浏览 {username} 创建的收藏集 {name}，发现精选的 Minecraft 资源。",
   },
   collectionLabel: {
     id: "collection.label.collection",
-    defaultMessage: "Collection",
+    defaultMessage: "收藏夹",
   },
   collectionTitle: {
     id: "collection.title",
-    defaultMessage: "{name} - Collection",
+    defaultMessage: "{name} - BBSMC 我的世界资源收藏集",
   },
   editIconButton: {
     id: "collection.button.edit-icon",
-    defaultMessage: "Edit icon",
+    defaultMessage: "编辑图标",
   },
   deleteIconButton: {
     id: "collection.button.delete-icon",
-    defaultMessage: "Delete icon",
+    defaultMessage: "删除图标",
   },
   createdAtLabel: {
     id: "collection.label.created-at",
-    defaultMessage: "Created {ago}",
+    defaultMessage: "创建于 {ago}",
   },
   collectionNotFoundError: {
     id: "collection.error.not-found",
-    defaultMessage: "Collection not found",
+    defaultMessage: "未找到收藏夹",
   },
   curatedByLabel: {
     id: "collection.label.curated-by",
-    defaultMessage: "Curated by",
+    defaultMessage: "创建者",
   },
   deleteModalDescription: {
     id: "collection.delete-modal.description",
-    defaultMessage: "This will remove this collection forever. This action cannot be undone.",
+    defaultMessage: "此操作将永久删除此收藏夹，不可撤销。",
   },
   deleteModalTitle: {
     id: "collection.delete-modal.title",
-    defaultMessage: "Are you sure you want to delete this collection?",
+    defaultMessage: "确定要删除此收藏夹吗？",
   },
   followingCollectionDescription: {
     id: "collection.description.following",
-    defaultMessage: "Auto-generated collection of all the projects you're following.",
+    defaultMessage: "自动生成的已关注项目合集。",
   },
   noProjectsLabel: {
     id: "collection.label.no-projects",
-    defaultMessage: "This collection has no projects!",
+    defaultMessage: "此收藏夹暂无项目！",
   },
   noProjectsAuthLabel: {
     id: "collection.label.no-projects-auth",
-    defaultMessage:
-      "You don't have any projects.\nWould you like to <create-link>add one</create-link>?",
+    defaultMessage: "您还没有项目，要<create-link>添加一个</create-link>吗？",
   },
   ownerLabel: {
     id: "collection.label.owner",
-    defaultMessage: "Owner",
+    defaultMessage: "所有者",
   },
   projectsCountLabel: {
     id: "collection.label.projects-count",
     defaultMessage:
-      "{count, plural, one {<stat>{count}</stat> project} other {<stat>{count}</stat> projects}}",
+      "{count, plural, one {<stat>{count}</stat> 个项目} other {<stat>{count}</stat> 个项目}}",
   },
   removeProjectButton: {
     id: "collection.button.remove-project",
-    defaultMessage: "Remove project",
+    defaultMessage: "移除项目",
   },
   unfollowProjectButton: {
     id: "collection.button.unfollow-project",
-    defaultMessage: "Unfollow project",
+    defaultMessage: "取消关注",
   },
   updatedAtLabel: {
     id: "collection.label.updated-at",
-    defaultMessage: "Updated {ago}",
+    defaultMessage: "更新于 {ago}",
   },
   uploadIconButton: {
     id: "collection.button.upload-icon",
-    defaultMessage: "Upload icon",
+    defaultMessage: "上传图标",
   },
 });
 
@@ -548,10 +548,25 @@ try {
   }
 } catch (err) {
   console.error(err);
+  // 检查是否为 FetchError 并提取状态码
+  const statusCode = err?.response?.status || err?.statusCode || err?.data?.statusCode || 404;
+  const errorType = err?.data?.error;
+
+  // 如果是限流错误，使用 429 状态码
+  if (statusCode === 429 || errorType === "ratelimit_error") {
+    throw createError({
+      fatal: true,
+      statusCode: 429,
+      message: err?.data?.description || "请求过于频繁",
+    });
+  }
+
+  // 其他错误使用原状态码或默认 404
   throw createError({
     fatal: true,
-    statusCode: 404,
-    message: formatMessage(messages.collectionNotFoundError),
+    statusCode,
+    message:
+      err?.data?.description || err?.message || formatMessage(messages.collectionNotFoundError),
   });
 }
 
@@ -576,7 +591,12 @@ useSeoMeta({
       username: creator.value.username,
     }),
   ogTitle: title,
-  ogDescription: collection.value.description,
+  ogDescription: () =>
+    formatMessage(messages.collectionDescription, {
+      name: collection.value.name,
+      description: collection.value.description,
+      username: creator.value.username,
+    }),
   ogImage: collection.value.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
   robots: collection.value.status === "listed" ? "all" : "noindex",
 });

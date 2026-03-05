@@ -51,7 +51,7 @@ export default defineNuxtPlugin({
           shader: "gallery",
           datapack: "list",
           software: "gallery",
-          language: "list",
+          language: "gallery",
           user: "list",
           collection: "list",
         },

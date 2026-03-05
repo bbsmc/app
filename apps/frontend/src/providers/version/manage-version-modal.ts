@@ -14,9 +14,9 @@ import JSZip from "jszip";
 import type { ComputedRef, Ref, ShallowRef } from "vue";
 import type { ComponentExposed } from "vue-component-type-helpers";
 
-import { stageConfigs } from "./stages";
-import { useTags } from "~/composables/tag";
-import { inferVersionInfo } from "~/helpers/infer";
+import { stageConfigs } from "./stages/index.ts";
+import { useTags } from "~/composables/tag.js";
+import { inferVersionInfo } from "~/helpers/infer.js";
 
 // this interface should be in infer.js, but gotta refactor that to ts first
 export interface InferredVersionInfo {
@@ -213,6 +213,10 @@ export function createManageVersionContext(
 
   async function checkIsResourcePack(file: File): Promise<boolean> {
     try {
+      // 上游修复: 检查文件扩展名，防止非 zip 文件被错误识别
+      const name = file.name.toLowerCase();
+      if (!name.endsWith(".zip")) return false;
+
       const zip = await JSZip.loadAsync(file);
       const entries = Object.keys(zip.files).map((f) => f.toLowerCase());
 
@@ -224,6 +228,10 @@ export function createManageVersionContext(
 
   async function checkIsDataPack(file: File): Promise<boolean> {
     try {
+      // 上游修复: 检查文件扩展名，防止非 zip 文件被错误识别
+      const name = file.name.toLowerCase();
+      if (!name.endsWith(".zip")) return false;
+
       const zip = await JSZip.loadAsync(file);
       const entries = Object.keys(zip.files).map((f) => f.toLowerCase());
 

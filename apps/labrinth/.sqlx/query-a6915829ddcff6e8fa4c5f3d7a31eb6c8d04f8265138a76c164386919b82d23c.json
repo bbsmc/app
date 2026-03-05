@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH tracked_projects AS (\n            -- 获取所有开启汉化追踪的项目\n            SELECT\n                m.id,\n                m.slug,\n                m.name,\n                m.icon_url,\n                m.translation_tracker\n            FROM mods m\n            WHERE m.translation_tracking = true\n            AND m.status = 'approved'\n        ),\n        latest_versions AS (\n            -- 获取每个项目的最新版本\n            SELECT DISTINCT ON (v.mod_id)\n                v.mod_id,\n                v.id as version_id,\n                v.version_number,\n                v.date_published\n            FROM versions v\n            WHERE v.mod_id IN (SELECT id FROM tracked_projects)\n            AND v.status = 'listed'\n            ORDER BY v.mod_id, v.date_published DESC\n        ),\n        approved_translations AS (\n            -- 获取每个版本的已批准汉化绑定\n            SELECT DISTINCT ON (vlv.joining_version_id)\n                vlv.joining_version_id as original_version_id,\n                vlv.version_id as translation_version_id,\n                tv.version_number as translation_version_number\n            FROM version_link_version vlv\n            INNER JOIN versions tv ON tv.id = vlv.version_id\n            WHERE vlv.approval_status = 'approved'\n            AND vlv.link_type = 'translation'\n            ORDER BY vlv.joining_version_id, vlv.created_at DESC\n        )\n        SELECT\n            tp.id as project_id,\n            tp.slug as project_slug,\n            tp.name as project_name,\n            tp.icon_url as project_icon,\n            tp.translation_tracker,\n            lv.version_id as \"latest_version_id?\",\n            lv.version_number as \"latest_version_number?\",\n            lv.date_published as \"latest_version_published?\",\n            at.translation_version_id as \"translation_version_id?\",\n            at.translation_version_number as \"translation_version_number?\"\n        FROM tracked_projects tp\n        LEFT JOIN latest_versions lv ON lv.mod_id = tp.id\n        LEFT JOIN approved_translations at ON at.original_version_id = lv.version_id\n        ORDER BY lv.date_published DESC NULLS LAST\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_icon",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "translation_tracker",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "latest_version_id?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "latest_version_number?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "latest_version_published?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "translation_version_id?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "translation_version_number?",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a6915829ddcff6e8fa4c5f3d7a31eb6c8d04f8265138a76c164386919b82d23c"
+}

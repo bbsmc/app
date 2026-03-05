@@ -106,7 +106,6 @@ defineOptions({
 const dropdown = ref(null)
 
 const close = () => {
-  console.log('closing!')
   dropdown.value.hide()
 }
 </script>

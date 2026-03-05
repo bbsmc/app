@@ -266,6 +266,7 @@ pub async fn images_add(
             .await?;
 
     let content_length = bytes.len();
+    // 跳过内置风控，手动检查
     let upload_result = upload_image_optimized(
         "data/cached_images",
         bytes.freeze(),
@@ -279,15 +280,52 @@ pub async fn images_add(
             username: user.username.clone(),
         },
         &redis,
+        true,
     )
     .await?;
 
+    // 同步风控检查（在保存到数据库之前）
+    let uploader_id = database::models::UserId::from(user.id).0;
+    let risk_result = crate::util::risk::check_image_risk_with_labels(
+        &upload_result.url,
+        &format!("/user/{}", &user.username),
+        &user.username,
+        "Markdown图片",
+        &redis,
+    )
+    .await;
+
+    // 涉政内容：直接拦截，删除 S3，不保存到数据库
+    if let Ok(ref result) = risk_result
+        && !result.passed
+        && crate::util::risk::contains_political_labels(&result.labels)
+    {
+        super::image_reviews::handle_political_image_delete(
+            &upload_result.url,
+            Some(&upload_result.raw_url),
+            result.frame_url.as_deref(),
+            &user.username,
+            uploader_id,
+            &result.labels,
+            "markdown",
+            None, // source_id: 涉政不保存到 uploaded_images
+            None,
+            &pool,
+            &***file_host,
+        )
+        .await;
+        return Err(ApiError::InvalidInput(
+            "图片内容违规，已被拦截".to_string(),
+        ));
+    }
+
+    // 非涉政或风控通过：保存到数据库
     let mut transaction = pool.begin().await?;
 
     let db_image: database::models::Image = database::models::Image {
         id: database::models::generate_image_id(&mut transaction).await?,
-        url: upload_result.url,
-        raw_url: upload_result.raw_url,
+        url: upload_result.url.clone(),
+        raw_url: upload_result.raw_url.clone(),
         size: content_length as u64,
         created: chrono::Utc::now(),
         owner_id: database::models::UserId::from(user.id),
@@ -331,12 +369,11 @@ pub async fn images_add(
         },
     };
 
-    // 插入
     db_image.insert(&mut transaction).await?;
 
     let image = Image {
         id: db_image.id.into(),
-        url: db_image.url,
+        url: db_image.url.clone(),
         size: db_image.size,
         created: db_image.created,
         owner_id: db_image.owner_id.into(),
@@ -344,6 +381,25 @@ pub async fn images_add(
     };
 
     transaction.commit().await?;
+
+    // 非涉政风控未通过：创建审核记录（图片已保存，等待管理员审核）
+    if let Ok(ref result) = risk_result
+        && !result.passed
+    {
+        super::image_reviews::create_review_record(
+            &upload_result.url,
+            Some(&upload_result.raw_url),
+            result.frame_url.as_deref(),
+            uploader_id,
+            &result.labels,
+            "markdown",
+            Some(db_image.id.0),
+            None,
+            &pool,
+            &redis,
+        )
+        .await;
+    }
 
     Ok(HttpResponse::Ok().json(image))
 }

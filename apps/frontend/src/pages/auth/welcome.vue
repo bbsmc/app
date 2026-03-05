@@ -44,30 +44,30 @@ const { formatMessage } = useVIntl();
 const messages = defineMessages({
   subscribeCheckbox: {
     id: "auth.welcome.checkbox.subscribe",
-    defaultMessage: "Subscribe to updates about BBSMC",
+    defaultMessage: "订阅 BBSMC 更新通知",
   },
   tosLabel: {
     id: "auth.welcome.label.tos",
     defaultMessage:
-      "By creating an account, you have agreed to BBSMC <terms-link>Terms</terms-link> and <privacy-policy-link>Privacy Policy</privacy-policy-link>.",
+      "注册即表示您同意 BBSMC 的<terms-link>用户协议</terms-link>和<privacy-policy-link>隐私政策</privacy-policy-link>。",
   },
   welcomeDescription: {
     id: "auth.welcome.description",
-    defaultMessage:
-      "Thank you for creating an account. You can now follow and create projects, receive updates about your favorite projects, and more!",
+    defaultMessage: "感谢您创建账号。您现在可以关注和创建项目、接收喜爱项目的更新通知等！",
   },
   welcomeLongTitle: {
     id: "auth.welcome.long-title",
-    defaultMessage: "Welcome to BBSMC!",
+    defaultMessage: "欢迎来到 BBSMC！",
   },
   welcomeTitle: {
     id: "auth.welcome.title",
-    defaultMessage: "Welcome",
+    defaultMessage: "欢迎",
   },
 });
 
 useHead({
   title: () => `${formatMessage(messages.welcomeTitle)} - BBSMC`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const subscribe = ref(true);

@@ -2,18 +2,18 @@
   <div class="universal-card">
     <ConfirmModal
       ref="modal_confirm"
-      title="Are you sure you want to revoke this application?"
-      description="This will revoke the application's access to your account. You can always re-authorize it later."
-      proceed-label="Revoke"
+      title="确定要撤销此应用的授权吗？"
+      description="这将撤销该应用对您账户的访问权限。您可以随时重新授权。"
+      proceed-label="撤销"
       @proceed="revokeApp(revokingId)"
     />
     <h2 class="text-2xl">{{ formatMessage(commonSettingsMessages.authorizedApps) }}</h2>
     <p>
-      When you authorize an application with your Modrinth account, you grant it access to your
-      account. You can manage and review access to your account here at any time.
+      当您使用 BBSMC
+      账户授权应用时，即表示您授予该应用访问您账户的权限。您可以随时在此管理和查看账户的访问权限。
     </p>
     <div v-if="appInfoLookup.length === 0" class="universal-card recessed">
-      You have not authorized any applications.
+      您尚未授权任何应用。
     </div>
     <div
       v-for="authorization in appInfoLookup"
@@ -29,7 +29,7 @@
                 {{ authorization.app.name }}
               </h2>
               <div>
-                by
+                开发者：
                 <nuxt-link class="text-link" :to="'/user/' + authorization.owner.id">{{
                   authorization.owner.username
                 }}</nuxt-link>
@@ -46,13 +46,13 @@
         <div>
           <template v-if="authorization.app.description">
             <label for="app-description">
-              <span class="label__title"> About this app </span>
+              <span class="label__title"> 关于此应用 </span>
             </label>
             <div id="app-description">{{ authorization.app.description }}</div>
           </template>
 
           <label for="app-scope-list">
-            <span class="label__title">Scopes</span>
+            <span class="label__title">权限范围</span>
           </label>
           <div class="scope-list">
             <div
@@ -81,7 +81,7 @@
           "
         >
           <TrashIcon />
-          Revoke
+          撤销
         </Button>
       </div>
     </div>
@@ -104,7 +104,8 @@ definePageMeta({
 });
 
 useHead({
-  title: "Authorizations - Modrinth",
+  title: "应用授权 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const { data: usersApps, refresh } = await useAsyncData("userAuthorizations", () =>

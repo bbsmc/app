@@ -120,7 +120,7 @@ pub async fn fetch_countries_downloads(
             "
             SELECT
                 country,
-                project_id,
+                project_id AS id,
                 count(1) AS total
             FROM downloads
             WHERE recorded BETWEEN ? AND ? AND project_id IN ?
@@ -147,7 +147,7 @@ pub async fn fetch_countries_views(
             "
             SELECT
                 country,
-                project_id,
+                project_id AS id,
                 count(1) AS total
             FROM views
             WHERE recorded BETWEEN ? AND ? AND project_id IN ?

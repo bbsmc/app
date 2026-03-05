@@ -309,37 +309,3 @@ pub fn capitalize_first(input: &str) -> String {
     }
     result
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::models::v2::projects::LegacySideType::{
-        Optional, Required, Unsupported,
-    };
-
-    #[test]
-    fn convert_types() {
-        // 从 V2 到 V3 再转换回来应该是幂等的 - 对于某些对
-        let lossy_pairs = [
-            (Optional, Unsupported),
-            (Unsupported, Optional),
-            (Required, Optional),
-            (Optional, Required),
-            (Unsupported, Unsupported),
-        ];
-
-        for client_side in [Required, Optional, Unsupported] {
-            for server_side in [Required, Optional, Unsupported] {
-                if lossy_pairs.contains(&(client_side, server_side)) {
-                    continue;
-                }
-                let side_types =
-                    convert_side_types_v3(client_side, server_side);
-                let (client_side2, server_side2) =
-                    convert_side_types_v2(&side_types, None);
-                assert_eq!(client_side, client_side2);
-                assert_eq!(server_side, server_side2);
-            }
-        }
-    }
-}

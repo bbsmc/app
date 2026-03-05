@@ -318,32 +318,31 @@ impl Discussion {
                 .await?;
 
                 let posts = sqlx::query!(
-                    "SELECT d.id id,
-                           d.title title,
-                           d.content content,
-                           d.category category,
-                           d.created_at created_at,
-                           d.updated_at updated_at,
-                           d.user_id user_id,
-                           d.state state,
-                           d.pinned pinned,
-                           d.deleted deleted,
-                           d.deleted_at deleted_at,
-                           d.last_post_time last_post_time,
-                           u.username user_name,
-                           u.avatar_url avatar_url,
+                    r#"SELECT d.id as "id!",
+                           d.title as "title!",
+                           d.content as "content!",
+                           d.category as "category!",
+                           d.created_at as "created_at!",
+                           d.updated_at,
+                           d.user_id as "user_id!",
+                           d.state as "state!",
+                           d.pinned as "pinned!",
+                           d.deleted as "deleted!",
+                           d.deleted_at,
+                           d.last_post_time,
+                           u.username as "user_name?",
+                           u.avatar_url as "avatar_url?",
                            (SELECT m.id FROM mods m WHERE m.forum = d.id LIMIT 1) as project_id
                     FROM discussions d
                              LEFT JOIN users u ON d.user_id = u.id
-                    WHERE d.id = ANY ($1) AND d.deleted = false",
+                    WHERE d.id = ANY ($1) AND d.deleted = false"#,
                     &ids
                 )
                 .fetch(&mut *exec)
                 .try_fold(
                     DashMap::new(),
                     |acc: DashMap<i64, QueryDiscussion>, m| {
-                        // let id: i64 = m.id.clone();
-                        let id = DiscussionId(m.id.unwrap());
+                        let id = DiscussionId(m.id);
                         let posts: Vec<PostIndex> = posts_index
                             .get(&id.0)
                             .map(|v| v.clone())
@@ -359,19 +358,19 @@ impl Discussion {
                                 posts,
                                 inner: Discussion {
                                     id,
-                                    title: m.title.unwrap(),
-                                    content: m.content.unwrap(),
-                                    category: m.category.unwrap(),
-                                    created_at: m.created_at.unwrap(),
+                                    title: m.title,
+                                    content: m.content,
+                                    category: m.category,
+                                    created_at: m.created_at,
                                     updated_at: m.updated_at,
-                                    user_id: UserId(m.user_id.unwrap()),
-                                    user_name: m.user_name,
+                                    user_id: UserId(m.user_id),
+                                    user_name: m.user_name.unwrap_or_default(),
                                     avatar: m.avatar_url,
                                     organization: None,
                                     organization_id: None,
-                                    state: m.state.unwrap(),
-                                    pinned: m.pinned.unwrap(),
-                                    deleted: m.deleted.unwrap(),
+                                    state: m.state,
+                                    pinned: m.pinned,
+                                    deleted: m.deleted,
                                     deleted_at: m.deleted_at,
                                     last_post_time: m.last_post_time.unwrap_or_else(chrono::Utc::now),
                                     project_id,

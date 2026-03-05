@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT project_id FROM user_purchases\n            WHERE user_id = $1 AND status = 'active'\n              AND (expires_at IS NULL OR expires_at > $2)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b3b68991d95c209c672fc10cab88c3f3ebec7589ada0f01de13e723fd98c7a75"
+}

@@ -42,13 +42,14 @@ const props = defineProps({
   },
 });
 
-const title = `${props.project.title} - 讨论区`;
-const description = `浏览 ${props.project.title} 讨论区`;
+const title = `${props.project.title} 讨论区 - 我的世界资源交流 | BBSMC`;
+const description = `参与 ${props.project.title} 的社区讨论，与其他玩家交流使用心得、报告问题和分享创意。在 BBSMC 加入活跃的 Minecraft 资源讨论社区。`;
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
+  ogImage: props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
 });
 
 async function openForumModal() {

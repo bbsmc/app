@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.id as \"id!\",\n                           d.title as \"title!\",\n                           d.content as \"content!\",\n                           d.category as \"category!\",\n                           d.created_at as \"created_at!\",\n                           d.updated_at,\n                           d.user_id as \"user_id!\",\n                           d.state as \"state!\",\n                           d.pinned as \"pinned!\",\n                           d.deleted as \"deleted!\",\n                           d.deleted_at,\n                           d.last_post_time,\n                           u.username as \"user_name?\",\n                           u.avatar_url as \"avatar_url?\",\n                           (SELECT m.id FROM mods m WHERE m.forum = d.id LIMIT 1) as project_id\n                    FROM discussions d\n                             LEFT JOIN users u ON d.user_id = u.id\n                    WHERE d.id = ANY ($1) AND d.deleted = false",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "content!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "category!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "state!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "pinned!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "deleted!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_post_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "user_name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "avatar_url?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "project_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "e8faea7605956c632fc65da8a86dae9da76e432876b92be832b9247397de6627"
+}

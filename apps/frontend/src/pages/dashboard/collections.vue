@@ -105,23 +105,23 @@ const formatCompactNumber = useCompactNumber();
 const messages = defineMessages({
   createNewButton: {
     id: "dashboard.collections.button.create-new",
-    defaultMessage: "Create new",
+    defaultMessage: "新建",
   },
   collectionsLongTitle: {
     id: "dashboard.collections.long-title",
-    defaultMessage: "Your collections",
+    defaultMessage: "我的收藏夹",
   },
   followingCollectionDescription: {
     id: "collection.description.following",
-    defaultMessage: "Auto-generated collection of all the projects you're following.",
+    defaultMessage: "自动生成的已关注项目合集。",
   },
   projectsCountLabel: {
     id: "dashboard.collections.label.projects-count",
-    defaultMessage: "{count, plural, one {{count} project} other {{count} projects}}",
+    defaultMessage: "{count} 个项目",
   },
   searchInputLabel: {
     id: "dashboard.collections.label.search-input",
-    defaultMessage: "Search your collections",
+    defaultMessage: "搜索收藏夹",
   },
 });
 
@@ -131,6 +131,7 @@ definePageMeta({
 
 useHead({
   title: () => `${formatMessage(messages.collectionsLongTitle)} - BBSMC`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();

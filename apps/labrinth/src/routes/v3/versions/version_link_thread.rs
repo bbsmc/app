@@ -113,6 +113,7 @@ pub async fn send_version_link_message(
             project_id: None,
             report_id: None,
             ban_appeal_id: None,
+            creator_application_id: None,
         }
         .insert(&mut transaction)
         .await?;

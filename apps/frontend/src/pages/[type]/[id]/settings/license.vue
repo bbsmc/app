@@ -145,6 +145,10 @@ export default defineNuxtComponent({
     };
   },
   async setup(props) {
+    useHead({
+      meta: [{ name: "robots", content: "noindex, nofollow" }],
+    });
+
     const defaultLicenses = shallowRef([
       { friendly: "Custom", short: "" },
       {

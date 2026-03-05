@@ -3,6 +3,7 @@
     <div class="nav-content">
       <slot />
       <span>{{ label }}</span>
+      <span v-if="count > 0" class="count-badge">{{ count > 99 ? "99+" : count }}</span>
       <span v-if="beta" class="beta-badge">BETA</span>
       <span v-if="chevron" class="chevron"><ChevronRightIcon /></span>
     </div>
@@ -16,6 +17,7 @@
     <span class="nav-content">
       <slot />
       <span>{{ label }}</span>
+      <span v-if="count > 0" class="count-badge">{{ count > 99 ? "99+" : count }}</span>
       <span v-if="beta" class="beta-badge">BETA</span>
     </span>
   </button>
@@ -53,6 +55,10 @@ export default {
     danger: {
       default: false,
       type: Boolean,
+    },
+    count: {
+      default: 0,
+      type: Number,
     },
   },
 };
@@ -103,6 +109,24 @@ export default {
       background-color: var(--color-button-bg);
       box-shadow: none;
     }
+
+    .count-badge {
+      background-color: rgba(255, 255, 255, 0.25);
+      color: var(--color-button-text-active);
+    }
+  }
+
+  .count-badge {
+    margin-left: auto;
+    background-color: var(--color-red);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: var(--font-weight-bold);
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    min-width: 1.2rem;
+    text-align: center;
+    line-height: 1.2;
   }
 
   .beta-badge {

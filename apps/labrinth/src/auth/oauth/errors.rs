@@ -113,33 +113,33 @@ impl actix_web::ResponseError for OAuthError {
 pub enum OAuthErrorType {
     #[error(transparent)]
     AuthenticationError(#[from] AuthenticationError),
-    #[error("客户端 {} 没有指定重定向 URI", .client_id.0)]
+    #[error("客户端 {} 未配置重定向 URI", .client_id.0)]
     ClientMissingRedirectURI {
         client_id: crate::database::models::OAuthClientId,
     },
-    #[error("提供的重定向 URI 与客户端中配置的不匹配")]
+    #[error("提供的重定向 URI 与客户端配置的 URI 不匹配")]
     RedirectUriNotConfigured(String),
-    #[error("提供的 scope 格式错误或不对应已知的 scope ({0})")]
+    #[error("提供的权限范围格式错误或无法识别 ({0})")]
     FailedScopeParse(bitflags::parser::ParseError),
-    #[error("提供的 scope 请求的范围比开发者应用程序配置的范围更广")]
+    #[error("请求的权限范围超出了应用程序配置的允许范围")]
     ScopesTooBroad,
-    #[error("提供的 flow id 无效")]
+    #[error("提供的授权流程 ID 无效")]
     InvalidAcceptFlowId,
-    #[error("提供的客户端 id 无效")]
+    #[error("提供的客户端 ID 无效")]
     InvalidClientId(crate::database::models::OAuthClientId),
-    #[error("提供的 ID 无法解码：{0}")]
+    #[error("提供的 ID 格式错误，无法解码：{0}")]
     MalformedId(#[from] DecodingError),
     #[error("客户端身份验证失败")]
     ClientAuthenticationFailed,
-    #[error("提供的授权码无效")]
+    #[error("提供的授权码无效或已过期")]
     InvalidAuthCode,
-    #[error("提供的客户端 id 与此授权码授予的 id 不匹配")]
+    #[error("提供的客户端 ID 与该授权码对应的客户端不匹配")]
     UnauthorizedClient,
-    #[error("提供的重定向 URI 与此流程开始时提供的 URI 不完全匹配")]
+    #[error("提供的重定向 URI 与授权流程开始时使用的 URI 不一致")]
     RedirectUriChanged(Option<String>),
-    #[error("提供的授权类型 ({0}) 必须是 \"authorization_code\"")]
+    #[error("授权类型 ({0}) 不受支持，仅支持 \"authorization_code\"")]
     OnlySupportsAuthorizationCodeGrant(String),
-    #[error("资源所有者拒绝了请求")]
+    #[error("用户拒绝了授权请求")]
     AccessDenied,
 }
 

@@ -319,7 +319,7 @@ pub async fn collection_edit(
                     && status.can_be_requested())
             {
                 return Err(ApiError::CustomAuthentication(
-                    "You don't have permission to set this status!".to_string(),
+                    "您没有权限设置此状态！".to_string(),
                 ));
             }
 
@@ -354,15 +354,14 @@ pub async fn collection_edit(
                 .collect_vec();
             let mut validated_project_ids = Vec::new();
             for project_id in new_project_ids {
-                let project = database::models::Project::get(
-                    project_id, &**pool, &redis,
-                )
-                .await?
-                .ok_or_else(|| {
-                    ApiError::InvalidInput(format!(
-                        "The specified project {project_id} does not exist!"
-                    ))
-                })?;
+                let project =
+                    database::models::Project::get(project_id, &**pool, &redis)
+                        .await?
+                        .ok_or_else(|| {
+                            ApiError::InvalidInput(format!(
+                                "指定的项目 {project_id} 不存在！"
+                            ))
+                        })?;
                 validated_project_ids.push(project.inner.id.0);
             }
             // 插入- 如果已存在，则不抛出错误
@@ -432,9 +431,7 @@ pub async fn collection_icon_edit(
         database::models::Collection::get(id, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "The specified collection does not exist!".to_string(),
-                )
+                ApiError::InvalidInput("指定的收藏夹不存在！".to_string())
             })?;
 
     if !can_modify_collection(&collection_item, &user) {
@@ -465,6 +462,7 @@ pub async fn collection_icon_edit(
             username: user.username.clone(),
         },
         &redis,
+        false,
     )
     .await?;
 
@@ -515,9 +513,7 @@ pub async fn delete_collection_icon(
         database::models::Collection::get(id, &**pool, &redis)
             .await?
             .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "The specified collection does not exist!".to_string(),
-                )
+                ApiError::InvalidInput("指定的收藏夹不存在！".to_string())
             })?;
     if !can_modify_collection(&collection_item, &user) {
         return Ok(HttpResponse::Unauthorized().body(""));
@@ -571,9 +567,7 @@ pub async fn collection_delete(
     let collection = database::models::Collection::get(id, &**pool, &redis)
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "The specified collection does not exist!".to_string(),
-            )
+            ApiError::InvalidInput("指定的收藏夹不存在！".to_string())
         })?;
     if !can_modify_collection(&collection, &user) {
         return Ok(HttpResponse::Unauthorized().body(""));

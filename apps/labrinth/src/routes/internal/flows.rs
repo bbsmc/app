@@ -120,53 +120,131 @@ impl TempUser {
             }
         }
 
-        let (avatar_url, raw_avatar_url) =
-            if let Some(avatar_url) = self.avatar_url {
-                let res = reqwest::get(&avatar_url).await?;
-                let headers = res.headers().clone();
+        // 延迟创建头像审核记录（等用户 INSERT 后才能满足外键约束）
+        let mut avatar_risk_info: Option<AvatarRiskInfo> = None;
 
-                let img_data = if let Some(content_type) = headers
-                    .get(reqwest::header::CONTENT_TYPE)
-                    .and_then(|ct| ct.to_str().ok())
-                {
-                    get_image_ext(content_type)
-                } else {
-                    avatar_url.rsplit('.').next()
-                };
+        let (avatar_url, raw_avatar_url) = if let Some(avatar_url) =
+            self.avatar_url
+        {
+            let res = reqwest::get(&avatar_url).await?;
+            let headers = res.headers().clone();
 
-                if let Some(ext) = img_data {
-                    let bytes = res.bytes().await?;
+            let img_data = if let Some(content_type) = headers
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|ct| ct.to_str().ok())
+            {
+                get_image_ext(content_type)
+            } else {
+                avatar_url.rsplit('.').next()
+            };
 
-                    let upload_result = upload_image_optimized(
-                        &format!(
-                            "user/{}",
-                            crate::models::users::UserId::from(user_id)
-                        ),
-                        bytes,
-                        ext,
-                        Some(96),
-                        Some(1.0),
-                        &**file_host,
-                        crate::util::img::UploadImagePos {
-                            pos: "注册用户".to_string(),
-                            url: format!("/user/{}", &self.username),
-                            username: self.username.clone(),
-                        },
-                        redis,
-                    )
-                    .await;
+            if let Some(ext) = img_data {
+                let bytes = res.bytes().await?;
 
-                    if let Ok(upload_result) = upload_result {
-                        (Some(upload_result.url), Some(upload_result.raw_url))
-                    } else {
-                        (None, None)
+                let upload_result = upload_image_optimized(
+                    &format!(
+                        "user/{}",
+                        crate::models::users::UserId::from(user_id)
+                    ),
+                    bytes,
+                    ext,
+                    Some(96),
+                    Some(1.0),
+                    &**file_host,
+                    crate::util::img::UploadImagePos {
+                        pos: "注册头像".to_string(),
+                        url: format!("/user/{}", &self.username),
+                        username: self.username.clone(),
+                    },
+                    redis,
+                    true, // 跳过内置风控，下面手动检查
+                )
+                .await;
+
+                if let Ok(upload_result) = upload_result {
+                    // 手动风控检查，区分涉政（删除）和非涉政 REVIEW（进审核）
+                    let risk_result =
+                        crate::util::risk::check_image_risk_with_labels(
+                            &upload_result.url,
+                            &format!("/user/{}", &self.username),
+                            &self.username,
+                            "注册头像",
+                            redis,
+                        )
+                        .await;
+
+                    match risk_result {
+                        Ok(result) if !result.passed => {
+                            let is_political =
+                                crate::util::risk::contains_political_labels(
+                                    &result.labels,
+                                );
+                            avatar_risk_info = Some(AvatarRiskInfo {
+                                image_url: upload_result.url.clone(),
+                                raw_image_url: upload_result.raw_url.clone(),
+                                frame_url: result.frame_url,
+                                labels: result.labels,
+                                is_political,
+                            });
+                            if is_political {
+                                // 涉政：立即删除 S3 图片，头像置空
+                                // 审计记录延迟到用户 INSERT 后在事务内创建
+                                if let Err(e) =
+                                    crate::util::img::delete_old_images(
+                                        Some(upload_result.url),
+                                        Some(upload_result.raw_url),
+                                        &**file_host,
+                                    )
+                                    .await
+                                {
+                                    log::warn!("涉政头像删除S3文件失败: {}", e);
+                                }
+                                (None, None)
+                            } else {
+                                // 非涉政 REVIEW：保留图片（S3），但用户记录中不设头像，等审核通过后再更新
+                                (None, None)
+                            }
+                        }
+                        _ => {
+                            // 通过或风控 API 异常：正常使用头像
+                            (
+                                Some(upload_result.url),
+                                Some(upload_result.raw_url),
+                            )
+                        }
                     }
                 } else {
                     (None, None)
                 }
             } else {
                 (None, None)
-            };
+            }
+        } else {
+            (None, None)
+        };
+
+        // OAuth 注册用户名风控检测：不通过则用随机用户名替代
+        if let Some(ref uname) = username {
+            let risk_passed = crate::util::risk::check_text_risk(
+                uname,
+                uname,
+                &format!("/auth/{:?}", provider),
+                "OAuth注册用户名",
+                redis,
+            )
+            .await
+            .unwrap_or(true);
+            if !risk_passed {
+                log::warn!(
+                    "OAuth 注册用户名风控未通过，使用随机用户名替代: {}",
+                    uname
+                );
+                username = Some(format!(
+                    "user_{}",
+                    crate::models::ids::random_base62(6)
+                ));
+            }
+        }
 
         if let Some(username) = username {
             crate::database::models::User {
@@ -217,6 +295,16 @@ impl TempUser {
                 } else {
                     None
                 },
+                bilibili_id: if provider == AuthProvider::Bilibili {
+                    Some(self.id.clone())
+                } else {
+                    None
+                },
+                qq_id: if provider == AuthProvider::QQ {
+                    Some(self.id.clone())
+                } else {
+                    None
+                },
                 password: None,
                 paypal_id: if provider == AuthProvider::PayPal {
                     Some(self.id)
@@ -244,16 +332,64 @@ impl TempUser {
                 wiki_ban_time: Default::default(),
                 wiki_overtake_count: 0,
                 phone_number: None,
+                is_premium_creator: false,
+                creator_verified_at: None,
                 active_bans: vec![],
+                pending_profile_reviews: vec![],
             }
             .insert(transaction)
             .await?;
+
+            // 用户已插入（同一事务），在事务内创建头像审核记录（满足外键约束）
+            if let Some(risk_info) = avatar_risk_info {
+                let review_id = crate::models::ids::random_base62(8) as i64;
+                let status = if risk_info.is_political {
+                    "auto_deleted"
+                } else {
+                    "pending"
+                };
+                let old_value = serde_json::json!({
+                    "avatar_url": null,
+                    "raw_avatar_url": null,
+                })
+                .to_string();
+                let new_value = serde_json::json!({
+                    "avatar_url": &risk_info.image_url,
+                    "raw_avatar_url": &risk_info.raw_image_url,
+                    "frame_url": &risk_info.frame_url,
+                })
+                .to_string();
+                if let Err(e) = sqlx::query!(
+                    "INSERT INTO user_profile_reviews (id, user_id, review_type, old_value, new_value, risk_labels, status)
+                     VALUES ($1, $2, 'avatar', $3, $4, $5, $6)",
+                    review_id,
+                    user_id.0,
+                    &old_value,
+                    &new_value,
+                    &risk_info.labels,
+                    status,
+                )
+                .execute(&mut **transaction)
+                .await
+                {
+                    log::error!("创建头像审核记录失败: {}", e);
+                }
+            }
 
             Ok(user_id)
         } else {
             Err(AuthenticationError::InvalidCredentials)
         }
     }
+}
+
+/// OAuth 注册时头像风控检查的延迟信息
+struct AvatarRiskInfo {
+    image_url: String,
+    raw_image_url: String,
+    frame_url: Option<String>,
+    labels: String,
+    is_political: bool,
 }
 
 impl AuthProvider {
@@ -286,7 +422,7 @@ impl AuthProvider {
                 let client_id = dotenvy::var("MICROSOFT_CLIENT_ID")?;
 
                 format!(
-                    "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&scope=user.read&state={}&prompt=select_account&redirect_uri={}",
+                    "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={}&response_type=code&scope=user.read&state={}&prompt=select_account&redirect_uri={}",
                     client_id, state, redirect_uri
                 )
             }
@@ -339,6 +475,25 @@ impl AuthProvider {
                     urlencoding::encode(
                         "openid email address https://uri.paypal.com/services/paypalattributes"
                     ),
+                )
+            }
+            AuthProvider::Bilibili => {
+                let client_id = dotenvy::var("BILIBILI_CLIENT_ID")?;
+                let raw_gourl =
+                    format!("{}/v2/auth/callback", dotenvy::var("SELF_ADDR")?);
+                let gourl = urlencoding::encode(&raw_gourl);
+
+                format!(
+                    "https://account.bilibili.com/pc/account-pc/auth/oauth?client_id={}&gourl={}&state={}",
+                    client_id, gourl, state,
+                )
+            }
+            AuthProvider::QQ => {
+                let client_id = dotenvy::var("QQ_CLIENT_ID")?;
+
+                format!(
+                    "https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id={}&redirect_uri={}&state={}&scope=get_user_info",
+                    client_id, redirect_uri, state,
                 )
             }
         })
@@ -419,7 +574,7 @@ impl AuthProvider {
                 map.insert("redirect_uri", &redirect_uri);
 
                 let token: AccessToken = reqwest::Client::new()
-                    .post("https://login.live.com/oauth20_token.srf")
+                    .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
                     .header(reqwest::header::ACCEPT, "application/json")
                     .form(&map)
                     .send()
@@ -565,6 +720,90 @@ impl AuthProvider {
                     .await?;
 
                 token.access_token
+            }
+            AuthProvider::Bilibili => {
+                let code = query
+                    .get("code")
+                    .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+                let client_id = dotenvy::var("BILIBILI_CLIENT_ID")?;
+                let client_secret = dotenvy::var("BILIBILI_CLIENT_SECRET")?;
+
+                let url = format!(
+                    "https://api.bilibili.com/x/account-oauth2/v1/token?client_id={}&client_secret={}&grant_type=authorization_code&code={}",
+                    client_id, client_secret, code
+                );
+
+                let raw_resp = reqwest::Client::new()
+                    .post(&url)
+                    .header(
+                        reqwest::header::CONTENT_TYPE,
+                        "application/x-www-form-urlencoded",
+                    )
+                    .send()
+                    .await?
+                    .text()
+                    .await?;
+
+                log::debug!(
+                    "Bilibili token response length: {}",
+                    raw_resp.len()
+                );
+
+                #[derive(Deserialize)]
+                struct BiliTokenData {
+                    pub access_token: String,
+                }
+                #[derive(Deserialize)]
+                struct BiliTokenResp {
+                    pub code: i64,
+                    pub data: Option<BiliTokenData>,
+                }
+
+                let resp: BiliTokenResp = serde_json::from_str(&raw_resp)?;
+
+                if resp.code != 0 {
+                    log::warn!(
+                        "Bilibili token exchange failed with code: {}",
+                        resp.code
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                resp.data
+                    .ok_or(AuthenticationError::InvalidCredentials)?
+                    .access_token
+            }
+            AuthProvider::QQ => {
+                let code = query
+                    .get("code")
+                    .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+                let client_id = dotenvy::var("QQ_CLIENT_ID")?;
+                let client_secret = dotenvy::var("QQ_CLIENT_SECRET")?;
+
+                // QQ 换 token 返回的是 URL query string 格式
+                let url = format!(
+                    "https://graph.qq.com/oauth2.0/token?grant_type=authorization_code&client_id={}&client_secret={}&code={}&redirect_uri={}&fmt=json",
+                    client_id, client_secret, code, redirect_uri,
+                );
+
+                let raw_resp = reqwest::Client::new()
+                    .get(&url)
+                    .send()
+                    .await?
+                    .text()
+                    .await?;
+
+                log::debug!("QQ token response length: {}", raw_resp.len());
+
+                #[derive(Deserialize)]
+                struct QQTokenResp {
+                    pub access_token: Option<String>,
+                }
+
+                let resp: QQTokenResp = serde_json::from_str(&raw_resp)?;
+
+                resp.access_token
+                    .ok_or(AuthenticationError::InvalidCredentials)?
             }
         };
 
@@ -837,6 +1076,176 @@ impl AuthProvider {
                     country: Some(paypal_user.address.country),
                 }
             }
+            AuthProvider::Bilibili => {
+                use hmac::{Hmac, Mac};
+                use sha2::Sha256;
+
+                let client_id = dotenvy::var("BILIBILI_CLIENT_ID")?;
+                let client_secret = dotenvy::var("BILIBILI_CLIENT_SECRET")?;
+
+                let ts = Utc::now().timestamp().to_string();
+                let nonce = Utc::now()
+                    .timestamp_nanos_opt()
+                    .unwrap_or_else(|| Utc::now().timestamp_millis())
+                    .to_string();
+
+                // GET 请求 body 为空，content-md5 = md5("")
+                let content_md5 = format!("{:x}", md5::compute(b""));
+
+                let headers_map = std::collections::BTreeMap::from([
+                    ("x-bili-accesskeyid", client_id.as_str()),
+                    ("x-bili-content-md5", content_md5.as_str()),
+                    ("x-bili-signature-method", "HMAC-SHA256"),
+                    ("x-bili-signature-nonce", nonce.as_str()),
+                    ("x-bili-signature-version", "2.0"),
+                    ("x-bili-timestamp", ts.as_str()),
+                ]);
+
+                let string_to_sign = headers_map
+                    .iter()
+                    .map(|(k, v)| format!("{}:{}", k, v))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                let mut mac =
+                    Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
+                        .map_err(|_| AuthenticationError::InvalidCredentials)?;
+                mac.update(string_to_sign.as_bytes());
+                let signature = hex::encode(mac.finalize().into_bytes());
+
+                let raw_resp = reqwest::Client::new()
+                    .get("https://member.bilibili.com/arcopen/fn/user/account/info")
+                    .header(reqwest::header::ACCEPT, "application/json")
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .header("access-token", token)
+                    .header("x-bili-accesskeyid", &client_id)
+                    .header("x-bili-content-md5", &content_md5)
+                    .header("x-bili-signature-method", "HMAC-SHA256")
+                    .header("x-bili-signature-nonce", &nonce)
+                    .header("x-bili-signature-version", "2.0")
+                    .header("x-bili-timestamp", &ts)
+                    .header(AUTHORIZATION, &signature)
+                    .send()
+                    .await?
+                    .text()
+                    .await?;
+
+                log::debug!(
+                    "Bilibili user info response length: {}",
+                    raw_resp.len()
+                );
+
+                #[derive(Deserialize, Debug)]
+                struct BiliUserData {
+                    pub name: String,
+                    pub face: String,
+                    pub openid: String,
+                }
+                #[derive(Deserialize, Debug)]
+                struct BiliUserResp {
+                    pub code: i64,
+                    pub data: Option<BiliUserData>,
+                }
+
+                let bili_user: BiliUserResp = serde_json::from_str(&raw_resp)?;
+
+                if bili_user.code != 0 {
+                    log::warn!(
+                        "Bilibili user info failed with code: {}",
+                        bili_user.code
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                let user_data = bili_user
+                    .data
+                    .ok_or(AuthenticationError::InvalidCredentials)?;
+
+                TempUser {
+                    id: user_data.openid,
+                    username: user_data.name,
+                    email: None,
+                    avatar_url: Some(user_data.face),
+                    bio: None,
+                    country: None,
+                }
+            }
+            AuthProvider::QQ => {
+                let client_id = dotenvy::var("QQ_CLIENT_ID")?;
+
+                // 第一步：获取 openid
+                let me_url = format!(
+                    "https://graph.qq.com/oauth2.0/me?access_token={}&fmt=json",
+                    token
+                );
+
+                #[derive(Deserialize, Debug)]
+                struct QQMeResp {
+                    pub openid: Option<String>,
+                    pub client_id: Option<String>,
+                }
+
+                let me_resp: QQMeResp = reqwest::Client::new()
+                    .get(&me_url)
+                    .send()
+                    .await?
+                    .json()
+                    .await?;
+
+                let openid = me_resp
+                    .openid
+                    .ok_or(AuthenticationError::InvalidCredentials)?;
+
+                // 验证 client_id 匹配
+                if me_resp.client_id.as_deref() != Some(&client_id) {
+                    log::warn!(
+                        "QQ client_id mismatch: expected={}, got={:?}",
+                        client_id,
+                        me_resp.client_id
+                    );
+                    return Err(AuthenticationError::InvalidClientId);
+                }
+
+                // 第二步：获取用户信息
+                let user_info_url = format!(
+                    "https://graph.qq.com/user/get_user_info?access_token={}&oauth_consumer_key={}&openid={}",
+                    token, client_id, openid
+                );
+
+                #[derive(Deserialize, Debug)]
+                struct QQUserInfo {
+                    pub ret: i64,
+                    pub nickname: Option<String>,
+                    #[serde(rename = "figureurl_qq_2")]
+                    pub avatar_url: Option<String>,
+                }
+
+                let user_info: QQUserInfo = reqwest::Client::new()
+                    .get(&user_info_url)
+                    .send()
+                    .await?
+                    .json()
+                    .await?;
+
+                if user_info.ret != 0 {
+                    log::warn!(
+                        "QQ get_user_info failed with ret: {}",
+                        user_info.ret
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                TempUser {
+                    id: openid,
+                    username: user_info
+                        .nickname
+                        .unwrap_or_else(|| "qq_user".to_string()),
+                    email: None,
+                    avatar_url: user_info.avatar_url,
+                    bio: None,
+                    country: None,
+                }
+            }
         };
 
         Ok(res)
@@ -922,6 +1331,24 @@ impl AuthProvider {
                 )
                 .fetch_optional(executor)
                 .await?;
+
+                value.map(|x| crate::database::models::UserId(x.id))
+            }
+            AuthProvider::Bilibili => {
+                let value = sqlx::query!(
+                    "SELECT id FROM users WHERE bilibili_id = $1",
+                    id
+                )
+                .fetch_optional(executor)
+                .await?;
+
+                value.map(|x| crate::database::models::UserId(x.id))
+            }
+            AuthProvider::QQ => {
+                let value =
+                    sqlx::query!("SELECT id FROM users WHERE qq_id = $1", id)
+                        .fetch_optional(executor)
+                        .await?;
 
                 value.map(|x| crate::database::models::UserId(x.id))
             }
@@ -1039,6 +1466,32 @@ impl AuthProvider {
                     .await?;
                 }
             }
+            AuthProvider::Bilibili => {
+                sqlx::query!(
+                    "
+                    UPDATE users
+                    SET bilibili_id = $2
+                    WHERE (id = $1)
+                    ",
+                    user_id as crate::database::models::UserId,
+                    id,
+                )
+                .execute(&mut **transaction)
+                .await?;
+            }
+            AuthProvider::QQ => {
+                sqlx::query!(
+                    "
+                    UPDATE users
+                    SET qq_id = $2
+                    WHERE (id = $1)
+                    ",
+                    user_id as crate::database::models::UserId,
+                    id,
+                )
+                .execute(&mut **transaction)
+                .await?;
+            }
         }
 
         Ok(())
@@ -1053,6 +1506,8 @@ impl AuthProvider {
             AuthProvider::Google => "Google",
             AuthProvider::Steam => "Steam",
             AuthProvider::PayPal => "PayPal",
+            AuthProvider::Bilibili => "Bilibili",
+            AuthProvider::QQ => "QQ",
         }
     }
 }
@@ -1438,7 +1893,7 @@ pub async fn delete_auth_provider(
                 "您现在无法使用 {} 身份验证提供程序登录 BBSMC",
                 delete_provider.provider.as_str()
             ),
-            "如果不是您进行的更改，请立即通过我们的 Discord 支持渠道或电子邮件 (support@bbsmc.net) 联系我们。",
+            "如果不是您进行的更改，请立即通过电子邮件 (support@bbsmc.net) 联系我们。",
             None,
         )?;
     }
@@ -1517,6 +1972,21 @@ pub async fn create_account_with_password(
         return Err(ApiError::InvalidInput("用户名已被使用".to_string()));
     }
 
+    // 用户名风控检测
+    let risk_passed = crate::util::risk::check_text_risk(
+        &new_account.username,
+        &new_account.username,
+        "/auth/create",
+        "注册用户名",
+        &redis,
+    )
+    .await?;
+    if !risk_passed {
+        return Err(ApiError::InvalidInput(
+            "用户名包含违规内容，请更换用户名".to_string(),
+        ));
+    }
+
     let mut transaction = pool.begin().await?;
     let user_id =
         crate::database::models::generate_user_id(&mut transaction).await?;
@@ -1559,6 +2029,8 @@ pub async fn create_account_with_password(
         google_id: None,
         steam_id: None,
         microsoft_id: None,
+        bilibili_id: None,
+        qq_id: None,
         password: Some(password_hash),
         paypal_id: None,
         paypal_country: None,
@@ -1578,7 +2050,10 @@ pub async fn create_account_with_password(
         wiki_ban_time: Default::default(),
         wiki_overtake_count: 0,
         phone_number: None,
+        is_premium_creator: false,
+        creator_verified_at: None,
         active_bans: vec![],
+        pending_profile_reviews: vec![],
     }
     .insert(&mut transaction)
     .await?;
@@ -2183,9 +2658,7 @@ pub async fn remove_2fa(
     if !validate_2fa_code(
         login.code.clone(),
         user.totp_secret.ok_or_else(|| {
-            ApiError::InvalidInput(
-                "User does not have 2FA enabled on the account!".to_string(),
-            )
+            ApiError::InvalidInput("该账户未启用双因素身份验证！".to_string())
         })?,
         true,
         user.id,
@@ -2226,7 +2699,7 @@ pub async fn remove_2fa(
             email,
             "双因素身份验证已移除",
             "登录 BBSMC 时，您不再需要双因素身份验证即可访问。",
-            "如果不是您进行的更改，请立即通过我们的 Discord 支持渠道或电子邮件 (support@bbsmc.net) 联系我们。",
+            "如果不是您进行的更改，请立即通过电子邮件 (support@bbsmc.net) 联系我们。",
             None,
         )?;
     }
@@ -2349,11 +2822,12 @@ pub async fn change_password(
         }
 
         if let Some(pass) = user.password.as_ref() {
-            let old_password = change_password.old_password.as_ref().ok_or_else(|| {
-                ApiError::CustomAuthentication(
-                    "You must specify the old password to change your password!".to_string(),
-                )
-            })?;
+            let old_password =
+                change_password.old_password.as_ref().ok_or_else(|| {
+                    ApiError::CustomAuthentication(
+                        "修改密码时必须提供旧密码！".to_string(),
+                    )
+                })?;
 
             let hasher = Argon2::default();
             hasher.verify_password(
@@ -2367,48 +2841,47 @@ pub async fn change_password(
 
     let mut transaction = pool.begin().await?;
 
-    let update_password = if let Some(new_password) =
-        &change_password.new_password
-    {
-        let score = zxcvbn::zxcvbn(
-            new_password,
-            &[&user.username, &user.email.clone().unwrap_or_default()],
-        );
+    let update_password =
+        if let Some(new_password) = &change_password.new_password {
+            let score = zxcvbn::zxcvbn(
+                new_password,
+                &[&user.username, &user.email.clone().unwrap_or_default()],
+            );
 
-        if score.score() < zxcvbn::Score::Three {
-            return Err(ApiError::InvalidInput(
-                if let Some(feedback) =
-                    score.feedback().and_then(|x| x.warning())
-                {
-                    format!("Password too weak: {}", feedback)
-                } else {
-                    "Specified password is too weak! Please improve its strength.".to_string()
-                },
-            ));
-        }
+            if score.score() < zxcvbn::Score::Three {
+                return Err(ApiError::InvalidInput(
+                    if let Some(feedback) =
+                        score.feedback().and_then(|x| x.warning())
+                    {
+                        format!("密码强度太弱：{}", feedback)
+                    } else {
+                        "密码强度太弱！请提高密码复杂度。".to_string()
+                    },
+                ));
+            }
 
-        let hasher = Argon2::default();
-        let salt = SaltString::generate(&mut ChaCha20Rng::from_entropy());
-        let password_hash = hasher
-            .hash_password(new_password.as_bytes(), &salt)?
-            .to_string();
+            let hasher = Argon2::default();
+            let salt = SaltString::generate(&mut ChaCha20Rng::from_entropy());
+            let password_hash = hasher
+                .hash_password(new_password.as_bytes(), &salt)?
+                .to_string();
 
-        Some(password_hash)
-    } else {
-        if !(user.github_id.is_some()
-            || user.gitlab_id.is_some()
-            || user.microsoft_id.is_some()
-            || user.google_id.is_some()
-            || user.steam_id.is_some()
-            || user.discord_id.is_some())
-        {
-            return Err(ApiError::InvalidInput(
-                "You must have another authentication method added to remove password authentication!".to_string(),
-            ));
-        }
+            Some(password_hash)
+        } else {
+            if !(user.github_id.is_some()
+                || user.gitlab_id.is_some()
+                || user.microsoft_id.is_some()
+                || user.google_id.is_some()
+                || user.steam_id.is_some()
+                || user.discord_id.is_some())
+            {
+                return Err(ApiError::InvalidInput(
+                    "移除密码登录前，必须先添加其他身份验证方式！".to_string(),
+                ));
+            }
 
-        None
-    };
+            None
+        };
 
     sqlx::query!(
         "
@@ -2539,9 +3012,7 @@ pub async fn resend_verify_email(
 
     if let Some(email) = user.email {
         if user.email_verified.unwrap_or(false) {
-            return Err(ApiError::InvalidInput(
-                "User email is already verified!".to_string(),
-            ));
+            return Err(ApiError::InvalidInput("用户邮箱已验证！".to_string()));
         }
 
         let flow = Flow::ConfirmEmail {
@@ -2555,7 +3026,7 @@ pub async fn resend_verify_email(
 
         Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(ApiError::InvalidInput("该账户设置电子邮箱".to_string()))
+        Err(ApiError::InvalidInput("该账户未设置电子邮箱".to_string()))
     }
 }
 
@@ -2584,8 +3055,7 @@ pub async fn verify_email(
 
         if user.email != Some(confirm_email) {
             return Err(ApiError::InvalidInput(
-                "E-mail does not match verify email. Try re-requesting the verification link."
-                    .to_string(),
+                "邮箱地址与待验证邮箱不匹配，请重新获取验证链接。".to_string(),
             ));
         }
 
@@ -2610,8 +3080,7 @@ pub async fn verify_email(
         Ok(HttpResponse::NoContent().finish())
     } else {
         Err(ApiError::InvalidInput(
-            "Flow does not exist. Try re-requesting the verification link."
-                .to_string(),
+            "验证流程不存在或已过期，请重新获取验证链接。".to_string(),
         ))
     }
 }

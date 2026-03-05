@@ -2,23 +2,23 @@
   <div>
     <section class="universal-card payout-history">
       <Breadcrumbs
-        current-title="Transfer history"
-        :link-stack="[{ href: '/dashboard/revenue', label: 'Revenue' }]"
+        current-title="转账记录"
+        :link-stack="[{ href: '/dashboard/revenue', label: '收益' }]"
       />
-      <h2>Transfer history</h2>
-      <p>All of your withdrawals from your Modrinth balance will be listed here:</p>
+      <h2>转账记录</h2>
+      <p>您在 BBSMC 余额中的所有提现记录将在此处列出：</p>
       <div class="input-group">
         <DropdownSelect
           v-model="selectedYear"
           :options="years"
-          :display-name="(x) => (x === 'all' ? 'All years' : x)"
+          :display-name="(x) => (x === 'all' ? '所有年份' : x)"
           name="Year filter"
         />
         <DropdownSelect
           v-model="selectedMethod"
           :options="methods"
           :display-name="
-            (x) => (x === 'all' ? 'Any method' : x === 'paypal' ? 'PayPal' : capitalizeString(x))
+            (x) => (x === 'all' ? '所有方式' : x === 'paypal' ? 'PayPal' : capitalizeString(x))
           "
           name="Method filter"
         />
@@ -63,7 +63,7 @@
           </div>
           <div>
             <span class="amount">{{ $formatMoney(payout.amount) }}</span>
-            <template v-if="payout.fee">⋅ Fee {{ $formatMoney(payout.fee) }}</template>
+            <template v-if="payout.fee">⋅ 手续费 {{ $formatMoney(payout.fee) }}</template>
           </div>
           <div class="payout-status">
             <span>
@@ -86,7 +86,7 @@
             class="iconified-button raised-button"
             @click="cancelPayout(payout.id)"
           >
-            <XIcon /> Cancel payment
+            <XIcon /> 取消付款
           </button>
         </div>
       </div>
@@ -105,7 +105,8 @@ const vintl = useVIntl();
 const { formatMessage } = vintl;
 
 useHead({
-  title: "Transfer history - Modrinth",
+  title: "转账记录 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const data = await useNuxtApp();
@@ -168,19 +169,19 @@ async function cancelPayout(id) {
 const messages = defineMessages({
   transfersTotal: {
     id: "revenue.transfers.total",
-    defaultMessage: "You have withdrawn {amount} in total.",
+    defaultMessage: "您已累计提现 {amount}。",
   },
   transfersTotalYear: {
     id: "revenue.transfers.total.year",
-    defaultMessage: "You have withdrawn {amount} in {year}.",
+    defaultMessage: "您在 {year} 年已提现 {amount}。",
   },
   transfersTotalMethod: {
     id: "revenue.transfers.total.method",
-    defaultMessage: "You have withdrawn {amount} through {method}.",
+    defaultMessage: "您已通过 {method} 提现 {amount}。",
   },
   transfersTotalYearMethod: {
     id: "revenue.transfers.total.year_method",
-    defaultMessage: "You have withdrawn {amount} in {year} through {method}.",
+    defaultMessage: "您在 {year} 年已通过 {method} 提现 {amount}。",
   },
 });
 </script>

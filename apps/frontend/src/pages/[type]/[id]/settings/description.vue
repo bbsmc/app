@@ -99,6 +99,11 @@ export default defineNuxtComponent({
       return Object.keys(this.patchData).length > 0;
     },
   },
+  setup() {
+    useHead({
+      meta: [{ name: "robots", content: "noindex, nofollow" }],
+    });
+  },
   created() {
     this.EDIT_BODY = 1 << 3;
   },

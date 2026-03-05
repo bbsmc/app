@@ -138,6 +138,11 @@ export default defineNuxtComponent({
       },
     },
   },
+  setup() {
+    useHead({
+      meta: [{ name: "robots", content: "noindex, nofollow" }],
+    });
+  },
   data() {
     return {
       selectedTags: this.$sortedCategories().filter(

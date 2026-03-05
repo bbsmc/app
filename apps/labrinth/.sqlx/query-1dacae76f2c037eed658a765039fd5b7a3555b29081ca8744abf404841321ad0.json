@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO project_pricing (project_id, price, validity_days, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $4)\n            ON CONFLICT (project_id) DO UPDATE SET\n                price = $2,\n                validity_days = $3,\n                updated_at = $4\n            RETURNING created_at, updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "1dacae76f2c037eed658a765039fd5b7a3555b29081ca8744abf404841321ad0"
+}

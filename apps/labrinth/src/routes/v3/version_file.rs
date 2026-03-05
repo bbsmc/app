@@ -1,7 +1,9 @@
 use super::ApiError;
 use crate::auth::checks::{filter_visible_versions, is_visible_version};
 use crate::auth::{filter_visible_projects, get_user_from_headers};
+use crate::database::models::user_purchase_item::UserPurchase;
 use crate::database::redis::RedisPool;
+use crate::file_hosting::S3PrivateHost;
 use crate::models::ids::VersionId;
 use crate::models::pats::Scopes;
 use crate::models::projects::VersionType;
@@ -15,6 +17,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -654,6 +657,68 @@ pub struct DownloadRedirect {
     pub url: String,
 }
 
+/// 私有文件 URL 前缀
+const PRIVATE_URL_PREFIX: &str = "private://";
+
+/// 检查用户是否有权限访问私有文件
+/// 权限包括：团队成员、组织成员、已购买用户、管理员
+async fn check_private_file_access(
+    user: Option<&models::v3::users::User>,
+    project_id: database::models::ProjectId,
+    pool: &PgPool,
+) -> Result<bool, ApiError> {
+    let user = match user {
+        Some(u) => u,
+        None => return Ok(false), // 未登录用户无权访问私有文件
+    };
+
+    // 管理员和版主可以访问所有文件
+    if user.role.is_admin() || user.role.is_mod() {
+        return Ok(true);
+    }
+
+    let user_id: database::models::UserId = user.id.into();
+
+    // 检查是否是团队成员
+    let team_member = database::models::TeamMember::get_from_user_id_project(
+        project_id, user_id, false, pool,
+    )
+    .await
+    .map_err(ApiError::Database)?;
+
+    if team_member.is_some() {
+        return Ok(true);
+    }
+
+    // 检查是否是组织成员
+    let organization =
+        database::models::Organization::get_associated_organization_project_id(
+            project_id, pool,
+        )
+        .await
+        .map_err(ApiError::Database)?;
+
+    if let Some(org) = organization {
+        let org_member =
+            database::models::TeamMember::get_from_user_id_organization(
+                org.id, user_id, false, pool,
+            )
+            .await
+            .map_err(ApiError::Database)?;
+
+        if org_member.is_some() {
+            return Ok(true);
+        }
+    }
+
+    // 检查是否已购买（且未过期）
+    let has_purchased = UserPurchase::check_access(user_id, project_id, pool)
+        .await
+        .map_err(ApiError::Database)?;
+
+    Ok(has_purchased)
+}
+
 // 在 /api/v1/version_file/{hash}/download 下
 pub async fn download_version(
     req: HttpRequest,
@@ -662,6 +727,7 @@ pub async fn download_version(
     redis: web::Data<RedisPool>,
     hash_query: web::Query<HashQuery>,
     session_queue: web::Data<AuthQueue>,
+    private_file_host: web::Data<Option<Arc<S3PrivateHost>>>,
 ) -> Result<HttpResponse, ApiError> {
     let user_option = get_user_from_headers(
         &req,
@@ -699,6 +765,66 @@ pub async fn download_version(
                 return Err(ApiError::NotFound);
             }
 
+            // 检查是否是私有文件
+            if file.url.starts_with(PRIVATE_URL_PREFIX) {
+                // 私有文件需要验证访问权限
+                let has_access = check_private_file_access(
+                    user_option.as_ref(),
+                    file.project_id,
+                    &pool,
+                )
+                .await?;
+
+                if !has_access {
+                    return Err(ApiError::CustomAuthentication(
+                        "您需要购买此资源才能下载文件".to_string(),
+                    ));
+                }
+
+                // 检查私有存储是否配置
+                let private_host =
+                    private_file_host.as_ref().as_ref().ok_or_else(|| {
+                        ApiError::CustomAuthentication(
+                            "私有文件存储未配置".to_string(),
+                        )
+                    })?;
+
+                // 从 private:// URL 提取文件路径
+                let file_path = file
+                    .url
+                    .strip_prefix(PRIVATE_URL_PREFIX)
+                    .ok_or_else(|| {
+                        ApiError::InvalidInput("无效的私有文件 URL".to_string())
+                    })?;
+
+                // 解码 URL 编码的路径
+                let decoded_path =
+                    urlencoding::decode(file_path).map_err(|_| {
+                        ApiError::InvalidInput("无效的文件路径编码".to_string())
+                    })?;
+
+                // 生成 presigned URL（有效期 15 分钟）
+                let presigned_url = private_host
+                    .presign_get(
+                        &format!("/{}", decoded_path),
+                        900, // 15 分钟
+                        Some(&file.filename),
+                    )
+                    .await
+                    .map_err(|e| {
+                        log::error!("生成 presigned URL 失败: {:?}", e);
+                        ApiError::CustomAuthentication(
+                            "生成下载链接失败".to_string(),
+                        )
+                    })?;
+
+                // 私有文件：返回 JSON 响应（不重定向），前端需要自己处理下载
+                // 因为 fetch 会自动跟随重定向，前端无法获取到 JSON body
+                return Ok(HttpResponse::Ok()
+                    .json(DownloadRedirect { url: presigned_url }));
+            }
+
+            // 公共文件直接重定向
             Ok(HttpResponse::TemporaryRedirect()
                 .append_header(("Location", &*file.url))
                 .json(DownloadRedirect { url: file.url }))

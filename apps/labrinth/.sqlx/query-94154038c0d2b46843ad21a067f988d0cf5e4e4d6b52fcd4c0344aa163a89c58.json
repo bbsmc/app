@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO mods (\n                id, team_id, name, summary, description,\n                published, downloads, icon_url, raw_icon_url, status, requested_status,\n                license_url, license,\n                slug, color, monetization_status, organization_id, is_paid\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6,\n                $7, $8, $9, $10, $11,\n                $12, $13,\n                LOWER($14), $15, $16, $17, $18\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Timestamptz",
+        "Int4",
+        "Varchar",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Int4",
+        "Varchar",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "94154038c0d2b46843ad21a067f988d0cf5e4e4d6b52fcd4c0344aa163a89c58"
+}

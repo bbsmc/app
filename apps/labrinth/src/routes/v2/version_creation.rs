@@ -2,7 +2,7 @@ use crate::database::models::loader_fields::VersionField;
 use crate::database::models::version_item::QueryDisk;
 use crate::database::models::{project_item, version_item};
 use crate::database::redis::RedisPool;
-use crate::file_hosting::FileHost;
+use crate::file_hosting::{FileHost, S3PrivateHost};
 use crate::models::ids::ImageId;
 use crate::models::projects::{
     Dependency, FileType, Loader, ProjectId, Version, VersionId, VersionLink,
@@ -72,8 +72,11 @@ pub struct InitialVersionData {
     #[serde(default)]
     pub uploaded_images: Vec<ImageId>, // 上传的图片
     pub ordering: Option<i32>,        // 排序
+    #[serde(default)]
     pub curse: bool,
+    #[serde(default)]
     pub software: bool,
+    #[serde(default)]
     pub disk_only: bool,
     pub disk_urls: Option<Vec<QueryDisk>>,
 }
@@ -85,6 +88,7 @@ struct InitialFileData {
 }
 
 // 在 `/api/v1/version` 下
+#[allow(clippy::too_many_arguments)]
 #[post("version")]
 pub async fn version_create(
     req: HttpRequest,
@@ -92,6 +96,7 @@ pub async fn version_create(
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     file_host: Data<Arc<dyn FileHost + Send + Sync>>,
+    private_file_host: Data<Option<Arc<S3PrivateHost>>>,
     session_queue: Data<AuthQueue>,
     moderation_queue: Data<AutomatedModerationQueue>,
 ) -> Result<HttpResponse, CreateError> {
@@ -190,10 +195,6 @@ pub async fn version_create(
                         );
                     }
                 }
-                for (k, v) in &fields {
-                    println!("{}: {}", k, v);
-                }
-
                 // 通过文件扩展名预测处理项目类型
                 let mut project_type = None;
                 for file_part in &legacy_create.file_parts {
@@ -283,13 +284,14 @@ pub async fn version_create(
     )
     .await?;
 
-    // 调用 V3 项目创建
+    // 调用 V3 版本创建
     let response = v3::version_creation::version_create(
         req,
         payload,
         client.clone(),
         redis.clone(),
         file_host,
+        private_file_host.clone(),
         session_queue,
         moderation_queue,
     )
@@ -334,6 +336,7 @@ async fn get_example_version_fields(
 }
 
 // 在 /api/v1/version/{version_id} 下
+#[allow(clippy::too_many_arguments)]
 #[post("{version_id}/file")]
 pub async fn upload_file_to_version(
     req: HttpRequest,
@@ -342,6 +345,7 @@ pub async fn upload_file_to_version(
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     file_host: Data<Arc<dyn FileHost + Send + Sync>>,
+    private_file_host: Data<Option<Arc<S3PrivateHost>>>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, CreateError> {
     // 返回 NoContent，因此无需转换为 V2
@@ -352,6 +356,7 @@ pub async fn upload_file_to_version(
         client.clone(),
         redis.clone(),
         file_host,
+        private_file_host,
         session_queue,
     )
     .await?;

@@ -1,6 +1,6 @@
 <template>
   <div class="card moderation-checklist">
-    <h1>审核清单</h1>
+    <h2>审核清单</h2>
     <div v-if="done">
       <p>您已完成此项目的审核！还有 {{ futureProjects.length }} 个项目。</p>
     </div>

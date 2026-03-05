@@ -1,12 +1,12 @@
 <template>
-  <Modal ref="linkModal" header="Insert link">
+  <Modal ref="linkModal" header="插入链接">
     <div class="modal-insert">
       <label class="label" for="insert-link-label">
-        <span class="label__title">Label</span>
+        <span class="label__title">标签</span>
       </label>
       <div class="iconified-input">
         <AlignLeftIcon />
-        <input id="insert-link-label" v-model="linkText" type="text" placeholder="Enter label..." />
+        <input id="insert-link-label" v-model="linkText" type="text" placeholder="请输入标签..." />
         <Button class="r-btn" @click="() => (linkText = '')">
           <XIcon />
         </Button>
@@ -20,7 +20,7 @@
           id="insert-link-url"
           v-model="linkUrl"
           type="text"
-          placeholder="Enter the link's URL..."
+          placeholder="请输入链接地址..."
           @input="validateURL"
         />
         <Button class="r-btn" @click="() => (linkUrl = '')">
@@ -29,7 +29,7 @@
       </div>
       <template v-if="linkValidationErrorMessage">
         <span class="label">
-          <span class="label__title">Error</span>
+          <span class="label__title">错误</span>
           <span class="label__description">{{ linkValidationErrorMessage }}</span>
         </span>
       </template>
@@ -45,10 +45,10 @@
         />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => linkModal?.hide()"> <XIcon /> Cancel </Button>
+        <Button :action="() => linkModal?.hide()"> <XIcon /> 取消 </Button>
         <Button
           color="primary"
-          :disabled="linkValidationErrorMessage || !linkUrl"
+          :disabled="!!linkValidationErrorMessage || !linkUrl"
           :action="
             () => {
               if (editor) markdownCommands.replaceSelection(editor, linkMarkdown)
@@ -56,7 +56,7 @@
             }
           "
         >
-          <PlusIcon /> Insert
+          <PlusIcon /> 插入
         </Button>
       </div>
     </div>
@@ -78,9 +78,9 @@
         <span class="label__title">URL<span class="required">*</span></span>
       </label>
       <div v-if="props.onImageUpload" class="image-strategy-chips">
-        <Chips v-model="imageUploadOption" :items="['上传', '链接']" />
+        <Chips v-model="imageUploadOption" :items="['upload', 'link']" />
       </div>
-      <div v-if="props.onImageUpload && imageUploadOption === '上传'" class="btn-input-alternative">
+      <div v-if="props.onImageUpload && imageUploadOption === 'upload'" class="btn-input-alternative">
         <FileInput
           accept="image/png,image/jpeg,image/gif,image/webp"
           prompt="拖放即可上传或单击即可选择文件"
@@ -92,7 +92,7 @@
           <UploadIcon />
         </FileInput>
       </div>
-      <div v-if="!props.onImageUpload || imageUploadOption === '链接'" class="iconified-input">
+      <div v-if="!props.onImageUpload || imageUploadOption === 'link'" class="iconified-input">
         <ImageIcon />
         <input
           id="insert-link-url"
@@ -107,7 +107,7 @@
       </div>
       <template v-if="linkValidationErrorMessage">
         <span class="label">
-          <span class="label__title">Error</span>
+          <span class="label__title">错误</span>
           <span class="label__description">{{ linkValidationErrorMessage }}</span>
         </span>
       </template>
@@ -123,7 +123,7 @@
         />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => imageModal?.hide()"> <XIcon /> Cancel </Button>
+        <Button :action="() => imageModal?.hide()"> <XIcon /> 取消 </Button>
         <Button
           color="primary"
           :disabled="!canInsertImage"
@@ -134,7 +134,7 @@
             }
           "
         >
-          <PlusIcon /> Insert
+          <PlusIcon /> 插入
         </Button>
       </div>
     </div>
@@ -160,7 +160,7 @@
       </div>
       <template v-if="linkValidationErrorMessage">
         <span class="label">
-          <span class="label__title">Error</span>
+          <span class="label__title">错误</span>
           <span class="label__description">{{ linkValidationErrorMessage }}</span>
         </span>
       </template>
@@ -177,10 +177,10 @@
         />
       </div>
       <div class="input-group push-right">
-        <Button :action="() => videoModal?.hide()"> <XIcon /> Cancel </Button>
+        <Button :action="() => videoModal?.hide()"> <XIcon /> 取消 </Button>
         <Button
           color="primary"
-          :disabled="linkValidationErrorMessage || !linkUrl"
+          :disabled="!!linkValidationErrorMessage || !linkUrl"
           :action="
             () => {
               if (editor) markdownCommands.replaceSelection(editor, videoMarkdown)
@@ -188,7 +188,7 @@
             }
           "
         >
-          <PlusIcon /> Insert
+          <PlusIcon /> 插入
         </Button>
       </div>
     </div>
@@ -221,7 +221,7 @@
       </div>
     </div>
     <div ref="editorRef" :class="{ hide: previewMode }" />
-    <div v-if="!previewMode" class="info-blurb">
+    <div v-if="!previewMode" class="info-blurb mt-2">
       <div class="info-blurb">
         <!--        <InfoIcon />-->
         <!--        <span-->
@@ -235,9 +235,9 @@
         <!--        >-->
       </div>
       <div :class="{ hide: !props.maxLength }" class="max-length-label">
-        <span>Max length: </span>
+        <span>最大长度: </span>
         <span>
-          {{ props.maxLength ? `${currentValue?.length || 0}/${props.maxLength}` : 'Unlimited' }}
+          {{ props.maxLength ? `${currentValue?.length || 0}/${props.maxLength}` : '无限制' }}
         </span>
       </div>
     </div>
@@ -328,21 +328,35 @@ onMounted(() => {
 
   editorThemeCompartment = new Compartment()
 
+  // 上游修复: 修复 markdown 编辑器滚动问题
   const theme = EditorView.theme({
     // in defaults.scss there's references to .cm-content and such to inherit global styles
+    '&': {
+      borderRadius: 'var(--radius-md)',
+      background: 'var(--color-button-bg)',
+      border: '0.25rem solid transparent',
+      transition: 'border-color 0.1s ease-in-out',
+    },
+    '&.cm-focused': {
+      'box-shadow': 'inset 0 0 0 transparent, 0 0 0 0.25rem var(--color-brand-shadow)',
+      color: 'var(--color-contrast)',
+      outline: 'none',
+    },
+    '.cm-focused': {
+      border: 'none',
+    },
     '.cm-content': {
       marginBlockEnd: '0.5rem',
       padding: '0.5rem',
       minHeight: '200px',
       caretColor: 'var(--color-contrast)',
       width: '100%',
-      overflowX: 'scroll',
-      maxHeight: props.maxHeight ? `${props.maxHeight}px` : 'unset',
-      overflowY: 'scroll',
     },
     '.cm-scroller': {
+      borderRadius: 'var(--radius-md)',
       height: '100%',
-      overflow: 'visible',
+      maxHeight: props.maxHeight ? `${props.maxHeight}px` : 'unset',
+      overflow: 'auto',
     },
   })
 
@@ -361,7 +375,7 @@ onMounted(() => {
           // eslint-disable-next-line func-names -- who the fuck did this?
           .then(function (url) {
             const selection = markdownCommands.yankSelection(view)
-            const altText = selection || 'Replace this with a description'
+            const altText = selection || '替换为描述'
             const linkMarkdown = `![${altText}](${url})`
             return markdownCommands.replaceSelection(view, linkMarkdown)
           })
@@ -553,29 +567,42 @@ watch(
         })
       }
 
+      // 上游修复: 修复 markdown 编辑器滚动问题
       if (editorThemeCompartment) {
         editor.dispatch({
           effects: [
             editorThemeCompartment.reconfigure(
               EditorView.theme({
                 // in defaults.scss there's references to .cm-content and such to inherit global styles
+                '&': {
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-button-bg)',
+                  border: '0.25rem solid transparent',
+                  transition: 'border-color 0.1s ease-in-out',
+                },
+                '&.cm-focused': {
+                  'box-shadow': 'inset 0 0 0 transparent, 0 0 0 0.25rem var(--color-brand-shadow)',
+                  color: 'var(--color-contrast)',
+                  outline: 'none',
+                },
+                '.cm-focused': {
+                  border: 'none',
+                },
                 '.cm-content': {
                   marginBlockEnd: '0.5rem',
                   padding: '0.5rem',
                   minHeight: '200px',
                   caretColor: 'var(--color-contrast)',
                   width: '100%',
-                  overflowX: 'scroll',
-                  maxHeight: props.maxHeight ? `${props.maxHeight}px` : 'unset',
-                  overflowY: 'scroll',
-
                   opacity: newValue ? 0.6 : 1,
                   pointerEvents: newValue ? 'none' : 'all',
                   cursor: newValue ? 'not-allowed' : 'auto',
                 },
                 '.cm-scroller': {
+                  borderRadius: 'var(--radius-md)',
                   height: '100%',
-                  overflow: 'visible',
+                  maxHeight: props.maxHeight ? `${props.maxHeight}px` : 'unset',
+                  overflow: 'auto',
                 },
               }),
             ),
@@ -641,12 +668,12 @@ function cleanUrl(input: string): string {
   try {
     url = new URL(input)
   } catch (e) {
-    throw new Error('Invalid URL. Make sure the URL is well-formed.')
+    throw new Error('无效的 URL，请确保 URL 格式正确。')
   }
 
   // Check for unsupported protocols
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('Unsupported protocol. Use http or https.')
+    throw new Error('不支持的协议，请使用 http 或 https。')
   }
 
   // If the scheme is "http", automatically upgrade it to "https"
@@ -657,7 +684,7 @@ function cleanUrl(input: string): string {
   // Block certain domains for compliance
   const blockedDomains = ['forgecdn', 'cdn.discordapp', 'media.discordapp']
   if (blockedDomains.some((domain) => url.hostname.includes(domain))) {
-    throw new Error('Invalid URL. This domain is not allowed.')
+    throw new Error('无效的 URL，该域名不被允许。')
   }
 
   return url.toString()
@@ -681,7 +708,7 @@ const linkMarkdown = computed(() => {
 const uploadImagesFromList = async (files: FileList): Promise<string> => {
   const file = files[0]
   if (!props.onImageUpload) {
-    throw new Error('No image upload handler provided')
+    throw new Error('未提供图片上传处理器')
   }
   if (file) {
     try {
@@ -694,7 +721,7 @@ const uploadImagesFromList = async (files: FileList): Promise<string> => {
       }
     }
   }
-  throw new Error('No file provided')
+  throw new Error('未提供文件')
 }
 
 const handleImageUpload = async (files: FileList) => {

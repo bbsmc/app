@@ -4,11 +4,13 @@ use thiserror::Error;
 mod backblaze;
 mod mock;
 mod s3_host;
+mod s3_private_host;
 
 pub use backblaze::BackblazeHost;
 use bytes::Bytes;
 pub use mock::MockHost;
 pub use s3_host::S3Host;
+pub use s3_private_host::S3PrivateHost;
 
 #[derive(Error, Debug)]
 pub enum FileHostingError {

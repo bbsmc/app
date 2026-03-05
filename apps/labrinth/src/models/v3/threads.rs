@@ -16,6 +16,12 @@ pub struct ThreadId(pub u64);
 #[serde(into = "Base62Id")]
 pub struct ThreadMessageId(pub u64);
 
+/// 高级创作者申请 ID
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
+#[serde(from = "Base62Id")]
+#[serde(into = "Base62Id")]
+pub struct CreatorApplicationId(pub u64);
+
 #[derive(Serialize, Deserialize)]
 pub struct Thread {
     pub id: ThreadId,
@@ -24,6 +30,7 @@ pub struct Thread {
     pub project_id: Option<ProjectId>,
     pub report_id: Option<ReportId>,
     pub ban_appeal_id: Option<BanAppealId>,
+    pub creator_application_id: Option<CreatorApplicationId>,
     pub messages: Vec<ThreadMessage>,
     pub members: Vec<User>,
 }
@@ -68,6 +75,7 @@ pub enum ThreadType {
     DirectMessage,
     VersionLink,
     BanAppeal,
+    CreatorApplication,
 }
 
 impl std::fmt::Display for ThreadType {
@@ -85,6 +93,7 @@ impl ThreadType {
             ThreadType::DirectMessage => "direct_message",
             ThreadType::VersionLink => "version_link",
             ThreadType::BanAppeal => "ban_appeal",
+            ThreadType::CreatorApplication => "creator_application",
         }
     }
 
@@ -95,6 +104,7 @@ impl ThreadType {
             "direct_message" => ThreadType::DirectMessage,
             "version_link" => ThreadType::VersionLink,
             "ban_appeal" => ThreadType::BanAppeal,
+            "creator_application" => ThreadType::CreatorApplication,
             _ => ThreadType::DirectMessage,
         }
     }
@@ -114,6 +124,9 @@ impl Thread {
             project_id: data.project_id.map(|x| x.into()),
             report_id: data.report_id.map(|x| x.into()),
             ban_appeal_id: data.ban_appeal_id.map(|x| BanAppealId(x.0 as u64)),
+            creator_application_id: data
+                .creator_application_id
+                .map(|x| CreatorApplicationId(x.0 as u64)),
             messages: data
                 .messages
                 .into_iter()
@@ -150,5 +163,26 @@ impl ThreadMessage {
             created: data.created,
             hide_identity: data.hide_identity,
         }
+    }
+}
+
+// CreatorApplicationId 转换实现
+impl From<Base62Id> for CreatorApplicationId {
+    fn from(id: Base62Id) -> Self {
+        CreatorApplicationId(id.0)
+    }
+}
+
+impl From<CreatorApplicationId> for Base62Id {
+    fn from(id: CreatorApplicationId) -> Self {
+        Base62Id(id.0)
+    }
+}
+
+impl From<crate::database::models::ids::CreatorApplicationId>
+    for CreatorApplicationId
+{
+    fn from(id: crate::database::models::ids::CreatorApplicationId) -> Self {
+        CreatorApplicationId(id.0 as u64)
     }
 }

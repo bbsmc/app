@@ -223,8 +223,7 @@ impl ValidateAuthorized for models::OAuthClient {
                 Ok(())
             } else {
                 Err(ApiError::CustomAuthentication(
-                    "You don't have sufficient permissions to interact with this OAuth application"
-                        .to_string(),
+                    "您没有足够的权限操作此 OAuth 应用".to_string(),
                 ))
             };
         }
@@ -461,7 +460,7 @@ pub async fn check_global_ban(
 }
 
 /// 检查组织是否对当前用户可见
-/// 来源: Modrinth 上游提交 290c9fc19 - hide orgs without a purpose (#4426)
+/// 来源: BBSMC 上游提交 290c9fc19 - hide orgs without a purpose (#4426)
 ///
 /// 组织可见条件（满足任一即可）：
 /// 1. 组织有可搜索的项目（approved 或 archived 状态）

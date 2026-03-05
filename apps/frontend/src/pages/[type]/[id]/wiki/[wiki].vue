@@ -59,78 +59,89 @@
     </div>
   </NewModal>
   <section class="normal-page__content">
-    <div
-      v-if="
-        props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache.status === 'draft'
-      "
-      class="universal-card"
-    >
-      <div class="markdown-disclaimer">
-        <h2>正在编辑 [ {{ wiki.title }} ]</h2>
-        <span class="label__description">
-          请尽量单个页面只包含一个内容，以便于查找和编辑以及分类，
-          <br /><br />
-          请注意，编辑后的内容会被保存为草稿，若要提交发布请点击目录页的提交审核<br /><br />
-        </span>
-      </div>
-      <MarkdownEditor v-model="wiki.body" :on-image-upload="onUploadHandler" />
-      <div class="input-group markdown-disclaimer">
-        <button
-          type="button"
-          class="iconified-button brand-button"
-          :disabled="check()"
-          @click="saveChanges()"
-        >
-          <SaveIcon />
-          保存草稿
-        </button>
-
-        <button
-          v-if="wiki.featured === false"
-          type="button"
-          class="iconified-button brand-button"
-          style="margin-left: auto"
-          @click="$refs.modal_confirmIndex.show()"
-        >
-          <StarIcon />
-          设置主页
-        </button>
-        <button
-          type="button"
-          class="iconified-button brand-button"
-          style="margin-left: auto"
-          @click="$refs.editSortModel.show()"
-        >
-          <SunriseIcon />
-          设置页面顺序
-        </button>
-
-        <button
-          type="button"
-          class="iconified-button brand-button"
-          style="background-color: rgb(255, 73, 110); margin-left: auto"
-          @click="$refs.modal_confirm_delete.show()"
-        >
-          <TrashIcon />
-          删除该页面
-        </button>
+    <!-- 付费资源未购买提示 -->
+    <div v-if="props.wikis.requires_purchase" class="markdown-body card">
+      <div style="text-align: center; padding: 2rem 1rem">
+        <LockIcon style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--color-text-secondary)" />
+        <h2>百科内容需要购买后查看</h2>
+        <p style="color: var(--color-text-secondary); margin-top: 0.5rem">购买此资源后即可查看所有百科页面内容</p>
       </div>
     </div>
 
-    <div v-else>
+    <template v-else>
       <div
-        v-if="wiki.body"
-        class="markdown-body card"
-        v-html="renderHighlightedString(wiki.body || '')"
-      />
-    </div>
+        v-if="
+          props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache.status === 'draft'
+        "
+        class="universal-card"
+      >
+        <div class="markdown-disclaimer">
+          <h2>正在编辑 [ {{ wiki.title }} ]</h2>
+          <span class="label__description">
+            请尽量单个页面只包含一个内容，以便于查找和编辑以及分类，
+            <br /><br />
+            请注意，编辑后的内容会被保存为草稿，若要提交发布请点击目录页的提交审核<br /><br />
+          </span>
+        </div>
+        <MarkdownEditor v-model="wiki.body" :on-image-upload="onUploadHandler" />
+        <div class="input-group markdown-disclaimer">
+          <button
+            type="button"
+            class="iconified-button brand-button"
+            :disabled="check()"
+            @click="saveChanges()"
+          >
+            <SaveIcon />
+            保存草稿
+          </button>
+
+          <button
+            v-if="wiki.featured === false"
+            type="button"
+            class="iconified-button brand-button"
+            style="margin-left: auto"
+            @click="$refs.modal_confirmIndex.show()"
+          >
+            <StarIcon />
+            设置主页
+          </button>
+          <button
+            type="button"
+            class="iconified-button brand-button"
+            style="margin-left: auto"
+            @click="$refs.editSortModel.show()"
+          >
+            <SunriseIcon />
+            设置页面顺序
+          </button>
+
+          <button
+            type="button"
+            class="iconified-button brand-button"
+            style="background-color: rgb(255, 73, 110); margin-left: auto"
+            @click="$refs.modal_confirm_delete.show()"
+          >
+            <TrashIcon />
+            删除该页面
+          </button>
+        </div>
+      </div>
+
+      <div v-else>
+        <div
+          v-if="wiki.body"
+          class="markdown-body card"
+          v-html="renderHighlightedString(wiki.body || '')"
+        />
+      </div>
+    </template>
   </section>
 </template>
 
 <script setup>
 import { Avatar, ButtonStyled, ConfirmModal, MarkdownEditor, NewModal } from "@modrinth/ui";
 import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
-import { XIcon } from "@modrinth/assets";
+import { XIcon, LockIcon } from "@modrinth/assets";
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import SaveIcon from "assets/images/utils/save.svg";
 import TrashIcon from "assets/images/utils/trash.svg";
@@ -152,8 +163,6 @@ const props = defineProps({
     },
   },
 });
-const title = `${props.project.title} - WIKI`;
-const description = `浏览 ${props.project.title} 个图片的WIKI页面`;
 let wiki = ref(null);
 const route = useNativeRoute();
 const router = useNativeRouter();
@@ -161,13 +170,6 @@ const data = useNuxtApp();
 let wikiBodyCache = ref("");
 let wikiSort = ref(0);
 const editSortModel = ref();
-
-useSeoMeta({
-  title,
-  description,
-  ogTitle: title,
-  ogDescription: description,
-});
 
 // console.log('wikis', props.wikis);
 if (
@@ -204,6 +206,17 @@ if (
 
 wikiBodyCache = wiki.body;
 wikiSort = wiki.sort_order;
+
+const wikiName = wiki.title || route.params.wiki;
+const title = `${wikiName} - ${props.project.title} WIKI | BBSMC`;
+const description = `查阅 ${props.project.title} 的 WIKI 页面「${wikiName}」，了解详细的使用指南、安装教程和配置说明。在 BBSMC 获取完整的资源百科信息。`;
+useSeoMeta({
+  title,
+  description,
+  ogTitle: title,
+  ogDescription: description,
+  ogImage: props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
+});
 
 async function saveChanges() {
   if (wikiBodyCache === wiki.body && wikiSort === wiki.sort_order) {

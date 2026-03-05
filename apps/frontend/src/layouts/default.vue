@@ -32,111 +32,114 @@
       <nuxt-link class="btn" to="/settings/account"> 查看详情 </nuxt-link>
     </div>
 
-    <!--    头部-->
-    <header
-      class="experimental-styles-within desktop-only relative z-[5] mx-auto grid max-w-[1280px] grid-cols-[1fr_auto] items-center gap-2 px-3 py-4 lg:grid-cols-[auto_1fr_auto]"
-    >
-      <div>
-        <NuxtLink to="/" aria-label="BBSMC home page">
-          <BrandTextLogo aria-hidden="true" class="h-7 w-auto text-contrast" />
+    <!--    头部 v10 Flame Theme -->
+    <header class="site-header desktop-only">
+      <div class="header-container">
+        <!-- Logo -->
+        <NuxtLink to="/" class="header-logo" aria-label="BBSMC home page">
+          <BrandTextLogo aria-hidden="true" />
         </NuxtLink>
-      </div>
 
-      <div
-        :class="`gap-2} col-span-2 row-start-2 flex flex-wrap justify-center lg:col-span-1 lg:row-start-auto`"
-      >
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-mods' || route.path.startsWith('/mod/')"
-          :highlighted-style="
-            route.name === 'search-mods' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/mods"> <BoxIcon aria-hidden="true" /> 模组 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="
-            route.name === 'search-resourcepacks' || route.path.startsWith('/resourcepack/')
-          "
-          :highlighted-style="
-            route.name === 'search-resourcepacks' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/resourcepacks"> <PaintBrushIcon aria-hidden="true" /> 资源包 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-datapacks' || route.path.startsWith('/datapack/')"
-          :highlighted-style="
-            route.name === 'search-datapacks' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/datapacks"> <BracesIcon aria-hidden="true" /> 数据包 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-modpacks' || route.path.startsWith('/modpack/')"
-          :highlighted-style="
-            route.name === 'search-modpacks' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/modpacks"> <PackageOpenIcon aria-hidden="true" /> 整合包 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-shaders' || route.path.startsWith('/shader/')"
-          :highlighted-style="
-            route.name === 'search-shaders' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/shaders"> <GlassesIcon aria-hidden="true" /> 光影 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-plugins' || route.path.startsWith('/plugin/')"
-          :highlighted-style="
-            route.name === 'search-plugins' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/plugins"> <PlugIcon aria-hidden="true" /> 插件 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-softwares' || route.path.startsWith('/software/')"
-          :highlighted-style="
-            route.name === 'search-softwares' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/softwares"> <GridIcon aria-hidden="true" /> 软件 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.name === 'search-languages' || route.path.startsWith('/language/')"
-          :highlighted-style="
-            route.name === 'search-languagesd' ? 'main-nav-primary' : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/languages"> <LanguagesIcon aria-hidden="true" /> 汉化 </nuxt-link>
-        </ButtonStyled>
-        <ButtonStyled
-          type="transparent"
-          :highlighted="route.path.startsWith('/forums/') || route.path.startsWith('/d/')"
-          :highlighted-style="
-            route.path.startsWith('/forums/') || route.path.startsWith('/d/')
-              ? 'main-nav-primary'
-              : 'main-nav-secondary'
-          "
-        >
-          <nuxt-link to="/forums/chat"> <MessageIcon aria-hidden="true" /> 论坛 </nuxt-link>
-        </ButtonStyled>
-      </div>
+        <!-- Navigation -->
+        <nav class="header-nav">
+          <NuxtLink
+            to="/mods"
+            class="nav-link"
+            :class="{ active: route.name === 'search-mods' || route.path.startsWith('/mod/') }"
+          >
+            <BoxIcon aria-hidden="true" />
+            <span>模组</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/modpacks"
+            class="nav-link"
+            :class="{
+              active: route.name === 'search-modpacks' || route.path.startsWith('/modpack/'),
+            }"
+          >
+            <PackageOpenIcon aria-hidden="true" />
+            <span>整合包</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/shaders"
+            class="nav-link"
+            :class="{
+              active: route.name === 'search-shaders' || route.path.startsWith('/shader/'),
+            }"
+          >
+            <GlassesIcon aria-hidden="true" />
+            <span>光影</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/resourcepacks"
+            class="nav-link"
+            :class="{
+              active:
+                route.name === 'search-resourcepacks' || route.path.startsWith('/resourcepack/'),
+            }"
+          >
+            <PaintBrushIcon aria-hidden="true" />
+            <span>资源包</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/softwares"
+            class="nav-link"
+            :class="{
+              active: route.name === 'search-softwares' || route.path.startsWith('/software/'),
+            }"
+          >
+            <GridIcon aria-hidden="true" />
+            <span>软件</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/languages"
+            class="nav-link"
+            :class="{
+              active: route.name === 'search-languages' || route.path.startsWith('/language/'),
+            }"
+          >
+            <LanguagesIcon aria-hidden="true" />
+            <span>汉化</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/plugins"
+            class="nav-link"
+            :class="{
+              active: route.name === 'search-plugins' || route.path.startsWith('/plugin/'),
+            }"
+          >
+            <PlugIcon aria-hidden="true" />
+            <span>插件</span>
+          </NuxtLink>
+          <NuxtLink
+            to="/datapacks"
+            class="nav-link"
+            :class="{
+              active: route.name === 'search-datapacks' || route.path.startsWith('/datapack/'),
+            }"
+          >
+            <BracesIcon aria-hidden="true" />
+            <span>数据包</span>
+          </NuxtLink>
 
-      <div class="flex items-center gap-2">
-        <ButtonStyled type="transparent">
+          <!-- 论坛模块暂时隐藏
+          <NuxtLink
+            to="/forums/chat"
+            class="nav-link"
+            :class="{ active: route.path.startsWith('/forums/') || route.path.startsWith('/d/') }"
+          >
+            <MessageIcon aria-hidden="true" />
+            <span>论坛</span>
+          </NuxtLink>
+          -->
+        </nav>
+
+        <!-- Actions -->
+        <div class="header-actions">
+          <!-- Create Menu -->
           <OverflowMenu
             v-if="auth?.user"
-            class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
+            class="action-btn create-btn"
             position="bottom"
             direction="left"
             aria-label="Create new..."
@@ -157,54 +160,49 @@
             ]"
           >
             <PlusIcon aria-hidden="true" />
-            <DropdownIcon aria-hidden="true" class="h-5 w-5 text-secondary" />
             <template #new-project> <BoxIcon aria-hidden="true" /> 创建资源 </template>
-            <!-- <template #import-project> <BoxImportIcon /> Import project </template>-->
             <template #new-collection> <CollectionIcon aria-hidden="true" /> 创建收藏夹 </template>
             <template #new-organization>
               <OrganizationIcon aria-hidden="true" /> 创建团队
             </template>
           </OverflowMenu>
-        </ButtonStyled>
-        <ButtonStyled v-if="unreadNotifications !== 0" type="transparent">
-          <nuxt-link to="/dashboard/notifications" class="notification-link">
-            <BellIcon aria-hidden="true" /><span
-              v-if="unreadNotifications !== 0"
-              class="notification-badge"
-            ></span>
-          </nuxt-link>
-        </ButtonStyled>
-        <OverflowMenu
-          v-if="auth?.user"
-          class="btn-dropdown-animation flex items-center gap-1 rounded-xl bg-transparent px-2 py-1"
-          :options="userMenuOptions"
-        >
-          <Avatar :src="auth.user?.avatar_url" aria-hidden="true" circle />
-          <DropdownIcon class="h-5 w-5 text-secondary" />
-          <template #profile> <UserIcon aria-hidden="true" /> 个人资料 </template>
-          <template #notifications> <BellIcon aria-hidden="true" /> 通知 </template>
-          <template #saved> <BookmarkIcon aria-hidden="true" /> 收藏夹 </template>
-          <!--          <template #servers> <ServerIcon aria-hidden="true" /> My servers </template>-->
-          <template #plus>
-            <ArrowBigUpDashIcon aria-hidden="true" /> Upgrade to Modrinth+
-          </template>
-          <template #settings> <SettingsIcon aria-hidden="true" /> 设置 </template>
-          <template #flags> <ReportIcon aria-hidden="true" /> 标签 </template>
-          <template #projects> <BoxIcon aria-hidden="true" /> 我的资源 </template>
-          <template #organizations> <OrganizationIcon aria-hidden="true" /> 团队 </template>
-          <template #revenue> <CurrencyIcon aria-hidden="true" /> 收入 </template>
-          <template #analytics> <ChartIcon aria-hidden="true" /> 统计 </template>
-          <template #moderation> <ModerationIcon aria-hidden="true" /> 管理 </template>
-          <template #sign-out> <LogOutIcon aria-hidden="true" /> 登出 </template>
-        </OverflowMenu>
-        <ButtonStyled v-else color="green">
-          <nuxt-link to="/auth/sign-in">
+
+          <!-- Notifications -->
+          <NuxtLink
+            v-if="auth?.user"
+            to="/dashboard/notifications"
+            class="action-btn notification-btn"
+          >
+            <BellIcon aria-hidden="true" />
+            <span v-if="unreadNotifications !== 0" class="notification-dot"></span>
+          </NuxtLink>
+
+          <!-- User Menu -->
+          <OverflowMenu v-if="auth?.user" class="user-menu" :options="userMenuOptions">
+            <Avatar :src="auth.user?.avatar_url" aria-hidden="true" circle class="user-avatar" />
+            <template #profile> <UserIcon aria-hidden="true" /> 个人资料 </template>
+            <template #notifications> <BellIcon aria-hidden="true" /> 通知 </template>
+            <template #saved> <BookmarkIcon aria-hidden="true" /> 收藏夹 </template>
+            <template #plus> <ArrowBigUpDashIcon aria-hidden="true" /> 升级到 BBSMC+ </template>
+            <template #settings> <SettingsIcon aria-hidden="true" /> 设置 </template>
+            <template #flags> <ReportIcon aria-hidden="true" /> 标签 </template>
+            <template #projects> <BoxIcon aria-hidden="true" /> 我的资源 </template>
+            <template #organizations> <OrganizationIcon aria-hidden="true" /> 团队 </template>
+            <template #revenue> <CurrencyIcon aria-hidden="true" /> 收入 </template>
+            <template #analytics> <ChartIcon aria-hidden="true" /> 统计 </template>
+            <template #moderation> <ModerationIcon aria-hidden="true" /> 管理 </template>
+            <template #sign-out> <LogOutIcon aria-hidden="true" /> 登出 </template>
+          </OverflowMenu>
+
+          <!-- Login Button -->
+          <NuxtLink v-else to="/auth/sign-in" class="login-btn">
             <LogInIcon aria-hidden="true" />
-            登录
-          </nuxt-link>
-        </ButtonStyled>
+            <span>登录</span>
+          </NuxtLink>
+        </div>
       </div>
     </header>
+
     <header class="mobile-navigation mobile-only">
       <div
         class="nav-menu nav-menu-browse"
@@ -279,7 +277,7 @@
             </NuxtLink>
             <NuxtLink v-if="flags.developerMode" class="iconified-button" to="/flags">
               <ReportIcon aria-hidden="true" />
-              Feature flags
+              功能标签
             </NuxtLink>
           </template>
           <NuxtLink class="iconified-button" to="/settings">
@@ -375,86 +373,114 @@
       <OrganizationCreateModal ref="modal_organization_creation" />
       <slot id="main" />
     </main>
-    <footer>
-      <!-- <div class="logo-info" role="region" aria-label="Modrinth information"> -->
-      <!-- <BrandTextLogo
-                aria-hidden="true"
-                class="text-logo button-base mx-auto mb-4 lg:mx-0"
-              /> -->
-      <!-- <p class="mb-4">
-                <IntlFormatted :message-id="footerMessages.openSource">
-                  <template #github-link="{ children }">
-                    <a
-                      :target="$external()"
-                      href="https://github.com/bbsmc/app"
-                      class="text-link"
-                      rel="noopener"
-                    >
-                      <component :is="() => children" />
-                    </a>
-                  </template>
-                </IntlFormatted>
-              </p> -->
-      <!-- <p class="mb-4">BBSMC使用Modrinth程序开发,遵循LGPL许可证开源</p> -->
+    <footer class="site-footer">
+      <div class="footer-container">
+        <!-- Logo and Branding -->
+        <div class="footer-brand">
+          <NuxtLink to="/" class="footer-logo">
+            <BrandTextLogo aria-hidden="true" class="h-8 w-auto" />
+          </NuxtLink>
+          <p class="footer-tagline">中国最活跃的 Minecraft 中文资源社区</p>
+          <a href="javascript:void(0)" class="footer-qq-group" @click="copyQQGroup">
+            QQ 群：1078515449
+          </a>
+          <div class="footer-social">
+            <a
+              href="https://github.com/bbsmc/app"
+              target="_blank"
+              rel="noopener"
+              class="social-link"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" class="social-icon">
+                <path
+                  d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                />
+              </svg>
+            </a>
+            <a
+              href="https://space.bilibili.com/291010701"
+              target="_blank"
+              rel="noopener"
+              class="social-link"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" class="social-icon">
+                <path
+                  d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
 
-      <!-- </div> -->
-      <!--            <div class="links links-1" role="region" aria-label="Legal">-->
-      <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>-->
-      <!--              <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>-->
-      <!--              <nuxt-link to="/legal/privacy"> {{ formatMessage(footerMessages.privacy) }}</nuxt-link>-->
-      <!--              <nuxt-link to="/legal/rules"> {{ formatMessage(footerMessages.rules) }}</nuxt-link>-->
+        <!-- Quick Links -->
+        <div class="footer-links">
+          <div class="footer-column">
+            <h4 class="footer-column-title">资源</h4>
+            <NuxtLink to="/mods" class="footer-link">模组</NuxtLink>
+            <NuxtLink to="/modpacks" class="footer-link">整合包</NuxtLink>
+            <NuxtLink to="/shaders" class="footer-link">光影</NuxtLink>
+            <NuxtLink to="/resourcepacks" class="footer-link">资源包</NuxtLink>
+          </div>
+          <div class="footer-column">
+            <h4 class="footer-column-title">社区</h4>
+            <NuxtLink to="/languages" class="footer-link">汉化</NuxtLink>
+            <NuxtLink to="/softwares" class="footer-link">软件</NuxtLink>
+            <NuxtLink to="/plugins" class="footer-link">插件</NuxtLink>
+          </div>
+          <div class="footer-column">
+            <h4 class="footer-column-title">帮助</h4>
+            <NuxtLink to="/legal/terms" class="footer-link">服务条款</NuxtLink>
+            <NuxtLink to="/legal/privacy" class="footer-link">隐私政策</NuxtLink>
+            <NuxtLink to="/legal/rules" class="footer-link">社区规则</NuxtLink>
+            <a
+              href="https://github.com/bbsmc/app"
+              target="_blank"
+              rel="noopener"
+              class="footer-link"
+              >开源代码</a
+            >
+          </div>
+        </div>
 
-      <!--            </div>-->
-      <!--            <div class="links links-2" role="region" aria-label="Resources">-->
-      <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.resourcesTitle) }}</h4>-->
-      <!--              <a :target="$external()" href="https://support.modrinth.com">-->
-      <!--                {{ formatMessage(footerMessages.support) }}-->
-      <!--              </a>-->
-      <!--              <a :target="$external()" href="https://blog.modrinth.com">-->
-      <!--                {{ formatMessage(footerMessages.blog) }}-->
-      <!--              </a>-->
-      <!--              <a :target="$external()" href="https://docs.modrinth.com">-->
-      <!--                {{ formatMessage(footerMessages.docs) }}-->
-      <!--              </a>-->
-      <!--              <a :target="$external()" href="https://status.modrinth.com">-->
-      <!--                {{ formatMessage(footerMessages.status) }}-->
-      <!--              </a>-->
-      <!--            </div>-->
-      <!--            <div class="links links-3" role="region" aria-label="Interact">-->
-      <!--              <h4 aria-hidden="true">{{ formatMessage(footerMessages.interactTitle) }}</h4>-->
-      <!--              <a rel="noopener" :target="$external()" href="https://discord.modrinth.com"> Discord </a>-->
-      <!--              <a rel="noopener" :target="$external()" href="https://x.com/modrinth"> X (Twitter) </a>-->
-      <!--              <a rel="noopener" :target="$external()" href="https://floss.social/@modrinth"> Mastodon </a>-->
-      <!--              <a rel="noopener" :target="$external()" href="https://crowdin.com/project/modrinth">-->
-      <!--                Crowdin-->
-      <!--              </a>-->
-      <!--            </div>-->
-      <div class="buttons">
-        <button class="iconified-button raised-button" @click="changeTheme">
-          <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
-          <SunIcon v-else aria-hidden="true" />
-          {{ formatMessage(messages.changeTheme) }}
-        </button>
-        <nuxt-link class="iconified-button raised-button" to="/settings">
-          <SettingsIcon aria-hidden="true" />
-          {{ formatMessage(commonMessages.settingsLabel) }}
-        </nuxt-link>
+        <!-- Theme Toggle -->
+        <div class="footer-actions">
+          <button class="theme-toggle" @click="changeTheme">
+            <MoonIcon v-if="$theme.active === 'light'" aria-hidden="true" />
+            <SunIcon v-else aria-hidden="true" />
+            <span>{{ formatMessage(messages.changeTheme) }}</span>
+          </button>
+          <NuxtLink to="/settings" class="settings-link">
+            <SettingsIcon aria-hidden="true" />
+            <span>设置</span>
+          </NuxtLink>
+        </div>
       </div>
 
-      <div class="not-affiliated-notice">
-        "Minecraft"以及"我的世界"为美国微软公司的商标 本站与微软公司没有从属关系
-        <br /><br />
-        本站与Modrinth无从属关系，网站遵循Modrinth网站程序的LGPL协议开源
-        <a
-          :target="$external()"
-          href="https://github.com/bbsmc/app"
-          class="text-link"
-          rel="noopener"
-          >开源地址</a
-        >
-        <br /><br />
-        版权所有 © 2019-2024 青岛柒兮网络科技有限公司 | ICP经营许可证: 鲁B2-20210590 | ICP备案:
-        鲁ICP备2021009459号-12
+      <!-- Bottom Bar -->
+      <div class="footer-bottom">
+        <div class="footer-bottom-content">
+          <p class="footer-disclaimer">
+            "Minecraft"以及"我的世界"为美国微软公司的商标，本站与微软公司没有从属关系。 本站与
+            Modrinth 无从属关系，网站遵循 LGPL 协议开源。
+          </p>
+          <p class="footer-copyright">
+            © 2019-2026 青岛柒兮网络科技有限公司 |
+            <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">鲁B2-20210590</a> |
+            <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener"
+              >鲁ICP备2021009459号-12</a
+            >
+            |
+            <a
+              href="https://beian.mps.gov.cn/#/query/webSearch?code=37021002001586"
+              target="_blank"
+              rel="noopener"
+              class="police-beian"
+            >
+              <img src="~/assets/images/beian-police.png" alt="公安备案" />
+              鲁公网安备37021002001586号
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   </div>
@@ -472,9 +498,7 @@ import {
   SettingsIcon,
   HomeIcon,
   PlugIcon,
-  MessageIcon,
   PlusIcon,
-  DropdownIcon,
   LogOutIcon,
   ChartIcon,
   BoxIcon,
@@ -492,7 +516,7 @@ import {
   MoonIcon,
   SunIcon,
 } from "@modrinth/assets";
-import { ButtonStyled, OverflowMenu, Avatar } from "@modrinth/ui";
+import { OverflowMenu, Avatar } from "@modrinth/ui";
 
 import { provide } from "vue";
 import CrossIcon from "assets/images/utils/x.svg";
@@ -503,11 +527,24 @@ import { getProjectTypeMessage } from "~/utils/i18n-project-type.ts";
 import { commonMessages } from "~/utils/common-messages.ts";
 import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
 import OrganizationCreateModal from "~/components/ui/OrganizationCreateModal.vue";
+import { addNotification } from "~/composables/notifs.js";
 
 const { formatMessage } = useVIntl();
 
 const auth = await useAuth();
 const unreadNotifications = ref(0);
+
+// 复制 QQ 群号
+const copyQQGroup = () => {
+  navigator.clipboard.writeText("1078515449").then(() => {
+    addNotification({
+      group: "main",
+      title: "已复制",
+      text: "QQ 群号 1078515449 已复制到剪贴板",
+      type: "success",
+    });
+  });
+};
 
 const flags = useFeatureFlags();
 
@@ -518,52 +555,52 @@ const link = config.public.siteUrl + route.path.replace(/\/+$/, "");
 const verifyEmailBannerMessages = defineMessages({
   title: {
     id: "layout.banner.verify-email.title",
-    defaultMessage: "For security purposes, please verify your email address on Modrinth.",
+    defaultMessage: "为确保安全，请验证您的邮箱地址。",
   },
   action: {
     id: "layout.banner.verify-email.action",
-    defaultMessage: "Re-send verification email",
+    defaultMessage: "重新发送验证邮件",
   },
 });
 
 const addEmailBannerMessages = defineMessages({
   title: {
     id: "layout.banner.add-email.title",
-    defaultMessage: "For security purposes, please enter your email on Modrinth.",
+    defaultMessage: "为确保安全，请绑定您的邮箱地址。",
   },
   action: {
     id: "layout.banner.add-email.button",
-    defaultMessage: "Visit account settings",
+    defaultMessage: "前往账户设置",
   },
 });
 
 const navMenuMessages = defineMessages({
   home: {
     id: "layout.nav.home",
-    defaultMessage: "Home",
+    defaultMessage: "首页",
   },
   search: {
     id: "layout.nav.search",
-    defaultMessage: "Search",
+    defaultMessage: "搜索",
   },
 });
 
 const messages = defineMessages({
   toggleMenu: {
     id: "layout.menu-toggle.action",
-    defaultMessage: "Toggle menu",
+    defaultMessage: "切换菜单",
   },
   yourAvatarAlt: {
     id: "layout.avatar.alt",
-    defaultMessage: "Your avatar",
+    defaultMessage: "您的头像",
   },
   getModrinthApp: {
     id: "layout.action.get-modrinth-app",
-    defaultMessage: "Get Modrinth App",
+    defaultMessage: "获取 BBSMC 客户端",
   },
   changeTheme: {
     id: "layout.action.change-theme",
-    defaultMessage: "Change theme",
+    defaultMessage: "切换主题",
   },
 });
 defineMessages({
@@ -573,7 +610,7 @@ defineMessages({
   },
   companyTitle: {
     id: "layout.footer.company.title",
-    defaultMessage: "Company",
+    defaultMessage: "关于",
   },
   terms: {
     id: "layout.footer.company.terms",
@@ -589,31 +626,31 @@ defineMessages({
   },
   careers: {
     id: "layout.footer.company.careers",
-    defaultMessage: "Careers",
+    defaultMessage: "招聘",
   },
   resourcesTitle: {
     id: "layout.footer.resources.title",
-    defaultMessage: "Resources",
+    defaultMessage: "资源",
   },
   support: {
     id: "layout.footer.resources.support",
-    defaultMessage: "Support",
+    defaultMessage: "支持",
   },
   blog: {
     id: "layout.footer.resources.blog",
-    defaultMessage: "Blog",
+    defaultMessage: "博客",
   },
   docs: {
     id: "layout.footer.resources.docs",
-    defaultMessage: "Docs",
+    defaultMessage: "文档",
   },
   status: {
     id: "layout.footer.resources.status",
-    defaultMessage: "Status",
+    defaultMessage: "状态",
   },
   interactTitle: {
     id: "layout.footer.interact.title",
-    defaultMessage: "Interact",
+    defaultMessage: "互动",
   },
   legalDisclaimer: {
     id: "layout.footer.legal-disclaimer",
@@ -655,8 +692,8 @@ useSeoMeta({
   ogUrl: link,
 
   // Twitter
-  twitterCard: "summary",
-  twitterSite: "@modrinth",
+  twitterCard: "summary_large_image",
+  twitterSite: "@bbsmc_net",
 });
 
 const isMobileMenuOpen = ref(false);
@@ -880,7 +917,8 @@ const { cycle: changeTheme } = useTheme();
 .layout {
   min-height: 100vh;
   background-color: var(--color-bg);
-  display: block;
+  display: flex;
+  flex-direction: column;
 
   @media screen and (min-width: 1024px) {
     min-height: calc(100vh - var(--spacing-card-bg));
@@ -892,118 +930,573 @@ const { cycle: changeTheme } = useTheme();
 
   main {
     grid-area: main;
+    flex: 1 0 auto;
+    padding-top: 24px;
   }
 
-  footer {
-    margin: 6rem 0 2rem 0;
-    text-align: center;
+  .site-footer {
+    flex-shrink: 0;
+  }
+
+  // ==========================================
+  // v10 Flame Theme Header Styles
+  // ==========================================
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-card, var(--color-raised-bg));
+    border-bottom: 1px solid var(--color-divider);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+
+    // Subtle top glow effect
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--flame, #f16436) 50%,
+        transparent 100%
+      );
+      opacity: 0.5;
+    }
+  }
+
+  .header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    color: var(--color-text-dark);
+    transition:
+      opacity 0.2s,
+      transform 0.2s;
+    flex-shrink: 0;
+
+    svg,
+    img {
+      height: 28px;
+      width: auto;
+      max-width: 150px;
+      object-fit: contain;
+    }
+
+    &:hover {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
+  }
+
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    position: relative;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      color: var(--color-text-dark);
+      background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    }
+
+    &.active {
+      color: var(--flame, #f16436);
+      background: var(--accent-muted, rgba(241, 100, 54, 0.12));
+
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 2px;
+        background: var(--flame, #f16436);
+        border-radius: 1px;
+      }
+    }
+  }
+
+  // More dropdown
+  .nav-more {
+    position: relative;
+
+    .nav-more-trigger {
+      svg {
+        width: 14px;
+        height: 14px;
+        transition: transform 0.2s;
+      }
+    }
+
+    &:hover {
+      .nav-more-trigger svg {
+        transform: rotate(180deg);
+      }
+
+      .nav-more-dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+    }
+  }
+
+  .nav-more-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    min-width: 160px;
+    background: var(--bg-card, var(--color-raised-bg));
+    border: 1px solid var(--color-divider);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 200;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: 0;
+      right: 0;
+      height: 8px;
+    }
+  }
+
+  .dropdown-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      color: var(--flame, #f16436);
+      background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--bg-elevated, var(--color-button-bg));
+    border: 1px solid var(--color-divider);
+    color: var(--color-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    &:hover {
+      color: var(--flame, #f16436);
+      border-color: var(--flame, #f16436);
+      background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    }
+  }
+
+  .create-btn {
+    background: var(--accent-muted, rgba(241, 100, 54, 0.1));
+    border-color: transparent;
+    color: var(--flame, #f16436);
+
+    &:hover {
+      background: var(--flame, #f16436);
+      color: white;
+    }
+  }
+
+  .notification-btn {
+    position: relative;
+  }
+
+  .notification-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: var(--flame, #f16436);
+    border-radius: 50%;
+    border: 2px solid var(--bg-card, var(--color-raised-bg));
+  }
+
+  .user-menu {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background: transparent !important;
+
+    // Use :deep() to pierce through scoped styles to child components
+    :deep(.popup-container) {
+      background: transparent !important;
+
+      > button {
+        all: unset !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+      }
+    }
+
+    :deep(button) {
+      all: unset !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    :deep(.user-avatar),
+    :deep(.avatar) {
+      width: 36px !important;
+      height: 36px !important;
+      min-width: 36px !important;
+      min-height: 36px !important;
+      border-radius: 50% !important;
+      border: 2px solid var(--color-divider) !important;
+      transition: border-color 0.2s !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      box-shadow: none !important;
+
+      &:hover {
+        border-color: var(--flame, #f16436) !important;
+      }
+    }
+  }
+
+  .user-avatar,
+  .user-menu .avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    border: 2px solid var(--color-divider) !important;
+    transition: border-color 0.2s !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+
+    &:hover {
+      border-color: var(--flame, #f16436) !important;
+    }
+  }
+
+  .login-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--flame, #f16436);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(241, 100, 54, 0.3);
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: var(--flame-dark, #c94d28);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(241, 100, 54, 0.4);
+    }
+  }
+
+  // New Footer Styles
+  .site-footer {
+    margin-top: 80px;
+    background: var(--bg-card, var(--color-raised-bg));
+    border-top: 1px solid var(--color-divider);
+  }
+
+  .footer-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 60px 40px;
     display: grid;
-    grid-template:
-      "logo-info  logo-info  logo-info" auto
-      "links-1    links-2    links-3" auto
-      "buttons    buttons    buttons" auto
-      "notice     notice     notice" auto
-      / 1fr 1fr 1fr;
-    max-width: 1280px;
+    grid-template-columns: 1.5fr 2fr auto;
+    gap: 60px;
 
-    .logo-info {
-      margin-left: auto;
-      margin-right: auto;
-      max-width: 15rem;
-      margin-bottom: 1rem;
-      grid-area: logo-info;
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+      gap: 40px;
+      padding: 40px 24px;
+    }
+  }
 
-      .text-logo {
-        width: 10rem;
-        height: auto;
+  .footer-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .footer-logo {
+    display: inline-block;
+    color: var(--color-text-dark);
+    transition: opacity 0.3s;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  .footer-tagline {
+    font-size: 0.9rem;
+    color: var(--color-secondary);
+    line-height: 1.6;
+    max-width: 280px;
+    margin: 0;
+  }
+
+  .footer-qq-group {
+    font-size: 0.85rem;
+    color: var(--color-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--color-brand);
+    }
+  }
+
+  .footer-social {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--bg-elevated, var(--color-button-bg));
+    border-radius: 10px;
+    color: var(--color-secondary);
+    transition: all 0.3s;
+
+    &:hover {
+      background: var(--accent-muted, rgba(241, 100, 54, 0.12));
+      color: var(--flame, #f16436);
+      transform: translateY(-2px);
+    }
+  }
+
+  .social-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .footer-links {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+
+    @media (max-width: 640px) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+  }
+
+  .footer-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .footer-column-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-dark);
+    margin: 0 0 4px 0;
+  }
+
+  .footer-link {
+    font-size: 0.9rem;
+    color: var(--color-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--flame, #f16436);
+    }
+  }
+
+  .footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    @media (max-width: 1024px) {
+      flex-direction: row;
+    }
+  }
+
+  .theme-toggle,
+  .settings-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--bg-elevated, var(--color-button-bg));
+    border: 1px solid var(--color-divider);
+    border-radius: 12px;
+    color: var(--color-text);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      border-color: var(--flame, #f16436);
+      background: var(--accent-muted, rgba(241, 100, 54, 0.08));
+    }
+  }
+
+  .footer-bottom {
+    border-top: 1px solid var(--color-divider);
+    background: var(--bg-elevated, var(--color-bg));
+  }
+
+  .footer-bottom-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 40px;
+    text-align: center;
+
+    @media (max-width: 640px) {
+      padding: 20px 24px;
+    }
+  }
+
+  .footer-disclaimer {
+    font-size: 0.75rem;
+    color: var(--color-secondary);
+    line-height: 1.6;
+    margin: 0 0 8px 0;
+  }
+
+  .footer-copyright {
+    font-size: 0.75rem;
+    color: var(--color-text-inactive);
+    margin: 0;
+
+    a {
+      color: var(--color-text-inactive);
+      text-decoration: none;
+      transition: color 0.2s;
+
+      &:hover {
+        color: var(--color-secondary);
+        text-decoration: underline;
       }
     }
 
-    .links {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 1rem;
+    .police-beian {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
 
-      h4 {
-        color: var(--color-text-dark);
-        margin: 0 0 1rem 0;
-      }
-
-      a {
-        margin: 0 0 1rem 0;
-      }
-
-      &.links-1 {
-        grid-area: links-1;
-      }
-
-      &.links-2 {
-        grid-area: links-2;
-      }
-
-      &.links-3 {
-        grid-area: links-3;
-      }
-
-      .count-bubble {
-        font-size: 1rem;
-        border-radius: 5rem;
-        background: var(--color-brand);
-        color: var(--color-text-inverted);
-        padding: 0 0.35rem;
-        margin-left: 0.25rem;
-      }
-    }
-
-    .buttons {
-      margin-left: auto;
-      margin-right: auto;
-      grid-area: buttons;
-
-      button,
-      a {
-        margin-bottom: 0.5rem;
-        margin-left: auto;
-        margin-right: auto;
-      }
-    }
-
-    .not-affiliated-notice {
-      grid-area: notice;
-      font-size: var(--font-size-xs);
-      text-align: center;
-      font-weight: 500;
-      margin-top: var(--spacing-card-md);
-    }
-
-    @media screen and (min-width: 1024px) {
-      display: grid;
-      margin-inline: auto;
-      grid-template:
-        "logo-info  links-1 links-2 links-3 buttons" auto
-        "notice     notice  notice  notice  notice" auto;
-      text-align: unset;
-
-      .logo-info {
-        margin-right: 4rem;
-      }
-
-      .links {
-        margin-right: 4rem;
-      }
-
-      .buttons {
-        width: unset;
-        margin-left: 0;
-
-        button,
-        a {
-          margin-right: unset;
-        }
-      }
-
-      .not-affiliated-notice {
-        margin-top: 0;
+      img {
+        width: 14px;
+        height: 14px;
+        vertical-align: middle;
       }
     }
   }

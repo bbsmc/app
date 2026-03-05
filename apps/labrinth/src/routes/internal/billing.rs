@@ -158,7 +158,7 @@ pub async fn edit_subscription(
             .await?
             .ok_or_else(|| {
                 ApiError::InvalidInput(
-                    "Could not find open charge for this subscription".to_string(),
+                    "找不到该订阅的待处理收费记录".to_string(),
                 )
             })?;
 
@@ -168,9 +168,7 @@ pub async fn edit_subscription(
         )
         .await?
         .ok_or_else(|| {
-            ApiError::InvalidInput(
-                "Could not find current product price".to_string(),
-            )
+            ApiError::InvalidInput("找不到当前商品价格".to_string())
         })?;
 
         if let Some(cancelled) = &edit_subscription.cancelled {
@@ -178,8 +176,7 @@ pub async fn edit_subscription(
                 && open_charge.status != ChargeStatus::Cancelled
             {
                 return Err(ApiError::InvalidInput(
-                    "You may not change the status of this subscription!"
-                        .to_string(),
+                    "无法更改该订阅的状态！".to_string(),
                 ));
             }
 
@@ -198,7 +195,7 @@ pub async fn edit_subscription(
                 open_charge.amount = *price as i64;
             } else {
                 return Err(ApiError::InvalidInput(
-                    "Interval is not valid for this subscription!".to_string(),
+                    "该计费周期对此订阅无效！".to_string(),
                 ));
             }
         }
@@ -214,15 +211,13 @@ pub async fn edit_subscription(
                 .find(|x| x.currency_code == current_price.currency_code)
                 .ok_or_else(|| {
                     ApiError::InvalidInput(
-                        "Could not find a valid price for your currency code!"
-                            .to_string(),
+                        "找不到与您的币种匹配的有效价格！".to_string(),
                     )
                 })?;
 
             if product_price.id == current_price.id {
                 return Err(ApiError::InvalidInput(
-                    "You may not change the price of this subscription!"
-                        .to_string(),
+                    "无法更改该订阅的价格！".to_string(),
                 ));
             }
 
@@ -235,20 +230,24 @@ pub async fn edit_subscription(
 
             let current_amount = match &current_price.prices {
                 Price::OneTime { price } => *price,
-                Price::Recurring { intervals } => *intervals.get(&duration).ok_or_else(|| {
-                    ApiError::InvalidInput(
-                        "Could not find a valid price for the user's duration".to_string(),
-                    )
-                })?,
+                Price::Recurring { intervals } => {
+                    *intervals.get(&duration).ok_or_else(|| {
+                        ApiError::InvalidInput(
+                            "找不到与用户计费周期匹配的有效价格".to_string(),
+                        )
+                    })?
+                }
             };
 
             let amount = match &product_price.prices {
                 Price::OneTime { price } => *price,
-                Price::Recurring { intervals } => *intervals.get(&duration).ok_or_else(|| {
-                    ApiError::InvalidInput(
-                        "Could not find a valid price for the user's duration".to_string(),
-                    )
-                })?,
+                Price::Recurring { intervals } => {
+                    *intervals.get(&duration).ok_or_else(|| {
+                        ApiError::InvalidInput(
+                            "找不到与用户计费周期匹配的有效价格".to_string(),
+                        )
+                    })?
+                }
             };
 
             let complete = Decimal::from(interval.num_seconds())
@@ -258,14 +257,14 @@ pub async fn edit_subscription(
                 .to_i32()
                 .ok_or_else(|| {
                     ApiError::InvalidInput(
-                        "Could not convert proration to i32".to_string(),
+                        "无法将按比例计算的金额转换为 i32".to_string(),
                     )
                 })?;
 
             // TODO: Add downgrading plans
             if proration <= 0 {
                 return Err(ApiError::InvalidInput(
-                    "You may not downgrade plans!".to_string(),
+                    "暂不支持降级订阅计划！".to_string(),
                 ));
             }
 
@@ -297,9 +296,7 @@ pub async fn edit_subscription(
             let currency =
                 Currency::from_str(&current_price.currency_code.to_lowercase())
                     .map_err(|_| {
-                        ApiError::InvalidInput(
-                            "Invalid currency code".to_string(),
-                        )
+                        ApiError::InvalidInput("无效的币种代码".to_string())
                     })?;
 
             let mut intent =
@@ -321,7 +318,7 @@ pub async fn edit_subscription(
                         id
                     } else {
                         return Err(ApiError::InvalidInput(
-                            "Invalid payment method id".to_string(),
+                            "无效的支付方式 ID".to_string(),
                         ));
                     };
                 intent.payment_method = Some(payment_method_id);
@@ -623,8 +620,7 @@ pub async fn remove_payment_method(
             .unwrap_or(false)
         {
             return Err(ApiError::InvalidInput(
-                "You may not remove the default payment method if you have active subscriptions!"
-                    .to_string(),
+                "存在有效订阅时，不能移除默认支付方式！".to_string(),
             ));
         }
     }
@@ -803,9 +799,7 @@ pub async fn initiate_payment(
         PaymentRequestType::PaymentMethod { id } => {
             let payment_method_id = stripe::PaymentMethodId::from_str(id)
                 .map_err(|_| {
-                    ApiError::InvalidInput(
-                        "Invalid payment method id".to_string(),
-                    )
+                    ApiError::InvalidInput("无效的支付方式 ID".to_string())
                 })?;
 
             let payment_method = stripe::PaymentMethod::retrieve(
@@ -847,8 +841,7 @@ pub async fn initiate_payment(
             let payment_method =
                 confirmation.payment_method_preview.ok_or_else(|| {
                     ApiError::InvalidInput(
-                        "Confirmation token is missing payment method!"
-                            .to_string(),
+                        "确认令牌缺少支付方式信息！".to_string(),
                     )
                 })?;
 
@@ -876,7 +869,7 @@ pub async fn initiate_payment(
                     .await?
                     .ok_or_else(|| {
                         ApiError::InvalidInput(
-                            "Specified charge could not be found!".to_string(),
+                            "找不到指定的收费记录！".to_string(),
                         )
                     })?;
 
@@ -897,8 +890,7 @@ pub async fn initiate_payment(
                         .await?
                         .ok_or_else(|| {
                             ApiError::InvalidInput(
-                                "Specified product could not be found!"
-                                    .to_string(),
+                                "找不到指定的商品！".to_string(),
                             )
                         })?;
 
@@ -919,8 +911,7 @@ pub async fn initiate_payment(
                     product_prices.remove(pos)
                 } else {
                     return Err(ApiError::InvalidInput(
-                        "Could not find a valid price for the user's country"
-                            .to_string(),
+                        "找不到与用户所在地区匹配的有效价格".to_string(),
                     ));
                 };
 
@@ -928,16 +919,18 @@ pub async fn initiate_payment(
                     Price::OneTime { price } => price,
                     Price::Recurring { ref intervals } => {
                         let interval = interval.ok_or_else(|| {
-                        ApiError::InvalidInput(
-                            "Could not find a valid interval for the user's country".to_string(),
-                        )
-                    })?;
+                            ApiError::InvalidInput(
+                                "找不到与用户所在地区匹配的有效计费周期"
+                                    .to_string(),
+                            )
+                        })?;
 
                         *intervals.get(&interval).ok_or_else(|| {
-                        ApiError::InvalidInput(
-                            "Could not find a valid price for the user's country".to_string(),
-                        )
-                    })?
+                            ApiError::InvalidInput(
+                                "找不到与用户所在地区匹配的有效价格"
+                                    .to_string(),
+                            )
+                        })?
                     }
                 };
 
@@ -969,8 +962,7 @@ pub async fn initiate_payment(
                         .any(|x| x.product_id == product.id)
                     {
                         return Err(ApiError::InvalidInput(
-                            "You are already subscribed to this product!"
-                                .to_string(),
+                            "您已经订阅了该商品！".to_string(),
                         ));
                     }
                 }
@@ -995,9 +987,7 @@ pub async fn initiate_payment(
     )
     .await?;
     let stripe_currency = Currency::from_str(&currency_code.to_lowercase())
-        .map_err(|_| {
-            ApiError::InvalidInput("Invalid currency code".to_string())
-        })?;
+        .map_err(|_| ApiError::InvalidInput("无效的币种代码".to_string()))?;
 
     if let Some(payment_intent_id) = &payment_request.existing_payment_intent {
         let mut update_payment_intent = stripe::UpdatePaymentIntent {
@@ -1349,7 +1339,7 @@ pub async fn stripe_webhook(
             }
 
             Err(ApiError::InvalidInput(
-                "Webhook missing required webhook metadata!".to_string(),
+                "Webhook 缺少必需的元数据！".to_string(),
             ))
         }
 
@@ -1445,7 +1435,7 @@ pub async fn stripe_webhook(
                                     let server_name = server_name
                                         .unwrap_or_else(|| {
                                             format!(
-                                                "{}'s server",
+                                                "{}的服务器",
                                                 metadata.user_item.username
                                             )
                                         });
@@ -1497,16 +1487,17 @@ pub async fn stripe_webhook(
                         )
                         .await?;
 
-                        let new_price = match metadata.product_price_item.prices {
+                        let new_price = match metadata.product_price_item.prices
+                        {
                             Price::OneTime { price } => price,
-                            Price::Recurring { intervals } => {
-                                *intervals.get(&subscription.interval).ok_or_else(|| {
+                            Price::Recurring { intervals } => *intervals
+                                .get(&subscription.interval)
+                                .ok_or_else(|| {
                                     ApiError::InvalidInput(
-                                        "Could not find a valid price for the user's country"
+                                        "找不到与用户所在地区匹配的有效价格"
                                             .to_string(),
                                     )
-                                })?
-                            }
+                                })?,
                         };
 
                         if let Some(mut charge) = open_charge {
@@ -1602,13 +1593,13 @@ pub async fn stripe_webhook(
 
                         let _ = send_email(
                             email,
-                            "Payment Failed for Modrinth",
+                            "BBSMC 支付失败通知",
                             &format!(
-                                "Our attempt to collect payment for {money} from the payment card on file was unsuccessful."
+                                "我们尝试从您的绑定银行卡扣款 {money} 未成功。"
                             ),
-                            "Please visit the following link below to update your payment method or contact your card provider. If the button does not work, you can copy the link and paste it into your browser.",
+                            "请点击下方链接更新您的支付方式，或联系银行卡发卡机构。如果按钮无法使用，您可以复制链接并粘贴到浏览器中。",
                             Some((
-                                "Update billing settings",
+                                "更新账单设置",
                                 &format!(
                                     "{}/{}",
                                     dotenvy::var("SITE_URL")?,
@@ -1662,7 +1653,7 @@ pub async fn stripe_webhook(
         }
     } else {
         return Err(ApiError::InvalidInput(
-            "Webhook signature validation failed!".to_string(),
+            "Webhook 签名验证失败！".to_string(),
         ));
     }
 

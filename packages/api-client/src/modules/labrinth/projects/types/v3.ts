@@ -50,5 +50,7 @@ export type ProjectV3 = {
   thread_id: string
   monetization_status: MonetizationStatus
   side_types_migration_review_status: 'reviewed' | 'pending'
+  /** 汉化追踪标记 */
+  translation_tracking?: boolean
   [key: string]: unknown
 }

@@ -69,7 +69,7 @@ pub fn root_config(cfg: &mut web::ServiceConfig) {
                     Ok(req.into_response(
                         HttpResponse::Gone()
                             .content_type("application/json")
-                            .body(r#"{"error":"api_deprecated","description":"您正在使用一个使用过时版本的 Modrinth API 的应用程序。请更新它或切换到另一个应用程序。对于开发人员：https://docs.modrinth.com/api/#versioning"}"#)
+                            .body(r#"{"error":"api_deprecated","description":"您正在使用一个过时版本 API 的应用程序。请更新应用程序或切换到其他应用。"}"#)
                     ))
                 }.boxed_local()
             })
@@ -88,7 +88,7 @@ pub enum ApiError {
     Env(#[from] dotenvy::Error),
     #[error("您已被封禁：{0}")]
     Banned(String),
-    #[error("上传文件时出错： {0}")]
+    #[error("上传文件时出错: {0}")]
     FileHosting(#[from] FileHostingError),
     #[error("数据库错误: {0}")]
     Database(#[from] crate::database::models::DatabaseError),
@@ -102,7 +102,7 @@ pub enum ApiError {
     Json(#[from] serde_json::Error),
     #[error("身份验证错误: {0}")]
     Authentication(#[from] crate::auth::AuthenticationError),
-    #[error("自定义身份验证错误: {0}")]
+    #[error("认证失败: {0}")]
     CustomAuthentication(String),
     #[error("无效输入: {0}")]
     InvalidInput(String),
@@ -136,13 +136,13 @@ pub enum ApiError {
     Io(#[from] std::io::Error),
     #[error("资源未找到")]
     NotFound,
-    #[error("已存在")]
+    #[error("该资源已存在")]
     ISExists,
     #[error(
         "该资源正在被 {0} 修改百科页面，请等待其他用户修改完并且被审核完成后再进行提交修改"
     )]
     ISConflict(String),
-    #[error("您已被限速。请等待 {0} 毫秒。0/{1} 剩余。")]
+    #[error("您的请求过于频繁，请等待 {0} 毫秒后重试。剩余配额: 0/{1}")]
     RateLimitError(u128, u32),
     #[error("与支付处理器交互时出错: {0}")]
     Stripe(#[from] stripe::StripeError),
@@ -184,8 +184,8 @@ impl ApiError {
                 ApiError::Clickhouse(..) => "clickhouse_error",
                 ApiError::Reroute(..) => "reroute_error",
                 ApiError::NotFound => "not_found",
-                ApiError::ISExists => "is_exists`",
-                ApiError::ISConflict(..) => "is_conflict`",
+                ApiError::ISExists => "is_exists",
+                ApiError::ISConflict(..) => "is_conflict",
                 ApiError::Zip(..) => "zip_error",
                 ApiError::Io(..) => "io_error",
                 ApiError::RateLimitError(..) => "ratelimit_error",

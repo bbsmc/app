@@ -19,7 +19,7 @@
         </h2>
       </router-link>
       <p v-if="author" class="author">
-        by
+        作者:
         <router-link class="title-link" :to="'/user/' + author">{{ author }} </router-link>
       </p>
       <Badge v-if="status && status !== 'approved'" :type="status" class="status" />
@@ -42,14 +42,14 @@
         <DownloadIcon aria-hidden="true" />
         <p>
           <strong>{{ formatNumber(downloads) }}</strong
-          ><span class="stat-label"> download<span v-if="downloads !== '1'">s</span></span>
+          ><span class="stat-label"> 次下载</span>
         </p>
       </div>
       <div v-if="follows" class="stat">
         <HeartIcon aria-hidden="true" />
         <p>
           <strong>{{ formatNumber(follows) }}</strong
-          ><span class="stat-label"> follower<span v-if="follows !== '1'">s</span></span>
+          ><span class="stat-label"> 个关注</span>
         </p>
       </div>
       <div class="buttons">
@@ -57,11 +57,11 @@
       </div>
       <div v-if="showUpdatedDate" v-tooltip="updatedDate" class="stat date">
         <EditIcon aria-hidden="true" />
-        <span class="date-label">Updated </span> {{ sinceUpdated }}
+        <span class="date-label">更新于 </span>{{ sinceUpdated }}
       </div>
       <div v-else v-tooltip="createdDate" class="stat date">
         <CalendarIcon aria-hidden="true" />
-        <span class="date-label">Published </span>{{ sinceCreation }}
+        <span class="date-label">发布于 </span>{{ sinceCreation }}
       </div>
     </div>
   </article>

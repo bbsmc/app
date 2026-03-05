@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO payment_merchants (user_id, sid, secret_key, verified, created_at, updated_at)\n            VALUES ($1, $2, $3, FALSE, NOW(), NOW())\n            ON CONFLICT (user_id)\n            DO UPDATE SET\n                sid = EXCLUDED.sid,\n                secret_key = EXCLUDED.secret_key,\n                verified = FALSE,\n                updated_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "36d38887585e55de8ef8b6cb04d1a64810e3747a9508d011fdc5a82cc9f73c8e"
+}

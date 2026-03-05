@@ -55,7 +55,9 @@
       </div>
       <span class="label">
         <span class="label__title">其他链接</span>
-        <span class="label__description"> 添加 爱发电 QQ频道 哔哩哔哩 KOOK等网址 </span>
+        <span class="label__description">
+          添加 爱发电 QQ频道 哔哩哔哩 KOOK MC百科 九域资源社区等网址
+        </span>
       </span>
 
       <div
@@ -85,6 +87,8 @@
             'curseforge',
             'quark',
             'baidu',
+            'mcmod',
+            'mc9y',
             'other',
           ]"
           :display-name="webDisplayLabel"
@@ -115,6 +119,10 @@ import SaveIcon from "~/assets/images/utils/save.svg?component";
 
 const tags = useTags();
 
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
+
 const props = defineProps({
   project: {
     type: Object,
@@ -144,7 +152,7 @@ const webDisplayLabel = (x) => {
       return "发布地址";
 
     case "modrinth":
-      return "Modrinth地址";
+      return "Modrinth";
 
     case "bilibili":
       return "哔哩哔哩";
@@ -170,6 +178,10 @@ const webDisplayLabel = (x) => {
       return "夸克网盘";
     case "baidu":
       return "百度网盘";
+    case "mcmod":
+      return "MC百科";
+    case "mc9y":
+      return "九域资源社区";
     default:
       return x;
   }

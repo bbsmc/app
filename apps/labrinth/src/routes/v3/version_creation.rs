@@ -9,7 +9,7 @@ use crate::database::models::version_item::{
 };
 use crate::database::models::{self, Organization, image_item};
 use crate::database::redis::RedisPool;
-use crate::file_hosting::FileHost;
+use crate::file_hosting::{FileHost, S3PrivateHost};
 use crate::models::images::{Image, ImageContext, ImageId};
 use crate::models::notifications::NotificationBody;
 use crate::models::pack::PackFileHash;
@@ -104,12 +104,14 @@ struct InitialFileData {
 }
 
 // under `/api/v1/version`
+#[allow(clippy::too_many_arguments)]
 pub async fn version_create(
     req: HttpRequest,
     mut payload: Multipart,
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     file_host: Data<Arc<dyn FileHost + Send + Sync>>,
+    private_file_host: Data<Option<Arc<S3PrivateHost>>>,
     session_queue: Data<AuthQueue>,
     moderation_queue: web::Data<AutomatedModerationQueue>,
 ) -> Result<HttpResponse, CreateError> {
@@ -122,6 +124,7 @@ pub async fn version_create(
         &mut transaction,
         &redis,
         &***file_host,
+        private_file_host.as_ref().as_ref().map(|h| h.as_ref()),
         &mut uploaded_files,
         &client,
         &session_queue,
@@ -155,6 +158,7 @@ async fn version_create_inner(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     redis: &RedisPool,
     file_host: &dyn FileHost,
+    private_file_host: Option<&S3PrivateHost>,
     uploaded_files: &mut Vec<UploadedFile>,
     pool: &PgPool,
     session_queue: &AuthQueue,
@@ -165,6 +169,8 @@ async fn version_create_inner(
     let mut initial_version_data = None;
     let mut version_builder = None;
     let mut selected_loaders = None;
+    let mut project_is_paid = false;
+    let mut project_slug: Option<String> = None;
 
     let user = get_user_from_headers(
         &req,
@@ -229,15 +235,16 @@ async fn version_create_inner(
 
                 let project_id: models::ProjectId = version_create_data.project_id.unwrap().into();
 
-                // 确保项目存在
-                if models::Project::get_id(project_id, &mut **transaction, redis)
+                // 确保项目存在并获取项目信息
+                let project = models::Project::get_id(project_id, &mut **transaction, redis)
                     .await?
-                    .is_none()
-                {
-                    return Err(CreateError::InvalidInput(
+                    .ok_or_else(|| CreateError::InvalidInput(
                         "提供的项目id无效".to_string(),
-                    ));
-                }
+                    ))?;
+
+                // 保存项目的付费状态，用于后续设置文件的 is_private
+                project_is_paid = project.inner.is_paid;
+                project_slug = project.inner.slug.clone();
 
                 // 检查创建此版本的用户是否是项目团队成员
                 // 项目版本正在添加。
@@ -297,6 +304,20 @@ async fn version_create_inner(
                     .collect::<Result<Vec<_>, _>>()?;
                 selected_loaders = Some(loaders.clone());
                 let loader_ids: Vec<models::LoaderId> = loaders.iter().map(|y| y.id).collect_vec();
+
+                // 付费项目只允许上传插件类型的版本
+                if project.inner.is_paid {
+                    // 检查所有加载器是否都支持 plugin 类型
+                    let all_plugin_loaders = loaders.iter().all(|loader| {
+                        loader.supported_project_types.contains(&"plugin".to_string())
+                    });
+
+                    if !all_plugin_loaders {
+                        return Err(CreateError::InvalidInput(
+                            "付费资源只能上传插件类型的版本。请选择插件加载器（如 bukkit、spigot、paper、purpur、folia、bungeecord、waterfall、velocity 等）".to_string(),
+                        ));
+                    }
+                }
 
                 let loader_fields =
                     LoaderField::get_fields(&loader_ids, &mut **transaction, redis).await?;
@@ -474,6 +495,7 @@ async fn version_create_inner(
             upload_file(
                 &mut field,
                 file_host,
+                private_file_host,
                 version_data.file_parts.len(),
                 uploaded_files,
                 &mut version.files,
@@ -490,7 +512,8 @@ async fn version_create_inner(
                 existing_file_names,
                 transaction,
                 redis,
-                user.username.clone()
+                user.username.clone(),
+                project_is_paid,
             )
             .await?;
 
@@ -581,18 +604,17 @@ async fn version_create_inner(
             file_type: file.file_type,
         })
         .collect::<Vec<_>>();
-    let mut disk_url = None;
-    if version_data.disk_only && version_data.disk_urls.is_some() {
-        disk_url = version_data.disk_urls.clone();
-    }
-    let mut disk_urls: Vec<QueryDisk> = vec![];
-    if version_data.disk_urls.is_some() {
-        disk_urls = version_data.disk_urls.unwrap();
-    }
+    let disk_urls: Vec<QueryDisk> =
+        version_data.disk_urls.clone().unwrap_or_default();
     if version_data.disk_only {
+        let first_disk = disk_urls.first().ok_or_else(|| {
+            CreateError::InvalidInput(
+                "启用网盘模式时必须提供至少一个网盘链接".to_string(),
+            )
+        })?;
         files.push(VersionFile {
             hashes: HashMap::new(),
-            url: disk_url.unwrap().first().unwrap().url.clone(),
+            url: first_disk.url.clone(),
             filename: "".to_string(),
             primary: false,
             size: 0,
@@ -696,15 +718,29 @@ async fn version_create_inner(
     .fetch_optional(pool)
     .await?;
 
-    if let Some(project_status) = project_status
+    if let Some(ref project_status) = project_status
         && project_status.status == ProjectStatus::Processing.as_str()
     {
         moderation_queue.projects.insert(project_id.into());
     }
 
+    // 仅在项目已审核通过且可搜索时通知 Bing IndexNow
+    if let Some(ref ps) = project_status
+        && ProjectStatus::from_string(&ps.status).is_searchable()
+        && let (Some(slug), Some(project_type)) =
+            (&project_slug, response.project_types.first())
+    {
+        crate::util::indexnow::notify_version(
+            project_type,
+            slug,
+            &response.version_number,
+        );
+    }
+
     Ok(HttpResponse::Ok().json(response))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn upload_file_to_version(
     req: HttpRequest,
     url_data: web::Path<(VersionId,)>,
@@ -712,6 +748,7 @@ pub async fn upload_file_to_version(
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     file_host: Data<Arc<dyn FileHost + Send + Sync>>,
+    private_file_host: Data<Option<Arc<S3PrivateHost>>>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, CreateError> {
     let mut transaction = client.begin().await?;
@@ -726,6 +763,7 @@ pub async fn upload_file_to_version(
         &mut transaction,
         redis,
         &***file_host,
+        private_file_host.as_ref().as_ref().map(|h| h.as_ref()),
         &mut uploaded_files,
         version_id,
         &session_queue,
@@ -759,6 +797,7 @@ async fn upload_file_to_version_inner(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     redis: Data<RedisPool>,
     file_host: &dyn FileHost,
+    private_file_host: Option<&S3PrivateHost>,
     uploaded_files: &mut Vec<UploadedFile>,
     version_id: models::VersionId,
     session_queue: &AuthQueue,
@@ -803,16 +842,15 @@ async fn upload_file_to_version_inner(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    if models::Project::get_id(
+    let project = models::Project::get_id(
         version.inner.project_id,
         &mut **transaction,
         &redis,
     )
     .await?
-    .is_none()
-    {
-        return Err(CreateError::InvalidInput("提供的项目id无效".to_string()));
-    }
+    .ok_or_else(|| CreateError::InvalidInput("提供的项目id无效".to_string()))?;
+
+    let project_is_paid = project.inner.is_paid;
 
     if !user.role.is_admin() {
         let team_member = models::TeamMember::get_from_user_id_project(
@@ -912,6 +950,7 @@ async fn upload_file_to_version_inner(
             upload_file(
                 &mut field,
                 file_host,
+                private_file_host,
                 0,
                 uploaded_files,
                 &mut file_builders,
@@ -929,6 +968,7 @@ async fn upload_file_to_version_inner(
                 transaction,
                 &redis,
                 user.username.clone(),
+                project_is_paid,
             )
             .await?;
 
@@ -966,6 +1006,7 @@ async fn upload_file_to_version_inner(
 pub async fn upload_file(
     field: &mut Field,
     file_host: &dyn FileHost,
+    private_file_host: Option<&S3PrivateHost>,
     total_files_len: usize,
     uploaded_files: &mut Vec<UploadedFile>,
     version_files: &mut Vec<VersionFileBuilder>,
@@ -983,12 +1024,13 @@ pub async fn upload_file(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     redis: &RedisPool,
     username: String,
+    is_paid_project: bool,
 ) -> Result<(), CreateError> {
     let (file_name, file_extension) = get_name_ext(content_disposition)?;
 
     if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传!1".to_string(),
+            "此文件在这之前已经被上传到 BBSMC 过，无法重复上传".to_string(),
         ));
     }
 
@@ -1027,7 +1069,7 @@ pub async fn upload_file(
 
     if exists && username.to_lowercase() != "bbsmc" {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传2".to_string(),
+            "此文件在这之前已经被上传到 BBSMC 过，无法重复上传".to_string(),
         ));
     }
 
@@ -1125,9 +1167,30 @@ pub async fn upload_file(
     let file_path =
         format!("data/{}/versions/{}/{}", project_id, version_id, &file_name);
 
-    let upload_data = file_host
-        .upload_file(content_type, &file_path, data)
-        .await?;
+    // 根据是否是付费项目选择上传到公共桶或私有桶
+    let (upload_data, file_url, use_private) = if let (
+        true,
+        Some(private_host),
+    ) =
+        (is_paid_project, private_file_host)
+    {
+        // 付费项目：上传到私有桶
+        let upload_result = private_host
+            .upload_file(content_type, &file_path, data)
+            .await?;
+
+        // 私有桶文件使用特殊 URL 格式，下载时生成 presigned URL
+        // 格式: private://{file_path}
+        let private_url = format!("private://{}", file_path_encode);
+        (upload_result, private_url, true)
+    } else {
+        // 免费项目：上传到公共桶
+        let upload_result = file_host
+            .upload_file(content_type, &file_path, data)
+            .await?;
+        let public_url = format!("{cdn_url}/{file_path_encode}");
+        (upload_result, public_url, false)
+    };
 
     uploaded_files.push(UploadedFile {
         file_id: upload_data.file_id,
@@ -1143,7 +1206,7 @@ pub async fn upload_file(
             .any(|y| y.hash == sha1_bytes || y.hash == sha512_bytes)
     }) {
         return Err(CreateError::InvalidInput(
-            "此文件在这之前已经被上传到BBSMC过,无法重复上传3".to_string(),
+            "此文件在这之前已经被上传到 BBSMC 过，无法重复上传".to_string(),
         ));
     }
 
@@ -1155,7 +1218,7 @@ pub async fn upload_file(
 
     version_files.push(VersionFileBuilder {
         filename: file_name.to_string(),
-        url: format!("{cdn_url}/{file_path_encode}"),
+        url: file_url,
         hashes: vec![
             models::version_item::HashBuilder {
                 algorithm: "sha1".to_string(),
@@ -1171,6 +1234,7 @@ pub async fn upload_file(
         primary,
         size: upload_data.content_length,
         file_type,
+        is_private: use_private,
     });
 
     Ok(())

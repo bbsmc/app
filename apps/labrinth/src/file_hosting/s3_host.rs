@@ -114,12 +114,53 @@ impl FileHost for S3Host {
         file_id: &str,
         file_name: &str,
     ) -> Result<DeleteFileData, FileHostingError> {
-        self.bucket
+        let response = self
+            .bucket
             .delete_object(format!("/{file_name}"))
             .await
-            .map_err(|_| {
-                FileHostingError::S3Error("从 S3 删除文件时出错 ".to_string())
+            .map_err(|e| {
+                log::error!(
+                    "S3 删除文件失败: file_name={}, error={:?}",
+                    file_name,
+                    e
+                );
+                FileHostingError::S3Error(format!(
+                    "从 S3 删除文件时出错: {:?}",
+                    e
+                ))
             })?;
+
+        log::info!(
+            "S3 删除文件响应: file_name={}, status_code={}",
+            file_name,
+            response.status_code()
+        );
+
+        // S3 删除成功后，尝试 HEAD 验证对象是否确实被删除
+        match self.bucket.head_object(format!("/{file_name}")).await {
+            Ok((_, code)) => {
+                if code == 200 {
+                    log::warn!(
+                        "S3 删除后对象仍然存在! file_name={}, head_status={}",
+                        file_name,
+                        code
+                    );
+                } else {
+                    log::info!(
+                        "S3 删除验证: 对象已确认移除, file_name={}, head_status={}",
+                        file_name,
+                        code
+                    );
+                }
+            }
+            Err(_) => {
+                // HEAD 请求失败通常意味着对象不存在（404），这是预期的删除后行为
+                log::info!(
+                    "S3 删除验证: 对象已确认移除 (HEAD 返回错误), file_name={}",
+                    file_name
+                );
+            }
+        }
 
         Ok(DeleteFileData {
             file_id: file_id.to_string(),

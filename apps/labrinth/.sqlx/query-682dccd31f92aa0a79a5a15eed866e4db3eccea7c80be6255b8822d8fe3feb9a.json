@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                            SELECT user_id, id, review_type, old_value, new_value, risk_labels, status, created_at\n                            FROM user_profile_reviews\n                            WHERE user_id = ANY($1) AND status = 'pending'\n                            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "review_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "old_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "new_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "risk_labels",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "682dccd31f92aa0a79a5a15eed866e4db3eccea7c80be6255b8822d8fe3feb9a"
+}

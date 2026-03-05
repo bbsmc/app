@@ -24,6 +24,18 @@ const defaultOnError: ErrorFunction = (error) => {
     return;
   }
 
+  // 检测是否为限流错误
+  if (errorName === "ratelimit_error") {
+    const description = error?.data?.description || "您的请求过于频繁";
+    addNotification({
+      group: "main",
+      title: "请求过于频繁",
+      text: `${description}，请稍后再试。`,
+      type: "warn",
+    });
+    return;
+  }
+
   addNotification({
     group: "main",
     title: "发生错误",

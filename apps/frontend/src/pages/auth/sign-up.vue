@@ -1,35 +1,6 @@
 <template>
   <div>
-    <!--    <h1>{{ formatMessage(messages.signUpWithTitle) }}</h1>-->
-
-    <!--    <section class="third-party">-->
-    <!--      <a class="btn discord-btn" :href="getAuthUrl('discord', redirectTarget)">-->
-    <!--        <SSODiscordIcon />-->
-    <!--        <span>Discord</span>-->
-    <!--      </a>-->
-    <!--      <a class="btn" :href="getAuthUrl('github', redirectTarget)">-->
-    <!--        <SSOGitHubIcon />-->
-    <!--        <span>GitHub</span>-->
-    <!--      </a>-->
-    <!--      <a class="btn" :href="getAuthUrl('microsoft', redirectTarget)">-->
-    <!--        <SSOMicrosoftIcon />-->
-    <!--        <span>Microsoft</span>-->
-    <!--      </a>-->
-    <!--      <a class="btn" :href="getAuthUrl('google', redirectTarget)">-->
-    <!--        <SSOGoogleIcon />-->
-    <!--        <span>Google</span>-->
-    <!--      </a>-->
-    <!--      <a class="btn" :href="getAuthUrl('steam', redirectTarget)">-->
-    <!--        <SSOSteamIcon />-->
-    <!--        <span>Steam</span>-->
-    <!--      </a>-->
-    <!--      <a class="btn" :href="getAuthUrl('gitlab', redirectTarget)">-->
-    <!--        <SSOGitLabIcon />-->
-    <!--        <span>GitLab</span>-->
-    <!--      </a>-->
-    <!--    </section>-->
-
-    <h1>注册</h1>
+    <h1>注册到 BBSMC</h1>
 
     <section class="auth-form">
       <div class="iconified-input">
@@ -72,7 +43,9 @@
       </div>
 
       <div class="iconified-input">
-        <label for="confirm-password" hidden>{{ formatMessage(messages.passwordLabel) }}</label>
+        <label for="confirm-password" hidden>{{
+          formatMessage(messages.confirmPasswordLabel)
+        }}</label>
         <KeyIcon />
         <input
           id="confirm-password"
@@ -91,25 +64,10 @@
         :description="formatMessage(messages.subscribeLabel)"
       />
 
-      <!--      <p>-->
-      <!--        <IntlFormatted :message-id="messages.legalDisclaimer">-->
-      <!--          <template #terms-link="{ children }">-->
-      <!--            <NuxtLink to="/legal2/terms" class="text-link">-->
-      <!--              <component :is="() => children" />-->
-      <!--            </NuxtLink>-->
-      <!--          </template>-->
-      <!--          <template #privacy-policy-link="{ children }">-->
-      <!--            <NuxtLink to="/legal2/privacy" class="text-link">-->
-      <!--              <component :is="() => children" />-->
-      <!--            </NuxtLink>-->
-      <!--          </template>-->
-      <!--        </IntlFormatted>-->
-      <!--      </p>-->
-
       <TACaptcha ref="captcha" v-model="token" />
 
       <button
-        class="btn btn-primary continue-btn centered-btn"
+        class="btn btn-primary continue-btn full-width-btn"
         :disabled="!token"
         @click="createAccount"
       >
@@ -118,72 +76,110 @@
       </button>
 
       <div class="auth-form__additional-options">
-        {{ formatMessage(messages.alreadyHaveAccountLabel) }}
-        <NuxtLink class="text-link" :to="signInLink">
-          {{ formatMessage(commonMessages.signInButton) }}
-        </NuxtLink>
+        已有账号?
+        <NuxtLink class="text-link" :to="signInLink">立即登录</NuxtLink>
       </div>
     </section>
+
+    <div class="auth-divider">
+      <span>或通过以下方式注册</span>
+    </div>
+
+    <section class="third-party">
+      <a class="btn sso-btn" :href="getAuthUrl('github', redirectTarget)">
+        <SSOGitHubIcon />
+        <span>GitHub</span>
+      </a>
+      <a class="btn sso-btn" :href="getAuthUrl('microsoft', redirectTarget)">
+        <SSOMicrosoftIcon />
+        <span>Microsoft</span>
+      </a>
+      <a class="btn sso-btn" :href="getAuthUrl('bilibili', redirectTarget)">
+        <SSOBilibiliIcon />
+        <span>哔哩哔哩</span>
+      </a>
+      <!-- <a class="btn sso-btn" :href="getAuthUrl('google', redirectTarget)">
+        <SSOGoogleIcon />
+        <span>Google</span>
+      </a> -->
+      <a class="btn sso-btn" :href="getAuthUrl('qq', redirectTarget)">
+        <SSOQQIcon />
+        <span>QQ</span>
+      </a>
+    </section>
+
+    <p class="legal-notice">
+      注册即表示您同意<NuxtLink to="/legal/terms">用户协议</NuxtLink>和<NuxtLink to="/legal/privacy"
+        >隐私政策</NuxtLink
+      >
+    </p>
   </div>
 </template>
 
 <script setup>
 import { RightArrowIcon, UserIcon, KeyIcon, MailIcon } from "@modrinth/assets";
 import { Checkbox } from "@modrinth/ui";
+import SSOGitHubIcon from "assets/icons/auth/sso-github.svg";
+import SSOMicrosoftIcon from "assets/icons/auth/sso-microsoft.svg";
+import SSOBilibiliIcon from "assets/icons/auth/sso-bilibili.svg";
+// import SSOGoogleIcon from "assets/icons/auth/sso-google.svg";
+import SSOQQIcon from "assets/icons/auth/sso-qq.svg";
 import TACaptcha from "@/components/ui/TACaptcha.vue";
+import { getAuthUrl } from "@/composables/auth.js";
 
 const { formatMessage } = useVIntl();
 
 const messages = defineMessages({
   title: {
     id: "auth.sign-up.title",
-    defaultMessage: "Sign Up",
+    defaultMessage: "注册",
   },
   signUpWithTitle: {
     id: "auth.sign-up.title.sign-up-with",
-    defaultMessage: "Sign up with",
+    defaultMessage: "通过以下方式注册",
   },
   createAccountTitle: {
     id: "auth.sign-up.title.create-account",
-    defaultMessage: "Or create an account yourself",
+    defaultMessage: "或自行创建账号",
   },
   emailLabel: {
     id: "auth.sign-up.email.label",
-    defaultMessage: "Email",
+    defaultMessage: "邮箱",
   },
   usernameLabel: {
     id: "auth.sign-up.label.username",
-    defaultMessage: "Username",
+    defaultMessage: "用户名",
   },
   passwordLabel: {
     id: "auth.sign-up.password.label",
-    defaultMessage: "Password",
+    defaultMessage: "密码",
   },
   confirmPasswordLabel: {
     id: "auth.sign-up.confirm-password.label",
-    defaultMessage: "Confirm password",
+    defaultMessage: "确认密码",
   },
   subscribeLabel: {
     id: "auth.sign-up.subscribe.label",
-    defaultMessage: "Subscribe to updates about BBSMC",
+    defaultMessage: "订阅 BBSMC 更新通知",
   },
   legalDisclaimer: {
     id: "auth.sign-up.legal-dislaimer",
     defaultMessage:
-      "By creating an account, you agree to BBSMC <terms-link>Terms</terms-link> and <privacy-policy-link>Privacy Policy</privacy-policy-link>.",
+      "注册即表示您同意 BBSMC 的<terms-link>用户协议</terms-link>和<privacy-policy-link>隐私政策</privacy-policy-link>。",
   },
   createAccountButton: {
     id: "auth.sign-up.action.create-account",
-    defaultMessage: "Create account",
+    defaultMessage: "创建账号",
   },
   alreadyHaveAccountLabel: {
     id: "auth.sign-up.sign-in-option.title",
-    defaultMessage: "Already have an account?",
+    defaultMessage: "已有账号？",
   },
 });
 
 useHead({
   title: () => `${formatMessage(messages.title)} - BBSMC`,
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();
@@ -202,6 +198,8 @@ const confirmPassword = ref("");
 const token = ref("");
 const subscribe = ref(true);
 
+const redirectTarget = route.query.redirect || "/dashboard";
+
 const signInLink = computed(
   () => `/auth/sign-in${route.query.redirect ? `?redirect=${route.query.redirect}` : ""}`,
 );
@@ -215,11 +213,14 @@ async function createAccount() {
         title: formatMessage(commonMessages.errorNotificationTitle),
         text: formatMessage({
           id: "auth.sign-up.notification.password-mismatch.text",
-          defaultMessage: "Passwords do not match!",
+          defaultMessage: "两次输入的密码不一致！",
         }),
         type: "error",
       });
-      captcha.value?.reset();
+      captcha.value?.resetCaptcha();
+      token.value = "";
+      stopLoading();
+      return;
     }
 
     const res = await useBaseFetch("auth/create", {
@@ -248,7 +249,8 @@ async function createAccount() {
       text: err.data ? err.data.description : err,
       type: "error",
     });
-    captcha.value?.reset();
+    captcha.value?.resetCaptcha();
+    token.value = "";
   }
   stopLoading();
 }

@@ -69,9 +69,9 @@ const props = withDefaults(
     size?: 'small' | 'standard'
   }>(),
   {
-    prompt: 'Drag and drop files or click to browse',
-    primaryPrompt: 'Drag and drop files or click to browse',
-    secondaryPrompt: 'You can try to drag files or folder or click this area to select it',
+    prompt: '拖放文件或点击浏览',
+    primaryPrompt: '拖放文件或点击浏览',
+    secondaryPrompt: '你可以拖放文件或文件夹，也可以点击此区域选择',
     size: 'standard',
   },
 )

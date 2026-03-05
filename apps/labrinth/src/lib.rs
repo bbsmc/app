@@ -59,6 +59,8 @@ pub struct LabrinthConfig {
     pub redis_pool: RedisPool,
     pub clickhouse: Client,
     pub file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
+    /// 私有桶文件存储（用于付费插件），可选
+    pub private_file_host: Option<Arc<file_hosting::S3PrivateHost>>,
     pub scheduler: Arc<scheduler::Scheduler>,
     pub ip_salt: Pepper,
     pub search_config: search::SearchConfig,
@@ -77,6 +79,7 @@ pub fn app_setup(
     search_config: search::SearchConfig,
     clickhouse: &mut Client,
     file_host: Arc<dyn file_hosting::FileHost + Send + Sync>,
+    private_file_host: Option<Arc<file_hosting::S3PrivateHost>>,
 ) -> LabrinthConfig {
     info!("启动 Labrinth 于 {}", dotenvy::var("BIND_ADDR").unwrap());
 
@@ -97,7 +100,7 @@ pub fn app_setup(
     let mut scheduler = scheduler::Scheduler::new();
 
     let limiter: KeyedRateLimiter = Arc::new(
-        RateLimiter::keyed(Quota::per_minute(NonZeroU32::new(300).unwrap()))
+        RateLimiter::keyed(Quota::per_minute(NonZeroU32::new(500).unwrap()))
             .with_middleware::<StateInformationMiddleware>(),
     );
     let limiter_clone = Arc::clone(&limiter);
@@ -184,6 +187,33 @@ pub fn app_setup(
         redis_pool.clone(),
     );
 
+    scheduler::schedule_translation_tracking(
+        &mut scheduler,
+        pool.clone(),
+        redis_pool.clone(),
+    );
+
+    // 每 5 分钟清理超过 12 小时未付款的待支付订单
+    let pool_ref = pool.clone();
+    scheduler.run(std::time::Duration::from_secs(60 * 5), move || {
+        let pool_ref = pool_ref.clone();
+        async move {
+            match database::models::PaymentOrder::delete_stale_pending_orders(
+                &pool_ref,
+            )
+            .await
+            {
+                Ok(count) if count > 0 => {
+                    info!("已清理 {} 个过期未付款订单", count);
+                }
+                Err(e) => {
+                    log::error!("清理过期订单失败: {:?}", e);
+                }
+                _ => {}
+            }
+        }
+    });
+
     let session_queue = web::Data::new(AuthQueue::new());
 
     let pool_ref = pool.clone();
@@ -255,7 +285,8 @@ pub fn app_setup(
                                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                                     m.license_url license_url,
                                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                                    m.webhook_sent, m.color, m.wiki_open,m.issues_type issues_type,
+                                    m.webhook_sent, m.color, m.wiki_open,m.issues_type issues_type, m.translation_tracking, m.translation_tracker, m.is_paid,
+                                    (SELECT slug FROM mods WHERE translation_tracker = m.slug AND m.slug IS NOT NULL LIMIT 1) as translation_source,
                                     t.id thread_id, m.monetization_status monetization_status,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -304,7 +335,11 @@ pub fn app_setup(
                                             ),
                                             loaders: vec![],
                                             issues_type: m.issues_type,
-                                            forum: None
+                                            forum: None,
+                                            translation_tracking: m.translation_tracking,
+                                            translation_tracker: m.translation_tracker.clone(),
+                                            translation_source: m.translation_source.clone(),
+                                            is_paid: m.is_paid,
                                         };
                                         // println!("{:?}", inner);
 
@@ -332,6 +367,8 @@ pub fn app_setup(
                                                     google_id: None,
                                                     steam_id: None,
                                                     microsoft_id: None,
+                                                    bilibili_id: None,
+                                                    qq_id: None,
                                                     email: None,
                                                     email_verified: true,
                                                     avatar_url: None,
@@ -351,7 +388,10 @@ pub fn app_setup(
                                                     wiki_overtake_count: u.wiki_overtake_count,
                                                     wiki_ban_time: u.wiki_ban_time,
                                                     phone_number: None,
+                                                    is_premium_creator: false,
+                                                    creator_verified_at: None,
                                                     active_bans: vec![],
+                                                    pending_profile_reviews: vec![],
                                                 };
 
                                                 let (team_member, organization_team_member) = match crate::database::models::TeamMember::get_for_project_permissions(&inner, item.user_id, &pool_ref_clone2).await {
@@ -659,6 +699,7 @@ pub fn app_setup(
         redis_pool,
         clickhouse: clickhouse.clone(),
         file_host,
+        private_file_host,
         scheduler: Arc::new(scheduler),
         ip_salt,
         search_config,
@@ -690,6 +731,7 @@ pub fn app_config(
     .app_data(web::Data::new(labrinth_config.redis_pool.clone()))
     .app_data(web::Data::new(labrinth_config.pool.clone()))
     .app_data(web::Data::new(labrinth_config.file_host.clone()))
+    .app_data(web::Data::new(labrinth_config.private_file_host.clone()))
     .app_data(web::Data::new(labrinth_config.search_config.clone()))
     .app_data(labrinth_config.session_queue.clone())
     .app_data(labrinth_config.payouts_queue.clone())
@@ -791,6 +833,12 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<String>("GOOGLE_CLIENT_ID");
     failed |= check_var::<String>("GOOGLE_CLIENT_SECRET");
     failed |= check_var::<String>("STEAM_API_KEY");
+
+    failed |= check_var::<String>("BILIBILI_CLIENT_ID");
+    failed |= check_var::<String>("BILIBILI_CLIENT_SECRET");
+
+    failed |= check_var::<String>("QQ_CLIENT_ID");
+    failed |= check_var::<String>("QQ_CLIENT_SECRET");
 
     failed |= check_var::<String>("TREMENDOUS_API_URL");
     failed |= check_var::<String>("TREMENDOUS_API_KEY");

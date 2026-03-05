@@ -1,5 +1,6 @@
 use super::ApiError;
 use crate::database::redis::RedisPool;
+use crate::file_hosting::S3PrivateHost;
 use crate::models::projects::{Project, Version, VersionType};
 use crate::models::v2::projects::{LegacyProject, LegacyVersion};
 use crate::queue::session::AuthQueue;
@@ -9,6 +10,7 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -68,6 +70,7 @@ pub async fn download_version(
     redis: web::Data<RedisPool>,
     hash_query: web::Query<HashQuery>,
     session_queue: web::Data<AuthQueue>,
+    private_file_host: web::Data<Option<Arc<S3PrivateHost>>>,
 ) -> Result<HttpResponse, ApiError> {
     // 返回 TemporaryRedirect，所以不需要转换为 V2
     v3::version_file::download_version(
@@ -77,6 +80,7 @@ pub async fn download_version(
         redis,
         hash_query,
         session_queue,
+        private_file_host,
     )
     .await
     .or_else(v2_reroute::flatten_404_error)

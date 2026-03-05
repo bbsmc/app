@@ -403,19 +403,22 @@ impl Issue {
 
                 // 获取Issues主要信息
                 let issues = sqlx::query!(
-                    "SELECT i.id, i.mod_id, i.title, i.body, i.state, i.created_at, i.updated_at, i.closed_at,
-                            i.author_id, i.locked, i.deleted, i.deleted_at,
-                            u.username as author_name, u.avatar_url as author_avatar
+                    r#"SELECT i.id as "id!", i.mod_id as "mod_id!", i.title as "title!",
+                            i.body as "body!", i.state as "state!", i.created_at as "created_at!",
+                            i.updated_at as "updated_at!", i.closed_at,
+                            i.author_id as "author_id!", i.locked as "locked!",
+                            i.deleted as "deleted!", i.deleted_at,
+                            u.username as "author_name?", u.avatar_url as "author_avatar?"
                      FROM issues i
                      LEFT JOIN users u ON i.author_id = u.id
-                     WHERE i.id = ANY($1) AND i.deleted = false",
+                     WHERE i.id = ANY($1) AND i.deleted = false"#,
                     &ids
                 )
                 .fetch(&mut *exec)
                 .try_fold(
                     DashMap::new(),
                     |acc: DashMap<i64, QueryIssue>, m| {
-                        let id = IssuesId(m.id.unwrap());
+                        let id = IssuesId(m.id);
                         let comments: Vec<IssueCommentIndex> = comments_index
                             .get(&id.0)
                             .map(|v| v.clone())
@@ -427,18 +430,18 @@ impl Issue {
                                 comments,
                                 inner: Issue {
                                     id,
-                                    mod_id: ProjectId(m.mod_id.unwrap()),
-                                    title: m.title.unwrap(),
-                                    body: m.body.unwrap(),
-                                    state: m.state.unwrap(),
-                                    created_at: m.created_at.unwrap(),
-                                    updated_at: m.updated_at.unwrap(),
+                                    mod_id: ProjectId(m.mod_id),
+                                    title: m.title,
+                                    body: m.body,
+                                    state: m.state,
+                                    created_at: m.created_at,
+                                    updated_at: m.updated_at,
                                     closed_at: m.closed_at,
-                                    author_id: UserId(m.author_id.unwrap()),
-                                    author_name: m.author_name,
+                                    author_id: UserId(m.author_id),
+                                    author_name: m.author_name.unwrap_or_default(),
                                     author_avatar: m.author_avatar,
-                                    locked: m.locked.unwrap(),
-                                    deleted: m.deleted.unwrap(),
+                                    locked: m.locked,
+                                    deleted: m.deleted,
                                     deleted_at: m.deleted_at,
                                     labels: Vec::new(), // 稍后填充
                                     assignees: Vec::new(), // 稍后填充

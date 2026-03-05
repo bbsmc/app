@@ -272,6 +272,10 @@ interface Props {
 
 const { project, currentMember } = defineProps<Props>();
 
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
+
 const versions = defineModel<Labrinth.Versions.v3.Version[]>("versions", { required: true });
 
 const client = injectModrinthClient();

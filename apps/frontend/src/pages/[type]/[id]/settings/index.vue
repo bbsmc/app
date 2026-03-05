@@ -124,7 +124,7 @@
             id="project-env-client"
             v-model="clientSide"
             class="small-multiselect"
-            placeholder="Select one"
+            placeholder="请选择"
             :options="sideTypes"
             :custom-label="
               (value) => {
@@ -158,7 +158,7 @@
             id="project-env-server"
             v-model="serverSide"
             class="small-multiselect"
-            placeholder="Select one"
+            placeholder="请选择"
             :options="sideTypes"
             :custom-label="
               (value) => {
@@ -247,6 +247,50 @@
       </div>
     </section>
 
+    <!-- 超级管理员设置区域 -->
+    <section v-if="isAdminUser" class="universal-card">
+      <div class="label">
+        <h3>
+          <span class="label__title size-card-header">超级管理员设置</span>
+        </h3>
+      </div>
+      <div class="adjacent-input">
+        <label for="translation-tracking">
+          <span class="label__title flex items-center gap-2">
+            <LanguagesIcon class="h-5 w-5" aria-hidden="true" />
+            汉化追踪
+          </span>
+          <span class="label__description">
+            开启后，此项目将被标记为汉化追踪中，表示会定期同步上游更新并更新汉化内容。
+            <template v-if="!isBbsmcOrg">
+              <br />
+              <strong style="color: var(--color-orange)">
+                注意：此项目不属于 bbsmc-2 组织，无法启用汉化追踪。
+              </strong>
+            </template>
+          </span>
+        </label>
+        <input
+          id="translation-tracking"
+          v-model="translationTracking"
+          :disabled="!isBbsmcOrg"
+          class="switch stylized-toggle"
+          type="checkbox"
+        />
+      </div>
+      <div class="button-group">
+        <button
+          type="button"
+          class="iconified-button brand-button"
+          :disabled="!hasAdminChanges"
+          @click="saveAdminChanges()"
+        >
+          <SaveIcon aria-hidden="true" />
+          保存超级管理员设置
+        </button>
+      </div>
+    </section>
+
     <section class="universal-card">
       <div class="label">
         <h3>
@@ -281,6 +325,14 @@ import TrashIcon from "~/assets/images/utils/trash.svg?component";
 import ExitIcon from "~/assets/images/utils/x.svg?component";
 import IssuesIcon from "~/assets/images/utils/issues.svg?component";
 import CheckIcon from "~/assets/images/utils/check.svg?component";
+import LanguagesIcon from "~/assets/images/utils/languages.svg?component";
+import { isStaff } from "~/helpers/users.js";
+
+const auth = useState("auth");
+
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
 
 const props = defineProps({
   project: {
@@ -327,6 +379,18 @@ const visibility = ref(
     ? props.project.status
     : props.project.requested_status,
 );
+const translationTracking = ref(props.project.translation_tracking || false);
+
+const isAdminUser = computed(() => {
+  return isStaff(auth.value?.user);
+});
+
+// bbsmc 组织 ID 列表
+const BBSMC_ORG_IDS = ["87ze5gIz", "6FNyvmc5"];
+
+const isBbsmcOrg = computed(() => {
+  return BBSMC_ORG_IDS.includes(props.project.organization);
+});
 
 const hasPermission = computed(() => {
   const EDIT_DETAILS = 1 << 2;
@@ -376,6 +440,10 @@ const hasChanges = computed(() => {
   return Object.keys(patchData.value).length > 0 || deletedIcon.value || icon.value;
 });
 
+const hasAdminChanges = computed(() => {
+  return translationTracking.value !== (props.project.translation_tracking || false);
+});
+
 const hasModifiedVisibility = () => {
   const originalVisibility = tags.value.approvedStatuses.includes(props.project.status)
     ? props.project.status
@@ -395,6 +463,20 @@ const saveChanges = async () => {
   } else if (icon.value) {
     await props.patchIcon(icon.value);
     icon.value = null;
+  }
+};
+
+const saveAdminChanges = async () => {
+  if (hasAdminChanges.value) {
+    await props.patchProject({
+      translation_tracking: translationTracking.value,
+    });
+    addNotification({
+      group: "main",
+      title: "超级管理员设置已保存",
+      text: translationTracking.value ? "已启用汉化追踪" : "已关闭汉化追踪",
+      type: "success",
+    });
   }
 };
 

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE creator_applications\n            SET status = 'approved',\n                reviewer_id = $2,\n                review_note = $3,\n                reviewed_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a332009f42e93221ae07b03e1bc2e6ebb39088c9288c485f90091cdeeb723beb"
+}

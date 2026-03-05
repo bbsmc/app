@@ -1,6 +1,6 @@
 use crate::database::models::version_item;
 use crate::database::redis::RedisPool;
-use crate::file_hosting::FileHost;
+use crate::file_hosting::{FileHost, S3PrivateHost};
 use crate::models;
 use crate::models::ids::ImageId;
 use crate::models::projects::{Loader, Project, ProjectStatus};
@@ -142,6 +142,7 @@ pub async fn project_create(
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     file_host: Data<Arc<dyn FileHost + Send + Sync>>,
+    private_file_host: Data<Option<Arc<S3PrivateHost>>>,
     session_queue: Data<AuthQueue>,
 ) -> Result<HttpResponse, CreateError> {
     // 将 V2 的 multipart 负载转换为 V3 的 multipart 负载
@@ -242,6 +243,10 @@ pub async fn project_create(
                 requested_status: legacy_create.requested_status,
                 uploaded_images: legacy_create.uploaded_images,
                 organization_id: legacy_create.organization_id,
+                // V2 API 不支持付费资源功能
+                is_paid: false,
+                price: None,
+                validity_days: None,
             })
         },
     )
@@ -254,6 +259,7 @@ pub async fn project_create(
         client.clone(),
         redis.clone(),
         file_host,
+        private_file_host,
         session_queue,
     )
     .await?;

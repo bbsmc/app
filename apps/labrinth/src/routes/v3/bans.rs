@@ -1193,6 +1193,9 @@ pub async fn review_appeal(
 
     transaction.commit().await?;
 
+    crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+        .await;
+
     // 事务提交后清除缓存
     // 如果批准申诉，使用 clear_caches_with_locks 防止锁超时
     // 如果拒绝申诉，只需清除数据缓存即可
@@ -1365,6 +1368,7 @@ pub async fn create_appeal(
         project_id: None,
         report_id: None,
         ban_appeal_id: Some(appeal_id),
+        creator_application_id: None,
     }
     .insert(&mut transaction)
     .await?;
@@ -1388,6 +1392,9 @@ pub async fn create_appeal(
     BanAppeal::set_thread_id(appeal_id, thread_id, &mut transaction).await?;
 
     transaction.commit().await?;
+
+    crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+        .await;
 
     // 清除用户缓存，以便前端能立即获取到最新的申诉状态
     crate::database::models::User::clear_caches(

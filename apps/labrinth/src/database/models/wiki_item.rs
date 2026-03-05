@@ -45,6 +45,7 @@ pub struct Wikis {
     pub is_editor_user: bool,
     pub editor_user: Option<User>,
     pub is_visitors: bool,
+    pub requires_purchase: bool,
 }
 
 impl Wiki {

@@ -8,7 +8,7 @@
 
     <!-- User roles -->
     <template v-else-if="type === 'admin'"> <ModrinthIcon /> BBSMC 团队</template>
-    <template v-else-if="type === 'moderator'"> <ModeratorIcon /> 版主</template>
+    <template v-else-if="type === 'moderator'"> <ModeratorIcon /> 社区管理员</template>
     <template v-else-if="type === 'creator'"><CreatorIcon /> 创建者</template>
     <template v-else-if="type === 'plus'"><PlusIcon /> BBSMC 会员</template>
 

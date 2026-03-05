@@ -39,6 +39,11 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route(
                 "appeals/{appeal_id}",
                 web::get().to(super::bans::get_my_appeal),
+            )
+            .route(
+                "{user_id}/profile_reviews/{review_id}/cancel",
+                web::post()
+                    .to(crate::routes::v3::profile_reviews::cancel_review),
             ),
     );
 }

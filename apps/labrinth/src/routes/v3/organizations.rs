@@ -73,7 +73,7 @@ pub async fn organization_projects_get(
 
     let possible_organization_id: Option<u64> = parse_base62(&info).ok();
 
-    // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性检查
+    // 来源: BBSMC 上游提交 290c9fc19 - 组织可见性检查
     let organization_data = Organization::get(&info, &**pool, &redis).await?;
     if let Some(ref org) = organization_data {
         if !is_visible_organization(org, &current_user, &pool, &redis).await? {
@@ -117,7 +117,7 @@ pub struct NewOrganization {
         regex(path = *crate::util::validate::RE_URL_SAFE)
     )]
     pub slug: String,
-    // Title of the organization
+    // 组织的显示名称
     #[validate(length(min = 3, max = 64))]
     pub name: String,
     #[validate(length(min = 3, max = 256))]
@@ -147,7 +147,7 @@ pub async fn organization_create(
 
     let mut transaction = pool.begin().await?;
 
-    // Try title
+    // 尝试解析 slug
     let name_organization_id_option: Option<OrganizationId> =
         serde_json::from_str(&format!("\"{}\"", new_organization.slug)).ok();
     let mut organization_strings = vec![];
@@ -162,7 +162,7 @@ pub async fn organization_create(
     )
     .await?;
     if !results.is_empty() {
-        return Err(ApiError::InvalidInput("Slug 已被占用!".to_string()));
+        return Err(ApiError::InvalidInput("该 Slug 已被占用！".to_string()));
     }
 
     let organization_id = generate_organization_id(&mut transaction).await?;
@@ -250,7 +250,7 @@ pub async fn organization_create(
         )]
     } else {
         return Err(ApiError::InvalidInput(
-            "Failed to get created team.".to_owned(), // 应该永远不会发生
+            "获取新创建的团队失败".to_owned(), // 应该永远不会发生
         ));
     };
 
@@ -281,7 +281,7 @@ pub async fn organization_get(
     let user_id = current_user.as_ref().map(|x| x.id.into());
 
     let organization_data = Organization::get(&id, &**pool, &redis).await?;
-    // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性检查
+    // 来源: BBSMC 上游提交 290c9fc19 - 组织可见性检查
     if let Some(data) = organization_data {
         if !is_visible_organization(&data, &current_user, &pool, &redis).await?
         {
@@ -383,7 +383,7 @@ pub async fn organizations_get(
         team_groups.entry(item.team_id).or_insert(vec![]).push(item);
     }
 
-    // 来源: Modrinth 上游提交 290c9fc19 - 组织可见性过滤
+    // 来源: BBSMC 上游提交 290c9fc19 - 组织可见性过滤
     for data in organizations_data {
         // 过滤不可见的组织
         if !is_visible_organization(&data, &current_user, &pool, &redis).await?
@@ -565,7 +565,7 @@ pub async fn organizations_edit(
                     ));
                 }
 
-                // Modrinth 上游提交 79c263301: 使用 Organization::get 检查 slug 是否与现有组织 ID 冲突
+                // BBSMC 上游提交 79c263301: 使用 Organization::get 检查 slug 是否与现有组织 ID 冲突
                 let existing = Organization::get(
                     &slug.to_lowercase(),
                     &mut *transaction,
@@ -578,10 +578,10 @@ pub async fn organizations_edit(
                     ));
                 }
 
-                // Make sure the new name is different from the old one
-                // We are able to unwrap here because the name is always set
+                // 确保新的 slug 与旧的不同
+                // 这里可以安全地 unwrap，因为 slug 始终存在
                 if !slug.eq(&organization_item.slug.clone()) {
-                    // Modrinth 上游提交 79c263301: 添加 text_id_lower 检查
+                    // BBSMC 上游提交 79c263301: 添加 text_id_lower 检查
                     let results = sqlx::query!(
                         "
                         SELECT EXISTS(
@@ -620,7 +620,7 @@ pub async fn organizations_edit(
                     ));
                 }
 
-                // Modrinth 上游提交 79c263301: slug 存储为小写
+                // BBSMC 上游提交 79c263301: slug 存储为小写
                 sqlx::query!(
                     "
                     UPDATE organizations
@@ -849,7 +849,7 @@ pub async fn organization_projects_add(
             ApiError::InvalidInput("您不是此组织的成员！".to_string())
         })?;
 
-    // Require ownership of a project to add it to an organization
+    // 需要项目所有者身份才能将其添加到组织中
     if !current_user.role.is_admin() && !project_team_member.is_owner {
         return Err(ApiError::CustomAuthentication(
             "您需要是项目的所有者才能将其添加到组织中！".to_string(),
@@ -999,7 +999,7 @@ pub async fn organization_projects_remove(
     )
     .unwrap_or_default();
     if permissions.contains(OrganizationPermissions::REMOVE_PROJECT) {
-        // Now that permissions are confirmed, we confirm the veracity of the new user as an org member
+        // 权限已确认，接下来验证新用户是否为组织成员
         database::models::TeamMember::get_from_user_id_organization(
             organization.id,
             data.new_owner.into(),
@@ -1098,7 +1098,7 @@ pub async fn organization_projects_remove(
         .await?;
     } else {
         return Err(ApiError::CustomAuthentication(
-            "您没有权限将项目添加到此组织中！".to_string(),
+            "您没有权限从此组织中移除项目！".to_string(),
         ));
     }
     Ok(HttpResponse::Ok().finish())
@@ -1184,6 +1184,7 @@ pub async fn organization_icon_edit(
             username: user.username.clone(),
         },
         &redis,
+        false,
     )
     .await?;
 

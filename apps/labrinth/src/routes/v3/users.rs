@@ -14,12 +14,15 @@ use crate::{
         checks::is_visible_organization, filter_visible_projects,
         get_user_from_headers,
     },
-    database::{models::User, redis::RedisPool},
+    database::{
+        models::User, models::notification_item::NotificationBuilder,
+        redis::RedisPool,
+    },
     file_hosting::FileHost,
     models::{
         collections::{Collection, CollectionStatus},
-        ids::UserId,
-        notifications::Notification,
+        ids::{UserId, random_base62},
+        notifications::{Notification, NotificationBody},
         pats::Scopes,
         projects::Project,
         users::{Badges, Role},
@@ -54,6 +57,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route(
                 "appeals/{appeal_id}",
                 web::get().to(super::bans::get_my_appeal),
+            )
+            .route(
+                "{user_id}/profile_reviews/{review_id}/cancel",
+                web::post().to(super::profile_reviews::cancel_review),
             ),
     );
 }
@@ -135,8 +142,13 @@ pub async fn users_get(
 
     let users_data = User::get_many(&user_ids, &**pool, &redis).await?;
 
-    let users: Vec<crate::models::users::User> =
+    let mut users: Vec<crate::models::users::User> =
         users_data.into_iter().map(From::from).collect();
+
+    // 公开接口，清除审核数据
+    for user in &mut users {
+        user.pending_profile_reviews = None;
+    }
 
     Ok(HttpResponse::Ok().json(users))
 }
@@ -150,7 +162,9 @@ pub async fn user_get(
 
     if let Some(data) = user_data {
         // active_bans 已经在 User::get_many 中自动填充
-        let response: crate::models::users::User = data.into();
+        let mut response: crate::models::users::User = data.into();
+        // 公开接口，清除审核数据
+        response.pending_profile_reviews = None;
         Ok(HttpResponse::Ok().json(response))
     } else {
         Err(ApiError::NotFound)
@@ -164,7 +178,8 @@ pub async fn user_get_(
     let user_data = User::get_id(userid, &**pool, &redis).await?;
 
     if let Some(data) = user_data {
-        let response: crate::models::users::User = data.into();
+        let mut response: crate::models::users::User = data.into();
+        response.pending_profile_reviews = None;
         Ok(Some(response))
     } else {
         Err(ApiError::NotFound)
@@ -376,6 +391,7 @@ pub async fn user_edit(
                 .await?;
             }
             let mut transaction = pool.begin().await?;
+            let mut pending_fields = Vec::new();
 
             if let Some(username) = &new_user.username {
                 let existing_user_id_option =
@@ -386,31 +402,60 @@ pub async fn user_edit(
                     .map(|id| id == user.id)
                     .unwrap_or(true)
                 {
-                    let risk = crate::util::risk::check_text_risk(
-                        username,
-                        &user.username,
-                        &format!("/user/{}", user.username),
-                        "修改新的用户名",
-                        &redis,
-                    )
-                    .await?;
-                    if !risk {
-                        return Err(ApiError::InvalidInput(
-                            "新的用户名包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的修改新的用户名".to_string(),
-                        ));
-                    }
+                    let (passed, risk_labels) =
+                        crate::util::risk::check_text_risk_with_labels(
+                            username,
+                            &user.username,
+                            &format!("/user/{}", user.username),
+                            "修改新的用户名",
+                            &redis,
+                        )
+                        .await?;
 
-                    sqlx::query!(
-                        "
-                        UPDATE users
-                        SET username = $1
-                        WHERE (id = $2)
-                        ",
-                        username,
-                        id as crate::database::models::ids::UserId,
-                    )
-                    .execute(&mut *transaction)
-                    .await?;
+                    if passed {
+                        // 风控通过，正常保存
+                        sqlx::query!(
+                            "UPDATE users SET username = $1 WHERE id = $2",
+                            username,
+                            id as crate::database::models::ids::UserId,
+                        )
+                        .execute(&mut *transaction)
+                        .await?;
+                    } else {
+                        // 风控未通过，写入审核记录（ON CONFLICT 处理并发竞态）
+                        let review_id = random_base62(8) as i64;
+                        let result = sqlx::query!(
+                            "INSERT INTO user_profile_reviews (id, user_id, review_type, old_value, new_value, risk_labels)
+                             VALUES ($1, $2, 'username', $3, $4, $5)
+                             ON CONFLICT (user_id, review_type) WHERE status = 'pending' DO NOTHING",
+                            review_id,
+                            id as crate::database::models::ids::UserId,
+                            &actual_user.username,
+                            username,
+                            &risk_labels,
+                        )
+                        .execute(&mut *transaction)
+                        .await?;
+
+                        if result.rows_affected() == 0 {
+                            return Err(ApiError::InvalidInput(
+                                "您已有待审核的用户名修改，请等待审核完成或撤销后再试".to_string(),
+                            ));
+                        }
+
+                        // 发送通知
+                        let notification = NotificationBuilder {
+                            body: NotificationBody::ProfileReviewPending {
+                                review_id,
+                                review_type: "username".to_string(),
+                            },
+                        };
+                        notification
+                            .insert(id, &mut transaction, &redis)
+                            .await?;
+
+                        pending_fields.push("username");
+                    }
                 } else {
                     return Err(ApiError::InvalidInput(format!(
                         "用户名 {username} 已被占用!"
@@ -419,35 +464,70 @@ pub async fn user_edit(
             }
 
             if let Some(bio) = &new_user.bio {
-                if bio.as_deref().is_some() {
-                    // 应用场景URL
+                if let Some(bio_text) = bio.as_deref() {
+                    let (passed, risk_labels) =
+                        crate::util::risk::check_text_risk_with_labels(
+                            bio_text,
+                            &user.username,
+                            &format!("/user/{}", user.username),
+                            "个人资料简介",
+                            &redis,
+                        )
+                        .await?;
 
-                    let risk = crate::util::risk::check_text_risk(
-                        bio.as_deref().unwrap(),
-                        &user.username,
-                        &format!("/user/{}", user.username),
-                        "个人资料简介",
-                        &redis,
-                    )
-                    .await?;
-                    if !risk {
-                        return Err(ApiError::InvalidInput(
-                            "简介包含敏感词，已被记录该次提交，请勿在本网站使用涉及敏感词的简介".to_string(),
-                        ));
+                    if passed {
+                        // 风控通过，正常保存
+                        sqlx::query!(
+                            "UPDATE users SET bio = $1 WHERE id = $2",
+                            bio.as_deref(),
+                            id as crate::database::models::ids::UserId,
+                        )
+                        .execute(&mut *transaction)
+                        .await?;
+                    } else {
+                        // 风控未通过，写入审核记录（ON CONFLICT 处理并发竞态）
+                        let review_id = random_base62(8) as i64;
+                        let result = sqlx::query!(
+                            "INSERT INTO user_profile_reviews (id, user_id, review_type, old_value, new_value, risk_labels)
+                             VALUES ($1, $2, 'bio', $3, $4, $5)
+                             ON CONFLICT (user_id, review_type) WHERE status = 'pending' DO NOTHING",
+                            review_id,
+                            id as crate::database::models::ids::UserId,
+                            actual_user.bio.as_deref(),
+                            bio_text,
+                            &risk_labels,
+                        )
+                        .execute(&mut *transaction)
+                        .await?;
+
+                        if result.rows_affected() == 0 {
+                            return Err(ApiError::InvalidInput(
+                                "您已有待审核的简介修改，请等待审核完成或撤销后再试".to_string(),
+                            ));
+                        }
+
+                        // 发送通知
+                        let notification = NotificationBuilder {
+                            body: NotificationBody::ProfileReviewPending {
+                                review_id,
+                                review_type: "bio".to_string(),
+                            },
+                        };
+                        notification
+                            .insert(id, &mut transaction, &redis)
+                            .await?;
+
+                        pending_fields.push("bio");
                     }
+                } else {
+                    // bio 被设为 null，直接保存
+                    sqlx::query!(
+                        "UPDATE users SET bio = NULL WHERE id = $1",
+                        id as crate::database::models::ids::UserId,
+                    )
+                    .execute(&mut *transaction)
+                    .await?;
                 }
-
-                sqlx::query!(
-                    "
-                    UPDATE users
-                    SET bio = $1
-                    WHERE (id = $2)
-                    ",
-                    bio.as_deref(),
-                    id as crate::database::models::ids::UserId,
-                )
-                .execute(&mut *transaction)
-                .await?;
             }
 
             if let Some(role) = &new_user.role {
@@ -515,7 +595,16 @@ pub async fn user_edit(
             transaction.commit().await?;
             User::clear_caches(&[(id, Some(actual_user.username))], &redis)
                 .await?;
-            Ok(HttpResponse::NoContent().body(""))
+
+            if !pending_fields.is_empty() {
+                crate::routes::internal::moderation::clear_pending_counts_cache(&redis).await;
+                Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "pending_review": true,
+                    "fields": pending_fields,
+                })))
+            } else {
+                Ok(HttpResponse::NoContent().body(""))
+            }
         } else {
             Err(ApiError::CustomAuthentication(
                 "您没有权限编辑此用户!".to_string(),
@@ -570,18 +659,13 @@ pub async fn user_icon_edit(
             .await?;
         }
 
-        delete_old_images(
-            actual_user.avatar_url,
-            actual_user.raw_avatar_url,
-            &***file_host,
-        )
-        .await?;
-
         let bytes =
             read_from_payload(&mut payload, 262144, "头像必须小于256KiB")
                 .await?;
 
         let user_id: UserId = actual_user.id.into();
+
+        // 先上传图片到 S3，跳过内置风控（我们手动检查）
         let upload_result = crate::util::img::upload_image_optimized(
             &format!("data/{}", user_id),
             bytes.freeze(),
@@ -595,24 +679,133 @@ pub async fn user_icon_edit(
                 username: actual_user.username.clone(),
             },
             &redis,
+            true, // 跳过内置风控，手动检查
         )
         .await?;
 
-        sqlx::query!(
-            "
-            UPDATE users
-            SET avatar_url = $1, raw_avatar_url = $2
-            WHERE (id = $3)
-            ",
-            upload_result.url,
-            upload_result.raw_url,
-            actual_user.id as crate::database::models::ids::UserId,
+        // 手动进行图片风控检测
+        let risk_result = crate::util::risk::check_image_risk_with_labels(
+            &upload_result.url,
+            &format!("/user/{}", actual_user.username),
+            &actual_user.username,
+            "用户头像",
+            &redis,
         )
-        .execute(&**pool)
         .await?;
-        User::clear_caches(&[(actual_user.id, None)], &redis).await?;
+        let passed = risk_result.passed;
+        let risk_labels = risk_result.labels;
 
-        Ok(HttpResponse::NoContent().body(""))
+        if passed {
+            // 风控通过：先更新数据库，再删除旧头像
+            let old_avatar_url = actual_user.avatar_url.clone();
+            let old_raw_avatar_url = actual_user.raw_avatar_url.clone();
+
+            let mut tx = pool.begin().await?;
+            sqlx::query!(
+                "UPDATE users SET avatar_url = $1, raw_avatar_url = $2 WHERE id = $3",
+                upload_result.url,
+                upload_result.raw_url,
+                actual_user.id as crate::database::models::ids::UserId,
+            )
+            .execute(&mut *tx)
+            .await?;
+            tx.commit().await?;
+
+            User::clear_caches(
+                &[(actual_user.id, Some(actual_user.username))],
+                &redis,
+            )
+            .await?;
+
+            // 事务成功后删除旧头像（尽力而为）
+            if let Err(e) = delete_old_images(
+                old_avatar_url,
+                old_raw_avatar_url,
+                &***file_host,
+            )
+            .await
+            {
+                log::warn!("删除旧头像失败: {}", e);
+            }
+
+            Ok(HttpResponse::NoContent().body(""))
+        } else {
+            // 风控未通过，写入审核记录（ON CONFLICT 处理并发竞态）
+            let review_id = random_base62(8) as i64;
+            let old_value = serde_json::json!({
+                "avatar_url": actual_user.avatar_url,
+                "raw_avatar_url": actual_user.raw_avatar_url,
+            })
+            .to_string();
+            let new_value = serde_json::json!({
+                "avatar_url": upload_result.url,
+                "raw_avatar_url": upload_result.raw_url,
+            })
+            .to_string();
+
+            let mut transaction = pool.begin().await?;
+
+            let result = sqlx::query!(
+                "INSERT INTO user_profile_reviews (id, user_id, review_type, old_value, new_value, risk_labels)
+                 VALUES ($1, $2, 'avatar', $3, $4, $5)
+                 ON CONFLICT (user_id, review_type) WHERE status = 'pending' DO NOTHING",
+                review_id,
+                actual_user.id as crate::database::models::ids::UserId,
+                &old_value,
+                &new_value,
+                &risk_labels,
+            )
+            .execute(&mut *transaction)
+            .await?;
+
+            if result.rows_affected() == 0 {
+                transaction.rollback().await?;
+                // 已有 pending 审核，删除刚上传的图片
+                if let Err(e) = delete_old_images(
+                    Some(upload_result.url),
+                    Some(upload_result.raw_url),
+                    &***file_host,
+                )
+                .await
+                {
+                    log::warn!("清理重复审核头像失败: {}", e);
+                }
+                return Err(ApiError::InvalidInput(
+                    "您已有待审核的头像修改，请等待审核完成或撤销后再试"
+                        .to_string(),
+                ));
+            }
+
+            // 发送通知
+            let notification = NotificationBuilder {
+                body: NotificationBody::ProfileReviewPending {
+                    review_id,
+                    review_type: "avatar".to_string(),
+                },
+            };
+            notification
+                .insert(actual_user.id, &mut transaction, &redis)
+                .await?;
+
+            transaction.commit().await?;
+
+            crate::routes::internal::moderation::clear_pending_counts_cache(
+                &redis,
+            )
+            .await;
+
+            // 清除用户缓存
+            User::clear_caches(
+                &[(actual_user.id, Some(actual_user.username))],
+                &redis,
+            )
+            .await?;
+
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "pending_review": true,
+                "review_type": "avatar",
+            })))
+        }
     } else {
         Err(ApiError::NotFound)
     }

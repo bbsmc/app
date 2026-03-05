@@ -34,6 +34,18 @@ pub struct BanAppealInfo {
     pub thread_id: Option<i64>,
 }
 
+/// 用户资料审核信息（用于 User 查询结果）
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct ProfileReviewInfo {
+    pub id: i64,
+    pub review_type: String, // "avatar" / "username" / "bio"
+    pub old_value: Option<String>,
+    pub new_value: String,
+    pub risk_labels: String,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct User {
     pub id: UserId,
@@ -44,6 +56,8 @@ pub struct User {
     pub google_id: Option<String>,
     pub steam_id: Option<i64>,
     pub microsoft_id: Option<String>,
+    pub bilibili_id: Option<String>,
+    pub qq_id: Option<String>,
     pub password: Option<String>,
 
     pub paypal_id: Option<String>,
@@ -67,9 +81,18 @@ pub struct User {
     pub wiki_overtake_count: i64,
     pub phone_number: Option<String>,
 
+    /// 是否为高级创作者（可发布付费插件）
+    pub is_premium_creator: bool,
+    /// 高级创作者认证时间
+    pub creator_verified_at: Option<DateTime<Utc>>,
+
     /// 用户当前的活跃封禁列表（需要单独调用 UserBan::get_user_active_bans 填充）
     #[serde(default)]
     pub active_bans: Vec<UserBanInfo>,
+
+    /// 用户待审核的资料修改列表
+    #[serde(default)]
+    pub pending_profile_reviews: Vec<ProfileReviewInfo>,
 }
 
 impl User {
@@ -83,6 +106,7 @@ impl User {
                 id, username, email,
                 avatar_url, raw_avatar_url, bio, created,
                 github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
+                bilibili_id, qq_id,
                 email_verified, password, paypal_id, paypal_country, paypal_email,
                 venmo_handle, stripe_customer_id
             )
@@ -90,7 +114,7 @@ impl User {
                 $1, $2, $3, $4, $5,
                 $6, $7,
                 $8, $9, $10, $11, $12, $13,
-                $14, $15, $16, $17, $18, $19, $20
+                $14, $15, $16, $17, $18, $19, $20, $21, $22
             )
             ",
             self.id as UserId,
@@ -106,6 +130,8 @@ impl User {
             self.google_id,
             self.steam_id,
             self.microsoft_id,
+            self.bilibili_id,
+            self.qq_id,
             self.email_verified,
             self.password,
             self.paypal_id,
@@ -201,8 +227,10 @@ impl User {
                             avatar_url, raw_avatar_url, username, bio,
                             created, role, badges,
                             github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
+                            bilibili_id, qq_id,
                             email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
-                            venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number
+                            venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number,
+                            is_premium_creator, creator_verified_at
                         FROM users
                         WHERE id = ANY($1) OR LOWER(username) = ANY($2)
                         ",
@@ -219,6 +247,8 @@ impl User {
                             google_id: u.google_id,
                             steam_id: u.steam_id,
                             microsoft_id: u.microsoft_id,
+                            bilibili_id: u.bilibili_id,
+                            qq_id: u.qq_id,
                             email: u.email,
                             email_verified: u.email_verified,
                             avatar_url: u.avatar_url,
@@ -238,7 +268,10 @@ impl User {
                             wiki_overtake_count: u.wiki_overtake_count,
                             wiki_ban_time: u.wiki_ban_time,
                             phone_number: u.phone_number,
+                            is_premium_creator: u.is_premium_creator,
+                            creator_verified_at: u.creator_verified_at,
                             active_bans: Vec::new(),  // 第二步填充
+                            pending_profile_reviews: Vec::new(),  // 第四步填充
                         };
 
                         acc.insert(u.id, (Some(u.username), user));
@@ -300,6 +333,39 @@ impl User {
                             let user_id = *entry.key();
                             if let Some(bans) = active_bans.get(&user_id) {
                                 entry.value_mut().1.active_bans = bans.value().clone();
+                            }
+                        }
+
+                        // 第四步：查询所有用户的待审核资料修改
+                        let pending_reviews: DashMap<i64, Vec<ProfileReviewInfo>> = sqlx::query!(
+                            "
+                            SELECT user_id, id, review_type, old_value, new_value, risk_labels, status, created_at
+                            FROM user_profile_reviews
+                            WHERE user_id = ANY($1) AND status = 'pending'
+                            ",
+                            &queried_user_ids
+                        )
+                        .fetch(&mut *exec)
+                        .try_fold(DashMap::new(), |acc: DashMap<i64, Vec<ProfileReviewInfo>>, row| {
+                            let review_info = ProfileReviewInfo {
+                                id: row.id,
+                                review_type: row.review_type,
+                                old_value: row.old_value,
+                                new_value: row.new_value,
+                                risk_labels: row.risk_labels,
+                                status: row.status,
+                                created_at: row.created_at,
+                            };
+                            acc.entry(row.user_id).or_default().push(review_info);
+                            async move { Ok(acc) }
+                        })
+                        .await?;
+
+                        // 第五步：填充 pending_profile_reviews 到用户对象
+                        for mut entry in users.iter_mut() {
+                            let user_id = *entry.key();
+                            if let Some(reviews) = pending_reviews.get(&user_id) {
+                                entry.value_mut().1.pending_profile_reviews = reviews.value().clone();
                             }
                         }
                     }

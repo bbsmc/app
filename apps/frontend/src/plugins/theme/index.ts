@@ -17,17 +17,17 @@ export default defineNuxtPlugin({
     function getPreferredNativeTheme() {
       const nativeTheme = $nativeTheme.value;
       switch (nativeTheme) {
-        case "light":
-          return $preferredThemes.light;
         case "dark":
+          return $preferredThemes.dark;
+        case "light":
         case "unknown":
           if (import.meta.dev && import.meta.server && nativeTheme === "unknown") {
             console.warn(
-              "[theme] no client hint is available for request, using dark theme as default",
+              "[theme] no client hint is available for request, using light theme as default",
             );
           }
 
-          return $preferredThemes.dark;
+          return $preferredThemes.light;
       }
     }
 

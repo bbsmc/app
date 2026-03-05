@@ -320,14 +320,19 @@ const props = defineProps({
   },
 });
 
-const title = `${props.project.title} - 渲染图`;
-const description = `浏览 ${props.project.gallery.length} 个图片 ${props.project.title} 在 BBSMC.`;
+const title = `${props.project.title} 渲染图和游戏截图 - 我的世界资源展示 | BBSMC`;
+const galleryCount = props.project.gallery.length;
+const description =
+  galleryCount > 0
+    ? `查看 ${props.project.title} 的 ${galleryCount} 张展示图片和游戏截图。在 BBSMC 浏览项目的视觉效果和创意展示，了解更多资源详情。`
+    : `浏览 ${props.project.title} 的项目展示页面。在 BBSMC 发现更多高质量的 Minecraft 我的世界资源，了解项目详细视觉效果和创意展示。`;
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
+  ogImage: props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
 });
 </script>
 

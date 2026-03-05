@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO payment_orders (\n                id, order_no, user_id, project_id, seller_id,\n                amount, platform_fee, seller_amount, status,\n                validity_days, created_at, expires_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Int4",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3cf7684a61401775acce6140e559d69a06626c44207604994dd2d78a54586cae"
+}

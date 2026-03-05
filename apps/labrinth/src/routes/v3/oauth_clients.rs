@@ -387,12 +387,8 @@ pub async fn oauth_client_icon_edit(
     )
     .await?;
 
-    let bytes = read_from_payload(
-        &mut payload,
-        262144,
-        "Icons must be smaller than 256KiB",
-    )
-    .await?;
+    let bytes =
+        read_from_payload(&mut payload, 262144, "图标必须小于256KiB").await?;
     let upload_result = upload_image_optimized(
         &format!("data/{}", client_id),
         bytes.freeze(),
@@ -406,6 +402,7 @@ pub async fn oauth_client_icon_edit(
             username: user.username.clone(),
         },
         &redis,
+        false,
     )
     .await?;
 

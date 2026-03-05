@@ -49,12 +49,13 @@
         <div class="w-9 max-sm:hidden"></div>
         <div class="text-sm font-bold text-contrast max-sm:hidden">标题</div>
         <div
-          v-if="project.project_type !== 'software'"
+          v-if="project.project_type !== 'software' && project.project_type !== 'language'"
           class="text-sm font-bold text-contrast max-sm:hidden sm:max-xl:collapse sm:max-xl:hidden"
         >
           游戏版本
         </div>
         <div
+          v-if="project.project_type !== 'language'"
           class="text-sm font-bold text-contrast max-sm:hidden sm:max-xl:collapse sm:max-xl:hidden"
         >
           平台
@@ -109,7 +110,10 @@
             </div>
             <div class="flex flex-col justify-center gap-2 sm:contents">
               <div class="flex flex-row flex-wrap items-center gap-1 xl:contents">
-                <div v-if="project.project_type !== 'software'" class="flex items-center">
+                <div
+                  v-if="project.project_type !== 'software' && project.project_type !== 'language'"
+                  class="flex items-center"
+                >
                   <div class="tag-list">
                     <div
                       v-for="gameVersion in formatVersionsForDisplay(version.game_versions)"
@@ -122,7 +126,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="flex items-center">
+                <div v-if="project.project_type !== 'language'" class="flex items-center">
                   <div class="tag-list">
                     <div
                       v-for="platform in version.loaders"
@@ -151,7 +155,7 @@
                   class="z-[1] flex cursor-help items-center gap-1 text-nowrap font-medium xl:self-center"
                 >
                   <CalendarIcon class="xl:hidden" />
-                  {{ formatRelativeTime(version.date_published) }}
+                  {{ formatDate(version.date_published) }}
                 </div>
                 <div
                   class="pointer-events-none z-[1] flex items-center gap-1 font-medium xl:self-center"
@@ -360,21 +364,24 @@ const props = defineProps({
 
 const tags = useTags();
 const flags = useFeatureFlags();
-const formatRelativeTime = useRelativeTime();
+// useRelativeTime available if needed
 const auth = await useAuth();
+const nuxtApp = useNuxtApp();
+const formatDate = (date) => nuxtApp.$dayjs(date).format("YYYY-MM-DD");
 
 // const emits = defineEmits(["onDownload"]);
 
 const route = useNativeRoute();
 const router = useNativeRouter();
 
-const title = `${props.project.title} - 版本列表`;
-const description = `浏览 ${props.project.title} 的所有版本`;
+const title = `${props.project.title} 版本列表 - 我的世界资源下载 | BBSMC`;
+const description = `浏览 ${props.project.title} 的所有版本和更新日志。下载适合您游戏版本的最新资源，支持多个 Minecraft 版本和加载器。在 BBSMC 获取完整的版本历史和更新记录。`;
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
+  ogImage: props.project.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
 });
 
 const currentPage = ref(route.query.page ?? 1);

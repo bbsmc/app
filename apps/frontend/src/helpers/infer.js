@@ -1,6 +1,6 @@
 import { parse as parseTOML } from "@ltd/j-toml";
 import JSZip from "jszip";
-import yaml from "js-yaml";
+import { load as yamlLoad } from "js-yaml";
 import { satisfies } from "semver";
 
 export const inferVersionInfo = async function (rawFile, project, gameVersions) {
@@ -225,7 +225,7 @@ export const inferVersionInfo = async function (rawFile, project, gameVersions) 
     },
     // Bukkit + Other Forks
     "plugin.yml": (file) => {
-      const metadata = yaml.load(file);
+      const metadata = yamlLoad(file);
 
       return {
         name: `${project.title} ${metadata.version}`,
@@ -242,7 +242,7 @@ export const inferVersionInfo = async function (rawFile, project, gameVersions) 
     },
     // Paper 1.19.3+
     "paper-plugin.yml": (file) => {
-      const metadata = yaml.load(file);
+      const metadata = yamlLoad(file);
 
       return {
         name: `${project.title} ${metadata.version}`,
@@ -258,7 +258,7 @@ export const inferVersionInfo = async function (rawFile, project, gameVersions) 
     },
     // Bungeecord + Waterfall
     "bungee.yml": (file) => {
-      const metadata = yaml.load(file);
+      const metadata = yamlLoad(file);
 
       return {
         name: `${project.title} ${metadata.version}`,

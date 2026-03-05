@@ -30,6 +30,9 @@
           >
             <LibraryIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem link="/dashboard/purchases" label="已购买资源">
+            <CoinsIcon aria-hidden="true" />
+          </NavStackItem>
           <!--          <NavStackItem link="/dashboard/revenue" label="收入">-->
           <!--            <CurrencyIcon aria-hidden="true" />-->
           <!--          </NavStackItem>-->
@@ -51,6 +54,7 @@ import ListIcon from "~/assets/images/utils/list.svg?component";
 import ReportIcon from "~/assets/images/utils/report.svg?component";
 import NotificationsIcon from "~/assets/images/utils/bell.svg?component";
 import OrganizationIcon from "~/assets/images/utils/organization.svg?component";
+import CoinsIcon from "~/assets/images/utils/coins.svg?component";
 
 const { formatMessage } = useVIntl();
 

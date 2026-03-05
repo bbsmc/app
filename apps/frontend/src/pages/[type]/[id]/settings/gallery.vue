@@ -325,14 +325,15 @@ const props = defineProps({
   },
 });
 
-const title = `${props.project.title} - Gallery`;
-const description = `View ${props.project.gallery.length} images of ${props.project.title} on Modrinth.`;
+const title = `${props.project.title} 图库管理 - BBSMC`;
+const description = `管理 ${props.project.title} 的 ${props.project.gallery.length} 张展示图片，上传和编辑项目渲染图、游戏截图。`;
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
+  robots: "noindex, nofollow",
 });
 </script>
 

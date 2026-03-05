@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_profile_reviews (id, user_id, review_type, old_value, new_value, risk_labels)\n                             VALUES ($1, $2, 'bio', $3, $4, $5)\n                             ON CONFLICT (user_id, review_type) WHERE status = 'pending' DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4b04c79e9d4c15cf926962c02ee4531b8bb14ce5851b39a3b31cceba6c0f7202"
+}

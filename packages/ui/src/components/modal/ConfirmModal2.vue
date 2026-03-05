@@ -67,7 +67,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['proceed'])
+const emit = defineEmits(['proceed', 'reject'])
 const modal = ref(null)
 
 const action_disabled = ref(props.hasToType)
@@ -89,6 +89,7 @@ function reject() {
   if (modal.value) {
     modal.value.hide()
   }
+  emit('reject')
 }
 
 function show() {

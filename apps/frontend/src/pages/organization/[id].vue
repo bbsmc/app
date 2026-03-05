@@ -457,15 +457,33 @@ provide("organizationContext", {
   patchOrganization,
 });
 
-const title = `${organization.value.name} - Organization`;
-const description = `${organization.value.description} - View the organization ${organization.value.name} on Modrinth`;
+const title = `${organization.value.name} - BBSMC 组织 | 我的世界 Minecraft 创作者团队`;
+const description = organization.value.description
+  ? `${organization.value.description} - 在 BBSMC 浏览 ${organization.value.name} 组织发布的 Minecraft 模组、整合包和其他资源。`
+  : `在 BBSMC 浏览 ${organization.value.name} 组织发布的 Minecraft 模组、整合包、光影和资源包，发现更多高质量创作者和资源。`;
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
-  ogDescription: organization.value.description,
+  ogDescription: description,
   ogImage: organization.value.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
+});
+
+useHead({
+  script: [
+    {
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: organization.value.name,
+        description: organization.value.description || undefined,
+        image: organization.value.icon_url || undefined,
+        url: `https://bbsmc.net/organization/${organization.value.slug || organization.value.id}`,
+      }),
+    },
+  ],
 });
 
 const navLinks = computed(() => [

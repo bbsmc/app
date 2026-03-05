@@ -4,7 +4,9 @@
     :class="{ 'alt-layout': !cosmetics.rightSearchLayout }"
   >
     <Head>
-      <Title> {{ projectType.display }} - BBSMC</Title>
+      <Title
+        >{{ projectType.display }} - BBSMC 我的世界资源下载{{ query ? ` | ${query}` : "" }}</Title
+      >
     </Head>
     <aside
       :class="{
@@ -370,6 +372,7 @@ import { Pagination, ScrollablePanel, Checkbox, Avatar } from "@modrinth/ui";
 import { BanIcon, DropdownIcon, CheckIcon, FilterXIcon, DownloadIcon } from "@modrinth/assets";
 import ProjectCard from "~/components/ui/ProjectCard.vue";
 import LogoAnimated from "~/components/brand/LogoAnimated.vue";
+import { addNotification } from "~/composables/notifs.js";
 
 import ClientIcon from "~/assets/images/categories/client.svg?component";
 import ServerIcon from "~/assets/images/categories/server.svg?component";
@@ -404,13 +407,6 @@ const bannerItemsConfig = ref({
       slug: "/modpack/lzmx",
     },
     {
-      image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
-      title: "PCL2",
-      description:
-        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
-      slug: "/software/pcl",
-    },
-    {
       image:
         "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
       title: "愚者 - The Fool",
@@ -425,22 +421,15 @@ const bannerItemsConfig = ref({
       slug: "/modpack/vefc",
     },
   ],
-  software: [
+  language: [
     {
-      image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
-      title: "PCL2",
-      description:
-        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
-      slug: "/software/pcl",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
-      title: "PCL CE",
-      description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
-      slug: "/software/pcl",
+      image: "/tutorial/language-banner.jpg",
+      title: "整合包汉化教程 - 全流程使用指南",
+      description: "想要游玩中文版整合包？村民带你学汉化！",
+      slug: "/install-tutorial",
     },
   ],
+  software: [],
 });
 
 // 获取当前项目类型的 banner 列表
@@ -487,17 +476,37 @@ const maxResults = ref(20);
 const currentPage = ref(1);
 const projectType = ref({ id: "mod", display: "mod", actual: "mod" });
 const ogTitle = computed(
-  () => `搜索 ${projectType.value.display} ${query.value ? " | " + query.value : ""}`,
+  () =>
+    `${projectType.value.display} - BBSMC 我的世界资源下载${query.value ? " | " + query.value : ""}`,
 );
+const projectTypeDescriptions = {
+  mod: "浏览和下载 Minecraft 模组，涵盖 Fabric、Forge、NeoForge、Quilt 等主流加载器，为你的游戏增添新内容、机制和玩法。",
+  project:
+    "探索 BBSMC 上的各类 Minecraft 资源，包括模组、插件、光影包、资源包等，一站式满足你的所有需求。",
+  plugin:
+    "查找适用于 Bukkit、Spigot、Paper 等服务端的 Minecraft 插件，轻松管理和扩展你的多人服务器功能。",
+  datapack:
+    "下载 Minecraft 原版数据包，无需安装模组即可修改游戏规则、合成配方、战利品表和世界生成。",
+  shader:
+    "发现精美的 Minecraft 光影包，通过实时光影、水面反射和动态天气效果，让你的游戏画面焕然一新。",
+  resourcepack: "浏览 Minecraft 资源包，更换游戏纹理、模型、音效和界面，打造独一无二的视觉风格。",
+  modpack:
+    "下载精心整合的 Minecraft 模组包/整合包，开箱即用的模组组合，体验科技、魔法、冒险等各类主题玩法。",
+  software:
+    "获取 Minecraft 相关软件和工具，包括启动器、服务端、地图编辑器等实用资源，提升你的游戏体验。",
+  language: "下载 Minecraft 汉化资源和语言包，为你喜爱的模组和资源包提供中文翻译支持。",
+};
 const description = computed(
   () =>
-    `快速在BBSMC上搜索 ${projectType.value.display} 的准确结果. 我们的过滤器可帮助您快速找到最佳的 Minecraft ${projectType.value.display}`,
+    projectTypeDescriptions[projectType.value.id] ||
+    `在 BBSMC 上搜索和下载 Minecraft ${projectType.value.display}，丰富的筛选条件帮助你快速找到所需资源。`,
 );
 
 useSeoMeta({
   description,
   ogTitle,
   ogDescription: description,
+  ogImage: "https://cdn.bbsmc.net/raw/bbsmc-logo.png",
 });
 
 if (route.query.q) {
@@ -605,11 +614,17 @@ projectType.value = tags.value.projectTypes.find(
   (x) => x.id === route.path.replaceAll(/^\/|s\/?$/g, ""), // Removes prefix `/` and suffixes `s` and `s/`
 );
 
+// 插件类型默认按更新时间排序
+if (projectType.value.id === "plugin" && !route.query.s) {
+  sortType.value = { display: "最近更新", name: "updated" };
+}
+
 const noLoad = ref(false);
 const {
   data: rawResults,
   refresh: refreshSearch,
   pending: searchLoading,
+  error: searchError,
 } = useLazyFetch(
   () => {
     const config = useRuntimeConfig();
@@ -750,6 +765,24 @@ const results = shallowRef(toRaw(rawResults));
 const pageCount = computed(() =>
   results.value ? Math.ceil(results.value.total_hits / results.value.limit) : 1,
 );
+
+// 监听搜索错误并显示通知
+watch(searchError, (error) => {
+  if (error) {
+    const statusCode = error?.statusCode || error?.response?.status;
+    const errorData = error?.data;
+
+    if (statusCode === 429 || errorData?.error === "ratelimit_error") {
+      const description = errorData?.description || "您的请求过于频繁";
+      addNotification({
+        group: "main",
+        title: "请求过于频繁",
+        text: `${description}，请稍后再试。`,
+        type: "warn",
+      });
+    }
+  }
+});
 
 const router = useNativeRouter();
 

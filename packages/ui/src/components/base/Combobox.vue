@@ -68,10 +68,10 @@ const props = withDefaults(
     disabled?: boolean
   }>(),
   {
-    placeholder: 'Select an option',
+    placeholder: '请选择',
     searchable: false,
-    searchPlaceholder: 'Search...',
-    noOptionsMessage: 'No options found',
+    searchPlaceholder: '搜索...',
+    noOptionsMessage: '未找到选项',
     disabled: false,
   },
 )

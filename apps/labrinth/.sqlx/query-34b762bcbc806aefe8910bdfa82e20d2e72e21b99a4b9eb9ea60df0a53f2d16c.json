@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE payment_merchants\n            SET verified = $2, updated_at = NOW()\n            WHERE user_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "34b762bcbc806aefe8910bdfa82e20d2e72e21b99a4b9eb9ea60df0a53f2d16c"
+}

@@ -95,6 +95,7 @@ import { fetchExtraNotificationData, groupNotifications } from "~/helpers/notifi
 
 useHead({
   title: "仪表板 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();

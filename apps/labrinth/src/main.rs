@@ -1,7 +1,7 @@
 use actix_web::{App, HttpServer};
 use actix_web_prom::PrometheusMetricsBuilder;
 use labrinth::database::redis::RedisPool;
-use labrinth::file_hosting::S3Host;
+use labrinth::file_hosting::{S3Host, S3PrivateHost};
 use labrinth::search;
 use labrinth::util::ratelimit::RateLimit;
 use labrinth::{check_env_vars, clickhouse, database, file_hosting};
@@ -81,6 +81,45 @@ async fn main() -> std::io::Result<()> {
             _ => panic!("指定了无效的存储后端。启动中止！"),
         };
 
+    // 初始化私有桶存储（用于付费插件）
+    let private_file_host: Option<Arc<S3PrivateHost>> =
+        if storage_backend == "s3" {
+            match dotenvy::var("S3_PRIVATE_BUCKET_NAME") {
+                Ok(bucket) if bucket != "none" && !bucket.is_empty() => {
+                    let cdn_url = dotenvy::var("CDN_PRIVATE_URL").ok();
+                    let cdn_url = cdn_url
+                        .as_deref()
+                        .filter(|s| *s != "none" && !s.is_empty());
+
+                    match S3PrivateHost::new_with_cdn(
+                        &bucket,
+                        &dotenvy::var("S3_URL").unwrap(),
+                        &dotenvy::var("S3_ACCESS_TOKEN").unwrap(),
+                        &dotenvy::var("S3_SECRET").unwrap(),
+                        cdn_url,
+                    ) {
+                        Ok(host) => {
+                            info!("私有桶存储已启用: {}", bucket);
+                            if cdn_url.is_some() {
+                                info!("私有桶 CDN URL 已配置");
+                            }
+                            Some(Arc::new(host))
+                        }
+                        Err(e) => {
+                            error!("初始化私有桶存储失败: {:?}", e);
+                            None
+                        }
+                    }
+                }
+                _ => {
+                    info!("私有桶存储未配置，付费插件功能将不可用");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
     info!("初始化 clickhouse 连接");
     let mut clickhouse = clickhouse::init_client().await.unwrap();
     let prometheus = PrometheusMetricsBuilder::new("labrinth")
@@ -98,6 +137,7 @@ async fn main() -> std::io::Result<()> {
         search_config.clone(),
         &mut clickhouse,
         file_host.clone(),
+        private_file_host,
     );
 
     info!("启动 Actix HTTP 服务器！");

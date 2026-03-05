@@ -41,7 +41,13 @@ pub async fn check_text_risk(
     pos: &str,
     redis: &RedisPool,
 ) -> Result<bool, ApiError> {
-    if ["bbsmc", "mzxiaoliu"].contains(&username.to_lowercase().as_str()) {
+    // 管理员用户跳过风险检查
+    let admin_usernames = dotenvy::var("ADMIN_USERNAMES").unwrap_or_default();
+    if admin_usernames
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .any(|admin| admin == username.to_lowercase())
+    {
         return Ok(true);
     }
     let site_url = dotenvy::var("SITE_URL")?;
@@ -117,7 +123,13 @@ pub async fn check_image_risk(
     pos: &str,
     redis: &RedisPool,
 ) -> Result<bool, ApiError> {
-    if ["bbsmc", "mzxiaoliu"].contains(&username.to_lowercase().as_str()) {
+    // 管理员用户跳过风险检查
+    let admin_usernames = dotenvy::var("ADMIN_USERNAMES").unwrap_or_default();
+    if admin_usernames
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .any(|admin| admin == username.to_lowercase())
+    {
         return Ok(true);
     }
 
@@ -145,7 +157,7 @@ pub async fn check_image_risk(
         }
     }
     let risk = imasge_risk(url, username, pos).await?;
-    if risk.is_empty() {
+    if risk.labels.is_empty() {
         return Ok(true);
     }
 
@@ -180,9 +192,183 @@ pub async fn check_image_risk(
         conn.set("upload_limit", username, &json, Some(60)).await?;
     }
 
-    let risk_str = risk.join(",");
+    let risk_str = risk.labels.join(",");
     send_image_warning(&risk_str, url, &site_url, username, pos).await?;
     Ok(false)
+}
+
+/// 文本风控检测，返回 (是否通过, 风控标签)
+/// 通过时标签为空字符串，未通过时返回具体标签
+pub async fn check_text_risk_with_labels(
+    text: &str,
+    username: &str,
+    url: &str,
+    pos: &str,
+    redis: &RedisPool,
+) -> Result<(bool, String), ApiError> {
+    // 管理员用户跳过风险检查
+    let admin_usernames = dotenvy::var("ADMIN_USERNAMES").unwrap_or_default();
+    if admin_usernames
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .any(|admin| admin == username.to_lowercase())
+    {
+        return Ok((true, String::new()));
+    }
+
+    let site_url = dotenvy::var("SITE_URL")?;
+    let site_url = format!("{site_url}{url}");
+
+    let mut conn = redis.connect().await?;
+    let upload_limit = conn.get("upload_limit", username).await?;
+
+    if upload_limit.is_some() {
+        let upload_limit: UploadLimit =
+            serde_json::from_str::<UploadLimit>(&upload_limit.clone().unwrap())
+                .unwrap();
+        if upload_limit.is_limit() {
+            let time = upload_limit
+                .time
+                .with_timezone(
+                    &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
+                )
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string();
+            return Err(ApiError::RiskLimit(time));
+        }
+    }
+
+    let risk = text_risk(text, username).await?;
+    if risk.is_empty() {
+        return Ok((true, String::new()));
+    }
+
+    if let Some(limit_str) = upload_limit {
+        let mut upload_limit: UploadLimit =
+            serde_json::from_str::<UploadLimit>(&limit_str).unwrap();
+        upload_limit.add();
+        if upload_limit.is_limit() {
+            upload_limit.time = Utc::now().add(chrono::Duration::minutes(10));
+            let json = serde_json::to_string(&upload_limit).unwrap();
+            conn.set("upload_limit", username, &json, Some(600)).await?;
+            return Err(ApiError::RiskLimit(
+                upload_limit
+                    .time
+                    .with_timezone(
+                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
+                    )
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
+            ));
+        }
+        let json = serde_json::to_string(&upload_limit).unwrap();
+        conn.set("upload_limit", username, &json, Some(60)).await?;
+    } else {
+        let upload_limit = UploadLimit::new(Utc::now());
+        let json = serde_json::to_string(&upload_limit).unwrap();
+        conn.set("upload_limit", username, &json, Some(60)).await?;
+    }
+
+    let risk_str = risk.join(",");
+    send_msg(text, &risk_str, &site_url, username, pos).await?;
+    Ok((false, risk_str))
+}
+
+/// 图片风控检测，返回 (是否通过, 风控标签)
+/// 图片风控检查结果（含标签和 frame URL）
+pub struct ImageRiskCheckResult {
+    pub passed: bool,
+    pub labels: String,
+    /// 火山引擎缓存的图片副本 URL（用于审核记录，S3 删除后仍可查看）
+    pub frame_url: Option<String>,
+}
+
+pub async fn check_image_risk_with_labels(
+    url: &str,
+    pos_url: &str,
+    username: &str,
+    pos: &str,
+    redis: &RedisPool,
+) -> Result<ImageRiskCheckResult, ApiError> {
+    // 管理员用户跳过风险检查
+    let admin_usernames = dotenvy::var("ADMIN_USERNAMES").unwrap_or_default();
+    if admin_usernames
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .any(|admin| admin == username.to_lowercase())
+    {
+        return Ok(ImageRiskCheckResult {
+            passed: true,
+            labels: String::new(),
+            frame_url: None,
+        });
+    }
+
+    let site_url = dotenvy::var("SITE_URL")?;
+    let site_url = format!("{site_url}{pos_url}");
+
+    let mut conn = redis.connect().await?;
+    let upload_limit = conn.get("upload_limit", username).await?;
+
+    if upload_limit.is_some() {
+        let upload_limit: UploadLimit =
+            serde_json::from_str::<UploadLimit>(&upload_limit.clone().unwrap())
+                .unwrap();
+        if upload_limit.is_limit() {
+            let time = upload_limit
+                .time
+                .with_timezone(
+                    &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
+                )
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string();
+            return Err(ApiError::RiskLimit(time));
+        }
+    }
+
+    let risk = imasge_risk(url, username, pos).await?;
+    if risk.labels.is_empty() {
+        return Ok(ImageRiskCheckResult {
+            passed: true,
+            labels: String::new(),
+            frame_url: None,
+        });
+    }
+
+    if upload_limit.is_some() {
+        let mut upload_limit: UploadLimit =
+            serde_json::from_str::<UploadLimit>(&upload_limit.clone().unwrap())
+                .unwrap();
+        upload_limit.add();
+        if upload_limit.is_limit() {
+            upload_limit.time = Utc::now().add(chrono::Duration::minutes(10));
+            let json = serde_json::to_string(&upload_limit).unwrap();
+            conn.set("upload_limit", username, &json, Some(600)).await?;
+            return Err(ApiError::RiskLimit(
+                upload_limit
+                    .time
+                    .with_timezone(
+                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
+                    )
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
+            ));
+        }
+        let json = serde_json::to_string(&upload_limit).unwrap();
+        conn.set("upload_limit", username, &json, Some(60)).await?;
+    } else {
+        let upload_limit = UploadLimit::new(Utc::now());
+        let json = serde_json::to_string(&upload_limit).unwrap();
+        conn.set("upload_limit", username, &json, Some(60)).await?;
+    }
+
+    let risk_str = risk.labels.join(",");
+    send_image_warning(&risk_str, url, &site_url, username, pos).await?;
+    Ok(ImageRiskCheckResult {
+        passed: false,
+        labels: risk_str,
+        frame_url: risk.frame_url,
+    })
 }
 
 async fn send_msg(
@@ -302,7 +488,13 @@ async fn text_risk(
         &sk,
         Some(&params),
     );
-    let result = response_body.await.unwrap();
+    let result = match response_body.await {
+        Ok(r) => r,
+        Err(e) => {
+            log::error!("文本风控 API 请求失败: {e}");
+            return Ok(vec!["风控API异常".to_string()]);
+        }
+    };
     if result.get("Result").is_some()
         && result.get("Result").unwrap().get("Code").unwrap() == 0
     {
@@ -339,31 +531,61 @@ async fn text_risk(
                 .unwrap()
                 .iter()
                 .for_each(|item| {
-                    let label = item.get("SubLabel").unwrap().to_string();
-                    let result = get_label(
-                        &label.as_str().to_string().replace("\"", ""),
-                    );
-                    if let Some((first_level, second_level)) = result {
+                    let sub_label = item
+                        .get("SubLabel")
+                        .unwrap()
+                        .to_string()
+                        .replace("\"", "");
+                    let parent_label = item
+                        .get("Label")
+                        .map(|v| v.to_string().replace("\"", ""))
+                        .unwrap_or_default();
+                    let matched = get_label(&sub_label)
+                        .or_else(|| get_label(&parent_label));
+                    if let Some((first_level, second_level)) = matched {
                         risks
                             .push(format!("{}[{}]", first_level, second_level));
                     }
                 });
 
-            vec.push(format!("{}:{}", risks.join(","), text));
+            if risks.is_empty() {
+                vec.push(format!("未知风控标签:{}", text));
+            } else {
+                vec.push(format!("{}:{}", risks.join(","), text));
+            }
         });
+
+        // 兜底：Decision 不是 PASS 但没匹配到任何标签
+        if vec.is_empty() {
+            let final_label = result
+                .get("Result")
+                .unwrap()
+                .get("Data")
+                .unwrap()
+                .get("FinalLabel")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            vec.push(format!("未知风控标签[{}]", final_label));
+        }
 
         Ok(vec)
     } else {
-        println!("错误 {:?}", result);
-        Ok(vec![])
+        log::error!("文本风控 API 返回错误: {:?}", result);
+        Ok(vec!["风控API异常".to_string()])
     }
+}
+
+/// 图片风控检查结果
+pub struct ImageRiskDetail {
+    pub labels: Vec<String>,
+    pub frame_url: Option<String>,
 }
 
 async fn imasge_risk(
     url: &str,
     username: &str,
     pos: &str,
-) -> Result<Vec<String>, ApiError> {
+) -> Result<ImageRiskDetail, ApiError> {
     let ak = dotenvy::var("HUOSHAN_AK")?;
     let sk = dotenvy::var("HUOSHAN_SK")?;
     let now: DateTime<Utc> = Utc::now();
@@ -392,7 +614,16 @@ async fn imasge_risk(
         &sk,
         Some(&params),
     );
-    let result = response_body.await.unwrap();
+    let result = match response_body.await {
+        Ok(r) => r,
+        Err(e) => {
+            log::error!("图片风控 API 请求失败: {e}");
+            return Ok(ImageRiskDetail {
+                labels: vec!["风控API异常".to_string()],
+                frame_url: None,
+            });
+        }
+    };
     if result.get("Result").is_some()
         && result.get("Result").unwrap().get("Code").unwrap() == 0
     {
@@ -405,12 +636,16 @@ async fn imasge_risk(
             .unwrap()
             .to_string();
         if decision.contains("PASS") {
-            return Ok(vec![]);
+            return Ok(ImageRiskDetail {
+                labels: vec![],
+                frame_url: None,
+            });
         }
         let json_str = serde_json::to_string_pretty(&result).unwrap();
         let json_str = json_str.replace("\\", "");
         println!("{}", json_str);
         let mut vec = vec![];
+        let mut frame_url: Option<String> = None;
         let result_json = result
             .get("Result")
             .unwrap()
@@ -420,20 +655,60 @@ async fn imasge_risk(
             .unwrap();
         result_json.as_array().unwrap().iter().for_each(|item| {
             let item_json = item.as_object().unwrap();
-            let label = item_json.get("SubLabel").unwrap().to_string();
-            let result =
-                get_label_image(&label.as_str().to_string().replace("\"", ""));
+            let sub_label = item_json
+                .get("SubLabel")
+                .unwrap()
+                .to_string()
+                .replace("\"", "");
+            let label = item_json
+                .get("Label")
+                .unwrap()
+                .to_string()
+                .replace("\"", "");
 
-            if let Some((first_level, second_level)) = result {
+            // 提取第一个 frame URL（火山引擎缓存的图片副本）
+            if frame_url.is_none()
+                && let Some(frames) = item_json.get("Frames")
+                && let Some(frames_arr) = frames.as_array()
+                && let Some(first_frame) = frames_arr.first()
+                && let Some(url) = first_frame.get("url")
+                && let Some(url_str) = url.as_str()
+            {
+                frame_url = Some(url_str.to_string());
+            }
+
+            // 优先匹配 SubLabel，匹配不到则尝试 Label（父标签）
+            let matched =
+                get_label_image(&sub_label).or_else(|| get_label_image(&label));
+
+            if let Some((first_level, second_level)) = matched {
                 vec.push(format!("{}[{}]", first_level, second_level));
             }
         });
-        // 要输出不带斜杠的格式
 
-        Ok(vec)
+        // 如果 Decision 不是 PASS 但没匹配到任何已知标签，使用 FinalLabel 作为兜底
+        if vec.is_empty() {
+            let final_label = result
+                .get("Result")
+                .unwrap()
+                .get("Data")
+                .unwrap()
+                .get("FinalLabel")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            vec.push(format!("未知风控标签[{}]", final_label));
+        }
+
+        Ok(ImageRiskDetail {
+            labels: vec,
+            frame_url,
+        })
     } else {
-        println!("错误 {:?}", result);
-        Ok(vec![])
+        log::error!("图片风控 API 返回错误: {:?}", result);
+        Ok(ImageRiskDetail {
+            labels: vec!["风控API异常".to_string()],
+            frame_url: None,
+        })
     }
 }
 
@@ -619,6 +894,12 @@ fn get_label_image(code: &str) -> Option<(String, String)> {
     None
 }
 
+/// 检查风控标签字符串是否包含涉政内容
+/// 基于火山引擎图片风控的标签码 302（政治敏感1）和 303（政治敏感2）
+pub fn contains_political_labels(labels: &str) -> bool {
+    labels.contains("302[") || labels.contains("303[")
+}
+
 fn norm_query(params: &HashMap<String, String>) -> String {
     let mut pairs: Vec<_> =
         params.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
@@ -664,16 +945,17 @@ async fn request(
     );
 
     let hashed_canonical_request = hash_sha256(&canonical_request_str);
+    let short_date = &date[..8];
     let credential_scope = format!(
         "{}/{}/{}/{}",
-        "20250105", "cn-north-1", "BusinessSecurity", "request"
+        short_date, "cn-north-1", "BusinessSecurity", "request"
     );
     let string_to_sign = format!(
         "HMAC-SHA256\n{}\n{}\n{}",
         date, credential_scope, hashed_canonical_request
     );
 
-    let k_date = hmac_sha256(sk.as_bytes(), "20250105");
+    let k_date = hmac_sha256(sk.as_bytes(), short_date);
     let k_region = hmac_sha256(&k_date, "cn-north-1");
     let k_service = hmac_sha256(&k_region, "BusinessSecurity");
     let k_signing = hmac_sha256(&k_service, "request");

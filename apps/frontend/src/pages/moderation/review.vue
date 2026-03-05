@@ -33,7 +33,7 @@
                 return '状态变更';
               }
               case 'moderator_message': {
-                return '版主消息';
+                return '社区管理员消息';
               }
               default: {
                 return x;
@@ -149,6 +149,7 @@ import Badge from "~/components/ui/Badge.vue";
 
 useHead({
   title: "审核资源 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const app = useNuxtApp();

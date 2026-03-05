@@ -51,7 +51,6 @@
         </button>
       </div>
     </div>
-    {{ console.log(nags.filter((x) => x.condition && x.status === "required")) }}
     <div v-if="!collapsed" class="grid-display width-16">
       <div
         v-for="nag in nags.filter((x) => x.condition && !x.hide)"
@@ -324,7 +323,7 @@ const nags = computed(() => [
     condition: props.project.status === "draft",
     title: "提交审核",
     id: "submit-for-review",
-    description: "您的项目暂时仅供项目成员查看,必须经过版主审核才能发布.",
+    description: "您的项目暂时仅供项目成员查看,必须经过社区管理员审核才能发布.",
     status: "review",
     link: null,
     action: {
@@ -337,7 +336,7 @@ const nags = computed(() => [
     condition: props.tags.rejectedStatuses.includes(props.project.status),
     title: "重新提交审核",
     id: "resubmit-for-review",
-    description: `您的项目被版主设置为 ${props.project.status} . 您可以在回复后重新提交审核`,
+    description: `您的项目被社区管理员设置为 ${props.project.status} . 您可以在回复后重新提交审核`,
     status: "review",
     link: {
       path: "moderation",

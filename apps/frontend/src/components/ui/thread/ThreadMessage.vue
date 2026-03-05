@@ -23,7 +23,7 @@
         />
       </ConditionalNuxtLink>
       <span :class="`message__author role-${members[message.author_id].role}`">
-        <LockIcon v-if="message.body.private" v-tooltip="'仅版主可见'" class="private-icon" />
+        <LockIcon v-if="message.body.private" v-tooltip="'仅社区管理员可见'" class="private-icon" />
         <ConditionalNuxtLink
           :is-link="!noLinks"
           :to="`/user/${members[message.author_id].username}`"
@@ -47,7 +47,7 @@
         <ScaleIcon />
       </div>
       <span class="message__author moderation-color">
-        版主
+        社区管理员
         <ScaleIcon v-tooltip="'Moderator'" />
       </span>
     </template>

@@ -176,6 +176,7 @@ pub struct ProjectBuilder {
     pub gallery_items: Vec<GalleryItem>,
     pub color: Option<u32>,
     pub monetization_status: MonetizationStatus,
+    pub is_paid: bool, // 是否为付费资源（创建后不可改为 true）
 }
 
 impl ProjectBuilder {
@@ -216,6 +217,10 @@ impl ProjectBuilder {
             wiki_open: false,
             issues_type: 0,
             forum: None,
+            translation_tracking: false,
+            translation_tracker: None,
+            translation_source: None,
+            is_paid: self.is_paid,
         };
         project_struct.insert(&mut *transaction).await?;
 
@@ -291,6 +296,11 @@ pub struct Project {
     pub wiki_open: bool,
     pub issues_type: i32,
     pub forum: Option<DiscussionId>,
+    pub translation_tracking: bool,
+    pub translation_tracker: Option<String>,
+    /// 汉化来源：哪个项目将当前项目作为汉化目标（通过反向查询 translation_tracker 获取）
+    pub translation_source: Option<String>,
+    pub is_paid: bool, // 是否为付费资源
 }
 
 impl Project {
@@ -304,13 +314,13 @@ impl Project {
                 id, team_id, name, summary, description,
                 published, downloads, icon_url, raw_icon_url, status, requested_status,
                 license_url, license,
-                slug, color, monetization_status, organization_id
+                slug, color, monetization_status, organization_id, is_paid
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, 
+                $1, $2, $3, $4, $5, $6,
                 $7, $8, $9, $10, $11,
                 $12, $13,
-                LOWER($14), $15, $16, $17
+                LOWER($14), $15, $16, $17, $18
             )
             ",
             self.id as ProjectId,
@@ -330,6 +340,7 @@ impl Project {
             self.color.map(|x| x as i32),
             self.monetization_status.as_str(),
             self.organization_id.map(|x| x.0 as i64),
+            self.is_paid,
         )
         .execute(&mut **transaction)
         .await?;
@@ -378,9 +389,6 @@ impl Project {
             )
             .execute(&mut **transaction)
             .await?;
-
-            // 不删除线程，让线程的 mod_id 通过外键约束自动设置为 NULL
-            // 这样线程可以继续存在，用于历史记录和审计
 
             sqlx::query!(
                 "
@@ -532,6 +540,37 @@ impl Project {
                 UPDATE payouts_values
                 SET mod_id = NULL
                 WHERE (mod_id = $1)
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            // 删除关联的 threads 及其消息和成员
+            sqlx::query!(
+                "
+                DELETE FROM threads_messages
+                WHERE thread_id IN (SELECT id FROM threads WHERE mod_id = $1)
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM threads_members
+                WHERE thread_id IN (SELECT id FROM threads WHERE mod_id = $1)
+                ",
+                id as ProjectId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM threads
+                WHERE mod_id = $1
                 ",
                 id as ProjectId,
             )
@@ -895,8 +934,9 @@ impl Project {
                     m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,
                     m.license_url license_url, m.issues_type as issues_type,
                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
-                    m.webhook_sent, m.color, m.wiki_open, m.forum,
-                    t.id thread_id, m.monetization_status monetization_status,
+                    m.webhook_sent, m.color, m.wiki_open, m.forum, m.translation_tracking, m.translation_tracker,
+                    (SELECT slug FROM mods WHERE translation_tracker = m.slug AND m.slug IS NOT NULL LIMIT 1) as translation_source,
+                    t.id thread_id, m.monetization_status monetization_status, m.is_paid,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
                     FROM mods m
@@ -968,6 +1008,10 @@ impl Project {
                                 issues_type: m.issues_type,
                                 loaders,
                                 forum: m.forum.map(DiscussionId),
+                                translation_tracking: m.translation_tracking,
+                                translation_tracker: m.translation_tracker.clone(),
+                                translation_source: m.translation_source.clone(),
+                                is_paid: m.is_paid,
                             },
                             categories: m.categories.unwrap_or_default(),
                             additional_categories: m.additional_categories.unwrap_or_default(),

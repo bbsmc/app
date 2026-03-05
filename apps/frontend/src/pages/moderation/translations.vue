@@ -244,6 +244,7 @@ const app = useNuxtApp();
 // 页面标题
 useHead({
   title: "翻译链接审核 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 // 常量
@@ -382,7 +383,7 @@ const changePage = (page) => {
   currentPage.value = page;
   fetchTranslationLinks();
   // 滚动到顶部
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (import.meta.client) window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 // 批准链接

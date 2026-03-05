@@ -107,9 +107,7 @@
         </section>
         <p>
           变更将应用于
-          <strong>{{ selectedProjects.length }}</strong> 个资源{{
-            selectedProjects.length > 1 ? "s" : ""
-          }}.
+          <strong>{{ selectedProjects.length }}</strong> 个资源。
         </p>
         <ul>
           <li
@@ -122,14 +120,14 @@
             {{ project.title }}
           </li>
           <li v-if="!editLinks.showAffected && selectedProjects.length > 3">
-            <strong>and {{ selectedProjects.length - 3 }} more...</strong>
+            <strong>以及其他 {{ selectedProjects.length - 3 }} 个...</strong>
           </li>
         </ul>
         <Checkbox
           v-if="selectedProjects.length > 3"
           v-model="editLinks.showAffected"
-          :label="editLinks.showAffected ? 'Less' : 'More'"
-          description="Show all loaders"
+          :label="editLinks.showAffected ? '收起' : '展开'"
+          description="显示所有加载器"
           :border="false"
           :collapsing-toggle-style="true"
         />
@@ -343,6 +341,11 @@ export default defineNuxtComponent({
   async setup() {
     const { formatMessage } = useVIntl();
 
+    useHead({
+      title: "项目管理 - BBSMC",
+      meta: [{ name: "robots", content: "noindex, nofollow" }],
+    });
+
     const user = await useUser();
     await initUserProjects();
     return { formatMessage, user: ref(user) };
@@ -470,8 +473,8 @@ export default defineNuxtComponent({
         this.$refs.editLinksModal.hide();
         this.$notify({
           group: "main",
-          title: "Success",
-          text: "Bulk edited selected project's links.",
+          title: "成功",
+          text: "已批量编辑所选项目的链接。",
           type: "success",
         });
         this.selectedProjects = [];

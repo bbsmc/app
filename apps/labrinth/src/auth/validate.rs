@@ -201,3 +201,32 @@ where
         Err(AuthenticationError::InvalidCredentials)
     }
 }
+
+pub async fn check_is_admin_from_headers<'a, 'b, E>(
+    req: &HttpRequest,
+    executor: E,
+    redis: &RedisPool,
+    session_queue: &AuthQueue,
+    required_scopes: Option<&[Scopes]>,
+) -> Result<User, AuthenticationError>
+where
+    E: sqlx::Executor<'a, Database = sqlx::Postgres>
+        + sqlx::Acquire<'a, Database = sqlx::Postgres>
+        + Copy,
+{
+    let user = get_user_from_headers(
+        req,
+        executor,
+        redis,
+        session_queue,
+        required_scopes,
+    )
+    .await?
+    .1;
+
+    if user.role.is_admin() {
+        Ok(user)
+    } else {
+        Err(AuthenticationError::InvalidCredentials)
+    }
+}

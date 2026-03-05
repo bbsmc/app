@@ -235,7 +235,8 @@ definePageMeta({
 });
 
 useHead({
-  title: "Applications - BBSMC",
+  title: "应用管理 - BBSMC 我的世界资源社区",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const data = useNuxtApp();

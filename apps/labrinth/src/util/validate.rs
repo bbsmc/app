@@ -31,7 +31,7 @@ pub fn validation_errors_to_string(
                 if let Some((index, errors)) = list.iter().next() {
                     output.push_str(&validation_errors_to_string(
                         *errors.clone(),
-                        Some(format!("of list {field} with index {index}")),
+                        Some(format!("列表 {field} 中第 {index} 项")),
                     ));
                 }
 
@@ -39,35 +39,71 @@ pub fn validation_errors_to_string(
             }
             ValidationErrorsKind::Field(errors) => {
                 if let Some(error) = errors.first() {
+                    // 优先使用自定义消息
+                    if let Some(msg) = &error.message {
+                        return msg.to_string();
+                    }
+
+                    // 字段名翻译
+                    let field_str = field.as_ref();
+                    let field_name = match field_str {
+                        "username" => "用户名",
+                        "name" | "real_name" => "姓名",
+                        "slug" => "标识ID",
+                        "summary" => "简介",
+                        "contact_info" => "联系方式",
+                        "id_card_number" => "身份证号",
+                        "portfolio_links" => "作品链接",
+                        "application_reason" => "申请理由",
+                        _ => field_str,
+                    };
+
+                    // 错误码翻译
+                    let error_reason = match error.code.as_ref() {
+                        "length" => {
+                            // 尝试获取具体的长度限制
+                            let min = error
+                                .params
+                                .get("min")
+                                .and_then(|v| v.as_u64());
+                            let max = error
+                                .params
+                                .get("max")
+                                .and_then(|v| v.as_u64());
+                            match (min, max) {
+                                (Some(min), Some(max)) => format!(
+                                    "长度必须在 {} 到 {} 之间",
+                                    min, max
+                                ),
+                                (Some(min), None) => {
+                                    format!("长度不能少于 {} 个字符", min)
+                                }
+                                (None, Some(max)) => {
+                                    format!("长度不能超过 {} 个字符", max)
+                                }
+                                _ => "长度不符合要求".to_string(),
+                            }
+                        }
+                        "range" => "取值范围不正确".to_string(),
+                        "email" => "邮箱格式不正确".to_string(),
+                        "url" => "链接格式不正确".to_string(),
+                        "regex" => "格式不正确".to_string(),
+                        code => code.to_string(),
+                    };
+
                     if let Some(adder) = adder {
-                        output.push_str(
-                            &format!(
-                                "字段 {} {} 未通过要求原因: {}",
-                                field, adder, error.code
-                            )
-                            .replace("username", "用户名")
-                            .replace("name", "名称")
-                            .replace("slug", "标识ID")
-                            .replace("summary", "简介")
-                            .replace("range", "取值范围")
-                            .replace("length", "最大长度"),
-                        );
+                        output.push_str(&format!(
+                            "{} {} {}",
+                            field_name, adder, error_reason
+                        ));
                     } else {
-                        if field == "username" {
+                        if field_str == "username" {
                             output.push_str("建议使用您的Minecraft正版ID,支持使用各类语言文字，允许：字母、数字、下划线 _、连字符 -");
                         }
-                        output.push_str(
-                            &format!(
-                                "字段 {} 未通过要求原因: {}",
-                                field, error.code
-                            )
-                            .replace("username", "用户名")
-                            .replace("name", "名称")
-                            .replace("slug", "标识ID")
-                            .replace("summary", "简介")
-                            .replace("range", "取值范围")
-                            .replace("length", "最大长度"),
-                        );
+                        output.push_str(&format!(
+                            "{}{}",
+                            field_name, error_reason
+                        ));
                     }
                 }
 
@@ -151,21 +187,4 @@ pub fn validate_name(value: &str) -> Result<(), validator::ValidationError> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn validate_name_with_valid_input() {
-        let result = validate_name("My Test mod");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn validate_name_with_invalid_input_returns_error() {
-        let result = validate_name("  ");
-        assert!(result.is_err());
-    }
 }

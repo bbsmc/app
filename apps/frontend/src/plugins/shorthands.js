@@ -190,6 +190,14 @@ export const formatProjectType = (name) => {
     return "插件";
   } else if (name === "mod") {
     return "模组";
+  } else if (name === "modpack") {
+    return "整合包";
+  } else if (name === "shader") {
+    return "光影";
+  } else if (name === "software") {
+    return "软件";
+  } else if (name === "language") {
+    return "汉化";
   }
 
   return capitalizeString(name);

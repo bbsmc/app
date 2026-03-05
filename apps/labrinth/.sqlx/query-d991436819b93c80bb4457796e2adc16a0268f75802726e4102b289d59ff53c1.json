@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_profile_reviews (id, user_id, review_type, old_value, new_value, risk_labels, status)\n                     VALUES ($1, $2, 'avatar', $3, $4, $5, $6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d991436819b93c80bb4457796e2adc16a0268f75802726e4102b289d59ff53c1"
+}

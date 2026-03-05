@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE payment_orders\n            SET external_order_no = $2, payment_method = $3\n            WHERE order_no = $1 AND status = 'pending'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "686f8b014b1a2406fb1e2b41e3cb9d1dddadb3b89c76a6cd161e612cec573a54"
+}

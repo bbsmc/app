@@ -17,7 +17,10 @@ pub use checks::{
 };
 use serde::{Deserialize, Serialize};
 // pub use pat::{generate_pat, PersonalAccessToken};
-pub use validate::{check_is_moderator_from_headers, get_user_from_headers};
+pub use validate::{
+    check_is_admin_from_headers, check_is_moderator_from_headers,
+    get_user_from_headers,
+};
 
 use crate::file_hosting::FileHostingError;
 use crate::models::error::ApiError;
@@ -35,11 +38,11 @@ pub enum AuthenticationError {
     Database(#[from] crate::database::models::DatabaseError),
     #[error("解析 JSON 时出错: {0}")]
     SerDe(#[from] serde_json::Error),
-    #[error("与外部提供商通信时出错: {0}")]
+    #[error("与外部服务通信时出错: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("上传用户头像时出错")]
     FileHosting(#[from] FileHostingError),
-    #[error("解码 PAT 时出错: {0}")]
+    #[error("解码个人访问令牌时出错: {0}")]
     Decoding(#[from] crate::models::ids::DecodingError),
     #[error("{0}")]
     Mail(#[from] email::MailError),
@@ -47,11 +50,11 @@ pub enum AuthenticationError {
     InvalidCredentials,
     #[error("认证方法无效")]
     InvalidAuthMethod,
-    #[error("GitHub 令牌来自错误的客户端 ID")]
+    #[error("GitHub 令牌对应的客户端 ID 不匹配")]
     InvalidClientId,
-    #[error("用户邮箱/账户已在 BBSMC 注册")]
+    #[error("该邮箱或账户已在 BBSMC 注册")]
     DuplicateUser,
-    #[error("发送的状态无效，可能需要获取新的 websocket")]
+    #[error("发送的状态无效，请重新建立 WebSocket 连接")]
     SocketError,
     #[error("指定的回调 URL 无效")]
     Url,
@@ -129,4 +132,6 @@ pub enum AuthProvider {
     Google,
     Steam,
     PayPal,
+    Bilibili,
+    QQ,
 }

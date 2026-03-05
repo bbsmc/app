@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, review_type, new_value, status\n         FROM user_profile_reviews\n         WHERE id = $1 AND user_id = $2 AND status = 'pending'\n         FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "review_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "new_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "716cdb1e34921b0ff3a71facebfe50b4de452197bcaa21cd9ce2315f67fa32c6"
+}

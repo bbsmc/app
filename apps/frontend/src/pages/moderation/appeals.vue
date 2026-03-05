@@ -270,6 +270,7 @@ const app = useNuxtApp();
 
 useHead({
   title: "封禁申诉管理 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 // 常量
@@ -465,7 +466,7 @@ const changePage = (page) => {
   if (page < 1 || page > totalPages.value) return;
   currentPage.value = page;
   fetchAppeals();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (import.meta.client) window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 // 切换对话线程显示

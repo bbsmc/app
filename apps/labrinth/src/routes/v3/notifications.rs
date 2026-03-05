@@ -149,7 +149,7 @@ pub async fn notification_read(
             Ok(HttpResponse::NoContent().body(""))
         } else {
             Err(ApiError::CustomAuthentication(
-                "您没有权限读取此通知！".to_string(),
+                "您没有权限标记此通知为已读！".to_string(),
             ))
         }
     } else {

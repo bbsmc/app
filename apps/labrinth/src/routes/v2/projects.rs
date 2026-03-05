@@ -412,6 +412,8 @@ pub struct EditProject {
     pub wiki_open: Option<bool>,
     #[validate(range(min = 0, max = 3))]
     pub issues_type: Option<i32>,
+    /// 汉化追踪标记，仅管理员可设置
+    pub translation_tracking: Option<bool>,
 }
 
 #[patch("{id}")]
@@ -522,6 +524,7 @@ pub async fn project_edit(
         monetization_status: v2_new_project.monetization_status,
         wiki_open: v2_new_project.wiki_open,
         issues_type: v2_new_project.issues_type,
+        translation_tracking: v2_new_project.translation_tracking,
     };
 
     // 这返回 204 或失败，所以我们不需要对其做任何处理

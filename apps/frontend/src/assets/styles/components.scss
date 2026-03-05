@@ -197,13 +197,13 @@
   }
 
   > :where(
-      input + *,
-      .input-group + *,
-      .textarea-wrapper + *,
-      .chips + *,
-      .resizable-textarea-wrapper + *,
-      .input-div + *
-    ) {
+    input + *,
+    .input-group + *,
+    .textarea-wrapper + *,
+    .chips + *,
+    .resizable-textarea-wrapper + *,
+    .input-div + *
+  ) {
     &:not(:empty) {
       margin-block-start: var(--spacing-card-md);
     }
@@ -1225,7 +1225,7 @@ svg.inline-svg {
   .flex-card {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-12);
+    gap: var(--gap-8);
     padding: var(--gap-16) var(--gap-24);
 
     h2 {
@@ -1245,7 +1245,7 @@ svg.inline-svg {
     > section {
       display: flex;
       flex-direction: column;
-      gap: var(--gap-8);
+      gap: var(--gap-6);
     }
   }
 

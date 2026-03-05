@@ -234,29 +234,42 @@ pub async fn project_issue_create(
 
     let id: crate::models::v3::issues::IssuesId = issue_id.into();
 
+    // 通知 IndexNow 提交 issue 页面 URL
+    if let (Some(slug), Some(project_type)) =
+        (&project.inner.slug, project.project_types.first())
+    {
+        crate::util::indexnow::notify_issue(
+            project_type,
+            slug,
+            &id.to_string(),
+        );
+    }
+
     // 发送邮件通知
     let users = project.inner.get_all_users(&**pool, &redis).await?;
     let users = models::User::get_many_ids(&users, &**pool, &redis).await?;
-    // print username
+    let slug = project.inner.slug.clone().unwrap_or_default();
     for user in users {
-        send_email(
-            user.email.unwrap(),
-            "新问题通知",
-            &format!(
-                "{} 在 {} 创建了新问题：{}",
-                user.username, project.inner.name, body.title
-            ),
-            &body.body,
-            Some((
-                "查看问题",
+        if let Some(email) = &user.email {
+            let _ = send_email(
+                email.clone(),
+                "新问题通知",
                 &format!(
-                    "{}/project/{}/issues/{}",
-                    dotenvy::var("SITE_URL")?,
-                    project.inner.slug.clone().unwrap(),
-                    id
+                    "{} 在 {} 创建了新问题：{}",
+                    user.username, project.inner.name, body.title
                 ),
-            )),
-        )?;
+                &body.body,
+                Some((
+                    "查看问题",
+                    &format!(
+                        "{}/project/{}/issues/{}",
+                        dotenvy::var("SITE_URL")?,
+                        slug,
+                        id
+                    ),
+                )),
+            );
+        }
     }
 
     Ok(HttpResponse::Ok().json(json!({
@@ -375,33 +388,36 @@ pub async fn issue_edit(
             users.push(UserId(issue.inner.author_id.0));
             let users =
                 models::User::get_many_ids(&users, &**pool, &redis).await?;
+            let slug = project.inner.slug.clone().unwrap_or_default();
             for user in users {
-                send_email(
-                    user.email.unwrap(),
-                    "问题状态更新通知",
-                    &format!(
-                        "{} 更新了 {} 的问题状态：{}",
-                        user.username,
-                        issue.inner.title.clone(),
-                        if state == "open" {
-                            "重新打开"
-                        } else if state == "closed" {
-                            "关闭"
-                        } else {
-                            "未知"
-                        }
-                    ),
-                    "",
-                    Some((
-                        "查看问题",
+                if let Some(email) = &user.email {
+                    let _ = send_email(
+                        email.clone(),
+                        "问题状态更新通知",
                         &format!(
-                            "{}/project/{}/issues/{}",
-                            dotenvy::var("SITE_URL")?,
-                            project.inner.slug.clone().unwrap(),
-                            &issue_id_str
+                            "{} 更新了 {} 的问题状态：{}",
+                            user.username,
+                            issue.inner.title.clone(),
+                            if state == "open" {
+                                "重新打开"
+                            } else if state == "closed" {
+                                "关闭"
+                            } else {
+                                "未知"
+                            }
                         ),
-                    )),
-                )?;
+                        "",
+                        Some((
+                            "查看问题",
+                            &format!(
+                                "{}/project/{}/issues/{}",
+                                dotenvy::var("SITE_URL")?,
+                                slug,
+                                &issue_id_str
+                            ),
+                        )),
+                    );
+                }
             }
         }
     }
@@ -718,26 +734,28 @@ pub async fn comment_create(
     }
     users.push(user.id.into());
     let users = models::User::get_many_ids(&users, &**pool, &redis).await?;
-    // print username
+    let slug = project.inner.slug.clone().unwrap_or_default();
     for user in users {
-        send_email(
-            user.email.unwrap(),
-            "问题收到新的回复通知",
-            &format!(
-                "{} 在 {} 回复了你的消息：{}",
-                user.username, project.inner.name, body.body
-            ),
-            &body.body,
-            Some((
-                "查看问题",
+        if let Some(email) = &user.email {
+            let _ = send_email(
+                email.clone(),
+                "问题收到新的回复通知",
                 &format!(
-                    "{}/project/{}/issues/{}",
-                    dotenvy::var("SITE_URL")?,
-                    project.inner.slug.clone().unwrap(),
-                    &issue_id_str
+                    "{} 在 {} 回复了你的消息：{}",
+                    user.username, project.inner.name, body.body
                 ),
-            )),
-        )?;
+                &body.body,
+                Some((
+                    "查看问题",
+                    &format!(
+                        "{}/project/{}/issues/{}",
+                        dotenvy::var("SITE_URL")?,
+                        slug,
+                        &issue_id_str
+                    ),
+                )),
+            );
+        }
     }
 
     Ok(HttpResponse::Ok().json(json!({

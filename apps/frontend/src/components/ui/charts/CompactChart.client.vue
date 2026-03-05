@@ -141,9 +141,9 @@ defineExpose({
 
 <template>
   <Card class="compact-chart">
-    <h1 class="value">
+    <div class="value">
       {{ value }}
-    </h1>
+    </div>
     <div class="subtitle">
       {{ title }}
     </div>

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM threads_members\n                WHERE thread_id IN (SELECT id FROM threads WHERE mod_id = $1)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e3e5988106f7f26362e847f15a24aaff429e6b146ab68529b90db2c2b65a96dd"
+}

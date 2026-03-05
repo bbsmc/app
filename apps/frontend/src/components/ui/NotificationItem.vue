@@ -15,6 +15,21 @@
     >
       <NotificationIcon />
     </nuxt-link>
+    <nuxt-link
+      v-else-if="type === 'profile_review_pending' || type === 'profile_review_result'"
+      to="/settings/profile"
+      class="notification__icon backed-svg"
+      :class="{ raised: raised }"
+    >
+      <ModerationIcon class="moderation-color" />
+    </nuxt-link>
+    <div
+      v-else-if="type === 'image_review_result'"
+      class="notification__icon backed-svg"
+      :class="{ raised: raised }"
+    >
+      <ModerationIcon class="moderation-color" />
+    </div>
     <DoubleIcon v-else class="notification__icon">
       <template #primary>
         <nuxt-link v-if="project" :to="getProjectLink(project)" tabindex="-1">
@@ -43,6 +58,14 @@
           class="creator-color"
         />
         <VersionIcon v-else-if="type === 'project_update' && project && version" />
+        <StarIcon
+          v-else-if="
+            type === 'creator_application_message' ||
+            type === 'creator_application_approved' ||
+            type === 'creator_application_rejected'
+          "
+          class="creator-color"
+        />
         <NotificationIcon v-else />
       </template>
     </DoubleIcon>
@@ -103,7 +126,7 @@
           {{ project.title }}
         </nuxt-link>
         <template v-if="tags.rejectedStatuses.includes(notification.body.new_status)">
-          版主已将
+          社区管理员已将
           <Badge :type="notification.body.new_status" />
         </template>
         <template v-else>
@@ -178,13 +201,13 @@
       <template v-else-if="type === 'moderator_message' && thread && project && !report">
         您的资源
         <nuxt-link :to="getProjectLink(project)" class="title-link">{{ project.title }}</nuxt-link
-        >, 收到版主的
+        >, 收到社区管理员的
         <template v-if="notification.grouped_notifs"> 消息 </template>
         <template v-else>消息</template>
       </template>
 
       <template v-else-if="type === 'moderator_message' && thread && report">
-        版主已回复您
+        社区管理员已回复您
         <template v-if="version">
           <nuxt-link :to="getVersionLink(project, version)" class="title-link">
             {{ version.name }}
@@ -197,6 +220,41 @@
         <nuxt-link v-else-if="user" :to="getUserLink(user)" class="title-link">
           {{ user.username }} </nuxt-link
         >.
+      </template>
+      <template v-else-if="type === 'creator_application_message'">
+        <nuxt-link to="/settings/creator" class="title-link">您的高级创作者申请</nuxt-link>
+        有新回复
+      </template>
+      <template v-else-if="type === 'creator_application_approved'">
+        🎉 恭喜！
+        <nuxt-link to="/settings/creator" class="title-link">您的高级创作者申请</nuxt-link>
+        已通过，您现在可以发布付费插件了！
+      </template>
+      <template v-else-if="type === 'creator_application_rejected'">
+        <nuxt-link to="/settings/creator" class="title-link">您的高级创作者申请</nuxt-link>
+        未通过<template v-if="notification.body.reason"
+          >，原因：{{ notification.body.reason }}</template
+        >
+      </template>
+      <template v-else-if="type === 'profile_review_pending'">
+        <nuxt-link to="/settings/profile" class="title-link">
+          {{ getReviewTypeName(notification.body.review_type) }}
+        </nuxt-link>
+        修改已提交审核
+      </template>
+      <template v-else-if="type === 'profile_review_result'">
+        <nuxt-link to="/settings/profile" class="title-link">
+          {{ getReviewTypeName(notification.body.review_type) }}
+        </nuxt-link>
+        修改审核结果<template v-if="notification.body.review_notes"
+          >：{{ notification.body.review_notes }}</template
+        >
+      </template>
+      <template v-else-if="type === 'image_review_result'">
+        您上传的{{ getImageSourceTypeName(notification.body.source_type) }}因违规已被删除<template
+          v-if="notification.body.review_notes"
+          >，原因：{{ notification.body.review_notes }}</template
+        >
       </template>
       <nuxt-link v-else :to="notification.link" class="title-link">
         <span v-html="renderString(notification.title)" />
@@ -418,6 +476,7 @@ import { formatDateTime } from "@modrinth/utils";
 import InvitationIcon from "~/assets/images/utils/user-plus.svg?component";
 import ModerationIcon from "~/assets/images/sidebar/admin.svg?component";
 import NotificationIcon from "~/assets/images/sidebar/notifications.svg?component";
+import StarIcon from "~/assets/images/utils/star.svg?component";
 import ReadIcon from "~/assets/images/utils/check-circle.svg?component";
 import CalendarIcon from "~/assets/images/utils/calendar.svg?component";
 import VersionIcon from "~/assets/images/utils/version.svg?component";
@@ -476,6 +535,16 @@ const version = computed(() => props.notification.extra_data.version);
 const user = computed(() => props.notification.extra_data.user);
 const organization = computed(() => props.notification.extra_data.organization);
 const invitedBy = computed(() => props.notification.extra_data.invited_by);
+
+const getReviewTypeName = (reviewType) => {
+  const types = { avatar: "头像", username: "用户名", bio: "简介" };
+  return types[reviewType] || "资料";
+};
+
+const getImageSourceTypeName = (sourceType) => {
+  const types = { markdown: "Markdown图片", gallery: "项目渲染图" };
+  return types[sourceType] || "图片";
+};
 
 const threadLink = computed(() => {
   if (report.value) {

@@ -6,7 +6,7 @@ interface ThemeSettings {
 }
 
 export function useThemeSettings(getDefaultTheme?: () => Theme) {
-  getDefaultTheme ??= () => "dark";
+  getDefaultTheme ??= () => "light";
 
   const $settings = useCookie<ThemeSettings>("color-mode", {
     maxAge: 60 * 60 * 24 * 365 * 10,
@@ -19,8 +19,8 @@ export function useThemeSettings(getDefaultTheme?: () => Theme) {
   // reset theme settings to a default value if the cookie is missing or contains invalid value
   if ($settings.value == null || typeof $settings.value !== "object") {
     $settings.value = {
-      preference: "system",
-      value: getDefaultTheme(),
+      preference: "light",
+      value: "light",
     };
   }
 

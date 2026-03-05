@@ -42,6 +42,7 @@ import { formatNumber } from "~/plugins/shorthands.js";
 
 useHead({
   title: "信息统计 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const { data: stats } = await useAsyncData("statistics", () => useBaseFetch("statistics"));

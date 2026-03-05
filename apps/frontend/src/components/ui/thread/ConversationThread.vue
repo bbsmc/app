@@ -1,19 +1,16 @@
 <template>
   <div>
-    <Modal
-      ref="modalSubmit"
-      :header="isRejected(project) ? 'Resubmit for review' : 'Submit for review'"
-    >
+    <Modal ref="modalSubmit" :header="isRejected(project) ? '重新提交审核' : '提交审核'">
       <div class="modal-submit universal-body">
         <span>
-          您正在提交资源 <span class="project-title">{{ project.title }}</span> 给版主审核
+          您正在提交资源 <span class="project-title">{{ project.title }}</span> 给社区管理员审核
         </span>
         <span>
-          请确保您已经解决了版主反馈给你的消息
-          <span class="known-errors"> 重复提交而不解决版主的反馈可能会导致帐户被封禁。 </span>
+          请确保您已经解决了社区管理员反馈给你的消息
+          <span class="known-errors"> 重复提交而不解决社区管理员的反馈可能会导致帐户被封禁。 </span>
         </span>
-        <Checkbox v-model="submissionConfirmation" description="确认我已解决版主的消息">
-          我确认我已经正确处理了版主的评论。
+        <Checkbox v-model="submissionConfirmation" description="确认我已解决社区管理员的消息">
+          我确认我已经正确处理了社区管理员的评论。
         </Checkbox>
         <div class="input-group push-right">
           <button

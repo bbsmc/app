@@ -153,6 +153,24 @@ pub async fn is_authorized_thread(
                 false
             }
         }
+        ThreadType::CreatorApplication => {
+            // 创作者申请线程：申请人可以访问
+            if let Some(creator_application_id) = thread.creator_application_id
+            {
+                let application_exists = sqlx::query!(
+                    "SELECT EXISTS(SELECT 1 FROM creator_applications WHERE id = $1 AND user_id = $2)",
+                    creator_application_id as database::models::ids::CreatorApplicationId,
+                    user_id as database::models::ids::UserId,
+                )
+                .fetch_one(pool)
+                .await?
+                .exists;
+
+                application_exists.unwrap_or(false)
+            } else {
+                false
+            }
+        }
     })
 }
 
@@ -263,6 +281,71 @@ pub async fn filter_authorized_threads(
             .map_ok(|row| {
                 check_threads.retain(|x| {
                     let bool = x.report_id.map(|x| x.0) == Some(row.id);
+
+                    if bool {
+                        return_threads.push(x.clone());
+                    }
+
+                    !bool
+                });
+            })
+            .try_collect::<Vec<()>>()
+            .await?;
+        }
+
+        // 处理 BanAppeal 类型的线程
+        let ban_appeal_thread_ids = check_threads
+            .iter()
+            .filter(|x| x.type_ == ThreadType::BanAppeal)
+            .flat_map(|x| x.ban_appeal_id.map(|x| x.0))
+            .collect::<Vec<_>>();
+
+        if !ban_appeal_thread_ids.is_empty() {
+            sqlx::query!(
+                "
+                SELECT id FROM user_ban_appeals
+                WHERE id = ANY($1) AND user_id = $2
+                ",
+                &*ban_appeal_thread_ids,
+                user_id as database::models::ids::UserId,
+            )
+            .fetch(&***pool)
+            .map_ok(|row| {
+                check_threads.retain(|x| {
+                    let bool = x.ban_appeal_id.map(|x| x.0) == Some(row.id);
+
+                    if bool {
+                        return_threads.push(x.clone());
+                    }
+
+                    !bool
+                });
+            })
+            .try_collect::<Vec<()>>()
+            .await?;
+        }
+
+        // 处理 CreatorApplication 类型的线程
+        let creator_application_thread_ids = check_threads
+            .iter()
+            .filter(|x| x.type_ == ThreadType::CreatorApplication)
+            .flat_map(|x| x.creator_application_id.map(|x| x.0))
+            .collect::<Vec<_>>();
+
+        if !creator_application_thread_ids.is_empty() {
+            sqlx::query!(
+                "
+                SELECT id FROM creator_applications
+                WHERE id = ANY($1) AND user_id = $2
+                ",
+                &*creator_application_thread_ids,
+                user_id as database::models::ids::UserId,
+            )
+            .fetch(&***pool)
+            .map_ok(|row| {
+                check_threads.retain(|x| {
+                    let bool =
+                        x.creator_application_id.map(|x| x.0) == Some(row.id);
 
                     if bool {
                         return_threads.push(x.clone());
@@ -450,10 +533,16 @@ pub async fn thread_send_message(
     let thread_for_ban_check =
         database::models::Thread::get(string, &**pool).await?;
 
-    // 如果不是申诉线程，检查用户是否被论坛类封禁
+    // 如果不是申诉线程或创作者申请线程，检查用户是否被论坛类封禁
     // 申诉线程例外：被封禁的用户仍需能够与管理员沟通申诉
+    // 创作者申请线程例外：被封禁用户仍需能与管理员沟通申请事宜
     if let Some(ref thread) = thread_for_ban_check {
-        if thread.type_ != crate::models::threads::ThreadType::BanAppeal {
+        let bypass_ban_check = matches!(
+            thread.type_,
+            crate::models::threads::ThreadType::BanAppeal
+                | crate::models::threads::ThreadType::CreatorApplication
+        );
+        if !bypass_ban_check {
             check_forum_ban(&user, &pool).await?;
         }
     } else {
@@ -606,6 +695,59 @@ pub async fn thread_send_message(
                     }
                 }
             }
+        } else if let Some(creator_application_id) =
+            thread.creator_application_id
+        {
+            // 创作者申请线程
+            let application = sqlx::query!(
+                "SELECT user_id FROM creator_applications WHERE id = $1",
+                creator_application_id.0
+            )
+            .fetch_optional(&**pool)
+            .await?;
+
+            if let Some(app) = application {
+                let app_user_id = database::models::ids::UserId(app.user_id);
+
+                if user.role.is_mod() {
+                    // 管理员回复时：通知申请用户
+                    if user.id != app_user_id.into() {
+                        NotificationBuilder {
+                            body: NotificationBody::CreatorApplicationMessage {
+                                application_id: creator_application_id.0,
+                                thread_id: thread.id.into(),
+                                message_id: id.into(),
+                            },
+                        }
+                        .insert(app_user_id, &mut transaction, &redis)
+                        .await?;
+                    }
+                } else {
+                    // 用户回复时：通知所有管理员（限制 100 人，避免性能问题）
+                    let mod_ids = sqlx::query!(
+                        "SELECT id FROM users WHERE role IN ('admin', 'moderator') LIMIT 100"
+                    )
+                    .fetch_all(&**pool)
+                    .await?
+                    .into_iter()
+                    .map(|row| database::models::ids::UserId(row.id))
+                    // 排除申请用户自己（如果用户也是管理员，不需要给自己发通知）
+                    .filter(|mod_id| *mod_id != app_user_id)
+                    .collect::<Vec<_>>();
+
+                    if !mod_ids.is_empty() {
+                        NotificationBuilder {
+                            body: NotificationBody::CreatorApplicationMessage {
+                                application_id: creator_application_id.0,
+                                thread_id: thread.id.into(),
+                                message_id: id.into(),
+                            },
+                        }
+                        .insert_many(mod_ids, &mut transaction, &redis)
+                        .await?;
+                    }
+                }
+            }
         }
 
         if let MessageBody::Text {
@@ -627,7 +769,7 @@ pub async fn thread_send_message(
                     ) || image.context.inner_id().is_some()
                     {
                         return Err(ApiError::InvalidInput(format!(
-                            "Image {} 不是未使用的，并且不在 'thread_message' 上下文中",
+                            "图片 {} 已被使用或不属于 'thread_message' 上下文",
                             image_id
                         )));
                     }
@@ -648,7 +790,7 @@ pub async fn thread_send_message(
                         .await?;
                 } else {
                     return Err(ApiError::InvalidInput(format!(
-                        "Image {} 不存在",
+                        "图片 {} 不存在",
                         image_id
                     )));
                 }

@@ -1,3 +1,4 @@
+use super::project_pricing::{validate_price, validate_validity_days};
 use super::version_creation::{InitialVersionData, try_create_version_fields};
 use crate::auth::{
     AuthenticationError, check_resource_ban, get_user_from_headers,
@@ -6,9 +7,9 @@ use crate::database::models::loader_fields::{
     Loader, LoaderField, LoaderFieldEnumValue,
 };
 use crate::database::models::thread_item::ThreadBuilder;
-use crate::database::models::{self, User, image_item};
+use crate::database::models::{self, User, UserId as DBUserId, image_item};
 use crate::database::redis::RedisPool;
-use crate::file_hosting::{FileHost, FileHostingError};
+use crate::file_hosting::{FileHost, FileHostingError, S3PrivateHost};
 use crate::models::error::ApiError;
 use crate::models::ids::base62_impl::to_base62;
 use crate::models::ids::{ImageId, OrganizationId};
@@ -80,7 +81,7 @@ pub enum CreateError {
     InvalidCategory(String),
     #[error("版本文件类型无效: {0}")]
     InvalidFileType(String),
-    #[error("Slug 已被占用!")]
+    #[error("该 Slug 已被占用！")]
     SlugCollision,
     #[error("认证错误: {0}")]
     Unauthorized(#[from] AuthenticationError),
@@ -131,28 +132,28 @@ impl actix_web::ResponseError for CreateError {
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status_code()).json(ApiError {
             error: match self {
-                CreateError::EnvError(..) => "环境错误",
-                CreateError::SqlxDatabaseError(..) => "数据库错误",
-                CreateError::DatabaseError(..) => "数据库错误",
-                CreateError::IndexingError(..) => "索引错误",
-                CreateError::FileHostingError(..) => "文件托管错误",
-                CreateError::SerDeError(..) => "无效输入",
-                CreateError::MultipartError(..) => "无效输入",
-                CreateError::MissingValueError(..) => "无效输入",
-                CreateError::InvalidIconFormat(..) => "无效输入",
-                CreateError::InvalidInput(..) => "无效输入",
-                CreateError::InvalidGameVersion(..) => "无效输入",
-                CreateError::InvalidLoader(..) => "无效输入",
-                CreateError::InvalidCategory(..) => "无效输入",
-                CreateError::InvalidFileType(..) => "无效输入",
-                CreateError::Unauthorized(..) => "未授权",
-                CreateError::CustomAuthenticationError(..) => "未授权",
-                CreateError::SlugCollision => "无效输入",
-                CreateError::ValidationError(..) => "无效输入",
-                CreateError::FileValidationError(..) => "无效输入",
-                CreateError::ImageError(..) => "无效图像",
-                CreateError::RerouteError(..) => "重定向错误",
-                CreateError::Banned(..) => "用户被封禁",
+                CreateError::EnvError(..) => "environment_error",
+                CreateError::SqlxDatabaseError(..) => "database_error",
+                CreateError::DatabaseError(..) => "database_error",
+                CreateError::IndexingError(..) => "indexing_error",
+                CreateError::FileHostingError(..) => "file_hosting_error",
+                CreateError::SerDeError(..) => "invalid_input",
+                CreateError::MultipartError(..) => "invalid_input",
+                CreateError::MissingValueError(..) => "invalid_input",
+                CreateError::InvalidIconFormat(..) => "invalid_input",
+                CreateError::InvalidInput(..) => "invalid_input",
+                CreateError::InvalidGameVersion(..) => "invalid_input",
+                CreateError::InvalidLoader(..) => "invalid_input",
+                CreateError::InvalidCategory(..) => "invalid_input",
+                CreateError::InvalidFileType(..) => "invalid_input",
+                CreateError::Unauthorized(..) => "unauthorized",
+                CreateError::CustomAuthenticationError(..) => "unauthorized",
+                CreateError::SlugCollision => "invalid_input",
+                CreateError::ValidationError(..) => "invalid_input",
+                CreateError::FileValidationError(..) => "invalid_input",
+                CreateError::ImageError(..) => "invalid_image",
+                CreateError::RerouteError(..) => "reroute_error",
+                CreateError::Banned(..) => "user_banned",
             },
             description: self.to_string(),
         })
@@ -234,6 +235,14 @@ pub struct ProjectCreateData {
 
     /// 要创建项目的组织 id
     pub organization_id: Option<OrganizationId>,
+
+    /// 是否为付费资源（仅高级创作者可设置）
+    #[serde(default)]
+    pub is_paid: bool,
+    /// 付费资源价格（单位：元，整数 1-1000，仅当 is_paid=true 时有效）
+    pub price: Option<i32>,
+    /// 授权有效期天数（None 表示永久，仅当 is_paid=true 时有效）
+    pub validity_days: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Validate, Clone)]
@@ -268,26 +277,40 @@ pub async fn undo_uploads(
     Ok(())
 }
 
+/// 用于收集非涉政但触发风控的渲染图信息（事务提交后创建审核记录）
+struct GalleryRiskCheckItem {
+    image_url: String,
+    raw_image_url: Option<String>,
+    risk_image_url: Option<String>,
+    uploader_id: i64,
+    project_id: i64,
+    labels: String,
+}
+
 pub async fn project_create(
     req: HttpRequest,
     mut payload: Multipart,
     client: Data<PgPool>,
     redis: Data<RedisPool>,
     file_host: Data<Arc<dyn FileHost + Send + Sync>>,
+    private_file_host: Data<Option<Arc<S3PrivateHost>>>,
     session_queue: Data<AuthQueue>,
 ) -> Result<HttpResponse, CreateError> {
     let mut transaction = client.begin().await?;
     let mut uploaded_files = Vec::new();
+    let mut gallery_risk_items = Vec::new();
 
     let result = project_create_inner(
         req,
         &mut payload,
         &mut transaction,
         &***file_host,
+        private_file_host.as_ref().as_ref().map(|h| h.as_ref()),
         &mut uploaded_files,
         &client,
         &redis,
         &session_queue,
+        &mut gallery_risk_items,
     )
     .await;
 
@@ -301,6 +324,26 @@ pub async fn project_create(
         }
     } else {
         transaction.commit().await?;
+
+        crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+            .await;
+
+        // 事务提交后，为非涉政的风控触发图片创建审核记录
+        for item in &gallery_risk_items {
+            super::image_reviews::create_review_record(
+                &item.image_url,
+                item.raw_image_url.as_deref(),
+                item.risk_image_url.as_deref(),
+                item.uploader_id,
+                &item.labels,
+                "gallery",
+                None,
+                Some(item.project_id),
+                &client,
+                &redis,
+            )
+            .await;
+        }
     }
 
     result
@@ -341,10 +384,12 @@ async fn project_create_inner(
     payload: &mut Multipart,
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     file_host: &dyn FileHost,
+    private_file_host: Option<&S3PrivateHost>,
     uploaded_files: &mut Vec<UploadedFile>,
     pool: &PgPool,
     redis: &RedisPool,
     session_queue: &AuthQueue,
+    gallery_risk_items: &mut Vec<GalleryRiskCheckItem>,
 ) -> Result<HttpResponse, CreateError> {
     // 上传到 CDN 的文件的 base URL
     let cdn_url = dotenvy::var("CDN_URL")?;
@@ -414,6 +459,42 @@ async fn project_create_inner(
         create_data.validate().map_err(|err| {
             CreateError::InvalidInput(validation_errors_to_string(err, None))
         })?;
+
+        // 付费资源验证：只有高级创作者才能创建付费资源
+        if create_data.is_paid {
+            // 获取用户完整信息以检查 is_premium_creator
+            let db_user_id = DBUserId(current_user.id.0 as i64);
+            let db_user =
+                models::User::get_id(db_user_id, &mut **transaction, redis)
+                    .await?
+                    .ok_or_else(|| {
+                        CreateError::InvalidInput("用户不存在".to_string())
+                    })?;
+
+            if !db_user.is_premium_creator {
+                return Err(CreateError::InvalidInput(
+                    "只有高级创作者才能创建付费资源".to_string(),
+                ));
+            }
+
+            // 验证价格必须设置且在 1-1000 范围内
+            match create_data.price {
+                Some(price) => {
+                    validate_price(price).map_err(|e| {
+                        CreateError::InvalidInput(e.to_string())
+                    })?;
+                }
+                None => {
+                    return Err(CreateError::InvalidInput(
+                        "付费资源必须设置价格".to_string(),
+                    ));
+                }
+            }
+
+            // 验证有效期（如果设置）必须大于 0
+            validate_validity_days(create_data.validity_days)
+                .map_err(|e| CreateError::InvalidInput(e.to_string()))?;
+        }
 
         // Modrinth 上游提交 79c263301: 添加 .to_lowercase() 确保大小写不敏感
         let slug_project_id_option: Option<ProjectId> = serde_json::from_str(
@@ -558,6 +639,7 @@ async fn project_create_inner(
                         )?;
 
                     let url = format!("data/{project_id}/images");
+                    // 跳过内置风控，事后异步检查
                     let upload_result = upload_image_optimized(
                         &url,
                         data.freeze(),
@@ -571,6 +653,7 @@ async fn project_create_inner(
                             username: current_user.username.clone(),
                         },
                         redis,
+                        true,
                     )
                     .await
                     .map_err(|e| {
@@ -581,6 +664,81 @@ async fn project_create_inner(
                         file_id: upload_result.raw_url_path.clone(),
                         file_name: upload_result.raw_url_path,
                     });
+
+                    // 同步风控检查
+                    let uploader_id =
+                        crate::database::models::UserId::from(
+                            current_user.id,
+                        )
+                        .0;
+                    let project_db_id =
+                        crate::database::models::ProjectId::from(
+                            project_id,
+                        )
+                        .0;
+                    let risk_result =
+                        crate::util::risk::check_image_risk_with_labels(
+                            &upload_result.url,
+                            &format!("/project/{}", project_id),
+                            &current_user.username,
+                            "项目渲染图",
+                            redis,
+                        )
+                        .await;
+                    // 涉政内容：创建审计记录并拒绝整个项目创建
+                    // （S3 文件会由 project_create 的 undo_uploads 清理）
+                    if let Ok(ref result) = risk_result
+                        && !result.passed
+                        && crate::util::risk::contains_political_labels(
+                            &result.labels,
+                        )
+                    {
+                        log::error!(
+                            "[POLITICAL_IMAGE_DELETED] source=gallery, url={}, user={}, labels={}",
+                            &upload_result.url,
+                            &current_user.username,
+                            &result.labels
+                        );
+                        // 创建审计记录（使用风控缓存 URL）
+                        super::image_reviews::create_review_record(
+                            &upload_result.url,
+                            Some(&upload_result.raw_url),
+                            result.frame_url.as_deref(),
+                            uploader_id,
+                            &result.labels,
+                            "gallery",
+                            None,
+                            Some(project_db_id),
+                            pool,
+                            redis,
+                        )
+                        .await;
+                        // 将审计记录标记为 auto_deleted
+                        let _ = sqlx::query!(
+                            "UPDATE image_content_reviews SET status = 'auto_deleted' WHERE image_url = $1 AND status = 'pending'",
+                            &upload_result.url,
+                        )
+                        .execute(pool)
+                        .await;
+                        return Err(CreateError::InvalidInput(
+                            "渲染图内容违规，已被拦截".to_string(),
+                        ));
+                    }
+                    // 非涉政风控未通过：收集待审核信息
+                    if let Ok(ref result) = risk_result
+                        && !result.passed
+                    {
+                        gallery_risk_items.push(GalleryRiskCheckItem {
+                            image_url: upload_result.url.clone(),
+                            raw_image_url: Some(
+                                upload_result.raw_url.clone(),
+                            ),
+                            risk_image_url: result.frame_url.clone(),
+                            uploader_id,
+                            project_id: project_db_id,
+                            labels: result.labels.clone(),
+                        });
+                    }
                     gallery_urls.push(crate::models::projects::GalleryItem {
                         url: upload_result.url,
                         raw_url: upload_result.raw_url,
@@ -616,6 +774,7 @@ async fn project_create_inner(
             super::version_creation::upload_file(
                 &mut field,
                 file_host,
+                private_file_host,
                 version_data.file_parts.len(),
                 uploaded_files,
                 &mut created_version.files,
@@ -633,6 +792,7 @@ async fn project_create_inner(
                 transaction,
                 redis,
                 current_user.username.clone(),
+                project_create_data.is_paid,
             )
             .await?;
 
@@ -836,6 +996,7 @@ async fn project_create_inner(
                 .collect(),
             color: icon_data.and_then(|x| x.2),
             monetization_status: MonetizationStatus::Monetized,
+            is_paid: project_create_data.is_paid,
         };
         let project_builder = project_builder_actual.clone();
 
@@ -843,6 +1004,21 @@ async fn project_create_inner(
 
         let id = project_builder_actual.insert(&mut *transaction).await?;
         User::clear_project_cache(&[current_user.id.into()], redis).await?;
+
+        // 如果是付费资源，插入定价信息
+        if project_create_data.is_paid
+            && let Some(price) = project_create_data.price
+        {
+            // 将 i32 转换为 Decimal
+            let price_decimal = Decimal::from(price);
+            models::ProjectPricing::upsert(
+                id,
+                price_decimal,
+                project_create_data.validity_days,
+                &mut *transaction,
+            )
+            .await?;
+        }
 
         for image_id in project_create_data.uploaded_images {
             if let Some(db_image) = image_item::Image::get(
@@ -889,6 +1065,7 @@ async fn project_create_inner(
             project_id: Some(id),
             report_id: None,
             ban_appeal_id: None,
+            creator_application_id: None,
         }
         .insert(&mut *transaction)
         .await?;
@@ -960,6 +1137,13 @@ async fn project_create_inner(
             wiki_open: false,
             issues_type: 0,
             forum: None,
+            translation_tracking: false,
+            translation_tracker: None,
+            translation_source: None,
+            is_paid: project_create_data.is_paid,
+            user_has_purchased: None, // 新创建的项目不返回购买状态
+            price: project_create_data.price.map(rust_decimal::Decimal::from),
+            validity_days: project_create_data.validity_days,
         };
 
         Ok(HttpResponse::Ok().json(response))
@@ -1078,6 +1262,7 @@ async fn process_icon_upload(
             username,
         },
         redis,
+        false,
     )
     .await
     .map_err(|e| CreateError::InvalidIconFormat(e.to_string()))?;

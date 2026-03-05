@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE image_content_reviews SET status = 'auto_deleted' WHERE image_url = $1 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "19afcd1c8297e888182c7da78842a16649fd9cb07202025c2c14822c9d53606d"
+}

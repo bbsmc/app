@@ -2,7 +2,7 @@ services:
   postgres_db:
     image: postgres:alpine
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - /Users/admin/Documents/GitHub/docker-data/app-postgres:/var/lib/postgresql/data
     ports:
       - '5432:5432'
     environment:
@@ -20,7 +20,7 @@ services:
     ports:
       - '7700:7700'
     volumes:
-      - meilisearch-data:/data.ms
+      - /Users/admin/Documents/GitHub/docker-data/app-meilisearch:/data.ms
     environment:
       MEILI_MASTER_KEY: modrinth
       MEILI_HTTP_PAYLOAD_SIZE_LIMIT: 107374182400
@@ -36,7 +36,7 @@ services:
     ports:
       - '6379:6379'
     volumes:
-      - redis-data:/data
+      - /Users/admin/Documents/GitHub/docker-data/app-redis:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'PING']
       interval: 3s
@@ -46,6 +46,8 @@ services:
     image: clickhouse/clickhouse-server
     ports:
       - '8123:8123'
+    volumes:
+      - /Users/admin/Documents/GitHub/docker-data/app-clickhouse:/var/lib/clickhouse
     environment:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: default
@@ -54,7 +56,3 @@ services:
       interval: 3s
       timeout: 5s
       retries: 3
-volumes:
-  meilisearch-data:
-  db-data:
-  redis-data:

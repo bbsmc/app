@@ -23,9 +23,9 @@
           <div class="flex cursor-pointer gap-2" @click="toggleMod(mod.project_id)">
             <UiAvatar :src="mod.icon_url" class="!h-12 !min-h-12 !w-12 !min-w-12" />
             <div class="flex flex-col gap-1">
-              <h1 class="m-0 text-2xl font-bold leading-none text-contrast">
+              <span class="m-0 text-2xl font-bold leading-none text-contrast">
                 {{ mod.title }}
-              </h1>
+              </span>
               <span class="text-sm text-secondary">
                 {{ mod.description.substring(0, 100) }}
                 {{ mod.description.length > 100 ? "..." : "" }}

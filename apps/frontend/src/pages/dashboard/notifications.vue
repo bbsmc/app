@@ -32,7 +32,7 @@
                 return '状态变更';
               }
               case 'moderator_message': {
-                return '版主消息';
+                return '社区管理员消息';
               }
               case 'project_update': {
                 return '资源更新';
@@ -48,6 +48,24 @@
               }
               case 'organization_invite': {
                 return '团队邀请';
+              }
+              case 'creator_application_message': {
+                return '创作者申请消息';
+              }
+              case 'creator_application_approved': {
+                return '创作者申请通过';
+              }
+              case 'creator_application_rejected': {
+                return '创作者申请拒绝';
+              }
+              case 'profile_review_pending': {
+                return '资料审核中';
+              }
+              case 'profile_review_result': {
+                return '资料审核结果';
+              }
+              case 'image_review_result': {
+                return '图片审核';
               }
               default: {
                 return x;
@@ -97,6 +115,7 @@ import Pagination from "~/components/ui/Pagination.vue";
 
 useHead({
   title: "通知 - BBSMC",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 const auth = await useAuth();

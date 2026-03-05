@@ -17,9 +17,9 @@
       </div>
       <div class="flex flex-col gap-0.5">
         <div class="flex flex-row items-center gap-2">
-          <h1 class="m-0 text-xl font-bold leading-none text-contrast">
+          <span class="m-0 text-xl font-bold leading-none text-contrast">
             {{ loader.displayName }}
-          </h1>
+          </span>
           <span
             v-if="isCurrentLoader(loader.name)"
             class="hidden items-center gap-1 rounded-full bg-bg-green p-1 px-1.5 text-xs font-semibold text-brand sm:flex"

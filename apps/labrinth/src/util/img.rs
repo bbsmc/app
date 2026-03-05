@@ -60,6 +60,7 @@ pub async fn upload_image_optimized(
     file_host: &dyn FileHost,
     pos: UploadImagePos,
     redis: &RedisPool,
+    skip_risk_check: bool,
 ) -> Result<UploadImageResult, ApiError> {
     let content_type = crate::util::ext::get_image_content_type(file_extension)
         .ok_or_else(|| {
@@ -111,18 +112,30 @@ pub async fn upload_image_optimized(
 
     let url = format!("{}/{}", cdn_url, upload_data.file_name);
 
-    let risk = crate::util::risk::check_image_risk(
-        &url,
-        &pos.url,
-        &pos.username,
-        &pos.pos,
-        redis,
-    )
-    .await?;
-    if !risk {
-        return Err(ApiError::InvalidInput(
-            "图片包含敏感内容，已被记录该次提交，请勿在本网站使用涉及敏感或违规的图片".to_string(),
-        ));
+    if !skip_risk_check {
+        let risk = crate::util::risk::check_image_risk(
+            &url,
+            &pos.url,
+            &pos.username,
+            &pos.pos,
+            redis,
+        )
+        .await?;
+        if !risk {
+            // 风控未通过，清理已上传到 S3 的图片
+            let processed_url = processed_upload_data
+                .as_ref()
+                .map(|x| format!("{}/{}", cdn_url, x.file_name));
+            let raw_url = Some(url.clone());
+            if let Err(e) =
+                delete_old_images(processed_url, raw_url, file_host).await
+            {
+                log::warn!("风控拒绝后清理 S3 图片失败: {}", e);
+            }
+            return Err(ApiError::InvalidInput(
+                "图片包含敏感内容，已被记录该次提交，请勿在本网站使用涉及敏感或违规的图片".to_string(),
+            ));
+        }
     }
 
     Ok(UploadImageResult {
@@ -197,19 +210,41 @@ pub async fn delete_old_images(
 ) -> Result<(), ApiError> {
     let cdn_url = dotenvy::var("CDN_URL")?;
     let cdn_url_start = format!("{cdn_url}/");
-    if let Some(image_url) = image_url {
+    if let Some(ref image_url) = image_url {
         let name = image_url.split(&cdn_url_start).nth(1);
 
         if let Some(icon_path) = name {
+            log::info!(
+                "删除图片: cdn_url={}, s3_path={}",
+                image_url,
+                icon_path
+            );
             file_host.delete_file_version("", icon_path).await?;
+        } else {
+            log::warn!(
+                "无法从 CDN URL 提取 S3 路径: url={}, cdn_prefix={}",
+                image_url,
+                cdn_url_start
+            );
         }
     }
 
-    if let Some(raw_image_url) = raw_image_url {
+    if let Some(ref raw_image_url) = raw_image_url {
         let name = raw_image_url.split(&cdn_url_start).nth(1);
 
         if let Some(icon_path) = name {
+            log::info!(
+                "删除原始图片: cdn_url={}, s3_path={}",
+                raw_image_url,
+                icon_path
+            );
             file_host.delete_file_version("", icon_path).await?;
+        } else {
+            log::warn!(
+                "无法从 CDN URL 提取 S3 路径: url={}, cdn_prefix={}",
+                raw_image_url,
+                cdn_url_start
+            );
         }
     }
 

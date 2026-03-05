@@ -9,7 +9,7 @@
 import { provideNotificationManager } from "@modrinth/ui";
 import ModrinthLoadingIndicator from "~/components/ui/modrinth-loading-indicator.ts";
 import Notifications from "~/components/ui/Notifications.vue";
-import { addNotification } from "~/composables/notifs";
+import { addNotification } from "~/composables/notifs.js";
 
 // Provide notification manager for components that use injectNotificationManager
 provideNotificationManager({

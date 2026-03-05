@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_profile_reviews\n             SET status = 'approved', reviewed_by = $1, reviewed_at = NOW(), review_notes = $2\n             WHERE id = ANY($3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a3f49d58b3182cdf3ec0958338893fc377c0048925ff62bd6043f5b756a5ab1b"
+}

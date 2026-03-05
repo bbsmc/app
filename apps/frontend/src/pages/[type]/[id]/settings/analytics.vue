@@ -24,6 +24,10 @@ const props = defineProps({
     },
   },
 });
+
+useHead({
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
 </script>
 
 <style scoped lang="scss">

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM payment_orders\n            WHERE user_id = $1 AND project_id = $2\n                  AND status = 'pending'\n                  AND expires_at IS NOT NULL\n                  AND expires_at <= NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d22bc931509e57cb8c195481f76d319232a767e7135dfba09bf71aebf0dad992"
+}
