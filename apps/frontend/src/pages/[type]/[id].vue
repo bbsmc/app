@@ -1235,6 +1235,14 @@
               />
             </div>
           </NavStack>
+          <!-- Wiki 页面付费提示 -->
+          <PurchaseButton
+            v-if="wikis.requires_purchase"
+            :project="project"
+            :current-member="currentMember"
+            class="mt-4"
+            @purchase-success="() => router.go(0)"
+          />
         </aside>
       </div>
       <!--      侧边栏-->

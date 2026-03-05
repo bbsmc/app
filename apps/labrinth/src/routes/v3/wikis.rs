@@ -2,6 +2,7 @@ use crate::auth::checks::{check_forum_ban, is_visible_project};
 use crate::auth::{AuthenticationError, get_user_from_headers};
 use crate::database;
 use crate::database::models::notification_item::NotificationBuilder;
+use crate::database::models::user_purchase_item::UserPurchase;
 use crate::database::models::wiki_item::{WikiDisplays, Wikis};
 use crate::database::models::{
     User, UserId, Wiki, WikiCache, WikiCacheId, WikiId, generate_wiki_cache_id,
@@ -440,6 +441,7 @@ pub async fn wiki_create(
             is_editor_user: true,
             editor_user: user_option,
             is_visitors: false,
+            requires_purchase: false,
         };
 
         Ok(HttpResponse::Ok().json(wikis))
@@ -554,6 +556,21 @@ pub async fn wiki_edit_start(
             }
         }
 
+        // 付费资源检查：未购买用户不能编辑百科
+        if project.inner.is_paid {
+            let has_access = check_wiki_paid_access(
+                user_option.as_ref().unwrap(),
+                &project.inner,
+                &**pool,
+            )
+            .await?;
+            if !has_access {
+                return Err(ApiError::Validation(
+                    "您需要购买此资源后才能编辑百科".to_string(),
+                ));
+            }
+        }
+
         let mut transaction = pool.begin().await?;
 
         let id = user_option.unwrap().id;
@@ -632,6 +649,27 @@ pub async fn wiki_list(
         .into_iter()
         .collect::<Vec<_>>();
         wikis.sort_by_key(|x| x.sort_order);
+
+        // 付费资源 Wiki 访问检查
+        let requires_purchase = if project.inner.is_paid {
+            match &user_option {
+                Some(user) => {
+                    !check_wiki_paid_access(user, &project.inner, &**pool)
+                        .await?
+                }
+                None => true,
+            }
+        } else {
+            false
+        };
+
+        // 如果需要购买，清空 wiki body（只保留标题/结构）
+        if requires_purchase {
+            for wiki in &mut wikis {
+                wiki.body = String::new();
+            }
+        }
+
         let wikis_array = wiki_format(wikis);
         let mut wikis = Wikis {
             wikis: wikis_array,
@@ -640,10 +678,11 @@ pub async fn wiki_list(
             is_editor_user: false,
             editor_user: None,
             is_visitors: true,
+            requires_purchase,
         };
 
-        // 缓存，正在编辑的wiki缓存
-        if user_option.is_some() {
+        // 缓存，正在编辑的wiki缓存（付费未购买时跳过，不返回缓存内容）
+        if user_option.is_some() && !requires_purchase {
             let wiki_cache = database::models::WikiCache::get_draft_or_review(
                 project.inner.id,
                 &**pool,
@@ -772,6 +811,7 @@ pub async fn wiki_accept(
             is_editor_user: true,
             editor_user: user_option.clone(),
             is_visitors: false,
+            requires_purchase: false,
         };
 
         let wiki_cache = database::models::WikiCache::get_draft_or_review(
@@ -1193,6 +1233,7 @@ pub async fn wiki_submit(
             is_editor_user: true,
             editor_user: user_option.clone(),
             is_visitors: false,
+            requires_purchase: false,
         };
 
         let wiki_cache = database::models::WikiCache::get_draft(
@@ -1680,6 +1721,57 @@ pub async fn wiki_given_up(
     } else {
         Err(ApiError::NotFound)
     }
+}
+
+/// 检查用户是否有权访问付费项目的 Wiki
+async fn check_wiki_paid_access(
+    user: &crate::models::v3::users::User,
+    project: &database::models::project_item::Project,
+    pool: &PgPool,
+) -> Result<bool, ApiError> {
+    // 管理员/版主
+    if user.role.is_admin() || user.role.is_mod() {
+        return Ok(true);
+    }
+
+    let user_id: database::models::UserId = user.id.into();
+    let project_id = project.id;
+
+    // 团队成员
+    let team_member = database::models::TeamMember::get_from_user_id_project(
+        project_id, user_id, false, pool,
+    )
+    .await
+    .map_err(ApiError::Database)?;
+    if team_member.is_some() {
+        return Ok(true);
+    }
+
+    // 组织成员
+    let organization =
+        database::models::Organization::get_associated_organization_project_id(
+            project_id, pool,
+        )
+        .await
+        .map_err(ApiError::Database)?;
+    if let Some(org) = organization {
+        let org_member =
+            database::models::TeamMember::get_from_user_id_organization(
+                org.id, user_id, false, pool,
+            )
+            .await
+            .map_err(ApiError::Database)?;
+        if org_member.is_some() {
+            return Ok(true);
+        }
+    }
+
+    // 已购买
+    let has_purchased = UserPurchase::check_access(user_id, project_id, pool)
+        .await
+        .map_err(ApiError::Database)?;
+
+    Ok(has_purchased)
 }
 
 pub fn wiki_format(wikis: Vec<Wiki>) -> Vec<WikiDisplays> {

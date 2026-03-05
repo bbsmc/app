@@ -62,6 +62,99 @@ fn get_description_part2() -> &'static str {
 游戏内如有任何汉化质量问题，欢迎前往 QQ 群反馈，我们将及时校准并重新发布修改后的汉化包。"#
 }
 
+/// 汉化包描述模板 - 系统介绍部分
+fn get_description_system_intro() -> &'static str {
+    r#"
+
+## 关于 BBSMC汉化组 整合包自动汉化系统
+
+这是一套完整的 Minecraft 整合包汉化自动化工具，覆盖整合包中几乎所有可翻译内容来源。系统采用 25+ 专用提取器、多级翻译引擎和智能过滤机制，实现从扫描、提取、翻译到打包的全流程自动化。所有文本均逐条提取、逐条过滤、逐条翻译，而非将整个文件丢给 AI 批量处理——每一条翻译都经过独立的上下文分析、占位符保护和质量校验。
+
+### 核心翻译引擎
+
+系统内置异步 AI 翻译引擎，支持流式翻译和并发批量处理。翻译前自动通过 59+ 条规则过滤不需要翻译的内容（资源路径、NBT 数据、代码片段、快捷键标记等），避免误翻译。翻译过程中通过占位符保护系统自动识别并保护 Minecraft 格式代码、颜色代码、变量占位符等特殊标记，确保翻译后格式完整不被破坏。
+
+### 多源翻译合并
+
+对于模组语言文件，系统实现了四级优先级自动合并：优先使用整合包作者自带的翻译，其次查找 CFPA 社区语言包中已有的翻译，再检查模组 JAR 内置的中文翻译，最后才通过 AI 生成翻译。这保证了翻译质量的同时最大化利用社区已有成果。
+
+### 模组语言文件翻译
+
+最基础也最核心的模块。系统自动扫描整合包中所有模组 JAR 文件，提取英文语言文件，检测哪些模组缺少中文翻译或存在"假中文"文件（文件名是 zh_cn 但内容实际为英文），然后通过多源合并生成完整的中文语言包，最终打包为 Minecraft 资源包。
+
+### KubeJS 脚本翻译
+
+KubeJS 是现代整合包中最常用的自定义脚本系统，大量物品名称、描述、工具提示都直接写在 JavaScript 脚本中。系统使用 esprima 和 tree-sitter 双引擎进行 JavaScript AST 解析，精确提取脚本中的可翻译字符串。配合 290+ 条跳过规则（涵盖 GregTech 机器类型、TFC 配方函数、化学式方法等），以及基于数据流分析的意图识别系统，准确判断每个字符串是否应该被翻译。翻译完成后通过基于行列号的精确替换写回脚本，保留原始引号类型和代码结构。对于通过 event.create() 注册但缺少显示名的物品和方块，还能自动检测并生成合理的中文名称。
+
+### FTB Quests 任务翻译
+
+FTB Quests 是整合包中最主要的任务系统，使用 SNBT 格式存储任务数据。系统能自动检测整合包使用的是哪种 FTB Quests 版本模式（LangFile、Localizer 或 Legacy），然后用对应的策略提取所有任务标题、描述和奖励文本。翻译时从章节结构、任务依赖关系和物品翻译中构建上下文场景，帮助 AI 更准确地理解每条文本的含义。支持 JSON Text Component 富文本格式和 Minecraft 格式代码的处理。
+
+### 硬编码文本提取
+
+许多模组将物品名称、工具提示等文本直接写死在 Java 代码中，而非使用语言文件。系统通过 CFR 反编译器将模组 class 文件反编译为 Java 源码，然后分析方法签名、类结构和调用上下文，精确定位那些流向 addTooltip、appendText、setCustomName 等渲染方法的字符串。配合 10 个专用模式检测器（NBT、资源路径、JEI/REI、Lore、TextComponent 等）过滤误报，最终生成 VaultPatcher 运行时文本替换配置或 ASM 字节码替换规则。内置 VM 汉化组提供的 2,451 条白名单数据，覆盖 583 个常见类。支持 Forge、NeoForge 和 Fabric 三大加载器，兼容 MC 1.12 到 1.21+。
+
+### Patchouli 手册翻译
+
+Patchouli（帕秋莉）是 Minecraft 中最流行的模组手册系统。系统能从整合包目录和模组 JAR 中同时提取手册内容，覆盖书籍名称、分类描述、词条标题和所有页面文本。翻译后正确区分 assets/（资源包）和 data/（数据包）两种路径，对于 data/ 路径的手册通过完整 JAR 重打包注入翻译，确保游戏能正确加载。
+
+### Datapack 内容翻译
+
+整合包中的数据包可能包含自定义进度、技能树、法术描述等需要翻译的内容。系统支持从 Paxi、OpenLoader 和 KubeJS 等多种数据包加载器中提取内容，覆盖 MMORPG Spells 法术名称、Passive Skill Tree 技能描述、Puffish Skills 天赋定义等模组的翻译需求。
+
+### Advancement 成就翻译
+
+Minecraft 的成就系统存在三种不同的文本格式：语言键引用格式、纯字符串格式和 JSON Text Component 格式。系统为每种格式建立了独立的翻译管线，分别通过语言文件注入、JAR 修改和 AI 翻译来处理，确保所有成就都能被正确翻译。
+
+### Origins 起源翻译
+
+Origins 模组允许玩家选择不同的起源获得独特能力。系统能从 ZIP 数据包、文件夹数据包和模组 JAR 三种来源中提取起源名称、能力描述和起源层定义，翻译后写回对应的来源格式。
+
+### Lavender 手册翻译
+
+Lavender 是另一种模组手册系统，使用 Markdown 格式编写。系统从模组 JAR 中提取手册的书籍定义、条目正文和分类描述，检测已有官方中文翻译的书籍并跳过，只翻译缺少中文版本的内容。
+
+### FancyMenu 界面翻译
+
+FancyMenu 允许整合包自定义游戏主菜单的按钮、文本和布局。系统不仅提取本地配置中的可翻译文本，还能自动检测引用的网络资源（如 GitHub 上的 Markdown 文件），下载后翻译并转为本地资源，实现完整的菜单汉化。
+
+### CustomNPCs 翻译
+
+CustomNPCs 模组的对话和任务数据存储在存档中，包括 JSON 对话文件和嵌入在 Region 文件中的 NBT 数据。系统能解析这两种格式，提取 NPC 对话、任务描述等文本，翻译后直接写回对应的数据结构。
+
+### CraftTweaker 脚本翻译
+
+CraftTweaker 使用 ZenScript 脚本修改游戏内容。系统通过正则匹配提取脚本中的 displayName 和 tooltip 设置，翻译后替换回原脚本。
+
+### HQM 任务翻译
+
+Hardcore Questing Mode 是另一种任务系统，常见于较老版本的整合包。系统兼容 HQM 的新旧两种数据结构，提取任务名称和描述进行翻译。
+
+### CustomMainMenu 翻译
+
+CustomMainMenu 模组定义了主菜单的按钮文本和悬停提示。系统提取这些文本并翻译，配合配置文件复制确保翻译生效。
+
+### The Vault 专用翻译
+
+针对 Vault Hunters 整合包，系统包含专门的提取器，覆盖 30+ 配置文件中的技能描述、天赋属性、装备词缀、秘境主题、卡牌系统、传说文本等内容。
+
+### Excavated Variants 矿石变体翻译
+
+Excavated Variants 模组为不同岩石类型生成对应的矿石变体。系统提取 JSON5 配置中的石头和矿石名称，翻译后生成对应的中文语言文件。
+
+### Guidebook 手册翻译
+
+支持 Modern Industrialization Guidebook 和 Applied Energistics 2 Guide 两种手册格式的提取和翻译。
+
+### 其他翻译模块
+
+Config Lang 处理 config 目录下模组自带的语言文件。StarterKit 翻译初始装备和职业选择界面的 JSON5 配置。Tips Mod 翻译加载界面的自定义提示文本。Resources Override 处理 1.12.2 及更早版本的资源覆盖目录。Mod Content Pack 扫描非标准目录下的语言文件。Orphan Namespace 检测没有语言文件的模组命名空间并补全翻译。
+
+### 打包输出
+
+所有翻译完成后，系统自动将结果打包为标准的 Minecraft 资源包，同时根据整合包的游戏版本和加载器类型（Forge/NeoForge/Fabric）附带对应的辅助模组，生成开箱即用的汉化补丁。整个流程由工作流编排器统一调度，从扫描到打包全自动完成。"#
+}
+
 /// 汉化包描述模板 - 第三部分：QQ 群信息
 fn get_description_part3() -> String {
     format!(
@@ -81,10 +174,11 @@ fn get_description_part3() -> String {
 /// 生成完整的汉化包描述
 fn generate_cn_description(slug: &str) -> String {
     format!(
-        "{}{}{}",
+        "{}{}{}{}",
         get_description_part1(slug),
         get_description_part2(),
-        get_description_part3()
+        get_description_part3(),
+        get_description_system_intro()
     )
 }
 

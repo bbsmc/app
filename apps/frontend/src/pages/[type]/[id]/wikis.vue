@@ -492,7 +492,7 @@
       </div>
     </div>
 
-    <div v-if="props.wikis.is_editor && props.wikis.is_visitors">
+    <div v-if="props.wikis.is_editor && props.wikis.is_visitors && !props.wikis.requires_purchase">
       <div class="markdown-body card">
         <h2>公开编辑百科</h2>
         <br />
@@ -518,7 +518,16 @@
       </div>
     </div>
 
+    <!-- 付费资源未购买提示 -->
+    <div v-if="props.wikis.requires_purchase" class="markdown-body card">
+      <div style="text-align: center; padding: 2rem 1rem">
+        <LockIcon style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--color-text-secondary)" />
+        <h2>百科内容需要购买后查看</h2>
+        <p style="color: var(--color-text-secondary); margin-top: 0.5rem">购买此资源后即可查看所有百科页面内容</p>
+      </div>
+    </div>
     <div
+      v-else
       class="markdown-body card"
       v-html="renderHighlightedString(wiki ? wiki.body : '未设置任何页面未主页')"
     />
@@ -542,7 +551,7 @@
 
     <!--    其他用户，百科正在编辑中，告知谁正在编辑   -->
     <div
-      v-if="props.wikis.is_visitors && props.wikis.is_editor && project.wiki_open"
+      v-if="props.wikis.is_visitors && props.wikis.is_editor && project.wiki_open && !props.wikis.requires_purchase"
       class="markdown-body card"
     >
       <h2>公开编辑百科</h2>
@@ -567,7 +576,7 @@
         </button>
       </button-styled>
     </div>
-    <div v-if="!props.wikis.is_editor" class="markdown-body card">
+    <div v-if="!props.wikis.is_editor && !props.wikis.requires_purchase" class="markdown-body card">
       <h2 v-if="currentMember">编辑百科</h2>
       <h2 v-else-if="project.wiki_open">公开编辑百科</h2>
       <h2 v-else>百科</h2>
@@ -611,7 +620,7 @@ import {
   NewModal,
   ScrollablePanel,
 } from "@modrinth/ui";
-import { PlusIcon, CogIcon, XIcon, CheckIcon } from "@modrinth/assets";
+import { PlusIcon, CogIcon, XIcon, CheckIcon, LockIcon } from "@modrinth/assets";
 import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
 import { formatDateTime } from "@modrinth/utils";
 import { renderHighlightedString } from "~/helpers/highlight.js";
