@@ -72,8 +72,11 @@ pub struct InitialVersionData {
     #[serde(default)]
     pub uploaded_images: Vec<ImageId>, // 上传的图片
     pub ordering: Option<i32>,        // 排序
+    #[serde(default)]
     pub curse: bool,
+    #[serde(default)]
     pub software: bool,
+    #[serde(default)]
     pub disk_only: bool,
     pub disk_urls: Option<Vec<QueryDisk>>,
 }
