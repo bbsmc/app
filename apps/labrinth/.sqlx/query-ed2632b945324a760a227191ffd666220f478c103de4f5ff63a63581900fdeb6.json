@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT user_id\n        FROM team_members\n        WHERE team_id = $1\n          AND accepted = TRUE\n          AND (\n              payouts_split > 0\n              OR is_owner = TRUE\n              OR (permissions & $2) <> 0\n              OR (permissions & $3) <> 0\n          )\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ed2632b945324a760a227191ffd666220f478c103de4f5ff63a63581900fdeb6"
+}

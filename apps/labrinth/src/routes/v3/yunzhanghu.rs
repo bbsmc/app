@@ -432,6 +432,15 @@ pub async fn refresh_sign_status(
     .await?;
     tx.commit().await?;
 
+    notify_yunzhanghu_sign_status_change(
+        &pool,
+        &redis,
+        user_id,
+        current_status,
+        new_status,
+    )
+    .await;
+
     Ok(HttpResponse::Ok().json(json!({
         "sign_status": new_status.as_str(),
         "remote_status": resp.status,
@@ -589,6 +598,16 @@ pub async fn sign_callback(
     )
     .await?;
     tx.commit().await?;
+
+    notify_yunzhanghu_sign_status_change(
+        &pool,
+        &redis,
+        user_id,
+        profile.sign_status,
+        new_status,
+    )
+    .await;
+
     mark_notify_replay(&redis, &replay_key).await?;
 
     // 云账户协议要求返回 "success" 字符串，否则会重试
@@ -706,6 +725,14 @@ pub async fn handle_unsign_callback(
             )
             .await?;
             tx.commit().await?;
+            notify_yunzhanghu_sign_status_change(
+                &pool,
+                &redis,
+                profile.user_id,
+                profile.sign_status,
+                YzhSignStatus::Terminated,
+            )
+            .await;
             break;
         }
     }
@@ -1047,7 +1074,7 @@ pub async fn apply_order_status(
     redis: &RedisPool,
     order_id: &str,
     remote_status: &str,
-    _status_message: &str,
+    status_message: &str,
     ref_id: Option<&str>,
     evidence: OrderStatusEvidence<'_>,
 ) -> Result<(), ApiError> {
@@ -1164,6 +1191,15 @@ pub async fn apply_order_status(
     let should_notify_success = current
         != crate::models::payouts::PayoutStatus::Success
         && new_status == crate::models::payouts::PayoutStatus::Success;
+    let should_notify_terminal_failure = !matches!(
+        current,
+        crate::models::payouts::PayoutStatus::Failed
+            | crate::models::payouts::PayoutStatus::Cancelled
+    ) && matches!(
+        new_status,
+        crate::models::payouts::PayoutStatus::Failed
+            | crate::models::payouts::PayoutStatus::Cancelled
+    );
 
     let new_status_str = new_status.as_str();
     sqlx::query!(
@@ -1212,6 +1248,26 @@ pub async fn apply_order_status(
         );
     }
 
+    if should_notify_terminal_failure
+        && let Err(e) = insert_payout_terminal_notification(
+            pool,
+            redis,
+            crate::database::models::UserId(row.user_id),
+            row.amount,
+            new_status,
+            status_message,
+        )
+        .await
+    {
+        log::warn!(
+            "提现终态通知写入失败 payout_id={} user_id={} status={}: {}",
+            payout_db_id,
+            row.user_id,
+            new_status,
+            e
+        );
+    }
+
     if new_status == crate::models::payouts::PayoutStatus::Success
         && let Err(e) = sync_yunzhanghu_order_details(pool, order_id).await
     {
@@ -1221,6 +1277,56 @@ pub async fn apply_order_status(
             e
         );
     }
+
+    Ok(())
+}
+
+async fn insert_payout_terminal_notification(
+    pool: &PgPool,
+    redis: &RedisPool,
+    user_id: crate::database::models::UserId,
+    amount: rust_decimal::Decimal,
+    status: crate::models::payouts::PayoutStatus,
+    status_message: &str,
+) -> Result<(), crate::database::models::DatabaseError> {
+    let (notification_type, name, status_text) = match status {
+        crate::models::payouts::PayoutStatus::Failed => (
+            "payout_failed",
+            "提现失败",
+            "提现失败，金额已退回到可提现余额。",
+        ),
+        crate::models::payouts::PayoutStatus::Cancelled => (
+            "payout_cancelled",
+            "提现已取消",
+            "提现已取消，金额已退回到可提现余额。",
+        ),
+        _ => return Ok(()),
+    };
+    let detail = status_message.trim();
+    let detail_text = if detail.is_empty() {
+        "请在转账记录中查看详情。".to_string()
+    } else {
+        format!("原因：{}", detail)
+    };
+
+    let mut tx = pool.begin().await?;
+    crate::database::models::notification_item::NotificationBuilder {
+        body: crate::models::notifications::NotificationBody::LegacyMarkdown {
+            notification_type: Some(notification_type.to_string()),
+            name: name.to_string(),
+            text: format!(
+                "您的 {} {}{}",
+                format_payout_amount(amount),
+                status_text,
+                detail_text
+            ),
+            link: "/dashboard/revenue/transfers".to_string(),
+            actions: vec![],
+        },
+    }
+    .insert(user_id, &mut tx, redis)
+    .await?;
+    tx.commit().await?;
 
     Ok(())
 }
@@ -1572,6 +1678,74 @@ pub async fn poll_in_transit_payouts(pool: PgPool, redis: RedisPool) {
 // ============================================================================
 // 辅助
 // ============================================================================
+
+async fn notify_yunzhanghu_sign_status_change(
+    pool: &PgPool,
+    redis: &RedisPool,
+    user_id: UserId,
+    old_status: YzhSignStatus,
+    new_status: YzhSignStatus,
+) {
+    if old_status == new_status {
+        return;
+    }
+
+    if let Err(e) = insert_yunzhanghu_sign_status_notification(
+        pool, redis, user_id, new_status,
+    )
+    .await
+    {
+        log::warn!(
+            "云账户签约状态通知写入失败 user_id={} old_status={} new_status={}: {}",
+            user_id.0,
+            old_status,
+            new_status,
+            e
+        );
+    }
+}
+
+async fn insert_yunzhanghu_sign_status_notification(
+    pool: &PgPool,
+    redis: &RedisPool,
+    user_id: UserId,
+    new_status: YzhSignStatus,
+) -> Result<(), crate::database::models::DatabaseError> {
+    let (notification_type, name, text) = match new_status {
+        YzhSignStatus::Signed => (
+            "yunzhanghu_sign_signed",
+            "云账户签约已完成",
+            "你已完成云账户实名签约，现在可以发起提现。",
+        ),
+        YzhSignStatus::Terminated => (
+            "yunzhanghu_sign_terminated",
+            "云账户签约已解除",
+            "你的云账户签约已解除。重新签约前，将无法发起新的提现。",
+        ),
+        YzhSignStatus::Unsigned => (
+            "yunzhanghu_sign_unsigned",
+            "云账户签约未完成",
+            "你的云账户签约当前未完成。完成签约后才能发起提现。",
+        ),
+        YzhSignStatus::Signing => return Ok(()),
+    };
+
+    let mut tx = pool.begin().await?;
+    crate::database::models::notification_item::NotificationBuilder {
+        body: crate::models::notifications::NotificationBody::LegacyMarkdown {
+            notification_type: Some(notification_type.to_string()),
+            name: name.to_string(),
+            text: text.to_string(),
+            link: "/dashboard/revenue/withdraw".to_string(),
+            actions: vec![],
+        },
+    }
+    .insert(user_id, &mut tx, redis)
+    .await?;
+    tx.commit().await?;
+
+    Ok(())
+}
 
 async fn ensure_no_active_yunzhanghu_payout(
     user_id: UserId,

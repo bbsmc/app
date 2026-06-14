@@ -851,7 +851,7 @@ pub async fn thread_send_message(
                 let project_title =
                     appl.project_name.unwrap_or_else(|| "项目".to_string());
 
-                // 仅管理员（admin）回复时通知申请人；作者回复不群发，moderator 也不参与激励 thread
+                // 管理员回复时通知申请人；作者回复时通知最近回复过的管理员。
                 if user.role.is_admin() && user.id != applicant_user_id.into() {
                     let project_b62 =
                         crate::models::ids::base62_impl::to_base62(
@@ -876,6 +876,52 @@ pub async fn thread_send_message(
                     }
                     .insert(applicant_user_id, &mut transaction, &redis)
                     .await?;
+                } else if !user.role.is_admin() {
+                    let project_b62 =
+                        crate::models::ids::base62_impl::to_base62(
+                            appl.project_id as u64,
+                        );
+                    let admin_id = sqlx::query!(
+                        "
+                        SELECT tm.author_id AS \"author_id!\"
+                        FROM threads_messages tm
+                        INNER JOIN users u ON u.id = tm.author_id
+                        WHERE tm.thread_id = $1
+                          AND tm.author_id IS NOT NULL
+                          AND tm.author_id <> $2
+                          AND u.role = 'admin'
+                        ORDER BY tm.created DESC, tm.id DESC
+                        LIMIT 1
+                        ",
+                        thread.id.0,
+                        user.id.0 as i64,
+                    )
+                    .fetch_optional(&mut *transaction)
+                    .await?
+                    .map(|row| database::models::ids::UserId(row.author_id));
+
+                    if let Some(admin_id) = admin_id {
+                        NotificationBuilder {
+                            body: NotificationBody::LegacyMarkdown {
+                                notification_type: Some(
+                                    "incentive_application_user_reply"
+                                        .to_string(),
+                                ),
+                                name: format!(
+                                    "[激励申请] 作者回复：{project_title}"
+                                ),
+                                text:
+                                    "作者在激励申请中回复了消息，请前往查看。"
+                                        .to_string(),
+                                link: format!(
+                                    "/project/{project_b62}/settings/incentive"
+                                ),
+                                actions: vec![],
+                            },
+                        }
+                        .insert(admin_id, &mut transaction, &redis)
+                        .await?;
+                    }
                 }
             }
         }

@@ -765,7 +765,7 @@ pub async fn admin_reject_payout(
     let mut tx = pool.begin().await?;
     let payout = sqlx::query!(
         "
-        SELECT id, user_id, status, method, platform_id,
+        SELECT id, user_id, status, amount, method, platform_id,
                yunzhanghu_submit_started_at
         FROM payouts
         WHERE id = $1
@@ -808,10 +808,20 @@ pub async fn admin_reject_payout(
         ",
         payout_id.0,
         admin_id.0,
-        reason,
+        reason.as_deref(),
     )
     .execute(&mut *tx)
     .await?;
+
+    insert_payout_admin_rejected_notification(
+        &mut tx,
+        &redis,
+        crate::database::models::UserId(payout.user_id),
+        payout.amount,
+        reason.as_deref(),
+    )
+    .await?;
+
     tx.commit().await?;
 
     let user_id = crate::database::models::UserId(payout.user_id);
@@ -983,6 +993,42 @@ async fn record_yunzhanghu_submit_error(
     .await?;
 
     Ok(())
+}
+
+async fn insert_payout_admin_rejected_notification(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    redis: &RedisPool,
+    user_id: crate::database::models::UserId,
+    amount: Decimal,
+    reason: Option<&str>,
+) -> Result<(), crate::database::models::DatabaseError> {
+    let reason_text = reason
+        .map(str::trim)
+        .filter(|reason| !reason.is_empty())
+        .map(|reason| format!("原因：{}", reason))
+        .unwrap_or_else(|| "请在转账记录中查看详情。".to_string());
+
+    crate::database::models::notification_item::NotificationBuilder {
+        body: crate::models::notifications::NotificationBody::LegacyMarkdown {
+            notification_type: Some("payout_cancelled".to_string()),
+            name: "提现已退回".to_string(),
+            text: format!(
+                "您的 {} 提现已被管理员退回，金额已退回到可提现余额。{}",
+                format_withdraw_amount(amount),
+                reason_text
+            ),
+            link: "/dashboard/revenue/transfers".to_string(),
+            actions: vec![],
+        },
+    }
+    .insert(user_id, tx, redis)
+    .await?;
+
+    Ok(())
+}
+
+fn format_withdraw_amount(amount: Decimal) -> String {
+    format!("¥{:.2}", amount.round_dp(2))
 }
 
 #[allow(clippy::too_many_arguments)]

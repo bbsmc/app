@@ -1,10 +1,13 @@
 use crate::auth::check_is_admin_from_headers;
 use crate::auth::validate::get_user_record_from_bearer_token;
+use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::redis::RedisPool;
 use crate::models::analytics::Download;
 use crate::models::ids::ProjectId;
 use crate::models::ids::base62_impl::{parse_base62, to_base62};
+use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
+use crate::models::teams::ProjectPermissions;
 use crate::queue::analytics::AnalyticsQueue;
 use crate::queue::incentive::IncentiveQueue;
 use crate::queue::session::AuthQueue;
@@ -557,7 +560,16 @@ pub async fn toggle_project_incentive(
         return Err(ApiError::NotFound);
     }
 
+    let was_enabled = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM incentive_enabled_projects WHERE project_id = $1) AS "exists!""#,
+        project_id,
+    )
+    .fetch_one(pool.as_ref())
+    .await?;
+
     if body.enable {
+        let mut tx = pool.begin().await?;
+
         sqlx::query!(
             "
             INSERT INTO incentive_enabled_projects (project_id, enabled_by, notes)
@@ -570,8 +582,30 @@ pub async fn toggle_project_incentive(
             user.id.0 as i64,
             body.notes.as_deref(),
         )
-        .execute(pool.as_ref())
+        .execute(&mut *tx)
         .await?;
+
+        if !was_enabled {
+            let text = match body.notes.as_deref() {
+                Some(notes) if !notes.trim().is_empty() => format!(
+                    "管理员已为该资源开通创作者激励。备注：{}",
+                    notes.trim()
+                ),
+                _ => "管理员已为该资源开通创作者激励，激励将开始累计。"
+                    .to_string(),
+            };
+            insert_project_incentive_notification(
+                &mut tx,
+                &redis,
+                project_id,
+                "incentive_project_enabled",
+                "[创作者激励] 已开通：",
+                text,
+            )
+            .await?;
+        }
+
+        tx.commit().await?;
 
         let _ = crate::queue::incentive::audit_log(
             pool.as_ref(),
@@ -584,66 +618,101 @@ pub async fn toggle_project_incentive(
         .await;
     } else {
         let mut tx = pool.begin().await?;
+        let mut voided_count: i64 = 0;
 
-        sqlx::query!(
+        let delete_result = sqlx::query!(
             "DELETE FROM incentive_enabled_projects WHERE project_id = $1",
             project_id,
         )
         .execute(&mut *tx)
         .await?;
 
-        if let Some(thread) = sqlx::query!(
-            r#"
-            SELECT thread_id AS "thread_id!"
-            FROM incentive_applications
-            WHERE project_id = $1 AND thread_id IS NOT NULL
-            ORDER BY created_at DESC
-            LIMIT 1
-            "#,
-            project_id,
-        )
-        .fetch_optional(&mut *tx)
-        .await?
-        {
-            let body_text = match body.notes.as_deref() {
-                Some(notes) if !notes.trim().is_empty() => format!(
-                    "管理员关闭了该资源的创作者激励。关闭理由：{}\n\n作者可以根据要求调整后重新提交申请。",
-                    notes.trim()
-                ),
-                _ => {
-                    "管理员关闭了该资源的创作者激励。作者可以根据要求调整后重新提交申请。"
-                        .to_string()
-                }
-            };
-
-            crate::database::models::thread_item::ThreadMessageBuilder {
-                author_id: None,
-                body: crate::models::threads::MessageBody::Text {
-                    body: body_text,
-                    private: false,
-                    replying_to: None,
-                    associated_images: vec![],
-                },
-                thread_id: crate::database::models::ids::ThreadId(
-                    thread.thread_id,
-                ),
-                hide_identity: false,
+        if delete_result.rows_affected() > 0 {
+            if body.void_pending {
+                voided_count =
+                    void_project_pending_in_tx(&mut tx, project_id).await?;
             }
-            .insert(&mut tx)
+
+            if let Some(thread) = sqlx::query!(
+                r#"
+                SELECT thread_id AS "thread_id!"
+                FROM incentive_applications
+                WHERE project_id = $1 AND thread_id IS NOT NULL
+                ORDER BY created_at DESC
+                LIMIT 1
+                "#,
+                project_id,
+            )
+            .fetch_optional(&mut *tx)
+            .await?
+            {
+                let body_text = match body.notes.as_deref() {
+                    Some(notes) if !notes.trim().is_empty() => format!(
+                        "管理员关闭了该资源的创作者激励。关闭理由：{}\n\n作者可以根据要求调整后重新提交申请。",
+                        notes.trim()
+                    ),
+                    _ => {
+                        "管理员关闭了该资源的创作者激励。作者可以根据要求调整后重新提交申请。"
+                            .to_string()
+                    }
+                };
+
+                crate::database::models::thread_item::ThreadMessageBuilder {
+                    author_id: None,
+                    body: crate::models::threads::MessageBody::Text {
+                        body: body_text,
+                        private: false,
+                        replying_to: None,
+                        associated_images: vec![],
+                    },
+                    thread_id: crate::database::models::ids::ThreadId(
+                        thread.thread_id,
+                    ),
+                    hide_identity: false,
+                }
+                .insert(&mut tx)
+                .await?;
+            }
+
+            let text = match body.notes.as_deref() {
+                Some(notes) if !notes.trim().is_empty() => format!(
+                    "管理员已关闭该资源的创作者激励。关闭理由：{}{}",
+                    notes.trim(),
+                    if body.void_pending {
+                        if voided_count > 0 {
+                            " 本次关闭同时作废当前待结算激励。"
+                        } else {
+                            " 当前没有待结算激励需要作废。"
+                        }
+                    } else {
+                        ""
+                    }
+                ),
+                _ => format!(
+                    "管理员已关闭该资源的创作者激励。{}",
+                    if body.void_pending {
+                        if voided_count > 0 {
+                            "本次关闭同时作废当前待结算激励。"
+                        } else {
+                            "当前没有待结算激励需要作废。"
+                        }
+                    } else {
+                        "作者可以根据要求调整后重新提交申请。"
+                    }
+                ),
+            };
+            insert_project_incentive_notification(
+                &mut tx,
+                &redis,
+                project_id,
+                "incentive_project_disabled",
+                "[创作者激励] 已关闭：",
+                text,
+            )
             .await?;
         }
 
         tx.commit().await?;
-
-        let mut voided_count: i64 = 0;
-        if body.void_pending {
-            voided_count = crate::queue::incentive::void_project_pending(
-                pool.as_ref(),
-                project_id,
-            )
-            .await
-            .unwrap_or(0);
-        }
 
         let _ = crate::queue::incentive::audit_log(
             pool.as_ref(),
@@ -661,6 +730,116 @@ pub async fn toggle_project_incentive(
     }
 
     Ok(HttpResponse::NoContent().finish())
+}
+
+async fn insert_project_incentive_notification(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    redis: &RedisPool,
+    project_id: i64,
+    notification_type: &str,
+    name_prefix: &str,
+    text: String,
+) -> Result<(), ApiError> {
+    let project = sqlx::query!(
+        "
+        SELECT name, team_id
+        FROM mods
+        WHERE id = $1
+        ",
+        project_id,
+    )
+    .fetch_optional(&mut **tx)
+    .await?
+    .ok_or(ApiError::NotFound)?;
+
+    let view_payouts = ProjectPermissions::VIEW_PAYOUTS.bits() as i64;
+    let edit_details = ProjectPermissions::EDIT_DETAILS.bits() as i64;
+    let recipients = sqlx::query!(
+        "
+        SELECT DISTINCT user_id
+        FROM team_members
+        WHERE team_id = $1
+          AND accepted = TRUE
+          AND (
+              payouts_split > 0
+              OR is_owner = TRUE
+              OR (permissions & $2) <> 0
+              OR (permissions & $3) <> 0
+          )
+        ",
+        project.team_id,
+        view_payouts,
+        edit_details,
+    )
+    .fetch_all(&mut **tx)
+    .await?
+    .into_iter()
+    .map(|row| crate::database::models::ids::UserId(row.user_id))
+    .collect::<Vec<_>>();
+
+    if recipients.is_empty() {
+        return Ok(());
+    }
+
+    let project_b62 = to_base62(project_id as u64);
+    NotificationBuilder {
+        body: NotificationBody::LegacyMarkdown {
+            notification_type: Some(notification_type.to_string()),
+            name: format!("{name_prefix}{}", project.name),
+            text,
+            link: format!("/project/{project_b62}/settings/incentive"),
+            actions: vec![],
+        },
+    }
+    .insert_many(recipients, tx, redis)
+    .await?;
+
+    Ok(())
+}
+
+async fn void_project_pending_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    project_id: i64,
+) -> Result<i64, sqlx::Error> {
+    let voided_amount = sqlx::query_scalar!(
+        r#"
+        SELECT COALESCE(SUM(payout_amount), 0)::numeric AS "voided_amount!"
+        FROM incentive_download_events
+        WHERE project_id = $1 AND status = 'pending'
+        "#,
+        project_id,
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    let res = sqlx::query!(
+        "
+        UPDATE incentive_download_events
+        SET status = 'voided', settled_at = NOW()
+        WHERE project_id = $1 AND status = 'pending'
+        ",
+        project_id,
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    if res.rows_affected() > 0 {
+        sqlx::query!(
+            "
+            UPDATE incentive_project_counters
+            SET pending_amount = 0,
+                voided_amount = voided_amount + $2,
+                updated_at = NOW()
+            WHERE project_id = $1
+            ",
+            project_id,
+            voided_amount,
+        )
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    Ok(res.rows_affected() as i64)
 }
 
 #[get("incentive/projects")]

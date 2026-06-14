@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        SELECT tm.author_id AS \"author_id!\"\n                        FROM threads_messages tm\n                        INNER JOIN users u ON u.id = tm.author_id\n                        WHERE tm.thread_id = $1\n                          AND tm.author_id IS NOT NULL\n                          AND tm.author_id <> $2\n                          AND u.role = 'admin'\n                        ORDER BY tm.created DESC, tm.id DESC\n                        LIMIT 1\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "author_id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f10bd00b898b377b20bfb15b642be19e0c858bad9b4a66068f2f80933a19d455"
+}
