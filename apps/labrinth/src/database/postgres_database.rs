@@ -1,8 +1,8 @@
 use crate::util::date::APP_TZ_NAME;
 use log::info;
+use sqlx::Executor;
 use sqlx::migrate::{Migrate, MigrateDatabase, MigrateError, Migrator};
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use sqlx::Executor;
 use sqlx::{Connection, PgConnection, Postgres};
 use std::borrow::Cow;
 use std::collections::HashMap;

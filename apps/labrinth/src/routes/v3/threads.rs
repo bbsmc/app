@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::auth::{check_forum_ban, get_user_from_headers};
@@ -17,6 +18,7 @@ use crate::models::threads::{MessageBody, Thread, ThreadId, ThreadType};
 use crate::models::users::User;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
+use crate::util::routes::parse_limited_ids_json;
 use actix_web::{HttpRequest, HttpResponse, web};
 use futures::TryStreamExt;
 use serde::Deserialize;
@@ -571,9 +573,11 @@ pub async fn threads_get(
     .await?
     .1;
 
+    let mut seen = HashSet::new();
     let thread_ids: Vec<database::models::ids::ThreadId> =
-        serde_json::from_str::<Vec<ThreadId>>(&ids.ids)?
+        parse_limited_ids_json::<ThreadId>(&ids.ids)?
             .into_iter()
+            .filter(|id| seen.insert(id.0))
             .map(|x| x.into())
             .collect();
 

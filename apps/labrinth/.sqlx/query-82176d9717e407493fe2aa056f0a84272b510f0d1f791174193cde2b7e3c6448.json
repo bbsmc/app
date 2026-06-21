@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT pt.name as \"name!\"\n        FROM mods m\n        INNER JOIN versions v\n            ON v.mod_id = m.id AND v.status = ANY($5::text[])\n        INNER JOIN loaders_versions lv ON lv.version_id = v.id\n        INNER JOIN loaders_project_types lpt\n            ON lpt.joining_loader_id = lv.loader_id\n        INNER JOIN project_types pt\n            ON pt.id = lpt.joining_project_type_id\n        WHERE m.organization_id = $1\n            AND (\n                m.status = ANY($2::text[])\n                OR $3\n                OR (\n                    $4::bigint IS NOT NULL\n                    AND EXISTS (\n                        SELECT 1\n                        FROM team_members current_tm\n                        LEFT JOIN organizations o\n                            ON o.team_id = current_tm.team_id\n                        WHERE current_tm.user_id = $4\n                            AND current_tm.accepted = TRUE\n                            AND (\n                                current_tm.team_id = m.team_id\n                                OR o.id = m.organization_id\n                            )\n                    )\n                )\n            )\n        ORDER BY pt.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name!",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray",
+        "Bool",
+        "Int8",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "82176d9717e407493fe2aa056f0a84272b510f0d1f791174193cde2b7e3c6448"
+}

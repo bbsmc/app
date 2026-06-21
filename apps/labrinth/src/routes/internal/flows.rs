@@ -79,7 +79,8 @@ impl TempUser {
         client: &PgPool,
         file_host: &Arc<dyn FileHost + Send + Sync>,
         redis: &RedisPool,
-    ) -> Result<crate::database::models::UserId, AuthenticationError> {
+    ) -> Result<(crate::database::models::UserId, String), AuthenticationError>
+    {
         if let Some(email) = &self.email
             && crate::database::models::User::get_email(email, client)
                 .await?
@@ -246,6 +247,7 @@ impl TempUser {
         }
 
         if let Some(username) = username {
+            let username_for_cache = username.clone();
             crate::database::models::User {
                 id: user_id,
                 github_id: if provider == AuthProvider::GitHub {
@@ -363,7 +365,7 @@ impl TempUser {
                 }
             }
 
-            Ok(user_id)
+            Ok((user_id, username_for_cache))
         } else {
             Err(AuthenticationError::InvalidCredentials)
         }
@@ -1553,6 +1555,7 @@ pub async fn auth_callback(
                     Err(AuthenticationError::InvalidCredentials)
                 }
             } else {
+                let mut new_account_username = None;
                 let user_id = if let Some(user_id) = user_id_opt {
                     let user = crate::database::models::User::get_id(user_id, &**client, &redis)
                         .await?
@@ -1606,11 +1609,20 @@ pub async fn auth_callback(
 
                     user_id
                 } else {
-                    oauth_user.create_account(provider, &mut transaction, &client, &file_host, &redis).await?
+                    let (user_id, username) = oauth_user.create_account(provider, &mut transaction, &client, &file_host, &redis).await?;
+                    new_account_username = Some(username);
+                    user_id
                 };
 
                 let session = issue_session(req, user_id, &mut transaction, &redis).await?;
                 transaction.commit().await?;
+                if let Some(username) = new_account_username {
+                    crate::database::models::User::clear_caches(
+                        &[(user_id, Some(username))],
+                        &redis,
+                    )
+                    .await?;
+                }
 
                 if let Some(url) = url {
                     let redirect_url = format!(
@@ -1920,6 +1932,11 @@ pub async fn create_account_with_password(
     }
 
     transaction.commit().await?;
+    crate::database::models::User::clear_caches(
+        &[(user_id, Some(new_account.username.clone()))],
+        &redis,
+    )
+    .await?;
 
     Ok(HttpResponse::Ok().json(res))
 }

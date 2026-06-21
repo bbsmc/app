@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id as \"id!\"\n        FROM collections c\n        WHERE c.user_id = $1\n            AND ($2 OR c.status = 'listed')\n        ORDER BY c.updated DESC, c.id ASC\n        LIMIT $3 OFFSET $4\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5b906eb6719c37119eda38123d46ced2fe66c426dfb120be6847bab4f37388f4"
+}

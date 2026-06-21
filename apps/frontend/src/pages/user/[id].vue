@@ -225,14 +225,14 @@
             </span>
           </template>
           <template #summary>
-            {{ user.bio ? user.bio : projects.length === 0 ? "BBSMC 用户" : "BBSMC 创作者" }}
+            {{ user.bio ? user.bio : projectTotalHits === 0 ? "BBSMC 用户" : "BBSMC 创作者" }}
           </template>
           <template #stats>
             <div
               class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold"
             >
               <BoxIcon class="h-6 w-6 text-secondary" />
-              {{ formatCompactNumber(projects?.length || 0) }}
+              {{ formatCompactNumber(projectTotalHits) }}
               个资源
             </div>
             <div
@@ -355,18 +355,11 @@
         <div v-if="navLinks.length > 2" class="mb-4 max-w-full overflow-x-auto">
           <NavTabs :links="navLinks" />
         </div>
-        <div v-if="projects.length > 0">
-          <div
-            v-if="route.params.projectType !== 'collections'"
-            :class="'project-list display-mode--' + cosmetics.searchDisplayMode.user"
-          >
+        <div v-if="isProjectListRoute && projectTotalHits > 0">
+          <div :class="'project-list display-mode--' + cosmetics.searchDisplayMode.user">
             <ProjectCard
-              v-for="project in (route.params.projectType !== undefined
-                ? projects.filter(
-                    (x) =>
-                      x.project_type ===
-                      route.params.projectType.substr(0, route.params.projectType.length - 1),
-                  )
+              v-for="project in (selectedProjectType
+                ? projects.filter((x) => x.project_type === selectedProjectType)
                 : projects
               )
                 .slice()
@@ -394,8 +387,15 @@
               :color="project.color"
             />
           </div>
+          <Pagination
+            :page="projectCurrentPage"
+            :count="projectPageCount"
+            :link-function="projectPageLink"
+            class="mt-4 justify-end"
+            @switch-page="changeProjectPage"
+          />
         </div>
-        <div v-else-if="route.params.projectType !== 'collections'" class="error">
+        <div v-else-if="isProjectListRoute" class="error">
           <UpToDate class="icon" /><br />
           <span v-if="auth.user && auth.user.id === user.id" class="preserve-lines text">
             <IntlFormatted :message-id="messages.profileNoProjectsAuthLabel">
@@ -708,10 +708,12 @@ import ModalCreation from "~/components/ui/ModalCreation.vue";
 import Avatar from "~/components/ui/Avatar.vue";
 import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
 import BanManageModal from "~/components/ui/BanManageModal.vue";
+import Pagination from "~/components/ui/Pagination.vue";
 import UserXIcon from "~/assets/images/utils/user-x.svg?component";
 
 const data = useNuxtApp();
 const route = useNativeRoute();
+const router = useNativeRouter();
 const auth = await useAuth();
 const cosmetics = useCosmetics();
 const tags = useTags();
@@ -723,6 +725,46 @@ const formatCompactNumber = useCompactNumber();
 
 const formatRelativeTime = useRelativeTime();
 const formatDate = (date) => data.$dayjs(date).format("YYYY-MM-DD");
+const PROJECT_PAGE_SIZE = 10;
+
+const projectPage = computed(() => {
+  const raw = Array.isArray(route.query.page) ? route.query.page[0] : route.query.page;
+  const parsed = Number.parseInt(raw || "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+});
+
+const selectedProjectType = computed(() => {
+  const raw = Array.isArray(route.params.projectType)
+    ? route.params.projectType[0]
+    : route.params.projectType;
+  if (!raw || raw === "collections" || raw === "forum") return undefined;
+  return raw.endsWith("s") ? raw.slice(0, -1) : raw;
+});
+const isProjectListRoute = computed(
+  () => route.params.projectType !== "collections" && route.params.projectType !== "forum",
+);
+
+const routeUserId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
+const projectPagination = useState(`user/${routeUserId}/projects-pagination`, () => ({
+  offset: 0,
+  limit: PROJECT_PAGE_SIZE,
+  total_hits: 0,
+  total_downloads: 0,
+}));
+const projectTypeOptions = useState(`user/${routeUserId}/project-types`, () => []);
+const userProjectDataKey = computed(
+  () =>
+    `user/${route.params.id}/projects:${selectedProjectType.value ?? "all"}:${projectPage.value}`,
+);
+
+const fetchWithAuth = (url, options = {}) => {
+  const headers = { ...(options.headers ?? {}) };
+  if (auth.value?.token) {
+    headers.Authorization = auth.value.token;
+  }
+
+  return data.runWithContext(() => useBaseFetch(url, { ...options, headers }, true));
+};
 
 const messages = defineMessages({
   profileProjectsStats: {
@@ -822,12 +864,44 @@ let user, projects, organizations, collections;
 try {
   [{ data: user }, { data: projects }, { data: organizations }, { data: collections }] =
     await Promise.all([
-      useAsyncData(`user/${route.params.id}`, () => useBaseFetch(`user/${route.params.id}`)),
+      useAsyncData(`user/${route.params.id}`, () => fetchWithAuth(`user/${route.params.id}`)),
       useAsyncData(
-        `user/${route.params.id}/projects`,
-        () => useBaseFetch(`user/${route.params.id}/projects`),
+        userProjectDataKey.value,
+        async () => {
+          const query = {
+            page: projectPage.value,
+            limit: PROJECT_PAGE_SIZE,
+          };
+          if (selectedProjectType.value) {
+            query.project_type = selectedProjectType.value;
+          }
+
+          const response = await fetchWithAuth(`user/${route.params.id}/projects`, {
+            query,
+          });
+
+          if (
+            !Array.isArray(response) &&
+            projectPage.value > 1 &&
+            (response?.hits?.length ?? 0) === 0 &&
+            (response?.total_hits ?? 0) > 0
+          ) {
+            return fetchWithAuth(`user/${route.params.id}/projects`, {
+              query: {
+                ...query,
+                page: 1,
+              },
+            });
+          }
+
+          return response;
+        },
         {
-          transform: (projects) => {
+          watch: [projectPage, selectedProjectType],
+          transform: (response) => {
+            const isLegacyResponse = Array.isArray(response);
+            const projects = isLegacyResponse ? response : (response?.hits ?? []);
+
             if (!projects) return [];
             for (const project of projects) {
               project.categories = project.categories.concat(project.loaders);
@@ -838,17 +912,60 @@ try {
               );
             }
 
+            if (isLegacyResponse) {
+              const filteredProjects = selectedProjectType.value
+                ? projects.filter((project) => project.project_type === selectedProjectType.value)
+                : projects;
+              const offset = (projectPage.value - 1) * PROJECT_PAGE_SIZE;
+
+              projectPagination.value = {
+                offset,
+                limit: PROJECT_PAGE_SIZE,
+                total_hits: filteredProjects.length,
+                total_downloads: filteredProjects.reduce(
+                  (sum, project) => sum + (project.downloads ?? 0),
+                  0,
+                ),
+              };
+              projectTypeOptions.value = Array.from(
+                new Set(projects.map((project) => project.project_type).filter(Boolean)),
+              );
+
+              return filteredProjects
+                .slice()
+                .sort((a, b) => b.downloads - a.downloads)
+                .slice(offset, offset + PROJECT_PAGE_SIZE);
+            }
+
+            projectPagination.value = {
+              offset: response?.offset ?? 0,
+              limit: response?.limit ?? PROJECT_PAGE_SIZE,
+              total_hits: response?.total_hits ?? projects.length,
+              total_downloads:
+                response?.total_downloads ??
+                projects.reduce((sum, project) => sum + (project.downloads ?? 0), 0),
+            };
+            projectTypeOptions.value = response?.project_types ?? [];
+
             return projects;
           },
         },
       ),
       useAsyncData(`user/${route.params.id}/organizations`, () =>
-        useBaseFetch(`user/${route.params.id}/organizations`, {
-          apiVersion: 3,
-        }),
+        fetchPaginatedHits(({ page, limit }) =>
+          fetchWithAuth(`user/${route.params.id}/organizations`, {
+            apiVersion: 3,
+            query: { page, limit },
+          }),
+        ),
       ),
       useAsyncData(`user/${route.params.id}/collections`, () =>
-        useBaseFetch(`user/${route.params.id}/collections`, { apiVersion: 3 }),
+        fetchPaginatedHits(({ page, limit }) =>
+          fetchWithAuth(`user/${route.params.id}/collections`, {
+            apiVersion: 3,
+            query: { page, limit },
+          }),
+        ),
       ),
     ]);
 } catch (err) {
@@ -1029,15 +1146,31 @@ const projectTypes = computed(() => {
     obj.collection = true;
   }
 
+  for (const projectType of projectTypeOptions.value) {
+    obj[projectType] = true;
+  }
   for (const project of projects.value ?? []) {
-    obj[project.project_type] = true;
+    if (project.project_type) {
+      obj[project.project_type] = true;
+    }
   }
 
   delete obj.project;
 
   return Object.keys(obj);
 });
+const projectTotalHits = computed(() => projectPagination.value.total_hits);
+const projectPageCount = computed(() =>
+  Math.max(1, Math.ceil(projectTotalHits.value / PROJECT_PAGE_SIZE)),
+);
+const projectCurrentPage = computed(() =>
+  Math.max(1, Math.floor((projectPagination.value.offset || 0) / PROJECT_PAGE_SIZE) + 1),
+);
 const sumDownloads = computed(() => {
+  if (typeof projectPagination.value.total_downloads === "number") {
+    return projectPagination.value.total_downloads;
+  }
+
   let sum = 0;
 
   for (const project of projects.value ?? []) {
@@ -1097,6 +1230,37 @@ const badges = computed(() => {
 
 async function copyId() {
   await navigator.clipboard.writeText(user.value.id);
+}
+
+function projectPageQuery(page) {
+  const query = { ...route.query };
+  if (page > 1) {
+    query.page = String(page);
+  } else {
+    delete query.page;
+  }
+  return query;
+}
+
+function projectPageLink(page) {
+  const query = projectPageQuery(page);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item !== undefined && item !== null) params.append(key, String(item));
+      }
+    } else {
+      params.set(key, String(value));
+    }
+  }
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "?";
+}
+
+function changeProjectPage(page) {
+  router.push({ query: projectPageQuery(page) });
 }
 
 // 封禁管理模态框引用

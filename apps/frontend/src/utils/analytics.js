@@ -279,6 +279,7 @@ export const processAnalyticsByCountry = (category, projects, sortFn) => {
 const sortCount = ([_a, a], [_b, b]) => b - a;
 const sortTimestamp = ([a], [b]) => a - b;
 const roundValue = ([ts, value]) => [ts, Math.round(parseFloat(value) * 100) / 100];
+const MAX_ANALYTICS_PROJECT_IDS = 100;
 
 const processCountryAnalytics = (c, projects) => processAnalyticsByCountry(c, projects, sortCount);
 const processNumberAnalytics = (c, projects, theme) =>
@@ -410,7 +411,7 @@ export const useFetchAllAnalytics = (
         resolution_minutes: timeResolution.value,
       };
 
-      if (projects.value?.length) {
+      if (projects.value?.length && projects.value.length <= MAX_ANALYTICS_PROJECT_IDS) {
         q.project_ids = JSON.stringify(projects.value.map((p) => p.id));
       }
 

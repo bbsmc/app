@@ -1,5 +1,8 @@
 use crate::auth::checks::is_visible_collection;
-use crate::auth::{filter_visible_collections, get_user_from_headers};
+use crate::auth::{
+    filter_visible_collections, get_optional_user_from_headers,
+    get_user_from_headers,
+};
 use crate::database::models::{
     collection_item, generate_collection_id, project_item,
 };
@@ -12,7 +15,7 @@ use crate::models::pats::Scopes;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::util::img::delete_old_images;
-use crate::util::routes::read_from_payload;
+use crate::util::routes::{parse_limited_ids_json, read_from_payload};
 use crate::util::validate::validation_errors_to_string;
 use crate::{database, models};
 use actix_web::web::Data;
@@ -21,6 +24,7 @@ use chrono::Utc;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::HashSet;
 use std::sync::Arc;
 use validator::Validate;
 
@@ -172,27 +176,26 @@ pub async fn collections_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    let ids = serde_json::from_str::<Vec<&str>>(&ids.ids)?;
-    let ids = ids
+    let mut seen = HashSet::new();
+    let ids = parse_limited_ids_json::<String>(&ids.ids)?
         .into_iter()
+        .filter(|id| seen.insert(id.to_lowercase()))
         .map(|x| {
-            parse_base62(x).map(|x| database::models::CollectionId(x as i64))
+            parse_base62(&x).map(|x| database::models::CollectionId(x as i64))
         })
         .collect::<Result<Vec<_>, _>>()?;
 
     let collections_data =
         database::models::Collection::get_many(&ids, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::COLLECTION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     let collections =
         filter_visible_collections(collections_data, &user_option).await?;
@@ -212,16 +215,14 @@ pub async fn collection_get(
     let id = database::models::CollectionId(parse_base62(&string)? as i64);
     let collection_data =
         database::models::Collection::get(id, &**pool, &redis).await?;
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::COLLECTION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     if let Some(data) = collection_data
         && is_visible_collection(&data, &user_option).await?

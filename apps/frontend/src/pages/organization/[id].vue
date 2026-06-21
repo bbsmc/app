@@ -92,7 +92,7 @@
               class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold"
             >
               <BoxIcon class="h-6 w-6 text-secondary" />
-              {{ formatCompactNumber(projects?.length || 0) }}
+              {{ formatCompactNumber(projectTotalHits) }}
               资源
             </div>
             <div class="flex items-center gap-2 font-semibold">
@@ -178,18 +178,14 @@
             </button>
           </div>
         </div>
-        <div v-if="navLinks.length > 2" class="mb-4 max-w-full overflow-x-auto">
+        <div v-if="navLinks.length > 1" class="mb-4 max-w-full overflow-x-auto">
           <NavTabs :links="navLinks" />
         </div>
-        <template v-if="projects?.length > 0">
+        <template v-if="projectTotalHits > 0">
           <div class="project-list display-mode--list">
             <ProjectCard
-              v-for="project in (route.params.projectType !== undefined
-                ? projects.filter((x) =>
-                    x.project_types.includes(
-                      route.params.projectType.substr(0, route.params.projectType.length - 1),
-                    ),
-                  )
+              v-for="project in (selectedProjectType
+                ? projects.filter((x) => x.project_types.includes(selectedProjectType))
                 : projects
               )
                 .slice()
@@ -218,6 +214,13 @@
               :color="project.color"
             />
           </div>
+          <Pagination
+            :page="projectCurrentPage"
+            :count="projectPageCount"
+            :link-function="projectPageLink"
+            class="mt-4 justify-end"
+            @switch-page="changeProjectPage"
+          />
         </template>
 
         <div v-else-if="true" class="error">
@@ -258,19 +261,56 @@ import DownloadIcon from "~/assets/images/utils/download.svg?component";
 import CrownIcon from "~/assets/images/utils/crown.svg?component";
 import { acceptTeamInvite, removeTeamMember } from "~/helpers/teams.js";
 import NavTabs from "~/components/ui/NavTabs.vue";
+import Pagination from "~/components/ui/Pagination.vue";
 
 const vintl = useVIntl();
 const { formatMessage } = vintl;
 
 const formatCompactNumber = useCompactNumber();
 
+const nuxtApp = useNuxtApp();
 const auth = await useAuth();
 const user = await useUser();
 const cosmetics = useCosmetics();
 const route = useNativeRoute();
+const router = useNativeRouter();
 const tags = useTags();
+const PROJECT_PAGE_SIZE = 10;
+
+const projectPage = computed(() => {
+  const raw = Array.isArray(route.query.page) ? route.query.page[0] : route.query.page;
+  const parsed = Number.parseInt(raw || "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+});
+
+const selectedProjectType = computed(() => {
+  const raw = Array.isArray(route.params.projectType)
+    ? route.params.projectType[0]
+    : route.params.projectType;
+  if (!raw) return undefined;
+  return raw.endsWith("s") ? raw.slice(0, -1) : raw;
+});
 
 let orgId = useRouteId();
+const projectPagination = useState(`organization/${orgId}/projects-pagination`, () => ({
+  offset: 0,
+  limit: PROJECT_PAGE_SIZE,
+  total_hits: 0,
+  total_downloads: 0,
+}));
+const projectTypeOptions = useState(`organization/${orgId}/project-types`, () => []);
+const projectDataKey = computed(
+  () => `organization/${orgId}/projects:${selectedProjectType.value ?? "all"}:${projectPage.value}`,
+);
+
+const fetchWithAuth = (url, options = {}) => {
+  const headers = { ...(options.headers ?? {}) };
+  if (auth.value?.token) {
+    headers.Authorization = auth.value.token;
+  }
+
+  return nuxtApp.runWithContext(() => useBaseFetch(url, { ...options, headers }, true));
+};
 
 // hacky way to show the edit button on the corner of the card.
 const routeHasSettings = computed(() => route.path.includes("settings"));
@@ -280,16 +320,47 @@ const [
   { data: projects, refresh: refreshProjects },
 ] = await Promise.all([
   useAsyncData(`organization/${orgId}`, () =>
-    useBaseFetch(`organization/${orgId}`, { apiVersion: 3 }),
+    fetchWithAuth(`organization/${orgId}`, { apiVersion: 3 }),
   ),
   useAsyncData(
-    `organization/${orgId === "bbsmc" ? "bbsmc-create" : orgId}/projects`,
-    () =>
-      useBaseFetch(`organization/${orgId === "bbsmc" ? "bbsmc-create" : orgId}/projects`, {
+    projectDataKey.value,
+    async () => {
+      const query = {
+        page: projectPage.value,
+        limit: PROJECT_PAGE_SIZE,
+      };
+      if (selectedProjectType.value) {
+        query.project_type = selectedProjectType.value;
+      }
+
+      const response = await fetchWithAuth(`organization/${orgId}/projects`, {
         apiVersion: 3,
-      }),
+        query,
+      });
+
+      if (
+        !Array.isArray(response) &&
+        projectPage.value > 1 &&
+        (response?.hits?.length ?? 0) === 0 &&
+        (response?.total_hits ?? 0) > 0
+      ) {
+        return fetchWithAuth(`organization/${orgId}/projects`, {
+          apiVersion: 3,
+          query: {
+            ...query,
+            page: 1,
+          },
+        });
+      }
+
+      return response;
+    },
     {
-      transform: (projects) => {
+      watch: [projectPage, selectedProjectType],
+      transform: (response) => {
+        const isLegacyResponse = Array.isArray(response);
+        const projects = isLegacyResponse ? response : (response?.hits ?? []);
+
         for (const project of projects) {
           project.categories = project.categories.concat(project.loaders);
 
@@ -317,6 +388,43 @@ const [
             project.server_side = "optional";
           }
         }
+
+        if (isLegacyResponse) {
+          const filteredProjects = selectedProjectType.value
+            ? projects.filter((project) =>
+                project.project_types.includes(selectedProjectType.value),
+              )
+            : projects;
+          const offset = (projectPage.value - 1) * PROJECT_PAGE_SIZE;
+
+          projectPagination.value = {
+            offset,
+            limit: PROJECT_PAGE_SIZE,
+            total_hits: filteredProjects.length,
+            total_downloads: filteredProjects.reduce(
+              (sum, project) => sum + (project.downloads ?? 0),
+              0,
+            ),
+          };
+          projectTypeOptions.value = Array.from(
+            new Set(projects.flatMap((project) => project.project_types ?? [])),
+          );
+
+          return filteredProjects
+            .slice()
+            .sort((a, b) => b.downloads - a.downloads)
+            .slice(offset, offset + PROJECT_PAGE_SIZE);
+        }
+
+        projectPagination.value = {
+          offset: response?.offset ?? 0,
+          limit: response?.limit ?? PROJECT_PAGE_SIZE,
+          total_hits: response?.total_hits ?? projects.length,
+          total_downloads:
+            response?.total_downloads ??
+            projects.reduce((sum, project) => sum + (project.downloads ?? 0), 0),
+        };
+        projectTypeOptions.value = response?.project_types ?? [];
 
         return projects;
       },
@@ -389,15 +497,31 @@ const isInvited = computed(() => {
 const projectTypes = computed(() => {
   const obj = {};
 
+  for (const projectType of projectTypeOptions.value) {
+    obj[projectType] = true;
+  }
   for (const project of projects.value ?? []) {
-    obj[project.project_types[0] ?? "project"] = true;
+    for (const projectType of project.project_types ?? []) {
+      obj[projectType] = true;
+    }
   }
 
   delete obj.project;
 
   return Object.keys(obj);
 });
+const projectTotalHits = computed(() => projectPagination.value.total_hits);
+const projectPageCount = computed(() =>
+  Math.max(1, Math.ceil(projectTotalHits.value / PROJECT_PAGE_SIZE)),
+);
+const projectCurrentPage = computed(() =>
+  Math.max(1, Math.floor((projectPagination.value.offset || 0) / PROJECT_PAGE_SIZE) + 1),
+);
 const sumDownloads = computed(() => {
+  if (typeof projectPagination.value.total_downloads === "number") {
+    return projectPagination.value.total_downloads;
+  }
+
   let sum = 0;
 
   for (const project of projects.value ?? []) {
@@ -446,9 +570,44 @@ const onDeclineInvite = useClientTry(async () => {
   await refreshOrganization();
 });
 
+function projectPageQuery(page) {
+  const query = { ...route.query };
+  if (page > 1) {
+    query.page = String(page);
+  } else {
+    delete query.page;
+  }
+  return query;
+}
+
+function projectPageLink(page) {
+  const query = projectPageQuery(page);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item !== undefined && item !== null) params.append(key, String(item));
+      }
+    } else {
+      params.set(key, String(value));
+    }
+  }
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "?";
+}
+
+function changeProjectPage(page) {
+  router.push({ query: projectPageQuery(page) });
+}
+
 provide("organizationContext", {
   organization,
   projects,
+  projectPage,
+  projectPageCount,
+  projectPageLink,
+  changeProjectPage,
   refresh,
   currentMember,
   hasPermission,

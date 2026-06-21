@@ -61,9 +61,12 @@ const uid = computed(() => auth.value.user?.id || null);
 const { data: orgs, error } = useAsyncData("organizations", () => {
   if (!uid.value) return Promise.resolve(null);
 
-  return useBaseFetch("user/" + uid.value + "/organizations", {
-    apiVersion: 3,
-  });
+  return fetchPaginatedHits(({ page, limit }) =>
+    useBaseFetch("user/" + uid.value + "/organizations", {
+      apiVersion: 3,
+      query: { page, limit },
+    }),
+  );
 });
 
 const onlyAcceptedMembers = (members) => members.filter((member) => member?.accepted);

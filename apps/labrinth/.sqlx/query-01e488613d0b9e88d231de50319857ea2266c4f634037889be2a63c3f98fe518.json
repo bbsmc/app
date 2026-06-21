@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) as \"total!\"\n        FROM collections c\n        WHERE c.user_id = $1\n            AND ($2 OR c.status = 'listed')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "01e488613d0b9e88d231de50319857ea2266c4f634037889be2a63c3f98fe518"
+}

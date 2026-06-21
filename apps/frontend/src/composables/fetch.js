@@ -34,6 +34,37 @@ export const useBaseFetch = async (url, options = {}, skipAuth = false) => {
 
   return await $fetch(`${base}${url}`, options);
 };
+
+export const fetchPaginatedHits = async (fetchPage, limit = 30) => {
+  const firstResponse = await fetchPage({ page: 1, limit });
+  if (Array.isArray(firstResponse)) {
+    return firstResponse;
+  }
+
+  const hits = [...(firstResponse?.hits ?? [])];
+  const totalHits =
+    typeof firstResponse?.total_hits === "number" ? firstResponse.total_hits : hits.length;
+
+  let page = 2;
+  while (hits.length < totalHits && page <= 100) {
+    const response = await fetchPage({ page, limit });
+    if (Array.isArray(response)) {
+      hits.push(...response);
+      break;
+    }
+
+    const pageHits = response?.hits ?? [];
+    if (pageHits.length === 0) {
+      break;
+    }
+
+    hits.push(...pageHits);
+    page += 1;
+  }
+
+  return hits;
+};
+
 export const useBaseFetchFile = async (url, options = {}, skipAuth = false) => {
   const config = useRuntimeConfig();
   let base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;

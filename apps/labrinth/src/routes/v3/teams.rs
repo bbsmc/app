@@ -1,5 +1,7 @@
+use std::collections::HashSet;
+
 use crate::auth::checks::{check_resource_ban, is_visible_project};
-use crate::auth::get_user_from_headers;
+use crate::auth::{get_optional_user_from_headers, get_user_from_headers};
 use crate::database::Project;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::team_item::TeamAssociationId;
@@ -13,6 +15,7 @@ use crate::models::teams::{
 use crate::models::users::UserId;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
+use crate::util::routes::parse_limited_ids_json;
 use actix_web::{HttpRequest, HttpResponse, web};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -52,16 +55,14 @@ pub async fn team_members_get_project(
         crate::database::models::Project::get(&string, &**pool, &redis).await?;
 
     if let Some(project) = project_data {
-        let current_user = get_user_from_headers(
+        let current_user = get_optional_user_from_headers(
             &req,
             &**pool,
             &redis,
             &session_queue,
             Some(&[Scopes::PROJECT_READ]),
         )
-        .await
-        .map(|x| x.1)
-        .ok();
+        .await?;
 
         if !is_visible_project(&project.inner, &current_user, &pool, false)
             .await?
@@ -137,16 +138,14 @@ pub async fn team_members_get_organization(
             .await?;
 
     if let Some(organization) = organization_data {
-        let current_user = get_user_from_headers(
+        let current_user = get_optional_user_from_headers(
             &req,
             &**pool,
             &redis,
             &session_queue,
             Some(&[Scopes::ORGANIZATION_READ]),
         )
-        .await
-        .map(|x| x.1)
-        .ok();
+        .await?;
 
         let members_data = TeamMember::get_from_team_full(
             organization.team_id,
@@ -217,16 +216,14 @@ pub async fn team_members_get(
     )
     .await?;
 
-    let current_user = get_user_from_headers(
+    let current_user = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
     let user_id = current_user.as_ref().map(|x| x.id.into());
 
     let logged_in = current_user
@@ -274,8 +271,10 @@ pub async fn teams_get(
 ) -> Result<HttpResponse, ApiError> {
     use itertools::Itertools;
 
-    let team_ids = serde_json::from_str::<Vec<TeamId>>(&ids.ids)?
+    let mut seen = HashSet::new();
+    let team_ids = parse_limited_ids_json::<TeamId>(&ids.ids)?
         .into_iter()
+        .filter(|id| seen.insert(id.0))
         .map(|x| x.into())
         .collect::<Vec<crate::database::models::ids::TeamId>>();
 
@@ -288,16 +287,14 @@ pub async fn teams_get(
     )
     .await?;
 
-    let current_user = get_user_from_headers(
+    let current_user = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     let teams_groups = teams_data.into_iter().chunk_by(|data| data.team_id.0);
 

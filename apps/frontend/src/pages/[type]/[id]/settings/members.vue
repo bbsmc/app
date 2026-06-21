@@ -637,11 +637,14 @@ const currentUsername = ref("");
 const openTeamMembers = ref([]);
 const selectedOrganization = ref(null);
 
-const { data: organizations } = useAsyncData("organizations", () => {
-  return useBaseFetch("user/" + auth.value?.user.id + "/organizations", {
-    apiVersion: 3,
-  });
-});
+const { data: organizations } = useAsyncData("organizations", () =>
+  fetchPaginatedHits(({ page, limit }) =>
+    useBaseFetch("user/" + auth.value?.user.id + "/organizations", {
+      apiVersion: 3,
+      query: { page, limit },
+    }),
+  ),
+);
 
 const UPLOAD_VERSION = 1 << 0;
 const DELETE_VERSION = 1 << 1;

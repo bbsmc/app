@@ -13,7 +13,9 @@ use std::hash::Hash;
 
 const USERS_NAMESPACE: &str = "users";
 const USER_USERNAMES_NAMESPACE: &str = "users_usernames";
+const USERS_NEGATIVE_NAMESPACE: &str = "users_negative";
 const USERS_PROJECTS_NAMESPACE: &str = "users_projects";
+const USERS_NEGATIVE_CACHE_TTL_SECONDS: i64 = 60;
 
 /// 用户活跃封禁摘要（用于 User 查询结果）
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -145,9 +147,38 @@ impl User {
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
-        User::get_many(&[string], executor, redis)
-            .await
-            .map(|x| x.into_iter().next())
+        let cache_key = format!("name:{}", string.trim().to_lowercase());
+        let mut redis_conn = redis.connect().await?;
+        if redis_conn
+            .get_deserialized_from_json::<bool>(
+                USERS_NEGATIVE_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+            .unwrap_or(false)
+        {
+            return Ok(None);
+        }
+        drop(redis_conn);
+
+        let user = User::get_many(&[string], executor, redis)
+            .await?
+            .into_iter()
+            .next();
+
+        if user.is_none() {
+            let mut redis_conn = redis.connect().await?;
+            redis_conn
+                .set_serialized_to_json(
+                    USERS_NEGATIVE_NAMESPACE,
+                    cache_key,
+                    true,
+                    Some(USERS_NEGATIVE_CACHE_TTL_SECONDS),
+                )
+                .await?;
+        }
+
+        Ok(user)
     }
 
     pub async fn get_id<'a, 'b, E>(
@@ -158,9 +189,42 @@ impl User {
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
-        User::get_many(&[crate::models::ids::UserId::from(id)], executor, redis)
-            .await
-            .map(|x| x.into_iter().next())
+        let cache_key = format!("id:{}", id.0);
+        let mut redis_conn = redis.connect().await?;
+        if redis_conn
+            .get_deserialized_from_json::<bool>(
+                USERS_NEGATIVE_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+            .unwrap_or(false)
+        {
+            return Ok(None);
+        }
+        drop(redis_conn);
+
+        let user = User::get_many(
+            &[crate::models::ids::UserId::from(id)],
+            executor,
+            redis,
+        )
+        .await?
+        .into_iter()
+        .next();
+
+        if user.is_none() {
+            let mut redis_conn = redis.connect().await?;
+            redis_conn
+                .set_serialized_to_json(
+                    USERS_NEGATIVE_NAMESPACE,
+                    cache_key,
+                    true,
+                    Some(USERS_NEGATIVE_CACHE_TTL_SECONDS),
+                )
+                .await?;
+        }
+
+        Ok(user)
     }
 
     pub async fn get_many_ids<'a, E>(
@@ -589,9 +653,16 @@ impl User {
             .flat_map(|(id, username)| {
                 [
                     (USERS_NAMESPACE, Some(id.0.to_string())),
+                    (USERS_NEGATIVE_NAMESPACE, Some(format!("id:{}", id.0))),
                     (
                         USER_USERNAMES_NAMESPACE,
                         username.clone().map(|i| i.to_lowercase()),
+                    ),
+                    (
+                        USERS_NEGATIVE_NAMESPACE,
+                        username
+                            .clone()
+                            .map(|i| format!("name:{}", i.to_lowercase())),
                     ),
                 ]
             })
@@ -648,9 +719,16 @@ impl User {
             .flat_map(|(id, username)| {
                 [
                     (USERS_NAMESPACE, Some(id.0.to_string())),
+                    (USERS_NEGATIVE_NAMESPACE, Some(format!("id:{}", id.0))),
                     (
                         USER_USERNAMES_NAMESPACE,
                         username.clone().map(|i| i.to_lowercase()),
+                    ),
+                    (
+                        USERS_NEGATIVE_NAMESPACE,
+                        username
+                            .clone()
+                            .map(|i| format!("name:{}", i.to_lowercase())),
                     ),
                 ]
             })

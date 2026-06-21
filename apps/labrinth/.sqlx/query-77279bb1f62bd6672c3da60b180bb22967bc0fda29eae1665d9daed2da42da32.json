@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.id as \"id!\"\n        FROM mods m\n        INNER JOIN team_members tm\n            ON tm.team_id = m.team_id AND tm.accepted = TRUE\n        WHERE tm.user_id = $1\n            AND (\n                m.status = ANY($2::text[])\n                OR $3\n                OR (\n                    $4::bigint IS NOT NULL\n                    AND EXISTS (\n                        SELECT 1\n                        FROM team_members current_tm\n                        LEFT JOIN organizations o\n                            ON o.team_id = current_tm.team_id\n                        WHERE current_tm.user_id = $4\n                            AND current_tm.accepted = TRUE\n                            AND (\n                                current_tm.team_id = m.team_id\n                                OR o.id = m.organization_id\n                            )\n                    )\n                )\n            )\n            AND (\n                $5::text IS NULL\n                OR EXISTS (\n                    SELECT 1\n                    FROM versions v\n                    INNER JOIN loaders_versions lv ON lv.version_id = v.id\n                    INNER JOIN loaders_project_types lpt\n                        ON lpt.joining_loader_id = lv.loader_id\n                    INNER JOIN project_types pt\n                        ON pt.id = lpt.joining_project_type_id\n                    WHERE v.mod_id = m.id\n                        AND v.status = ANY($6::text[])\n                        AND pt.name = $5\n                )\n            )\n        ORDER BY m.downloads DESC, m.id ASC\n        LIMIT $7 OFFSET $8\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray",
+        "Bool",
+        "Int8",
+        "Text",
+        "TextArray",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "77279bb1f62bd6672c3da60b180bb22967bc0fda29eae1665d9daed2da42da32"
+}

@@ -6,9 +6,11 @@ use crate::models::notifications::Notification;
 use crate::models::pats::Scopes;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
+use crate::util::routes::parse_limited_ids_json;
 use actix_web::{HttpRequest, HttpResponse, web};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::HashSet;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("notifications", web::get().to(notifications_get));
@@ -48,9 +50,11 @@ pub async fn notifications_get(
     use database::models::NotificationId as DBNotificationId;
     use database::models::notification_item::Notification as DBNotification;
 
+    let mut seen = HashSet::new();
     let notification_ids: Vec<DBNotificationId> =
-        serde_json::from_str::<Vec<NotificationId>>(ids.ids.as_str())?
+        parse_limited_ids_json::<NotificationId>(ids.ids.as_str())?
             .into_iter()
+            .filter(|id| seen.insert(id.0))
             .map(DBNotificationId::from)
             .collect();
 
@@ -224,11 +228,12 @@ pub async fn notifications_read(
     .await?
     .1;
 
-    let notification_ids =
-        serde_json::from_str::<Vec<NotificationId>>(&ids.ids)?
-            .into_iter()
-            .map(|x| x.into())
-            .collect::<Vec<_>>();
+    let mut seen = HashSet::new();
+    let notification_ids = parse_limited_ids_json::<NotificationId>(&ids.ids)?
+        .into_iter()
+        .filter(|id| seen.insert(id.0))
+        .map(|x| x.into())
+        .collect::<Vec<_>>();
 
     let mut transaction = pool.begin().await?;
 
@@ -277,11 +282,12 @@ pub async fn notifications_delete(
     .await?
     .1;
 
-    let notification_ids =
-        serde_json::from_str::<Vec<NotificationId>>(&ids.ids)?
-            .into_iter()
-            .map(|x| x.into())
-            .collect::<Vec<_>>();
+    let mut seen = HashSet::new();
+    let notification_ids = parse_limited_ids_json::<NotificationId>(&ids.ids)?
+        .into_iter()
+        .filter(|id| seen.insert(id.0))
+        .map(|x| x.into())
+        .collect::<Vec<_>>();
 
     let mut transaction = pool.begin().await?;
 

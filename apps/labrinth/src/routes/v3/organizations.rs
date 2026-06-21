@@ -1,25 +1,27 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::ApiError;
 use crate::auth::{
-    checks::is_visible_organization, filter_visible_projects,
+    checks::is_visible_organization, get_optional_user_from_headers,
     get_user_from_headers,
 };
 use crate::database::models::team_item::TeamMember;
 use crate::database::models::{
-    Organization, generate_organization_id, team_item,
+    DatabaseError, Organization, generate_organization_id, team_item,
 };
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::ids::UserId;
-use crate::models::ids::base62_impl::parse_base62;
 use crate::models::organizations::OrganizationId;
 use crate::models::pats::Scopes;
+use crate::models::projects::{
+    PaginatedProjects, Project, ProjectListPagination, ProjectStatus,
+};
 use crate::models::teams::{OrganizationPermissions, ProjectPermissions};
 use crate::queue::session::AuthQueue;
 use crate::util::img::delete_old_images;
-use crate::util::routes::read_from_payload;
+use crate::util::routes::{parse_limited_ids_json, read_from_payload};
 use crate::util::validate::validation_errors_to_string;
 use crate::{database, models};
 use actix_web::{HttpRequest, HttpResponse, web};
@@ -28,6 +30,9 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use validator::Validate;
+
+const ORGANIZATION_PROJECTS_PAGINATED_CACHE_NAMESPACE: &str =
+    "organization_projects_paginated";
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("organizations", web::get().to(organizations_get));
@@ -52,62 +57,299 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     );
 }
 
+async fn load_organization_projects_page(
+    pool: &PgPool,
+    redis: &RedisPool,
+    organization_id: database::models::OrganizationId,
+    viewer: &Option<models::users::User>,
+    offset: usize,
+    limit: usize,
+    project_type: Option<&str>,
+) -> Result<PaginatedProjects<Project>, DatabaseError> {
+    let searchable_statuses = ProjectStatus::iterator()
+        .filter(|x| x.is_searchable())
+        .map(|x| x.to_string())
+        .collect::<Vec<_>>();
+    let listed_version_statuses =
+        crate::models::projects::VersionStatus::iterator()
+            .filter(|x| x.is_listed())
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>();
+    let current_user_id = viewer.as_ref().map(|user| {
+        let id: database::models::UserId = user.id.into();
+        id.0
+    });
+    let is_mod = viewer.as_ref().map(|x| x.role.is_mod()).unwrap_or(false);
+
+    let totals = sqlx::query!(
+        r#"
+        SELECT
+            COUNT(*) as "total!",
+            COALESCE(SUM(m.downloads), 0)::bigint as "total_downloads!"
+        FROM mods m
+        WHERE m.organization_id = $1
+            AND (
+                m.status = ANY($2::text[])
+                OR $3
+                OR (
+                    $4::bigint IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1
+                        FROM team_members current_tm
+                        LEFT JOIN organizations o
+                            ON o.team_id = current_tm.team_id
+                        WHERE current_tm.user_id = $4
+                            AND current_tm.accepted = TRUE
+                            AND (
+                                current_tm.team_id = m.team_id
+                                OR o.id = m.organization_id
+                            )
+                    )
+                )
+            )
+            AND (
+                $5::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM versions v
+                    INNER JOIN loaders_versions lv ON lv.version_id = v.id
+                    INNER JOIN loaders_project_types lpt
+                        ON lpt.joining_loader_id = lv.loader_id
+                    INNER JOIN project_types pt
+                        ON pt.id = lpt.joining_project_type_id
+                    WHERE v.mod_id = m.id
+                        AND v.status = ANY($6::text[])
+                        AND pt.name = $5
+                )
+            )
+        "#,
+        organization_id.0,
+        &searchable_statuses,
+        is_mod,
+        current_user_id,
+        project_type,
+        &listed_version_statuses,
+    )
+    .fetch_one(pool)
+    .await?;
+    let total_hits = totals.total.max(0) as usize;
+    let total_downloads = totals.total_downloads.max(0) as u64;
+    let effective_offset = if total_hits == 0 || offset >= total_hits {
+        0
+    } else {
+        offset
+    };
+
+    let project_types = sqlx::query!(
+        r#"
+        SELECT DISTINCT pt.name as "name!"
+        FROM mods m
+        INNER JOIN versions v
+            ON v.mod_id = m.id AND v.status = ANY($5::text[])
+        INNER JOIN loaders_versions lv ON lv.version_id = v.id
+        INNER JOIN loaders_project_types lpt
+            ON lpt.joining_loader_id = lv.loader_id
+        INNER JOIN project_types pt
+            ON pt.id = lpt.joining_project_type_id
+        WHERE m.organization_id = $1
+            AND (
+                m.status = ANY($2::text[])
+                OR $3
+                OR (
+                    $4::bigint IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1
+                        FROM team_members current_tm
+                        LEFT JOIN organizations o
+                            ON o.team_id = current_tm.team_id
+                        WHERE current_tm.user_id = $4
+                            AND current_tm.accepted = TRUE
+                            AND (
+                                current_tm.team_id = m.team_id
+                                OR o.id = m.organization_id
+                            )
+                    )
+                )
+            )
+        ORDER BY pt.name
+        "#,
+        organization_id.0,
+        &searchable_statuses,
+        is_mod,
+        current_user_id,
+        &listed_version_statuses,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| row.name)
+    .collect::<Vec<_>>();
+
+    let project_ids = sqlx::query!(
+        r#"
+        SELECT m.id as "id!"
+        FROM mods m
+        WHERE m.organization_id = $1
+            AND (
+                m.status = ANY($2::text[])
+                OR $3
+                OR (
+                    $4::bigint IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1
+                        FROM team_members current_tm
+                        LEFT JOIN organizations o
+                            ON o.team_id = current_tm.team_id
+                        WHERE current_tm.user_id = $4
+                            AND current_tm.accepted = TRUE
+                            AND (
+                                current_tm.team_id = m.team_id
+                                OR o.id = m.organization_id
+                            )
+                    )
+                )
+            )
+            AND (
+                $5::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM versions v
+                    INNER JOIN loaders_versions lv ON lv.version_id = v.id
+                    INNER JOIN loaders_project_types lpt
+                        ON lpt.joining_loader_id = lv.loader_id
+                    INNER JOIN project_types pt
+                        ON pt.id = lpt.joining_project_type_id
+                    WHERE v.mod_id = m.id
+                        AND v.status = ANY($6::text[])
+                        AND pt.name = $5
+                )
+            )
+        ORDER BY m.downloads DESC, m.id ASC
+        LIMIT $7 OFFSET $8
+        "#,
+        organization_id.0,
+        &searchable_statuses,
+        is_mod,
+        current_user_id,
+        project_type,
+        &listed_version_statuses,
+        limit as i64,
+        i64::try_from(effective_offset).unwrap_or(i64::MAX),
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| database::models::ProjectId(row.id))
+    .collect::<Vec<_>>();
+
+    let mut projects_by_id = crate::database::models::Project::get_many_ids(
+        &project_ids,
+        pool,
+        redis,
+    )
+    .await?
+    .into_iter()
+    .map(|project| (project.inner.id, project))
+    .collect::<HashMap<_, _>>();
+
+    let projects = project_ids
+        .iter()
+        .filter_map(|id| projects_by_id.remove(id))
+        .map(Project::from)
+        .collect::<Vec<_>>();
+
+    Ok(PaginatedProjects {
+        hits: projects,
+        offset: effective_offset,
+        limit,
+        total_hits,
+        total_downloads,
+        project_types,
+    })
+}
+
 pub async fn organization_projects_get(
     req: HttpRequest,
     info: web::Path<(String,)>,
+    query: web::Query<ProjectListPagination>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let info = info.into_inner().0;
-    let current_user = get_user_from_headers(
+    let (offset, limit) = query.offset_limit();
+    let project_type = match query.project_type_filter() {
+        Some(project_type) => project_type,
+        None => {
+            return Err(ApiError::InvalidInput("无效的 project_type".into()));
+        }
+    };
+
+    let current_user = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::ORGANIZATION_READ, Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
-
-    let possible_organization_id: Option<u64> = parse_base62(&info).ok();
+    .await?;
 
     // 来源: BBSMC 上游提交 290c9fc19 - 组织可见性检查
     let organization_data = Organization::get(&info, &**pool, &redis).await?;
-    if let Some(ref org) = organization_data {
-        if !is_visible_organization(org, &current_user, &pool, &redis).await? {
+    let organization = if let Some(org) = organization_data {
+        if !is_visible_organization(&org, &current_user, &pool, &redis).await? {
             return Err(ApiError::NotFound);
         }
+        org
     } else {
         return Err(ApiError::NotFound);
-    }
+    };
 
-    let project_ids: Vec<database::models::ProjectId> = sqlx::query!(
-        "
-        SELECT m.id FROM organizations o
-        INNER JOIN mods m ON m.organization_id = o.id
-        WHERE (o.id = $1 AND $1 IS NOT NULL) OR (o.slug = $2 AND $2 IS NOT NULL)
-        ",
-        possible_organization_id.map(|x| x as i64),
-        info
-    )
-    .fetch(&**pool)
-    .map_ok(|m| database::models::ProjectId(m.id))
-    .try_collect::<Vec<database::models::ProjectId>>()
-    .await?;
+    let cache_key = if current_user.is_none() {
+        Some(ProjectListPagination::cache_key(
+            "organization",
+            organization.id.0,
+            offset,
+            limit,
+            project_type.as_deref(),
+        ))
+    } else {
+        None
+    };
 
-    let projects_data = crate::database::models::Project::get_many_ids(
-        &project_ids,
-        &**pool,
-        &redis,
-    )
-    .await?;
+    let response = if let Some(cache_key) = cache_key {
+        redis
+            .get_cached_key_singleflight_with_expiry(
+                ORGANIZATION_PROJECTS_PAGINATED_CACHE_NAMESPACE,
+                cache_key,
+                ProjectListPagination::PUBLIC_CACHE_TTL_SECONDS,
+                || {
+                    load_organization_projects_page(
+                        &pool,
+                        &redis,
+                        organization.id,
+                        &current_user,
+                        offset,
+                        limit,
+                        project_type.as_deref(),
+                    )
+                },
+            )
+            .await?
+    } else {
+        load_organization_projects_page(
+            &pool,
+            &redis,
+            organization.id,
+            &current_user,
+            offset,
+            limit,
+            project_type.as_deref(),
+        )
+        .await?
+    };
 
-    let projects =
-        filter_visible_projects(projects_data, &current_user, &pool, true)
-            .await?;
-    Ok(HttpResponse::Ok().json(projects))
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[derive(Deserialize, Validate)]
@@ -236,6 +478,12 @@ pub async fn organization_create(
     };
     organization.clone().insert(&mut transaction).await?;
     transaction.commit().await?;
+    database::models::Organization::clear_cache(
+        organization_id,
+        Some(new_organization.slug.clone()),
+        &redis,
+    )
+    .await?;
 
     // 只有成员是所有者，即当前登录用户
     let member_data = TeamMember::get_from_team_full(team_id, &**pool, &redis)
@@ -268,16 +516,14 @@ pub async fn organization_get(
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let id = info.into_inner().0;
-    let current_user = get_user_from_headers(
+    let current_user = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::ORGANIZATION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
     let user_id = current_user.as_ref().map(|x| x.id.into());
 
     let organization_data = Organization::get(&id, &**pool, &redis).await?;
@@ -347,7 +593,11 @@ pub async fn organizations_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    let ids = serde_json::from_str::<Vec<&str>>(&ids.ids)?;
+    let mut seen = HashSet::new();
+    let ids = parse_limited_ids_json::<String>(&ids.ids)?
+        .into_iter()
+        .filter(|id| seen.insert(id.to_lowercase()))
+        .collect::<Vec<_>>();
     let organizations_data =
         Organization::get_many(&ids, &**pool, &redis).await?;
     let team_ids = organizations_data
@@ -364,16 +614,14 @@ pub async fn organizations_get(
     )
     .await?;
 
-    let current_user = get_user_from_headers(
+    let current_user = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::ORGANIZATION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
     let user_id = current_user.as_ref().map(|x| x.id.into());
 
     let mut organizations = vec![];

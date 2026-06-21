@@ -62,7 +62,6 @@ fn get_description_part2() -> &'static str {
 游戏内如有任何汉化质量问题，欢迎前往 QQ 群反馈，我们将及时校准并重新发布修改后的汉化包。"#
 }
 
-
 /// 汉化包描述模板 - 第三部分：QQ 群信息
 fn get_description_part3() -> String {
     format!(

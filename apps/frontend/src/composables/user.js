@@ -1,3 +1,5 @@
+import { fetchPaginatedHits } from "~/composables/fetch.js";
+
 export const useUser = async (force = false) => {
   const nuxtApp = useNuxtApp();
   const user = useState("user", () => {});
@@ -31,7 +33,12 @@ export const initUser = async () => {
 
       const [follows, collections] = await Promise.all([
         $fetch(`${base}user/${userId}/follows`, { headers }),
-        $fetch(`${base.replace(/\/v\d\/?$/, "/v3/")}user/${userId}/collections`, { headers }),
+        fetchPaginatedHits(({ page, limit }) =>
+          $fetch(`${base.replace(/\/v\d\/?$/, "/v3/")}user/${userId}/collections`, {
+            headers,
+            query: { page, limit },
+          }),
+        ),
       ]);
 
       user.collections = collections;
@@ -54,9 +61,12 @@ export const initUserCollections = async () => {
     try {
       let base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
       base = base.replace(/\/v\d\/?$/, "/v3/");
-      userState.value.collections = await $fetch(`${base}user/${auth.value.user.id}/collections`, {
-        headers: { Authorization: auth.value.token },
-      });
+      userState.value.collections = await fetchPaginatedHits(({ page, limit }) =>
+        $fetch(`${base}user/${auth.value.user.id}/collections`, {
+          headers: { Authorization: auth.value.token },
+          query: { page, limit },
+        }),
+      );
     } catch (err) {
       console.error(err);
     }
@@ -88,9 +98,12 @@ export const initUserProjects = async () => {
   if (auth.value?.user && auth.value?.user.id) {
     try {
       const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
-      userState.value.projects = await $fetch(`${base}user/${auth.value.user.id}/projects`, {
-        headers: { Authorization: auth.value.token },
-      });
+      userState.value.projects = await fetchPaginatedHits(({ page, limit }) =>
+        $fetch(`${base}user/${auth.value.user.id}/projects`, {
+          headers: { Authorization: auth.value.token },
+          query: { page, limit },
+        }),
+      );
     } catch (err) {
       console.error(err);
     }

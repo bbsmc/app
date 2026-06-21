@@ -1,11 +1,12 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::auth::checks::{
     check_resource_ban, filter_visible_versions, is_visible_project,
 };
 use crate::auth::{
-    AuthenticationError, filter_visible_projects, get_user_from_headers,
+    filter_visible_projects, get_optional_user_from_headers,
+    get_user_from_headers,
 };
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::project_item::{GalleryItem, ModCategory};
@@ -33,7 +34,7 @@ use crate::search::indexing::remove_documents;
 use crate::search::{SearchConfig, SearchError, search_for_project};
 use crate::util::img;
 use crate::util::img::{delete_old_images, upload_image_optimized};
-use crate::util::routes::read_from_payload;
+use crate::util::routes::{parse_limited_ids_json, read_from_payload};
 use crate::util::validate::validation_errors_to_string;
 use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
@@ -216,20 +217,22 @@ pub async fn projects_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    let ids = serde_json::from_str::<Vec<&str>>(&ids.ids)?;
+    let mut seen = HashSet::new();
+    let ids = parse_limited_ids_json::<String>(&ids.ids)?
+        .into_iter()
+        .filter(|id| seen.insert(id.to_lowercase()))
+        .collect::<Vec<_>>();
     let projects_data =
         db_models::Project::get_many(&ids, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     let mut projects =
         filter_visible_projects(projects_data, &user_option, &pool, false)
@@ -253,16 +256,14 @@ pub async fn project_get(
 
     let project_data =
         db_models::Project::get(&string, &**pool, &redis).await?;
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     if let Some(data) = project_data
         && is_visible_project(&data.inner, &user_option, &pool, false).await?
@@ -1398,16 +1399,14 @@ pub async fn dependency_list(
 
     let result = db_models::Project::get(&string, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     if let Some(project) = result {
         if !is_visible_project(&project.inner, &user_option, &pool, false)
@@ -1526,7 +1525,7 @@ pub async fn projects_edit(
     })?;
 
     let project_ids: Vec<db_ids::ProjectId> =
-        serde_json::from_str::<Vec<ProjectId>>(&ids.ids)?
+        parse_limited_ids_json::<ProjectId>(&ids.ids)?
             .into_iter()
             .map(|x| x.into())
             .collect();
@@ -2783,16 +2782,14 @@ pub async fn project_get_organization(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    let current_user = get_user_from_headers(
+    let current_user = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::ORGANIZATION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
     let user_id = current_user.as_ref().map(|x| x.id.into());
 
     let string = info.into_inner().0;
@@ -2876,29 +2873,18 @@ pub async fn project_forum_create(
     let result =
         database::models::Project::get(&string, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user = get_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
-
-    if user_option.is_none() {
-        return Err(ApiError::Authentication(
-            AuthenticationError::InvalidCredentials,
-        ));
-    }
+    .await?
+    .1;
+    let user_option = Some(user);
 
     if let Some(project) = result {
-        if !&user_option.is_some() {
-            return Err(ApiError::Authentication(
-                AuthenticationError::InvalidCredentials,
-            ));
-        }
         if !is_visible_project(&project.inner, &user_option, &pool, false)
             .await?
         {
@@ -3038,16 +3024,14 @@ pub async fn get_translation_links(
 ) -> Result<HttpResponse, ApiError> {
     let project_id = info.into_inner().0;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &auth_queue,
         Some(&[Scopes::PROJECT_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     let project = db_models::Project::get(&project_id, &**pool, &redis).await?;
 
