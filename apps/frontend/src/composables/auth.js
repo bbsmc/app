@@ -117,6 +117,29 @@ export const getAuthUrl = (provider, redirect = "/dashboard") => {
   return `${config.public.apiBaseUrl}auth/init?provider=${provider}&url=${encodeURIComponent(fullURL)}`;
 };
 
+export const getAuthInitUrl = async (provider, callbackUrl, token = null) => {
+  const config = useRuntimeConfig();
+  const params = new URLSearchParams({
+    provider,
+    url: callbackUrl,
+    return_url: "true",
+  });
+
+  if (token) {
+    params.set("token", token);
+  }
+
+  const response = await $fetch(`${config.public.apiBaseUrl}auth/init?${params.toString()}`);
+  return response.url;
+};
+
+export const getOAuthPopupCallbackUrl = (redirect = "/dashboard") => {
+  const config = useRuntimeConfig();
+  const callbackUrl = new URL("/auth/oauth-popup", config.public.siteUrl);
+  callbackUrl.searchParams.set("redirect", redirect);
+  return callbackUrl.toString();
+};
+
 export const removeAuthProvider = async (provider) => {
   startLoading();
   try {

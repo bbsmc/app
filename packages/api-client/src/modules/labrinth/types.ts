@@ -626,6 +626,9 @@ export namespace Labrinth {
         | 'gitlab'
         | 'google'
         | 'steam'
+        | 'bilibili'
+        | 'qq'
+        | 'wechat'
 
       export type UserPayoutData = {
         balance: number

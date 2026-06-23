@@ -98,6 +98,10 @@
         <SSOBilibiliIcon />
         <span>哔哩哔哩</span>
       </a>
+      <button type="button" class="btn sso-btn" @click="openWeChatLogin">
+        <SSOWeChatIcon />
+        <span>微信</span>
+      </button>
       <!-- <a class="btn sso-btn" :href="getAuthUrl('google', redirectTarget)">
         <SSOGoogleIcon />
         <span>Google</span>
@@ -113,6 +117,12 @@
         >隐私政策</NuxtLink
       >
     </p>
+
+    <WeChatLoginModal
+      ref="wechatLoginModal"
+      :redirect-target="redirectTarget"
+      @authenticated="finishWeChatSignUp"
+    />
   </div>
 </template>
 
@@ -122,9 +132,11 @@ import { Checkbox } from "@modrinth/ui";
 import SSOGitHubIcon from "assets/icons/auth/sso-github.svg";
 import SSOMicrosoftIcon from "assets/icons/auth/sso-microsoft.svg";
 import SSOBilibiliIcon from "assets/icons/auth/sso-bilibili.svg";
+import SSOWeChatIcon from "assets/icons/auth/sso-wechat.svg";
 // import SSOGoogleIcon from "assets/icons/auth/sso-google.svg";
 import SSOQQIcon from "assets/icons/auth/sso-qq.svg";
 import TACaptcha from "@/components/ui/TACaptcha.vue";
+import WeChatLoginModal from "@/components/auth/WeChatLoginModal.vue";
 import { getAuthUrl } from "@/composables/auth.js";
 
 const { formatMessage } = useVIntl();
@@ -184,6 +196,7 @@ useHead({
 
 const auth = await useAuth();
 const route = useNativeRoute();
+const wechatLoginModal = ref();
 
 if (auth.value.user) {
   await navigateTo("/dashboard");
@@ -198,11 +211,63 @@ const confirmPassword = ref("");
 const token = ref("");
 const subscribe = ref(true);
 
-const redirectTarget = route.query.redirect || "/dashboard";
+const redirectTarget =
+  typeof route.query.redirect === "string" ? route.query.redirect : "/dashboard";
 
 const signInLink = computed(
   () => `/auth/sign-in${route.query.redirect ? `?redirect=${route.query.redirect}` : ""}`,
 );
+
+function openWeChatLogin(event) {
+  wechatLoginModal.value?.show(event);
+}
+
+async function finishWeChatSignUp(result) {
+  wechatLoginModal.value?.hide();
+
+  if (result.error === "2fa_required") {
+    addNotification({
+      group: "main",
+      title: "需要双重验证",
+      text: "该账号已开启双重验证，请前往登录页完成验证。",
+      type: "error",
+    });
+    await navigateTo(
+      `/auth/sign-in?error=2fa_required&flow=${encodeURIComponent(
+        result.flow || "",
+      )}&redirect=${encodeURIComponent(redirectTarget)}`,
+    );
+    return;
+  }
+
+  if (!result.code) {
+    addNotification({
+      group: "main",
+      title: formatMessage(commonMessages.errorNotificationTitle),
+      text: "微信登录未完成，请重试。",
+      type: "error",
+    });
+    return;
+  }
+
+  if (result.newAccount) {
+    await navigateTo(
+      `/auth/welcome?authToken=${encodeURIComponent(result.code)}&redirect=${encodeURIComponent(
+        redirectTarget,
+      )}`,
+    );
+    return;
+  }
+
+  await useAuth(result.code);
+  await useUser();
+
+  if (route.query.redirect) {
+    await navigateTo(route.query.redirect);
+  } else {
+    await navigateTo("/dashboard");
+  }
+}
 
 async function createAccount() {
   startLoading();

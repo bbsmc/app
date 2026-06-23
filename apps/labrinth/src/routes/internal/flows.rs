@@ -306,6 +306,11 @@ impl TempUser {
                 } else {
                     None
                 },
+                wechat_id: if provider == AuthProvider::WeChat {
+                    Some(self.id.clone())
+                } else {
+                    None
+                },
                 password: None,
                 stripe_customer_id: None,
                 totp_secret: None,
@@ -465,6 +470,14 @@ impl AuthProvider {
 
                 format!(
                     "https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id={}&redirect_uri={}&state={}&scope=get_user_info",
+                    client_id, redirect_uri, state,
+                )
+            }
+            AuthProvider::WeChat => {
+                let client_id = dotenvy::var("WECHAT_CLIENT_ID")?;
+
+                format!(
+                    "https://open.weixin.qq.com/connect/qrconnect?appid={}&redirect_uri={}&response_type=code&scope=snsapi_login&state={}&lang=cn#wechat_redirect",
                     client_id, redirect_uri, state,
                 )
             }
@@ -745,6 +758,63 @@ impl AuthProvider {
 
                 resp.access_token
                     .ok_or(AuthenticationError::InvalidCredentials)?
+            }
+            AuthProvider::WeChat => {
+                let code = query
+                    .get("code")
+                    .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+                let client_id = dotenvy::var("WECHAT_CLIENT_ID")?;
+                let client_secret = dotenvy::var("WECHAT_CLIENT_SECRET")?;
+
+                let raw_resp = reqwest::Client::new()
+                    .get("https://api.weixin.qq.com/sns/oauth2/access_token")
+                    .query(&[
+                        ("appid", client_id.as_str()),
+                        ("secret", client_secret.as_str()),
+                        ("code", code.as_str()),
+                        ("grant_type", "authorization_code"),
+                    ])
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .text()
+                    .await?;
+
+                log::debug!("WeChat token response length: {}", raw_resp.len());
+
+                #[derive(Deserialize)]
+                struct WeChatTokenResp {
+                    pub access_token: Option<String>,
+                    pub openid: Option<String>,
+                    pub errcode: Option<i64>,
+                    pub errmsg: Option<String>,
+                }
+
+                #[derive(Serialize)]
+                struct WeChatToken {
+                    pub access_token: String,
+                    pub openid: String,
+                }
+
+                let resp: WeChatTokenResp = serde_json::from_str(&raw_resp)?;
+
+                if resp.errcode.unwrap_or(0) != 0 {
+                    log::warn!(
+                        "WeChat token exchange failed with code: {:?}, message: {:?}",
+                        resp.errcode,
+                        resp.errmsg
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                serde_json::to_string(&WeChatToken {
+                    access_token: resp
+                        .access_token
+                        .ok_or(AuthenticationError::InvalidCredentials)?,
+                    openid: resp
+                        .openid
+                        .ok_or(AuthenticationError::InvalidCredentials)?,
+                })?
             }
         };
 
@@ -1146,6 +1216,80 @@ impl AuthProvider {
                     country: None,
                 }
             }
+            AuthProvider::WeChat => {
+                #[derive(Deserialize)]
+                struct WeChatToken {
+                    pub access_token: String,
+                    pub openid: String,
+                }
+
+                let token_data: WeChatToken = serde_json::from_str(token)?;
+
+                #[derive(Deserialize, Debug)]
+                struct WeChatUserInfo {
+                    pub openid: Option<String>,
+                    pub nickname: Option<String>,
+                    pub headimgurl: Option<String>,
+                    pub errcode: Option<i64>,
+                    pub errmsg: Option<String>,
+                }
+
+                let raw_resp = reqwest::Client::new()
+                    .get("https://api.weixin.qq.com/sns/userinfo")
+                    .query(&[
+                        ("access_token", token_data.access_token.as_str()),
+                        ("openid", token_data.openid.as_str()),
+                        ("lang", "zh_CN"),
+                    ])
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .text()
+                    .await?;
+
+                log::debug!(
+                    "WeChat user info response length: {}",
+                    raw_resp.len()
+                );
+
+                let user_info: WeChatUserInfo =
+                    serde_json::from_str(&raw_resp)?;
+
+                if user_info.errcode.unwrap_or(0) != 0 {
+                    log::warn!(
+                        "WeChat user info failed with code: {:?}, message: {:?}",
+                        user_info.errcode,
+                        user_info.errmsg
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                let openid = match user_info.openid {
+                    Some(openid) if openid == token_data.openid => openid,
+                    Some(openid) => {
+                        log::warn!(
+                            "WeChat user info openid mismatch: token={}, userinfo={}",
+                            token_data.openid,
+                            openid
+                        );
+                        return Err(AuthenticationError::InvalidCredentials);
+                    }
+                    None => token_data.openid,
+                };
+                let avatar_url =
+                    user_info.headimgurl.filter(|url| !url.trim().is_empty());
+
+                TempUser {
+                    id: openid,
+                    username: user_info
+                        .nickname
+                        .unwrap_or_else(|| "wechat_user".to_string()),
+                    email: None,
+                    avatar_url,
+                    bio: None,
+                    country: None,
+                }
+            }
         };
 
         Ok(res)
@@ -1239,6 +1383,16 @@ impl AuthProvider {
                     sqlx::query!("SELECT id FROM users WHERE qq_id = $1", id)
                         .fetch_optional(executor)
                         .await?;
+
+                value.map(|x| crate::database::models::UserId(x.id))
+            }
+            AuthProvider::WeChat => {
+                let value = sqlx::query!(
+                    "SELECT id FROM users WHERE wechat_id = $1",
+                    id
+                )
+                .fetch_optional(executor)
+                .await?;
 
                 value.map(|x| crate::database::models::UserId(x.id))
             }
@@ -1356,6 +1510,19 @@ impl AuthProvider {
                 .execute(&mut **transaction)
                 .await?;
             }
+            AuthProvider::WeChat => {
+                sqlx::query!(
+                    "
+                    UPDATE users
+                    SET wechat_id = $2
+                    WHERE (id = $1)
+                    ",
+                    user_id as crate::database::models::UserId,
+                    id,
+                )
+                .execute(&mut **transaction)
+                .await?;
+            }
         }
 
         Ok(())
@@ -1371,6 +1538,7 @@ impl AuthProvider {
             AuthProvider::Steam => "Steam",
             AuthProvider::Bilibili => "Bilibili",
             AuthProvider::QQ => "QQ",
+            AuthProvider::WeChat => "微信",
         }
     }
 }
@@ -1381,6 +1549,8 @@ pub struct AuthorizationInit {
     #[serde(default)]
     pub provider: AuthProvider,
     pub token: Option<String>,
+    #[serde(default)]
+    pub return_url: bool,
 }
 #[derive(Serialize, Deserialize)]
 pub struct Authorization {
@@ -1435,9 +1605,13 @@ pub async fn init(
     .await?;
 
     let url = info.provider.get_redirect_url(state)?;
-    Ok(HttpResponse::TemporaryRedirect()
-        .append_header(("Location", &*url))
-        .json(serde_json::json!({ "url": url })))
+    if info.return_url {
+        Ok(HttpResponse::Ok().json(serde_json::json!({ "url": url })))
+    } else {
+        Ok(HttpResponse::TemporaryRedirect()
+            .append_header(("Location", &*url))
+            .json(serde_json::json!({ "url": url })))
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -1888,6 +2062,7 @@ pub async fn create_account_with_password(
         microsoft_id: None,
         bilibili_id: None,
         qq_id: None,
+        wechat_id: None,
         password: Some(password_hash),
         stripe_customer_id: None,
         totp_secret: None,
@@ -2731,7 +2906,10 @@ pub async fn change_password(
                 || user.microsoft_id.is_some()
                 || user.google_id.is_some()
                 || user.steam_id.is_some()
-                || user.discord_id.is_some())
+                || user.discord_id.is_some()
+                || user.bilibili_id.is_some()
+                || user.qq_id.is_some()
+                || user.wechat_id.is_some())
             {
                 return Err(ApiError::InvalidInput(
                     "移除密码登录前，必须先添加其他身份验证方式！".to_string(),

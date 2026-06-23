@@ -133,4 +133,5 @@ pub enum AuthProvider {
     Steam,
     Bilibili,
     QQ,
+    WeChat,
 }

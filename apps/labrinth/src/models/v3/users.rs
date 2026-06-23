@@ -218,6 +218,9 @@ impl User {
         if db_user.qq_id.is_some() {
             auth_providers.push(AuthProvider::QQ)
         }
+        if db_user.wechat_id.is_some() {
+            auth_providers.push(AuthProvider::WeChat)
+        }
 
         // 转换封禁信息
         let active_bans = if db_user.active_bans.is_empty() {
