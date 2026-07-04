@@ -11,10 +11,14 @@ use crate::models::pats::Scopes;
 use crate::models::projects::ProjectStatus;
 use crate::models::teams::ProjectPermissions;
 use crate::models::threads::{MessageBody, ThreadType};
+use crate::queue::incentive::{
+    current_project_payout_members, payable_members,
+};
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use actix_web::{HttpRequest, HttpResponse, web};
 use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
@@ -74,14 +78,15 @@ pub async fn my_incentive_overview(
 
     let rows = sqlx::query!(
         r#"
-        SELECT m.id AS project_id, m.name AS title, m.slug AS slug,
-               m.team_id, tm.payouts_split,
+        SELECT DISTINCT m.id AS project_id, m.name AS title, m.slug AS slug,
                EXISTS(SELECT 1 FROM incentive_enabled_projects e WHERE e.project_id = m.id) AS "enabled!",
                c.lifetime_eff_downloads AS "lifetime_eff_downloads?"
-        FROM team_members tm
-        JOIN mods m ON m.team_id = tm.team_id
+        FROM mods m
+        LEFT JOIN organizations o ON m.organization_id = o.id
+        JOIN team_members tm ON tm.accepted = TRUE
+          AND tm.user_id = $1
+          AND (tm.team_id = m.team_id OR tm.team_id = o.team_id)
         LEFT JOIN incentive_project_counters c ON c.project_id = m.id
-        WHERE tm.user_id = $1 AND tm.accepted = TRUE AND tm.payouts_split > 0
         ORDER BY m.name
         "#,
         user.id.0 as i64,
@@ -96,23 +101,26 @@ pub async fn my_incentive_overview(
     for r in rows {
         let lifetime = r.lifetime_eff_downloads.unwrap_or(0);
 
-        // 算这个用户在团队里占的 split 比例（用整团 split 之和归一化）
-        let team_total = sqlx::query!(
-            r#"
-            SELECT COALESCE(SUM(payouts_split), 0)::numeric AS "sum!"
-            FROM team_members
-            WHERE team_id = $1 AND accepted = TRUE AND payouts_split > 0
-            "#,
-            r.team_id,
-        )
-        .fetch_one(pool.as_ref())
-        .await?
-        .sum;
-        let frac_dec = if team_total > Decimal::ZERO {
-            r.payouts_split / team_total
-        } else {
-            Decimal::ZERO
+        let Some(project_payout) =
+            current_project_payout_members(pool.as_ref(), r.project_id).await?
+        else {
+            continue;
         };
+        let members = payable_members(project_payout.members);
+        let total_split: f64 = members.iter().map(|m| m.split).sum();
+        let Some(member) =
+            members.iter().find(|m| m.user_id == user.id.0 as i64)
+        else {
+            continue;
+        };
+        if total_split <= 0.0 {
+            continue;
+        }
+
+        let frac_dec =
+            Decimal::from_f64(member.split / total_split).unwrap_or_default();
+        let effective_split =
+            Decimal::from_f64(member.split).unwrap_or_default();
 
         // 项目 pending / settled 总额
         let amounts = sqlx::query!(
@@ -143,7 +151,7 @@ pub async fn my_incentive_overview(
             lifetime_eff_downloads: lifetime,
             current_unit_payout: current_unit,
             next_tier_remaining: next_remaining,
-            your_split_pct: r.payouts_split,
+            your_split_pct: effective_split,
             your_pending,
             your_settled,
         });
@@ -247,7 +255,7 @@ pub async fn project_incentive_detail(
     }
 
     // 激励详情包含财务数据，非 admin 需要项目内可管理或可查看收益权限。
-    if !viewer_is_admin && !(viewer_can_manage || viewer_can_view_payouts) {
+    if !(viewer_is_admin || viewer_can_manage || viewer_can_view_payouts) {
         return Err(ApiError::CustomAuthentication(
             "你没有查看项目激励的权限".to_string(),
         ));

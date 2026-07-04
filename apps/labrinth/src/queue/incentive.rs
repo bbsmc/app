@@ -3,6 +3,7 @@ use dashmap::DashMap;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use sqlx::PgPool;
+use std::collections::HashSet;
 use std::net::Ipv6Addr;
 use std::str::FromStr;
 
@@ -13,6 +14,17 @@ const TIER2_END: i64 = 10_000;
 const RATE_TIER1: &str = "0.02";
 const RATE_TIER2: &str = "0.01";
 const RATE_TIER3: &str = "0.008";
+
+#[derive(serde::Deserialize, Clone, Debug, PartialEq)]
+pub(crate) struct SnapshotMember {
+    pub user_id: i64,
+    pub split: f64,
+}
+
+pub(crate) struct ProjectPayoutMembers {
+    pub team_id: i64,
+    pub members: Vec<SnapshotMember>,
+}
 
 #[derive(Clone, Debug)]
 pub struct IncentiveEvent {
@@ -100,49 +112,34 @@ async fn process_event(
         return Ok(());
     }
 
-    // 2. 取项目 team_id；若用户是团队成员则跳过
-    let team_id_row = sqlx::query!(
-        "SELECT team_id FROM mods WHERE id = $1",
-        evt.project_id as i64,
-    )
-    .fetch_optional(pool)
-    .await?;
-    let team_id = match team_id_row {
-        Some(r) => r.team_id,
-        None => return Ok(()),
-    };
+    // 2. 取项目有效分账成员；若下载用户是项目/组织成员则跳过
+    let project_payout =
+        match current_project_payout_members(pool, evt.project_id as i64)
+            .await?
+        {
+            Some(p) => p,
+            None => return Ok(()),
+        };
 
     if evt.user_id != 0 {
-        let is_team = sqlx::query_scalar!(
-            r#"SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2 AND accepted = TRUE) AS "exists!""#,
-            team_id,
-            evt.user_id as i64,
-        )
-        .fetch_one(pool)
-        .await?;
-        if is_team {
+        let is_project_member = project_payout
+            .members
+            .iter()
+            .any(|m| m.user_id == evt.user_id as i64);
+        if is_project_member {
             return Ok(());
         }
     }
 
-    // 3. 取 split 快照（事件发生时点的归属比例）
-    let members = sqlx::query!(
-        "
-        SELECT user_id, payouts_split
-        FROM team_members
-        WHERE team_id = $1 AND accepted = TRUE AND payouts_split > 0
-        ",
-        team_id,
-    )
-    .fetch_all(pool)
-    .await?;
-    use rust_decimal::prelude::ToPrimitive;
+    // 3. 取 split 快照（事件发生时点的归属比例）。保留 split=0 的成员；
+    // 项目 team 覆盖组织 team，结算时若全员为 0 则按旧收益逻辑等分。
     let split_snapshot = serde_json::json!(
-        members
+        project_payout
+            .members
             .iter()
             .map(|m| serde_json::json!({
                 "user_id": m.user_id,
-                "split": m.payouts_split.to_f64().unwrap_or(0.0),
+                "split": m.split,
             }))
             .collect::<Vec<_>>()
     );
@@ -171,7 +168,7 @@ async fn process_event(
         ON CONFLICT DO NOTHING
         ",
         evt.project_id as i64,
-        team_id,
+        project_payout.team_id,
         evt.user_identity.as_deref(),
         evt.ip_identity,
         evt.week_bucket,
@@ -218,6 +215,102 @@ fn next_unit_payout(current_lifetime: i64) -> Decimal {
     Decimal::from_str(s).unwrap_or_default()
 }
 
+pub(crate) fn payable_members(
+    mut members: Vec<SnapshotMember>,
+) -> Vec<SnapshotMember> {
+    members.retain(|m| m.split.is_finite() && m.split >= 0.0);
+    if members.is_empty() {
+        return members;
+    }
+
+    let total_positive: f64 = members
+        .iter()
+        .filter(|m| m.split > 0.0)
+        .map(|m| m.split)
+        .sum();
+
+    if total_positive <= 0.0 {
+        for member in &mut members {
+            member.split = 1.0;
+        }
+        members
+    } else {
+        members.into_iter().filter(|m| m.split > 0.0).collect()
+    }
+}
+
+fn merge_project_payout_members(
+    mut org_members: Vec<SnapshotMember>,
+    project_members: Vec<SnapshotMember>,
+) -> Vec<SnapshotMember> {
+    let project_user_ids: HashSet<i64> =
+        project_members.iter().map(|m| m.user_id).collect();
+    org_members.retain(|m| !project_user_ids.contains(&m.user_id));
+
+    let mut members = org_members;
+    members.extend(project_members);
+    members.sort_by_key(|m| m.user_id);
+    members
+}
+
+async fn current_team_members(
+    pool: &PgPool,
+    team_id: i64,
+) -> Result<Vec<SnapshotMember>, sqlx::Error> {
+    let rows = sqlx::query!(
+        "
+        SELECT user_id, payouts_split
+        FROM team_members
+        WHERE team_id = $1 AND accepted = TRUE
+        ORDER BY user_id
+        ",
+        team_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    use rust_decimal::prelude::ToPrimitive;
+    Ok(rows
+        .into_iter()
+        .map(|r| SnapshotMember {
+            user_id: r.user_id,
+            split: r.payouts_split.to_f64().unwrap_or(0.0),
+        })
+        .collect())
+}
+
+pub(crate) async fn current_project_payout_members(
+    pool: &PgPool,
+    project_id: i64,
+) -> Result<Option<ProjectPayoutMembers>, sqlx::Error> {
+    let project = sqlx::query!(
+        r#"
+        SELECT m.team_id, o.team_id AS "organization_team_id?"
+        FROM mods m
+        LEFT JOIN organizations o ON m.organization_id = o.id
+        WHERE m.id = $1
+        "#,
+        project_id,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let Some(project) = project else {
+        return Ok(None);
+    };
+
+    let org_members = match project.organization_team_id {
+        Some(team_id) => current_team_members(pool, team_id).await?,
+        None => Vec::new(),
+    };
+    let project_members = current_team_members(pool, project.team_id).await?;
+
+    Ok(Some(ProjectPayoutMembers {
+        team_id: project.team_id,
+        members: merge_project_payout_members(org_members, project_members),
+    }))
+}
+
 /// 7 天前 pending 的事件结算到 payouts_values，按事件发生时的 split 快照拆分
 pub async fn settle_pending(pool: &PgPool) -> Result<u64, sqlx::Error> {
     let events = sqlx::query!(
@@ -235,43 +328,29 @@ pub async fn settle_pending(pool: &PgPool) -> Result<u64, sqlx::Error> {
 
     let mut settled: u64 = 0;
 
-    #[derive(serde::Deserialize, Clone)]
-    struct SnapshotMember {
-        user_id: i64,
-        split: f64,
-    }
-
     for e in events {
-        // 优先使用事件快照；缺失（旧数据）回退到当前 split
-        let members: Vec<SnapshotMember> = match &e.split_snapshot {
+        // 优先使用事件快照；缺失或旧版空快照回退到当前成员。
+        let mut members: Vec<SnapshotMember> = match &e.split_snapshot {
             Some(v) => serde_json::from_value(v.clone()).unwrap_or_default(),
-            None => {
-                let rows = sqlx::query!(
-                    "
-                    SELECT user_id, payouts_split
-                    FROM team_members
-                    WHERE team_id = $1 AND accepted = TRUE AND payouts_split > 0
-                    ",
-                    e.team_id,
-                )
-                .fetch_all(pool)
-                .await?;
-                use rust_decimal::prelude::ToPrimitive;
-                rows.into_iter()
-                    .map(|r| SnapshotMember {
-                        user_id: r.user_id,
-                        split: r.payouts_split.to_f64().unwrap_or(0.0),
-                    })
-                    .collect()
-            }
+            None => current_project_payout_members(pool, e.project_id)
+                .await?
+                .map(|p| p.members)
+                .unwrap_or_default(),
         };
 
+        if members.is_empty() {
+            members = current_project_payout_members(pool, e.project_id)
+                .await?
+                .map(|p| p.members)
+                .unwrap_or_default();
+        }
+        let members = payable_members(members);
         let total_split: f64 = members.iter().map(|m| m.split).sum();
 
         let mut tx = pool.begin().await?;
 
         if members.is_empty() || total_split <= 0.0 {
-            // 没有可分账成员 → voided
+            // 没有任何 accepted 成员，才视为无可分账对象并作废。
             sqlx::query!(
                 "
                 UPDATE incentive_download_events
@@ -492,4 +571,105 @@ pub async fn void_project_pending(
 
     tx.commit().await?;
     Ok(res.rows_affected() as i64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        SnapshotMember, merge_project_payout_members, payable_members,
+    };
+
+    #[test]
+    fn payable_members_equalizes_all_zero_splits() {
+        let members = payable_members(vec![
+            SnapshotMember {
+                user_id: 1,
+                split: 0.0,
+            },
+            SnapshotMember {
+                user_id: 2,
+                split: 0.0,
+            },
+        ]);
+
+        assert_eq!(
+            members,
+            vec![
+                SnapshotMember {
+                    user_id: 1,
+                    split: 1.0,
+                },
+                SnapshotMember {
+                    user_id: 2,
+                    split: 1.0,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn payable_members_ignores_zero_when_positive_splits_exist() {
+        let members = payable_members(vec![
+            SnapshotMember {
+                user_id: 1,
+                split: 0.0,
+            },
+            SnapshotMember {
+                user_id: 2,
+                split: 25.0,
+            },
+        ]);
+
+        assert_eq!(
+            members,
+            vec![SnapshotMember {
+                user_id: 2,
+                split: 25.0,
+            }]
+        );
+    }
+
+    #[test]
+    fn merge_project_payout_members_project_overrides_org_member() {
+        let members = merge_project_payout_members(
+            vec![
+                SnapshotMember {
+                    user_id: 1,
+                    split: 75.0,
+                },
+                SnapshotMember {
+                    user_id: 2,
+                    split: 25.0,
+                },
+            ],
+            vec![
+                SnapshotMember {
+                    user_id: 1,
+                    split: 0.0,
+                },
+                SnapshotMember {
+                    user_id: 3,
+                    split: 0.0,
+                },
+            ],
+        );
+
+        assert_eq!(
+            members,
+            vec![
+                SnapshotMember {
+                    user_id: 1,
+                    split: 0.0,
+                },
+                SnapshotMember {
+                    user_id: 2,
+                    split: 25.0,
+                },
+                SnapshotMember {
+                    user_id: 3,
+                    split: 0.0,
+                },
+            ]
+        );
+    }
 }
