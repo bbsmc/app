@@ -187,7 +187,8 @@ function groupVersions(versions, consecutive = false) {
         if (
           (prevInRange = ranges.find(
             (x) =>
-              x.major === majorVersion && (!consecutive || x.minor.at(-1) === minorNumeric - 1),
+              x.major === majorVersion &&
+              (!consecutive || x.minor[x.minor.length - 1] === minorNumeric - 1),
           ))
         ) {
           prevInRange.minor.push(minorNumeric);
