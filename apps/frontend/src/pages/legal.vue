@@ -13,6 +13,9 @@
           <NavStackItem link="/legal/copyright" label="版权政策">
             <CopyrightIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem link="/legal/incentive-info" label="激励介绍">
+            <InfoIcon aria-hidden="true" />
+          </NavStackItem>
           <NavStackItem link="/legal/incentive" label="创作者激励计划协议">
             <CurrencyIcon aria-hidden="true" />
           </NavStackItem>
@@ -33,6 +36,7 @@
 <script setup>
 import {
   HeartHandshakeIcon,
+  InfoIcon,
   LockIcon,
   ScaleIcon,
   CopyrightIcon,

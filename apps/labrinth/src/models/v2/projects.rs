@@ -69,6 +69,8 @@ pub struct LegacyProject {
     pub color: Option<u32>,
     pub thread_id: ThreadId,
     pub monetization_status: MonetizationStatus,
+    #[serde(default)]
+    pub incentive_enabled: bool,
     pub wiki_open: bool,
     pub issues_type: i32,
     pub forum: Option<DiscussionId>,
@@ -274,6 +276,7 @@ impl LegacyProject {
             color: data.color,
             thread_id: data.thread_id,
             monetization_status: data.monetization_status,
+            incentive_enabled: data.incentive_enabled,
             issues_type: data.issues_type,
             client_side,
             server_side,

@@ -692,7 +692,7 @@
           </div>
 
           <!-- 服务器推荐 -->
-          <ServerPromo v-if="projectAffKey" @navigate="navigateToServer" />
+          <ServerPromo v-if="showServerPromotion" @navigate="navigateToServer" />
         </div>
       </template>
     </NewModal>
@@ -791,12 +791,8 @@
                 购买
               </button>
             </ButtonStyled>
-            <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
-              <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
-                <ServerIcon aria-hidden="true" />
-                联机
-              </nuxt-link>
-              <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+            <ButtonStyled v-if="showServerPromotion" size="large" color="purple" type="transparent">
+              <nuxt-link :to="serverPromotionLink" target="_blank">
                 <ServerIcon aria-hidden="true" />
                 联机
               </nuxt-link>
@@ -988,12 +984,13 @@
                 </button>
               </ButtonStyled>
 
-              <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
-                <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
-                  <ServerIcon aria-hidden="true" />
-                  联机搭建
-                </nuxt-link>
-                <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+              <ButtonStyled
+                v-if="showServerPromotion"
+                size="large"
+                color="purple"
+                type="transparent"
+              >
+                <nuxt-link :to="serverPromotionLink" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
@@ -1022,12 +1019,13 @@
                 </button>
               </ButtonStyled>
 
-              <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
-                <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
-                  <ServerIcon aria-hidden="true" />
-                  联机搭建
-                </nuxt-link>
-                <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+              <ButtonStyled
+                v-if="showServerPromotion"
+                size="large"
+                color="purple"
+                type="transparent"
+              >
+                <nuxt-link :to="serverPromotionLink" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
@@ -1360,6 +1358,12 @@
             </div>
           </section>
         </div>
+
+        <ResourcePromoAd
+          :variant="showServerPromotion ? 'server' : 'incentive'"
+          :affiliate-key="projectAffKey"
+          class="project-sidebar-ad"
+        />
 
         <div
           v-if="
@@ -1775,6 +1779,7 @@ import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import TranslationPromo from "~/components/ui/TranslationPromo.vue";
 import ServerPromo from "~/components/ui/ServerPromo.vue";
+import ResourcePromoAd from "~/components/ui/ResourcePromoAd.vue";
 import PurchaseButton from "~/components/ui/PurchaseButton.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
 import { projectAffiliates } from "~/config/affiliates.ts";
@@ -1879,6 +1884,19 @@ const projectAffKey = computed(() => {
   }
 
   return null;
+});
+
+const showServerPromotion = computed(() =>
+  Boolean(projectAffKey.value || project.value?.incentive_enabled),
+);
+
+const serverPromotionLink = computed(() => {
+  const affId = projectAffKey.value || "LaotouY";
+  if (affId === "pcl") {
+    return "/pcl";
+  }
+
+  return `/server?aff=${affId}`;
 });
 const compatibilityMessages = defineMessages({
   title: {
@@ -3110,12 +3128,7 @@ function navigateToTranslation(translationData) {
 
 function navigateToServer() {
   // 跳转到服务器页面，与联机搭建按钮的跳转逻辑一致
-  const affId = projectAffKey.value;
-  if (affId === "pcl") {
-    window.open("/pcl", "_blank");
-  } else if (affId) {
-    window.open(`/server?aff=${affId}`, "_blank");
-  }
+  window.open(serverPromotionLink.value, "_blank");
   downloadModal.value.hide();
 }
 
@@ -4609,6 +4622,10 @@ const navLinks = computed(() => {
 // ==========================================
 // ENHANCED SIDEBAR FOR REVOLUTION LAYOUT
 // ==========================================
+
+.project-sidebar-ad {
+  margin-bottom: 16px;
+}
 
 .revolution-layout {
   :deep(.normal-page__sidebar) {

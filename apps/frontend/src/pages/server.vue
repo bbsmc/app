@@ -256,7 +256,10 @@ const themeVars = computed(() => {
 });
 
 // 获取 aff 参数
-const aff = route.query.aff;
+const aff = computed(() => {
+  const value = route.query.aff;
+  return (Array.isArray(value) ? value[0] : value) || "LaotouY";
+});
 
 // EPYC型套餐
 const epycPlans = [
@@ -294,7 +297,7 @@ const enthusiastPlans = [
   },
 ];
 
-const cf = ref(getCreatorByKey(aff));
+const cf = computed(() => getCreatorByKey(aff.value));
 
 // 手机淘宝二维码弹窗状态
 const showMobileQR = ref(false);

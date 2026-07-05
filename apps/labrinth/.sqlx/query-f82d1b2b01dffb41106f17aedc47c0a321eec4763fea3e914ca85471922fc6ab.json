@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                                    SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,\n                                    m.icon_url icon_url, m.raw_icon_url raw_icon_url, m.description description, m.published published,\n                                    m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,\n                                    m.license_url license_url,\n                                    m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,\n                                    m.webhook_sent, m.color, m.wiki_open,m.issues_type issues_type, m.translation_tracking, m.translation_tracker, m.is_paid,\n                                    (SELECT slug FROM mods WHERE translation_tracker = m.slug AND m.slug IS NOT NULL LIMIT 1) as translation_source,\n                                    t.id thread_id, m.monetization_status monetization_status,\n                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,\n                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories\n                                    FROM mods m\n                                    INNER JOIN threads t ON t.mod_id = m.id\n                                    LEFT JOIN mods_categories mc ON mc.joining_mod_id = m.id\n                                    LEFT JOIN categories c ON mc.joining_category_id = c.id\n                                    WHERE m.id = ANY($1)\n                                    GROUP BY t.id, m.id;\n                                    ",
+  "query": "\n                                    SELECT m.id id, m.name name, m.summary summary, m.downloads downloads, m.follows follows,\n                                    m.icon_url icon_url, m.raw_icon_url raw_icon_url, m.description description, m.published published,\n                                    m.updated updated, m.approved approved, m.queued, m.status status, m.requested_status requested_status,\n                                    m.license_url license_url,\n                                    m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,\n                                    m.webhook_sent, m.color, m.wiki_open,m.issues_type issues_type, m.translation_tracking, m.translation_tracker, m.is_paid,\n                                    (SELECT slug FROM mods WHERE translation_tracker = m.slug AND m.slug IS NOT NULL LIMIT 1) as translation_source,\n                                    EXISTS(SELECT 1 FROM incentive_enabled_projects iep WHERE iep.project_id = m.id) AS \"incentive_enabled!\",\n                                    t.id thread_id, m.monetization_status monetization_status,\n                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,\n                                    ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories\n                                    FROM mods m\n                                    INNER JOIN threads t ON t.mod_id = m.id\n                                    LEFT JOIN mods_categories mc ON mc.joining_mod_id = m.id\n                                    LEFT JOIN categories c ON mc.joining_category_id = c.id\n                                    WHERE m.id = ANY($1)\n                                    GROUP BY t.id, m.id;\n                                    ",
   "describe": {
     "columns": [
       {
@@ -150,21 +150,26 @@
       },
       {
         "ordinal": 29,
+        "name": "incentive_enabled!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 30,
         "name": "thread_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 30,
+        "ordinal": 31,
         "name": "monetization_status",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 31,
+        "ordinal": 32,
         "name": "categories",
         "type_info": "VarcharArray"
       },
       {
-        "ordinal": 32,
+        "ordinal": 33,
         "name": "additional_categories",
         "type_info": "VarcharArray"
       }
@@ -204,11 +209,12 @@
       true,
       false,
       null,
+      null,
       false,
       false,
       null,
       null
     ]
   },
-  "hash": "40663ae42ca67fc1c94fe07eb3251bade24daaefb6f4adb92fbf0d2f836dc6aa"
+  "hash": "f82d1b2b01dffb41106f17aedc47c0a321eec4763fea3e914ca85471922fc6ab"
 }

@@ -107,6 +107,10 @@ pub struct Project {
     /// The monetization status of this project
     pub monetization_status: MonetizationStatus,
 
+    /// Whether creator incentive is enabled for this project.
+    #[serde(default)]
+    pub incentive_enabled: bool,
+
     /// Aggregated loader-fields across its myriad of versions
     #[serde(flatten)]
     pub fields: HashMap<String, Vec<serde_json::Value>>,
@@ -269,6 +273,7 @@ impl From<QueryProject> for Project {
             color: m.color,
             thread_id: data.thread_id.into(),
             monetization_status: m.monetization_status,
+            incentive_enabled: m.incentive_enabled,
             issues_type: m.issues_type,
             fields,
             forum: m.forum.map(|x| x.into()),

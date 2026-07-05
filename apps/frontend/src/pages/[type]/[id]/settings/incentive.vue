@@ -152,7 +152,9 @@
           <CheckIcon class="notice-icon" />
           <div class="notice-content">
             <strong>该资源已开通创作者激励</strong>
-            <p>用户的有效下载会自动产生激励金额，7 天后结算为可提现余额。</p>
+            <p>
+              用户的有效下载会自动产生激励金额，满 7 天后结算为收益余额，提现每月初统一处理到账。
+            </p>
           </div>
         </div>
 
@@ -237,6 +239,49 @@
           </div>
         </details>
 
+        <div v-if="showIncentiveIntro" class="incentive-intro">
+          <div class="intro-heading">
+            <InfoIcon class="intro-icon" aria-hidden="true" />
+            <div>
+              <h4>创作者激励介绍</h4>
+              <p>
+                开通后，真实有效下载会按阶梯单价计入激励。金额待结算 7
+                天并通过审计后转入收益余额，提现每月初处理到账。
+              </p>
+            </div>
+            <NuxtLink to="/legal/incentive-info" target="_blank" class="intro-link">
+              查看完整介绍
+            </NuxtLink>
+          </div>
+
+          <div class="cooperation-highlight">
+            <div class="cooperation-copy">
+              <strong>服务商合作重点</strong>
+              <p>
+                开通激励不代表已经达成服务商合作。作者可扫码添加昱通云联企业微信客服，
+                洽谈服务器面板销售服务商合作，并由客服创建技术支持群聊。
+              </p>
+              <ul>
+                <li>服务商合作：资源广告入口下单可获得 25% 销售分成。</li>
+                <li>
+                  深度广告合作：整合包广告模组、客户端服务器列表或单人游戏页面广告植入可获得 30%
+                  销售分成。
+                </li>
+                <li>技术支持：可咨询整合包模组 bug、简单兼容修复、服务端制作和联机卡顿调优。</li>
+              </ul>
+            </div>
+            <div class="cooperation-qr">
+              <img
+                src="/yutong-yunlian-wechat.png"
+                alt="昱通云联企业微信客服二维码"
+                width="150"
+                height="150"
+              />
+              <span>扫码添加企业微信客服</span>
+            </div>
+          </div>
+        </div>
+
         <!-- 30 天图表 -->
         <div v-if="overview?.last_30_days?.length" class="chart-section">
           <h4>近 30 天数据</h4>
@@ -301,7 +346,8 @@
               <strong>结算与提现</strong>
               <p>
                 有效下载产生的金额会先进入待结算，满 7
-                个自然日并通过反作弊审计后，系统会自动转入收益余额。提现、实名签约和收款账号处理请前往收益页面完成。
+                个自然日并通过反作弊审计后，系统会自动转入收益余额。提现统一在每个月初批量处理到账，
+                实名签约和收款账号处理请前往收益页面完成。
               </p>
               <NuxtLink to="/dashboard/revenue" class="iconified-button brand-button">
                 <RightArrowIcon aria-hidden="true" />
@@ -351,14 +397,7 @@
         </div>
 
         <!-- 申请表单（未开通、无待审核申请、且查看者有 manage 权限） -->
-        <template
-          v-if="
-            !overview?.incentive_enabled &&
-            application?.status !== 'pending' &&
-            overview?.viewer?.can_manage &&
-            canApplyIncentive
-          "
-        >
+        <template v-if="showApplyForm">
           <div class="apply-form">
             <h4>申请开通创作者激励</h4>
             <div class="rules-card">
@@ -370,7 +409,7 @@
                 </li>
                 <li>同一用户/IP 段对单个项目每 7 天最多记一次有效下载</li>
                 <li>项目团队成员自下载不计激励</li>
-                <li>金额在事件发生 7 天后自动结算到账户，可通过钱包提现</li>
+                <li>金额在事件发生 7 天后自动结算到收益余额，提现每月初统一处理到账</li>
                 <li>若发现刷量行为，未结算金额将被作废</li>
               </ul>
               <p class="agreement-hint">
@@ -447,6 +486,19 @@ const canForceEnableIncentive = computed(
 );
 const canForceDisableIncentive = computed(
   () => overview.value?.viewer?.is_admin && overview.value?.incentive_enabled,
+);
+const showApplyForm = computed(
+  () =>
+    !overview.value?.incentive_enabled &&
+    application.value?.status !== "pending" &&
+    overview.value?.viewer?.can_manage &&
+    canApplyIncentive.value,
+);
+const showIncentiveIntro = computed(
+  () =>
+    overview.value?.incentive_enabled ||
+    application.value?.status === "pending" ||
+    showApplyForm.value,
 );
 const projectTitle = computed(
   () => props.project?.title || props.project?.name || props.project?.id,
@@ -823,6 +875,116 @@ onMounted(loadAll);
     p {
       margin: 0.25rem 0 0.75rem;
       color: var(--color-text-secondary);
+    }
+  }
+}
+
+.incentive-intro {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+
+  .intro-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+
+    h4 {
+      margin: 0 0 0.35rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--color-text-secondary);
+    }
+  }
+
+  .intro-icon {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.15rem;
+    color: var(--color-brand);
+  }
+
+  .intro-link {
+    flex-shrink: 0;
+    margin-left: auto;
+    color: var(--color-link);
+    font-weight: 600;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--color-link-hover);
+    }
+  }
+
+  .cooperation-highlight {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--color-orange);
+    border-radius: var(--radius-md);
+    background: var(--color-orange-bg, rgba(245, 158, 11, 0.1));
+  }
+
+  .cooperation-copy {
+    flex: 1;
+
+    p {
+      margin: 0.35rem 0 0.5rem;
+      color: var(--color-text-secondary);
+    }
+
+    ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.1rem;
+    }
+
+    li {
+      margin-bottom: 0.35rem;
+    }
+  }
+
+  .cooperation-qr {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 0.4rem;
+    width: 160px;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+
+    img {
+      width: 150px;
+      height: 150px;
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-md);
+      background: var(--color-raised-bg);
+      object-fit: contain;
+    }
+  }
+
+  @media screen and (max-width: 700px) {
+    .intro-heading,
+    .cooperation-highlight {
+      flex-direction: column;
+    }
+
+    .intro-link {
+      margin-left: 0;
+    }
+
+    .cooperation-qr {
+      align-items: flex-start;
+      width: 100%;
+      text-align: left;
     }
   }
 }

@@ -1133,6 +1133,7 @@ async fn project_create_inner(
             color: project_builder.color,
             thread_id: thread_id.into(),
             monetization_status: MonetizationStatus::Monetized,
+            incentive_enabled: false,
             fields: HashMap::new(), // Fields instantiate to empty
             wiki_open: false,
             issues_type: 0,

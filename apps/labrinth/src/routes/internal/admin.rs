@@ -1,6 +1,8 @@
 use crate::auth::check_is_admin_from_headers;
 use crate::auth::validate::get_user_record_from_bearer_token;
-use crate::database::models::notification_item::NotificationBuilder;
+use crate::database::models::{
+    self as db_models, notification_item::NotificationBuilder,
+};
 use crate::database::redis::RedisPool;
 use crate::models::analytics::Download;
 use crate::models::ids::ProjectId;
@@ -550,15 +552,13 @@ pub async fn toggle_project_incentive(
         .map_err(|_| ApiError::InvalidInput("无效的项目 ID".to_string()))?
         as i64;
 
-    let exists = sqlx::query_scalar!(
-        r#"SELECT EXISTS(SELECT 1 FROM mods WHERE id = $1) AS "exists!""#,
-        project_id,
+    let project_item = db_models::Project::get_id(
+        crate::database::models::ids::ProjectId(project_id),
+        pool.as_ref(),
+        &redis,
     )
-    .fetch_one(pool.as_ref())
-    .await?;
-    if !exists {
-        return Err(ApiError::NotFound);
-    }
+    .await?
+    .ok_or(ApiError::NotFound)?;
 
     let was_enabled = sqlx::query_scalar!(
         r#"SELECT EXISTS(SELECT 1 FROM incentive_enabled_projects WHERE project_id = $1) AS "exists!""#,
@@ -606,6 +606,14 @@ pub async fn toggle_project_incentive(
         }
 
         tx.commit().await?;
+
+        db_models::Project::clear_cache(
+            project_item.inner.id,
+            project_item.inner.slug.clone(),
+            None,
+            &redis,
+        )
+        .await?;
 
         let _ = crate::queue::incentive::audit_log(
             pool.as_ref(),
@@ -713,6 +721,14 @@ pub async fn toggle_project_incentive(
         }
 
         tx.commit().await?;
+
+        db_models::Project::clear_cache(
+            project_item.inner.id,
+            project_item.inner.slug.clone(),
+            None,
+            &redis,
+        )
+        .await?;
 
         let _ = crate::queue::incentive::audit_log(
             pool.as_ref(),
@@ -1046,6 +1062,20 @@ pub async fn review_incentive_application(
     .await?
     .ok_or_else(|| ApiError::InvalidInput("申请不存在或已审核".to_string()))?;
 
+    let project_item = if target_status == "approved" {
+        Some(
+            db_models::Project::get_id(
+                crate::database::models::ids::ProjectId(pending.project_id),
+                pool.as_ref(),
+                &redis,
+            )
+            .await?
+            .ok_or(ApiError::NotFound)?,
+        )
+    } else {
+        None
+    };
+
     sqlx::query!(
         "
         UPDATE incentive_applications
@@ -1161,6 +1191,16 @@ pub async fn review_incentive_application(
     }
 
     tx.commit().await?;
+
+    if let Some(project_item) = project_item {
+        db_models::Project::clear_cache(
+            project_item.inner.id,
+            project_item.inner.slug,
+            None,
+            &redis,
+        )
+        .await?;
+    }
 
     let _ = crate::queue::incentive::audit_log(
         pool.as_ref(),

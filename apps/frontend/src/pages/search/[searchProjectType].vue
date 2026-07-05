@@ -41,6 +41,16 @@
           label="Hide already installed"
         />
       </section>
+      <Transition name="search-sidebar-ad-fade" mode="out-in">
+        <ResourcePromoAd
+          :key="currentSidebarAdVariant"
+          :variant="currentSidebarAdVariant"
+          class="search-sidebar-ad"
+          :class="{ 'max-lg:!hidden': !sidebarMenuOpen }"
+          @mouseenter="stopSidebarAdAutoPlay"
+          @mouseleave="startSidebarAdAutoPlay"
+        />
+      </Transition>
       <section class="card gap-1" :class="{ 'max-lg:!hidden': !sidebarMenuOpen }">
         <div class="flex items-center gap-2">
           <div class="iconified-input w-full">
@@ -353,7 +363,7 @@
         </div>
       </div>
       <!-- Google AdSense -->
-<!--      <AdUnit slot="7766138161" format="horizontal" class="mt-4" />-->
+      <!--      <AdUnit slot="7766138161" format="horizontal" class="mt-4" />-->
       <div class="pagination-after">
         <pagination
           :page="currentPage"
@@ -373,7 +383,7 @@ import { Multiselect } from "vue-multiselect";
 import { Pagination, ScrollablePanel, Checkbox, Avatar } from "@modrinth/ui";
 import { BanIcon, DropdownIcon, CheckIcon, FilterXIcon, DownloadIcon } from "@modrinth/assets";
 import ProjectCard from "~/components/ui/ProjectCard.vue";
-import AdUnit from "~/components/ui/AdUnit.vue";
+import ResourcePromoAd from "~/components/ui/ResourcePromoAd.vue";
 import LogoAnimated from "~/components/brand/LogoAnimated.vue";
 import { addNotification } from "~/composables/notifs.js";
 
@@ -452,6 +462,13 @@ const dragCurrentX = ref(0);
 const hasDragged = ref(false);
 const bannerAutoPlayInterval = ref(null);
 const isClientMounted = ref(false);
+const sidebarAdVariants = ["server", "incentive"];
+const sidebarAdRotateIntervalMs = 10000;
+const currentSidebarAdIndex = ref(0);
+const sidebarAdAutoPlayInterval = ref(null);
+const currentSidebarAdVariant = computed(
+  () => sidebarAdVariants[currentSidebarAdIndex.value] || "server",
+);
 
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -1311,9 +1328,27 @@ const handleMouseLeave = () => {
   startBannerAutoPlay();
 };
 
+const startSidebarAdAutoPlay = () => {
+  if (!isClientMounted.value) return;
+  stopSidebarAdAutoPlay();
+  sidebarAdAutoPlayInterval.value = setInterval(() => {
+    currentSidebarAdIndex.value = (currentSidebarAdIndex.value + 1) % sidebarAdVariants.length;
+  }, sidebarAdRotateIntervalMs);
+};
+
+const stopSidebarAdAutoPlay = () => {
+  if (sidebarAdAutoPlayInterval.value) {
+    clearInterval(sidebarAdAutoPlayInterval.value);
+    sidebarAdAutoPlayInterval.value = null;
+  }
+};
+
 // 生命周期钩子
 onMounted(() => {
   isClientMounted.value = true;
+  currentSidebarAdIndex.value = Math.floor(Math.random() * sidebarAdVariants.length);
+  startSidebarAdAutoPlay();
+
   if (hasBanner.value) {
     currentBannerSlide.value = Math.floor(Math.random() * bannerItems.value.length);
     startBannerAutoPlay();
@@ -1322,6 +1357,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopBannerAutoPlay();
+  stopSidebarAdAutoPlay();
   isClientMounted.value = false;
 });
 </script>
@@ -1344,6 +1380,20 @@ onUnmounted(() => {
   @media screen and (min-width: 1024px) {
     display: block;
   }
+}
+
+.search-sidebar-ad {
+  margin-bottom: var(--spacing-card-md);
+}
+
+.search-sidebar-ad-fade-enter-active,
+.search-sidebar-ad-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.search-sidebar-ad-fade-enter-from,
+.search-sidebar-ad-fade-leave-to {
+  opacity: 0;
 }
 
 .filters-card {
