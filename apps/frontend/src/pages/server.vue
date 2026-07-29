@@ -56,7 +56,7 @@
         <p class="text-[15px]">所标注人数为推荐同时在线范围，请根据实际情况选择合适的套餐</p>
         <p class="text-[15px]">游戏人数在套餐推荐人数之间请参照购买预算选择套餐</p>
         <p class="text-[15px]">
-          例如：我想玩乌托邦，我有五个人玩，我预算足够我购买发烧型4核10G，我预算不够我购买EPYC型4核8G
+          例如：我想玩乌托邦，我有五个人玩，我预算足够我购买热门发烧型6核10G，我预算不够我购买EPYC型6核10G
         </p>
         <h1
           style="
@@ -139,6 +139,7 @@
               <tr v-for="plan in enthusiastPlans" :key="plan.name" class="plan-row">
                 <td class="plan-type">
                   <span class="plan-badge enthusiast">发烧型</span>
+                  <span v-if="plan.popular" class="popular-badge">热门</span>
                 </td>
                 <td class="plan-config">
                   <span class="config-highlight">{{ plan.cpu }}核 {{ plan.memory }}G</span>
@@ -264,9 +265,9 @@ const aff = computed(() => {
 // EPYC型套餐
 const epycPlans = [
   {
-    name: "epyc-4c8g",
-    cpu: 4,
-    memory: 8,
+    name: "epyc-6c10g",
+    cpu: 6,
+    memory: 10,
     players: "2-3人",
     price: 58,
   },
@@ -275,25 +276,26 @@ const epycPlans = [
 // 发烧型套餐
 const enthusiastPlans = [
   {
-    name: "enthusiast-4c10g",
-    cpu: 4,
+    name: "enthusiast-6c10g",
+    cpu: 6,
     memory: 10,
     players: "4-5人",
-    price: 88,
+    price: 98,
+    popular: true,
   },
   {
-    name: "enthusiast-8c12g",
+    name: "enthusiast-8c16g",
     cpu: 8,
-    memory: 12,
+    memory: 16,
     players: "6-8人",
-    price: 108,
+    price: 168,
   },
   {
-    name: "enthusiast-8c18g",
+    name: "enthusiast-8c24g",
     cpu: 8,
-    memory: 18,
-    players: "8-10人",
-    price: 168,
+    memory: 24,
+    players: "8-12人",
+    price: 258,
   },
 ];
 
@@ -425,6 +427,17 @@ onMounted(() => {
 .plan-badge.enthusiast {
   background: rgba(59, 130, 246, 0.12);
   color: #3b82f6;
+}
+
+.popular-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .plan-config {

@@ -2498,12 +2498,14 @@ const VIEW_PAYOUTS = 1 << 9;
 const canViewIncentiveSettings = computed(() => {
   if (auth.value.user?.role === "admin") return true;
 
-  const member =
-    auth.value.user && allMembers?.value
-      ? allMembers.value.find((x) => x.user.id === auth.value.user.id)
-      : null;
-
-  if (!member?.accepted) return false;
+  const projectMember = allMembers?.value?.find(
+    (member) => member.user.id === auth.value.user?.id && member.accepted,
+  );
+  const organizationMember = organization.value?.members?.find(
+    (member) => member.user.id === auth.value.user?.id && member.accepted,
+  );
+  const member = projectMember || organizationMember;
+  if (!member) return false;
 
   const permissions = member.permissions || 0;
   return (

@@ -185,6 +185,12 @@ export const affiliates: Record<string, Affiliate> = {
     link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["vxAmfb3Y"],
   },
+  woyaozuofan: {
+    name: "我要做饭",
+    code: "我要做饭",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["LLxkeMHx"],
+  },
 };
 
 // ============ 自动生成的映射表 (不要手动编辑) ============

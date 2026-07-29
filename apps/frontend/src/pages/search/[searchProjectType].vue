@@ -442,7 +442,22 @@ const bannerItemsConfig = ref({
       slug: "/install-tutorial",
     },
   ],
-  software: [],
+  software: [
+    {
+      image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
+      title: "PCL2",
+      description:
+        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
+      slug: "https://afdian.com/p/0164034c016c11ebafcb52540025c377",
+    },
+    {
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
+      title: "PCL CE",
+      description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
+      slug: "https://github.com/PCL-Community/PCL-CE",
+    },
+  ],
 });
 
 // 获取当前项目类型的 banner 列表
@@ -1282,9 +1297,13 @@ const nextBannerSlide = () => {
   startBannerAutoPlay();
 };
 
+const openBannerTarget = (url) => {
+  window.open(url, "_blank", "noopener");
+};
+
 const goToBannerSlide = (index) => {
   if (index === currentBannerSlide.value) {
-    window.open(bannerItems.value[index].slug, "_blank");
+    openBannerTarget(bannerItems.value[index].slug);
     return;
   }
   currentBannerSlide.value = index;
@@ -1300,7 +1319,7 @@ const handleBannerClick = (e, url) => {
     return;
   }
 
-  window.open(url, "_blank");
+  openBannerTarget(url);
 };
 
 const startBannerAutoPlay = () => {

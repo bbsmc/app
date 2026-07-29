@@ -36,6 +36,77 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("threads", web::get().to(threads_get));
 }
 
+/// 判断用户是否可访问激励申请线程。
+/// accepted 的项目直属成员权限优先于所属组织成员的默认项目权限。
+fn can_access_incentive_application_thread(
+    is_applicant: bool,
+    project_permissions: Option<i64>,
+    organization_permissions: Option<i64>,
+) -> bool {
+    if is_applicant {
+        return true;
+    }
+
+    project_permissions
+        .or(organization_permissions)
+        .and_then(|permissions| {
+            ProjectPermissions::from_bits(permissions as u64)
+        })
+        .is_some_and(|permissions| {
+            permissions.intersects(
+                ProjectPermissions::EDIT_DETAILS
+                    | ProjectPermissions::VIEW_PAYOUTS,
+            )
+        })
+}
+
+async fn authorized_incentive_application_thread_ids(
+    thread_ids: &[i64],
+    user_id: i64,
+    pool: &PgPool,
+) -> Result<HashSet<i64>, ApiError> {
+    if thread_ids.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let applications = sqlx::query!(
+        r#"
+        SELECT a.thread_id AS "thread_id!", a.applicant_user_id,
+               project_tm.permissions AS "project_permissions?",
+               organization_tm.permissions AS "organization_permissions?"
+        FROM incentive_applications a
+        JOIN mods m ON m.id = a.project_id
+        LEFT JOIN team_members project_tm
+            ON project_tm.team_id = m.team_id
+            AND project_tm.user_id = $2
+            AND project_tm.accepted = TRUE
+        LEFT JOIN organizations o ON o.id = m.organization_id
+        LEFT JOIN team_members organization_tm
+            ON organization_tm.team_id = o.team_id
+            AND organization_tm.user_id = $2
+            AND organization_tm.accepted = TRUE
+        WHERE a.thread_id = ANY($1::bigint[])
+          AND a.thread_id IS NOT NULL
+        "#,
+        thread_ids,
+        user_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(applications
+        .into_iter()
+        .filter(|application| {
+            can_access_incentive_application_thread(
+                application.applicant_user_id == user_id,
+                application.project_permissions,
+                application.organization_permissions,
+            )
+        })
+        .map(|application| application.thread_id)
+        .collect())
+}
+
 pub async fn is_authorized_thread(
     thread: &database::models::Thread,
     user: &User,
@@ -181,29 +252,14 @@ pub async fn is_authorized_thread(
         }
         ThreadType::IncentiveApplication => {
             // 激励申请线程：申请人或团队成员可以访问
-            sqlx::query!(
-                r#"
-                SELECT EXISTS(
-                    SELECT 1 FROM incentive_applications a
-                    JOIN mods m ON m.id = a.project_id
-                    LEFT JOIN team_members tm ON tm.team_id = m.team_id
-                        AND tm.user_id = $2
-                        AND tm.accepted = TRUE
-                        AND (
-                            (tm.permissions & $3) = $3
-                            OR (tm.permissions & $4) = $4
-                        )
-                    WHERE a.thread_id = $1 AND (a.applicant_user_id = $2 OR tm.user_id IS NOT NULL)
-                ) as "exists!"
-                "#,
-                thread.id.0,
+            let thread_ids = [thread.id.0];
+            authorized_incentive_application_thread_ids(
+                &thread_ids,
                 user_id.0,
-                ProjectPermissions::EDIT_DETAILS.bits() as i64,
-                ProjectPermissions::VIEW_PAYOUTS.bits() as i64,
+                pool,
             )
-            .fetch_one(pool)
             .await?
-            .exists
+            .contains(&thread.id.0)
         }
     })
 }
@@ -407,39 +463,21 @@ pub async fn filter_authorized_threads(
             .collect::<Vec<_>>();
 
         if !incentive_thread_ids.is_empty() {
-            sqlx::query!(
-                r#"
-                SELECT a.thread_id AS "thread_id!"
-                FROM incentive_applications a
-                JOIN mods m ON m.id = a.project_id
-                LEFT JOIN team_members tm ON tm.team_id = m.team_id
-                    AND tm.user_id = $2
-                    AND tm.accepted = TRUE
-                    AND (
-                        (tm.permissions & $3) = $3
-                        OR (tm.permissions & $4) = $4
-                    )
-                WHERE a.thread_id = ANY($1)
-                  AND a.thread_id IS NOT NULL
-                  AND (a.applicant_user_id = $2 OR tm.user_id IS NOT NULL)
-                "#,
-                &incentive_thread_ids[..],
-                user_id.0,
-                ProjectPermissions::EDIT_DETAILS.bits() as i64,
-                ProjectPermissions::VIEW_PAYOUTS.bits() as i64,
-            )
-            .fetch(&***pool)
-            .map_ok(|row| {
-                check_threads.retain(|x| {
-                    let matched = x.id.0 == row.thread_id;
-                    if matched {
-                        return_threads.push(x.clone());
-                    }
-                    !matched
-                });
-            })
-            .try_collect::<Vec<()>>()
-            .await?;
+            let authorized_thread_ids =
+                authorized_incentive_application_thread_ids(
+                    &incentive_thread_ids,
+                    user_id.0,
+                    pool.get_ref(),
+                )
+                .await?;
+
+            check_threads.retain(|thread| {
+                let matched = authorized_thread_ids.contains(&thread.id.0);
+                if matched {
+                    return_threads.push(thread.clone());
+                }
+                !matched
+            });
         }
     }
 
@@ -1055,5 +1093,52 @@ pub async fn message_delete(
         Ok(HttpResponse::NoContent().body(""))
     } else {
         Err(ApiError::NotFound)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::can_access_incentive_application_thread;
+    use crate::models::teams::ProjectPermissions;
+
+    #[test]
+    fn incentive_applicant_can_always_access_thread() {
+        assert!(can_access_incentive_application_thread(true, None, None));
+    }
+
+    #[test]
+    fn organization_member_with_incentive_permission_can_access_thread() {
+        assert!(can_access_incentive_application_thread(
+            false,
+            None,
+            Some(ProjectPermissions::EDIT_DETAILS.bits() as i64),
+        ));
+    }
+
+    #[test]
+    fn organization_member_with_view_payouts_can_access_thread() {
+        assert!(can_access_incentive_application_thread(
+            false,
+            None,
+            Some(ProjectPermissions::VIEW_PAYOUTS.bits() as i64),
+        ));
+    }
+
+    #[test]
+    fn accepted_project_member_overrides_organization_permissions() {
+        assert!(!can_access_incentive_application_thread(
+            false,
+            Some(ProjectPermissions::empty().bits() as i64),
+            Some(ProjectPermissions::VIEW_PAYOUTS.bits() as i64),
+        ));
+    }
+
+    #[test]
+    fn member_without_incentive_permission_cannot_access_thread() {
+        assert!(!can_access_incentive_application_thread(
+            false,
+            Some(ProjectPermissions::EDIT_BODY.bits() as i64),
+            None,
+        ));
     }
 }

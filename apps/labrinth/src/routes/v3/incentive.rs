@@ -177,9 +177,9 @@ pub struct DailyPoint {
 
 #[derive(Serialize)]
 pub struct ViewerCapability {
-    /// 当前查看者是站点 admin（全局可读，无管理权）
+    /// 当前查看者是站点 admin（admin 身份仅提供全局读取能力）
     pub is_admin: bool,
-    /// 是项目团队 accepted 成员
+    /// 是项目直属团队或所属组织的 accepted 成员
     pub is_team_member: bool,
     /// 有 EDIT_DETAILS 权限（可申请/撤回）
     pub can_manage: bool,
@@ -222,40 +222,22 @@ pub async fn project_incentive_detail(
         .map_err(|_| ApiError::InvalidInput("无效的项目 ID".to_string()))?
         as i64;
 
-    // 计算当前查看者能力
-    let viewer_is_admin = user.role.is_admin();
-    let mut viewer_is_team_member = false;
-    let mut viewer_can_manage = false;
-    let mut viewer_can_view_payouts = false;
-
-    let project_exists = sqlx::query_scalar!(
-        r#"SELECT EXISTS(SELECT 1 FROM mods WHERE id = $1) AS "exists!""#,
+    // admin 始终可读；若 admin 同时也是项目/组织成员，仍返回真实成员能力。
+    let member_permissions = find_member_permissions(
         project_id,
+        user.id.0 as i64,
+        pool.as_ref(),
+        &redis,
     )
-    .fetch_one(pool.as_ref())
     .await?;
-
-    if project_exists {
-        let member = models::TeamMember::get_from_user_id_project(
-            DBProjectId(project_id),
-            DBUserId(user.id.0 as i64),
-            false,
-            pool.as_ref(),
-        )
-        .await?;
-        if let Some(m) = member
-            && m.accepted
-        {
-            viewer_is_team_member = true;
-            viewer_can_manage =
-                m.permissions.contains(ProjectPermissions::EDIT_DETAILS);
-            viewer_can_view_payouts =
-                m.permissions.contains(ProjectPermissions::VIEW_PAYOUTS);
-        }
-    }
+    let viewer = viewer_capability(user.role.is_admin(), member_permissions);
+    let viewer_can_view_payouts =
+        member_permissions.is_some_and(|permissions| {
+            permissions.contains(ProjectPermissions::VIEW_PAYOUTS)
+        });
 
     // 激励详情包含财务数据，非 admin 需要项目内可管理或可查看收益权限。
-    if !(viewer_is_admin || viewer_can_manage || viewer_can_view_payouts) {
+    if !(viewer.is_admin || viewer.can_manage || viewer_can_view_payouts) {
         return Err(ApiError::CustomAuthentication(
             "你没有查看项目激励的权限".to_string(),
         ));
@@ -332,11 +314,7 @@ pub async fn project_incentive_detail(
         current_unit_payout: current_unit,
         next_tier_remaining: next_remaining,
         last_30_days: daily,
-        viewer: ViewerCapability {
-            is_admin: viewer_is_admin,
-            is_team_member: viewer_is_team_member,
-            can_manage: viewer_can_manage,
-        },
+        viewer,
     }))
 }
 
@@ -373,89 +351,111 @@ pub struct ApplicationView {
     pub thread_id: Option<String>,
 }
 
-/// 校验用户是项目团队的 accepted 成员，并视需要校验权限。
-/// 返回项目 team_id。
+/// 选择用户在项目激励流程中的有效成员权限。
+/// 项目直属成员的权限优先于所属组织成员的默认项目权限。
+fn effective_member_permissions(
+    project_member: Option<(bool, ProjectPermissions)>,
+    organization_member: Option<(bool, ProjectPermissions)>,
+) -> Option<ProjectPermissions> {
+    project_member
+        .filter(|(accepted, _)| *accepted)
+        .map(|(_, permissions)| permissions)
+        .or_else(|| {
+            organization_member
+                .filter(|(accepted, _)| *accepted)
+                .map(|(_, permissions)| permissions)
+        })
+}
+
+async fn get_member_permissions(
+    project_id: i64,
+    user_id: i64,
+    pool: &PgPool,
+    redis: &RedisPool,
+) -> Result<ProjectPermissions, ApiError> {
+    find_member_permissions(project_id, user_id, pool, redis)
+        .await?
+        .ok_or_else(|| {
+            ApiError::CustomAuthentication("你不是该项目的成员".to_string())
+        })
+}
+
+async fn find_member_permissions(
+    project_id: i64,
+    user_id: i64,
+    pool: &PgPool,
+    redis: &RedisPool,
+) -> Result<Option<ProjectPermissions>, ApiError> {
+    let project = models::Project::get_id(DBProjectId(project_id), pool, redis)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+
+    let (project_member, organization_member) =
+        models::TeamMember::get_for_project_permissions(
+            &project.inner,
+            DBUserId(user_id),
+            pool,
+        )
+        .await?;
+
+    Ok(effective_member_permissions(
+        project_member.map(|member| (member.accepted, member.permissions)),
+        organization_member.map(|member| (member.accepted, member.permissions)),
+    ))
+}
+
+fn viewer_capability(
+    is_admin: bool,
+    member_permissions: Option<ProjectPermissions>,
+) -> ViewerCapability {
+    ViewerCapability {
+        is_admin,
+        is_team_member: member_permissions.is_some(),
+        can_manage: member_permissions.is_some_and(|permissions| {
+            permissions.contains(ProjectPermissions::EDIT_DETAILS)
+        }),
+    }
+}
+
 async fn ensure_member_with_permission(
     project_id: i64,
     user_id: i64,
     require: Option<ProjectPermissions>,
     pool: &PgPool,
-) -> Result<i64, ApiError> {
-    let team_id_row =
-        sqlx::query!("SELECT team_id FROM mods WHERE id = $1", project_id,)
-            .fetch_optional(pool)
-            .await?;
-    let team_id = team_id_row.ok_or(ApiError::NotFound)?.team_id;
-
-    let member = models::TeamMember::get_from_user_id_project(
-        DBProjectId(project_id),
-        DBUserId(user_id),
-        false,
-        pool,
-    )
-    .await?
-    .ok_or_else(|| {
-        ApiError::CustomAuthentication("你不是该项目的成员".to_string())
-    })?;
-
-    if !member.accepted {
-        return Err(ApiError::CustomAuthentication(
-            "你的成员邀请尚未接受".to_string(),
-        ));
-    }
+    redis: &RedisPool,
+) -> Result<(), ApiError> {
+    let permissions =
+        get_member_permissions(project_id, user_id, pool, redis).await?;
 
     if let Some(required) = require
-        && !member.permissions.contains(required)
+        && !permissions.contains(required)
     {
         return Err(ApiError::CustomAuthentication(
             "你没有执行此操作的权限".to_string(),
         ));
     }
 
-    Ok(team_id)
+    Ok(())
 }
 
 async fn ensure_member_can_view_incentive(
     project_id: i64,
     user_id: i64,
     pool: &PgPool,
-) -> Result<i64, ApiError> {
-    let team_id_row =
-        sqlx::query!("SELECT team_id FROM mods WHERE id = $1", project_id,)
-            .fetch_optional(pool)
-            .await?;
-    let team_id = team_id_row.ok_or(ApiError::NotFound)?.team_id;
+    redis: &RedisPool,
+) -> Result<(), ApiError> {
+    let permissions =
+        get_member_permissions(project_id, user_id, pool, redis).await?;
 
-    let member = models::TeamMember::get_from_user_id_project(
-        DBProjectId(project_id),
-        DBUserId(user_id),
-        false,
-        pool,
-    )
-    .await?
-    .ok_or_else(|| {
-        ApiError::CustomAuthentication("你不是该项目的成员".to_string())
-    })?;
-
-    if !member.accepted {
-        return Err(ApiError::CustomAuthentication(
-            "你的成员邀请尚未接受".to_string(),
-        ));
-    }
-
-    if !member
-        .permissions
-        .contains(ProjectPermissions::EDIT_DETAILS)
-        && !member
-            .permissions
-            .contains(ProjectPermissions::VIEW_PAYOUTS)
+    if !permissions.contains(ProjectPermissions::EDIT_DETAILS)
+        && !permissions.contains(ProjectPermissions::VIEW_PAYOUTS)
     {
         return Err(ApiError::CustomAuthentication(
             "你没有查看项目激励的权限".to_string(),
         ));
     }
 
-    Ok(team_id)
+    Ok(())
 }
 
 /// POST /v3/project/{id}/incentive/apply
@@ -487,6 +487,7 @@ pub async fn apply_incentive(
         user.id.0 as i64,
         Some(ProjectPermissions::EDIT_DETAILS),
         pool.as_ref(),
+        &redis,
     )
     .await?;
 
@@ -633,6 +634,7 @@ pub async fn get_application(
             project_id,
             user.id.0 as i64,
             pool.as_ref(),
+            &redis,
         )
         .await?;
     }
@@ -696,6 +698,7 @@ pub async fn withdraw_application(
         user.id.0 as i64,
         Some(ProjectPermissions::EDIT_DETAILS),
         pool.as_ref(),
+        &redis,
     )
     .await?;
 
@@ -758,4 +761,72 @@ pub async fn withdraw_application(
         .await;
 
     Ok(HttpResponse::NoContent().finish())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{effective_member_permissions, viewer_capability};
+    use crate::models::teams::ProjectPermissions;
+
+    #[test]
+    fn organization_member_permissions_are_used_without_project_override() {
+        let permissions = effective_member_permissions(
+            None,
+            Some((true, ProjectPermissions::EDIT_DETAILS)),
+        );
+
+        assert_eq!(permissions, Some(ProjectPermissions::EDIT_DETAILS));
+    }
+
+    #[test]
+    fn accepted_project_member_permissions_override_organization_defaults() {
+        let permissions = effective_member_permissions(
+            Some((true, ProjectPermissions::empty())),
+            Some((true, ProjectPermissions::EDIT_DETAILS)),
+        );
+
+        assert_eq!(permissions, Some(ProjectPermissions::empty()));
+    }
+
+    #[test]
+    fn pending_project_invite_does_not_override_accepted_organization_member() {
+        let permissions = effective_member_permissions(
+            Some((false, ProjectPermissions::empty())),
+            Some((true, ProjectPermissions::VIEW_PAYOUTS)),
+        );
+
+        assert_eq!(permissions, Some(ProjectPermissions::VIEW_PAYOUTS));
+    }
+
+    #[test]
+    fn admin_member_keeps_real_project_capabilities() {
+        let viewer =
+            viewer_capability(true, Some(ProjectPermissions::EDIT_DETAILS));
+
+        assert!(viewer.is_admin);
+        assert!(viewer.is_team_member);
+        assert!(viewer.can_manage);
+    }
+
+    #[test]
+    fn admin_organization_member_keeps_default_project_capabilities() {
+        let permissions = effective_member_permissions(
+            None,
+            Some((true, ProjectPermissions::EDIT_DETAILS)),
+        );
+        let viewer = viewer_capability(true, permissions);
+
+        assert!(viewer.is_admin);
+        assert!(viewer.is_team_member);
+        assert!(viewer.can_manage);
+    }
+
+    #[test]
+    fn admin_without_membership_stays_global_read_only() {
+        let viewer = viewer_capability(true, None);
+
+        assert!(viewer.is_admin);
+        assert!(!viewer.is_team_member);
+        assert!(!viewer.can_manage);
+    }
 }

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.thread_id AS \"thread_id!\", a.applicant_user_id,\n               project_tm.permissions AS \"project_permissions?\",\n               organization_tm.permissions AS \"organization_permissions?\"\n        FROM incentive_applications a\n        JOIN mods m ON m.id = a.project_id\n        LEFT JOIN team_members project_tm\n            ON project_tm.team_id = m.team_id\n            AND project_tm.user_id = $2\n            AND project_tm.accepted = TRUE\n        LEFT JOIN organizations o ON o.id = m.organization_id\n        LEFT JOIN team_members organization_tm\n            ON organization_tm.team_id = o.team_id\n            AND organization_tm.user_id = $2\n            AND organization_tm.accepted = TRUE\n        WHERE a.thread_id = ANY($1::bigint[])\n          AND a.thread_id IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "thread_id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "applicant_user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_permissions?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "organization_permissions?",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "d7392c2a68d9530dbc3d1b6fccf201ed4c2c2d5ad724a3fd44dcfc1ee0e33eb1"
+}
