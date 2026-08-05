@@ -77,9 +77,19 @@
         </div>
 
         <div class="input-group mt-4">
+          <!-- 链接已由远端生成但未能落库时，仍允许在当前页面会话中重新打开。 -->
+          <button
+            v-if="signUrl && !signUrlPersisted"
+            class="iconified-button brand-button"
+            :disabled="signing"
+            @click="resumeSignOperation"
+          >
+            <FileTextIcon />
+            {{ signModalMode === "release" ? "继续解约" : "继续签约" }}
+          </button>
           <!-- 未签约 / 已解约：去签约 -->
           <button
-            v-if="profile.sign_status === 'unsigned' || profile.sign_status === 'terminated'"
+            v-else-if="profile.sign_status === 'unsigned' || profile.sign_status === 'terminated'"
             class="iconified-button brand-button"
             :disabled="signing || hasActivePayout"
             @click="goSign"
@@ -87,15 +97,30 @@
             <FileTextIcon />
             {{ hasActivePayout ? "提现处理中，暂不可签约" : signing ? "正在跳转..." : "去签约" }}
           </button>
-          <!-- 签约中：刷新状态 -->
-          <button
-            v-else-if="profile.sign_status === 'signing'"
-            class="iconified-button"
-            :disabled="signing"
-            @click="refreshSign"
-          >
-            <UpdatedIcon /> {{ signing ? "查询中..." : "我已完成签约，刷新状态" }}
-          </button>
+          <!-- 签约/解约中：允许恢复仍有效的 H5 链接，并可主动同步状态 -->
+          <template v-else-if="profile.sign_status === 'signing'">
+            <button
+              v-if="profile.sign_url || signUrl"
+              class="iconified-button brand-button"
+              :disabled="signing"
+              @click="resumeSignOperation"
+            >
+              <FileTextIcon />
+              {{ profile.sign_operation === "release" ? "继续解约" : "继续签约" }}
+            </button>
+            <button class="iconified-button" :disabled="signing" @click="refreshSign">
+              <UpdatedIcon />
+              {{
+                signing
+                  ? "查询中..."
+                  : profile.sign_operation_expired
+                    ? "链接已过期，刷新状态"
+                    : profile.sign_operation === "release"
+                      ? "我已完成解约，刷新状态"
+                      : "我已完成签约，刷新状态"
+              }}
+            </button>
+          </template>
           <!-- 已签约：申请解约（生成 H5 解约页面，用户扫码完成手机号/人脸验证） -->
           <button
             v-else
@@ -113,7 +138,7 @@
         </div>
 
         <p v-if="hasActivePayout" class="warn">
-          当前有提现订单正在处理中。提现完成或由管理员退回前，不能修改签约状态或发起解约。
+          当前有提现订单正在处理中。提现完成或由管理员退回前，不能修改实名资料、收款账号、签约状态或发起解约。
         </p>
 
         <p v-if="signError" class="invalid">{{ signError }}</p>
@@ -163,10 +188,17 @@
           />
         </label>
 
+        <p v-if="hasActivePayout" class="warn">
+          当前有提现订单正在处理中，暂不能保存或修改实名资料与收款账号。
+        </p>
         <p v-if="submitError" class="invalid">{{ submitError }}</p>
 
         <div class="input-group">
-          <button class="iconified-button brand-button" type="submit" :disabled="submitting">
+          <button
+            class="iconified-button brand-button"
+            type="submit"
+            :disabled="submitting || hasActivePayout"
+          >
             <SaveIcon /> {{ submitting ? "保存中..." : "保存信息" }}
           </button>
           <button v-if="editing" type="button" class="iconified-button" @click="cancelEdit">
@@ -226,7 +258,7 @@
       </div>
       <template #actions>
         <div class="input-group">
-          <button class="iconified-button" @click="refreshSign">
+          <button class="iconified-button" :disabled="signing" @click="refreshSign">
             <UpdatedIcon />
             {{ signModalMode === "release" ? "我已完成解约" : "我已完成签约" }}
           </button>
@@ -271,6 +303,7 @@ const signError = ref("");
 const signModalRef = ref(null);
 const releaseConfirmRef = ref(null);
 const signUrl = ref("");
+const signUrlPersisted = ref(true);
 const signModalMode = ref("sign"); // "sign" | "release"
 
 const route = useRoute();
@@ -311,8 +344,10 @@ const signStatusMap = {
   signed: { label: "已签约", cls: "status-signed" },
   terminated: { label: "已解约", cls: "status-terminated" },
 };
-const signStatusLabel = computed(
-  () => signStatusMap[profile.value?.sign_status]?.label ?? "未签约",
+const signStatusLabel = computed(() =>
+  profile.value?.sign_operation === "release"
+    ? "解约中"
+    : (signStatusMap[profile.value?.sign_status]?.label ?? "未签约"),
 );
 const signStatusClass = computed(
   () => signStatusMap[profile.value?.sign_status]?.cls ?? "status-unsigned",
@@ -339,6 +374,10 @@ function cancelEdit() {
 
 async function submitProfile() {
   submitError.value = "";
+  if (hasActivePayout.value) {
+    submitError.value = "当前有提现订单正在处理中，暂不能修改实名资料或收款账号。";
+    return;
+  }
   if (!form.real_name || !form.id_card || !form.phone || !form.alipay_account) {
     submitError.value = "请完整填写所有必填项";
     return;
@@ -366,6 +405,7 @@ async function submitProfile() {
 }
 
 async function goSign() {
+  if (signing.value) return;
   signError.value = "";
   if (hasActivePayout.value) {
     signError.value = "当前有提现订单正在处理中，暂不能发起签约。";
@@ -387,14 +427,30 @@ async function goSign() {
       throw new Error("云账户未返回签约 URL");
     }
     signUrl.value = resp.url;
+    signUrlPersisted.value = resp.url_persisted !== false;
     signModalMode.value = "sign";
-    await refreshProfile();
     signModalRef.value?.show();
+    notifyUnpersistedSignUrl(resp.url_persisted, "签约");
+    await refreshProfileAfterOperation();
   } catch (err) {
     signError.value = err?.data?.description || err?.message || "发起签约失败";
   } finally {
     signing.value = false;
   }
+}
+
+function resumeSignOperation() {
+  const url = profile.value?.sign_url || signUrl.value;
+  if (!url) {
+    signError.value = "当前操作链接不可用，请先刷新签约状态。";
+    return;
+  }
+  signError.value = "";
+  signUrl.value = url;
+  if (profile.value?.sign_operation) {
+    signModalMode.value = profile.value.sign_operation === "release" ? "release" : "sign";
+  }
+  signModalRef.value?.show();
 }
 
 // 点击「申请解约」按钮 → 弹出确认弹窗
@@ -414,6 +470,7 @@ function goRelease() {
 
 // 用户在 ConfirmModal 上点「发起解约」后真实发起请求
 async function doRelease() {
+  if (signing.value) return;
   signError.value = "";
   if (hasActivePayout.value) {
     signError.value = "当前有提现订单正在处理中，暂不能发起解约。";
@@ -435,8 +492,11 @@ async function doRelease() {
       throw new Error("云账户未返回解约 URL");
     }
     signUrl.value = resp.url;
+    signUrlPersisted.value = resp.url_persisted !== false;
     signModalMode.value = "release";
     signModalRef.value?.show();
+    notifyUnpersistedSignUrl(resp.url_persisted, "解约");
+    await refreshProfileAfterOperation();
   } catch (err) {
     signError.value = err?.data?.description || err?.message || "发起解约失败";
     data.$notify({
@@ -455,8 +515,38 @@ function closeSignModal() {
 }
 
 function onSignModalHide() {
-  // 关闭弹窗后清空 URL（避免缓存残留），下次点"去签约"会重新生成
+  // 已落库的链接可从资料恢复；保存失败时保留当前会话中的链接，供用户重开。
+  if (signUrlPersisted.value) {
+    signUrl.value = "";
+  }
+}
+
+function notifyUnpersistedSignUrl(urlPersisted, operationName) {
+  if (urlPersisted !== false) return;
+  data.$notify({
+    group: "main",
+    title: `${operationName}链接暂未保存`,
+    text: "链接仍可在当前页面继续使用，请勿刷新页面；若离开页面，需等待当前操作过期后重试。",
+    type: "warn",
+  });
+}
+
+function clearTransientSignUrl() {
+  signUrlPersisted.value = true;
   signUrl.value = "";
+}
+
+async function refreshProfileAfterOperation() {
+  try {
+    await refreshProfile();
+  } catch (err) {
+    data.$notify({
+      group: "main",
+      title: "资料刷新失败",
+      text: err?.data?.description || err?.message || "操作链接已生成，请稍后刷新页面。",
+      type: "warn",
+    });
+  }
 }
 
 async function copySignUrl() {
@@ -482,20 +572,47 @@ async function copySignUrl() {
 }
 
 async function refreshSign() {
+  if (signing.value) return;
   signError.value = "";
   signing.value = true;
+  const mode = profile.value?.sign_operation || signModalMode.value;
   try {
     const resp = await useBaseFetch("yunzhanghu/sign/refresh", {
       method: "POST",
       apiVersion: 3,
     });
-    await refreshProfile();
+    await refreshProfileAfterOperation();
     const status = resp?.sign_status ?? profile.value?.sign_status;
-    const mode = signModalMode.value;
+
+    if (resp?.operation_pending) {
+      data.$notify({
+        group: "main",
+        title: mode === "release" ? "尚未完成解约" : "尚未完成签约",
+        text: "当前 H5 操作仍在有效期内，可继续扫码完成或稍后再次刷新。",
+        type: "warn",
+      });
+      return;
+    }
+
+    if (resp?.operation_expired) {
+      clearTransientSignUrl();
+      signModalRef.value?.hide();
+      data.$notify({
+        group: "main",
+        title: "操作链接已过期",
+        text:
+          mode === "release"
+            ? "云账户仍为已签约状态，现已恢复，可重新申请解约。"
+            : "云账户尚未完成签约，现可重新发起签约。",
+        type: "warn",
+      });
+      return;
+    }
 
     if (mode === "release") {
       // 解约模式
       if (status === "terminated") {
+        clearTransientSignUrl();
         signModalRef.value?.hide();
         data.$notify({
           group: "main",
@@ -520,6 +637,7 @@ async function refreshSign() {
       }
     } else if (status === "signed") {
       // 签约模式
+      clearTransientSignUrl();
       signModalRef.value?.hide();
       data.$notify({
         group: "main",

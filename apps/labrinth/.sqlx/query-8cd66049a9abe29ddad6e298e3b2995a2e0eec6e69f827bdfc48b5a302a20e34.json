@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT status, processing_owner\n        FROM admin_payout_batches\n        WHERE id = $1\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "processing_owner",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "8cd66049a9abe29ddad6e298e3b2995a2e0eec6e69f827bdfc48b5a302a20e34"
+}

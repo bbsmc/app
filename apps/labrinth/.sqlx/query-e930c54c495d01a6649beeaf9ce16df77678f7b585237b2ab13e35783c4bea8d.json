@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT user_id, status, amount, method, method_address,\n               yunzhanghu_order_id, yunzhanghu_submit_started_at\n        FROM payouts\n        WHERE id = $1\n        FOR UPDATE\n        ",
+  "query": "\n        SELECT user_id, status, amount, fee, method, method_address,\n               yunzhanghu_order_id, yunzhanghu_submit_started_at\n        FROM payouts\n        WHERE id = $1\n        FOR UPDATE\n        ",
   "describe": {
     "columns": [
       {
@@ -20,21 +20,26 @@
       },
       {
         "ordinal": 3,
+        "name": "fee",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
         "name": "method",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "method_address",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "yunzhanghu_order_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "yunzhanghu_submit_started_at",
         "type_info": "Timestamptz"
       }
@@ -51,8 +56,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "5f50e8e2dde0c606ceef3e52eef29ac3f0b329c070828275c284bd1f129e3798"
+  "hash": "e930c54c495d01a6649beeaf9ce16df77678f7b585237b2ab13e35783c4bea8d"
 }

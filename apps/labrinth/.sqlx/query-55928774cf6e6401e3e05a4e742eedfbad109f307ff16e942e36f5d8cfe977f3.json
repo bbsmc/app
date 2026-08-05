@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            SELECT 1\n            FROM payouts\n            WHERE user_id = $1\n              AND status IN ('in-transit', 'cancelling')\n        ) AS \"active!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "active!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "55928774cf6e6401e3e05a4e742eedfbad109f307ff16e942e36f5d8cfe977f3"
+}

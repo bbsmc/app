@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE yunzhanghu_unsign_reconciliations\n            SET lease_owner = NULL,\n                lease_expires_at = NULL,\n                last_error = 'marker_appeared_after_claim',\n                next_attempt_at = NOW() + ($3::double precision * INTERVAL '1 second'),\n                updated_at = NOW()\n            WHERE nonce = $1\n              AND status = 'pending'\n              AND lease_owner = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e78db871f70693879276f900515a77f9794807f51dab15d225cd9ef3a59b086d"
+}

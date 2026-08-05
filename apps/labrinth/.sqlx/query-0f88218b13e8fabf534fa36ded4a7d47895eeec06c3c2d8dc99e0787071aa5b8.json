@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id\n        FROM payouts\n        WHERE user_id = $1 AND status IN ('success', 'in-transit')\n        FOR SHARE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0f88218b13e8fabf534fa36ded4a7d47895eeec06c3c2d8dc99e0787071aa5b8"
+}

@@ -1,4 +1,7 @@
 import { getProjectTypeForUrlShorthand } from "~/helpers/projects.js";
+import { formatMoney } from "~/utils/format-money.js";
+
+export { formatMoney };
 
 export default defineNuxtPlugin((nuxtApp) => {
   const tagStore = useTags();
@@ -135,24 +138,6 @@ export const formatNumber = (number, abbreviate = true) => {
     return `${(x / 10000).toFixed(1).toString()}万`;
   } else {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  }
-};
-
-export const formatMoney = (number, abbreviate = false) => {
-  number = Math.floor(number * 100) / 100;
-  const x = +number;
-  if (x >= 100000000 && abbreviate) {
-    return "¥" + (x / 100000000).toFixed(2).toString() + "亿";
-  } else if (x >= 10000 && abbreviate) {
-    return "¥" + (x / 10000).toFixed(2).toString() + "万";
-  } else {
-    return (
-      "¥" +
-      x
-        .toFixed(2)
-        .toString()
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-    );
   }
 };
 

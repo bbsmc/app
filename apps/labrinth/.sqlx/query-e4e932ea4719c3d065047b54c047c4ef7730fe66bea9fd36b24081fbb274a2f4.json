@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT status, release_at\n        FROM yunzhanghu_unsign_reconciliations\n        WHERE nonce = $1\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "release_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e4e932ea4719c3d065047b54c047c4ef7730fe66bea9fd36b24081fbb274a2f4"
+}

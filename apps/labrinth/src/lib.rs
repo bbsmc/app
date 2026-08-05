@@ -266,6 +266,21 @@ pub fn app_setup(
         }
     });
 
+    // 解约回调状态最终一致性核对：云账户重试窗口结束后仍可自动收敛，避免
+    // release:webhook 安全 marker 永久阻断用户签约状态。
+    let pool_ref = pool.clone();
+    let redis_ref = redis_pool.clone();
+    scheduler.run(std::time::Duration::from_secs(60 * 5), move || {
+        let pool_ref = pool_ref.clone();
+        let redis_ref = redis_ref.clone();
+        async move {
+            crate::routes::v3::yunzhanghu::poll_pending_unsign_reconciliations(
+                pool_ref, redis_ref,
+            )
+            .await;
+        }
+    });
+
     let analytics_queue = Arc::new(AnalyticsQueue::new());
     {
         let client_ref = clickhouse.clone();

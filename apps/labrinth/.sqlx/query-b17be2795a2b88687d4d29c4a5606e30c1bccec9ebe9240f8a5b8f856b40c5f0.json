@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT chunk_index, amount, status, payout_id\n        FROM admin_payout_batch_orders\n        WHERE batch_id = $1 AND user_id = $2\n        ORDER BY chunk_index\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "payout_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "b17be2795a2b88687d4d29c4a5606e30c1bccec9ebe9240f8a5b8f856b40c5f0"
+}

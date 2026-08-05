@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO admin_payout_batch_orders (\n                    batch_id, user_id, chunk_index, amount\n                )\n                VALUES ($1, $2, $3, $4)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8",
+        "Int4",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7ce790986e9559a17ed7a575d5fb726bf58453c48fc9d88fe18a9567244d6e14"
+}

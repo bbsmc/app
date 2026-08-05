@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin_payout_batch_items\n        SET status = 'created', error_code = NULL\n        WHERE batch_id = $1\n          AND user_id = $2\n          AND status IN ('pending', 'failed')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "65fce6a950e84d2696ef4615536b66e7e78868e2166874730d11caa1ab35e686"
+}

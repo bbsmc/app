@@ -260,7 +260,7 @@ generate_ids!(
     pub generate_payout_id,
     PayoutId,
     8,
-    "SELECT EXISTS(SELECT 1 FROM oauth_access_tokens WHERE id=$1)",
+    "SELECT EXISTS(SELECT 1 FROM payouts WHERE id=$1)",
     PayoutId
 );
 

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id AS \"id!\"\n        FROM users\n        WHERE id = ANY($1::bigint[])\n        ORDER BY id\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "70205c098de037790ba3dd7d8ae5d629b6596a037c9ae236d723d99d57f72c4c"
+}

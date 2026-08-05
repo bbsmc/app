@@ -1235,6 +1235,7 @@ pub struct IncentiveStats {
     pub total_eff_downloads: i64,
     pub total_pending: rust_decimal::Decimal,
     pub total_settled: rust_decimal::Decimal,
+    pub total_withdrawable: rust_decimal::Decimal,
     pub total_voided: rust_decimal::Decimal,
     pub today_eff_downloads: i64,
     pub today_amount: rust_decimal::Decimal,
@@ -1278,17 +1279,58 @@ pub async fn incentive_stats(
     check_is_admin_from_headers(&req, &**pool, &redis, &session_queue, None)
         .await?;
 
-    // 1. 全局汇总（基于 incentive_project_counters）
+    // 1. 全局汇总；待提现金额沿用 payout/balance 的 available 口径，
+    // 按用户截到分并将负余额归零，避免负余额抵消其他用户的正余额。
+    // 同时排除承接注销用户历史收益的 Ghost 账号。
     let totals = sqlx::query!(
         r#"
+        WITH earnings AS (
+            SELECT
+                user_id,
+                COALESCE(SUM(amount), 0)::numeric AS earned
+            FROM payouts_values
+            WHERE date_available <= NOW()
+              AND user_id <> $1
+            GROUP BY user_id
+        ), withdrawn AS (
+            SELECT
+                user_id,
+                COALESCE(SUM(amount), 0)::numeric AS amount,
+                COALESCE(SUM(
+                    CASE
+                        WHEN method = 'yunzhanghu_alipay' THEN 0
+                        ELSE COALESCE(fee, 0)
+                    END
+                ), 0)::numeric AS old_channel_fees
+            FROM payouts
+            WHERE status IN ('success', 'in-transit')
+              AND user_id <> $1
+            GROUP BY user_id
+        ), withdrawable_users AS (
+            SELECT
+                e.user_id,
+                TRUNC(GREATEST(
+                    ROUND(e.earned, 16)
+                        - ROUND(COALESCE(w.amount, 0), 16)
+                        - ROUND(COALESCE(w.old_channel_fees, 0), 16),
+                    0
+                ), 2) AS amount
+            FROM earnings e
+            LEFT JOIN withdrawn w ON w.user_id = e.user_id
+        )
         SELECT
             COUNT(*) AS "total_projects!",
             COALESCE(SUM(lifetime_eff_downloads), 0)::bigint AS "total_eff_downloads!",
             COALESCE(SUM(pending_amount), 0)::numeric AS "total_pending!",
             COALESCE(SUM(settled_amount), 0)::numeric AS "total_settled!",
+            COALESCE((
+                SELECT SUM(amount)
+                FROM withdrawable_users
+            ), 0)::numeric AS "total_withdrawable!",
             COALESCE(SUM(voided_amount), 0)::numeric AS "total_voided!"
         FROM incentive_project_counters
         "#,
+        crate::models::users::DELETED_USER.0 as i64,
     )
     .fetch_one(pool.as_ref())
     .await?;
@@ -1401,6 +1443,7 @@ pub async fn incentive_stats(
         total_eff_downloads: totals.total_eff_downloads,
         total_pending: totals.total_pending,
         total_settled: totals.total_settled,
+        total_withdrawable: totals.total_withdrawable,
         total_voided: totals.total_voided,
         today_eff_downloads: today.eff_downloads,
         today_amount: today.amount,

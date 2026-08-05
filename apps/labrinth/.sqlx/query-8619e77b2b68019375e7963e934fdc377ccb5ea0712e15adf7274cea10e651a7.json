@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin_payout_batches (\n            id, requested_by, requested_by_username, expires_at\n        )\n        VALUES ($1, $2, $3, $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8619e77b2b68019375e7963e934fdc377ccb5ea0712e15adf7274cea10e651a7"
+}

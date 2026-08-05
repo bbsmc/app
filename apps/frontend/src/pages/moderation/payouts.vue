@@ -1,6 +1,6 @@
 <template>
   <div>
-    <NewModal ref="confirmModal">
+    <NewModal ref="confirmModal" :closable="!confirming" :close-on-esc="!confirming">
       <template #title>
         <div class="truncate text-lg font-extrabold text-contrast">确认转账</div>
       </template>
@@ -64,7 +64,7 @@
         <Checkbox
           v-model="confirmed"
           class="confirm-check"
-          :disabled="!active.kyc_matches_payout"
+          :disabled="confirming || !active.kyc_matches_payout"
           description="确认核对无误"
         >
           我已核对姓名、支付宝账号、金额和订单号，确认提交云账户转账。
@@ -87,7 +87,7 @@
       </div>
     </NewModal>
 
-    <NewModal ref="rejectModal">
+    <NewModal ref="rejectModal" :closable="!rejecting" :close-on-esc="!rejecting">
       <template #title>
         <div class="truncate text-lg font-extrabold text-contrast">退回提现</div>
       </template>
@@ -153,25 +153,74 @@
       </div>
     </NewModal>
 
-    <section class="universal-card">
+    <section class="universal-card" :aria-busy="payoutStatus === 'pending'">
       <div class="header-section">
         <div>
           <h2>提现处理</h2>
           <p class="description">管理员核对后提交云账户转账，处理中订单会优先展示。</p>
         </div>
-        <button class="iconified-button" :disabled="loading" @click="refresh">
+        <button
+          class="iconified-button"
+          :disabled="loading || detailLoading || confirming || rejecting"
+          @click="refreshPayouts(true)"
+        >
           <UpdatedIcon aria-hidden="true" />
           刷新
         </button>
+      </div>
+
+      <p v-if="!loading && !payoutError" class="payout-summary-scope">
+        全局待转账汇总，不受下方状态筛选影响。
+      </p>
+      <div
+        v-if="!loading && !payoutError"
+        class="payout-summary-grid"
+        role="group"
+        aria-label="全局待转账金额汇总"
+      >
+        <div class="payout-summary-card">
+          <span class="payout-summary-label">待转账订单金额</span>
+          <strong class="payout-summary-value">
+            {{ $formatMoney(payoutPage?.pending_transfer_summary?.transfer_amount ?? 0) }}
+          </strong>
+          <small class="payout-summary-hint">
+            共 {{ payoutPage?.pending_transfer_summary?.order_count ?? 0 }} 笔，按预计到账金额汇总
+          </small>
+        </div>
+        <div class="payout-summary-card">
+          <span class="payout-summary-label">额外服务费（6.8%）</span>
+          <strong class="payout-summary-value fee">
+            {{ $formatMoney(payoutPage?.pending_transfer_summary?.additional_service_fee ?? 0) }}
+          </strong>
+          <small class="payout-summary-hint">待转账订单金额 × 6.8%</small>
+        </div>
+        <div class="payout-summary-card total">
+          <span class="payout-summary-label">含服务费总金额</span>
+          <strong class="payout-summary-value total">
+            {{ $formatMoney(payoutPage?.pending_transfer_summary?.total_with_service_fee ?? 0) }}
+          </strong>
+          <small class="payout-summary-hint">待转账订单金额 + 额外服务费</small>
+        </div>
       </div>
 
       <div class="tabs-wrapper">
         <NavTabs :links="statusTabs" query="status" />
       </div>
 
-      <div v-if="loading" class="loading-section">
+      <div v-if="loading" class="loading-section" role="status" aria-live="polite">
         <UpdatedIcon aria-hidden="true" class="animate-spin" />
         <span>加载中...</span>
+      </div>
+
+      <div v-else-if="payoutError" class="load-error" role="alert">
+        <InfoIcon aria-hidden="true" />
+        <div>
+          <b>提现数据加载失败</b>
+          <p>{{ payoutErrorText }}</p>
+        </div>
+        <ButtonStyled>
+          <button @click="refreshPayouts(true)">重试</button>
+        </ButtonStyled>
       </div>
 
       <div v-else-if="payouts?.length" class="payout-list">
@@ -230,13 +279,19 @@
 
           <div v-if="item.status === 'in-transit'" class="payout-actions">
             <ButtonStyled color="green">
-              <button :disabled="detailLoading || !canConfirm(item)" @click="openConfirm(item)">
+              <button
+                :disabled="detailLoading || confirming || rejecting || !canConfirm(item)"
+                @click="openConfirm(item)"
+              >
                 <CheckIcon aria-hidden="true" />
                 {{ detailLoading ? "加载中..." : "确认转账" }}
               </button>
             </ButtonStyled>
             <ButtonStyled color="red">
-              <button :disabled="rejecting || !canReject(item)" @click="openReject(item)">
+              <button
+                :disabled="detailLoading || confirming || rejecting || !canReject(item)"
+                @click="openReject(item)"
+              >
                 <XIcon aria-hidden="true" />
                 退回提现
               </button>
@@ -250,7 +305,13 @@
         <p>{{ emptyText }}</p>
       </div>
 
-      <Pagination :page="page" :count="pages" :link-function="pageLink" @switch-page="changePage" />
+      <Pagination
+        v-if="!loading && !payoutError"
+        :page="page"
+        :count="pages"
+        :link-function="pageLink"
+        @switch-page="changePage"
+      />
     </section>
   </div>
 </template>
@@ -263,6 +324,7 @@ import CheckIcon from "~/assets/images/utils/check.svg?component";
 import InfoIcon from "~/assets/images/utils/info.svg?component";
 import UpdatedIcon from "~/assets/images/utils/updated.svg?component";
 import XIcon from "~/assets/images/utils/x.svg?component";
+import { subtractMoney } from "~/utils/format-money.js";
 
 const auth = await useAuth();
 const app = useNuxtApp();
@@ -287,6 +349,7 @@ const rejectModal = ref(null);
 const rejectActive = ref(null);
 const rejectReason = ref("");
 const rejecting = ref(false);
+let detailRequestId = 0;
 const pageSize = 20;
 const allowedStatuses = ["all", "in-transit", "success", "failed", "cancelled"];
 
@@ -311,8 +374,10 @@ const statusTabs = computed(() => [
 
 const {
   data: payoutPage,
+  error: payoutError,
   pending: loading,
   refresh,
+  status: payoutStatus,
 } = await useAsyncData(
   "moderation-payouts-admin",
   () => {
@@ -334,6 +399,12 @@ const {
       total: 0,
       page: 1,
       page_size: pageSize,
+      pending_transfer_summary: {
+        order_count: 0,
+        transfer_amount: "0.00",
+        additional_service_fee: "0.00",
+        total_with_service_fee: "0.00",
+      },
     }),
     watch: [selectedStatus, page],
   },
@@ -342,21 +413,55 @@ const {
 const payouts = computed(() => payoutPage.value?.items || []);
 const total = computed(() => payoutPage.value?.total || 0);
 const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const payoutErrorText = computed(
+  () =>
+    payoutError.value?.data?.description ||
+    payoutError.value?.message ||
+    "无法加载提现订单与金额汇总，请稍后重试。",
+);
 const emptyText = computed(() =>
   selectedStatus.value === "all" ? "暂无提现订单" : `暂无${statusLabel(selectedStatus.value)}提现`,
 );
 
+watch([selectedStatus, page], () => {
+  if (detailLoading.value) {
+    detailRequestId += 1;
+    detailLoading.value = false;
+  }
+});
+
+async function refreshPayouts(notifyOnError = false) {
+  await refresh();
+  if (!payoutError.value) return true;
+
+  if (notifyOnError) {
+    app.$notify({
+      group: "main",
+      title: "刷新失败",
+      text: payoutErrorText.value,
+      type: "error",
+    });
+  }
+  return false;
+}
+
 async function openConfirm(item) {
+  if (detailLoading.value || confirming.value || rejecting.value) return;
+
+  const requestId = ++detailRequestId;
   detailLoading.value = true;
   confirmed.value = false;
   active.value = null;
 
   try {
-    active.value = await useBaseFetch(`payout/admin/${item.id}`, {
+    const detail = await useBaseFetch(`payout/admin/${item.id}`, {
       apiVersion: 3,
     });
+    if (requestId !== detailRequestId) return;
+    active.value = detail;
     confirmModal.value?.show();
   } catch (err) {
+    if (requestId !== detailRequestId) return;
     app.$notify({
       group: "main",
       title: "加载失败",
@@ -364,33 +469,44 @@ async function openConfirm(item) {
       type: "error",
     });
   } finally {
-    detailLoading.value = false;
+    if (requestId === detailRequestId) detailLoading.value = false;
   }
 }
 
 function openReject(item) {
+  if (detailLoading.value || confirming.value || rejecting.value) return;
   rejectActive.value = item;
   rejectReason.value = "";
   rejectModal.value?.show();
 }
 
 async function doConfirm() {
-  if (!active.value || !confirmed.value) return;
+  if (confirming.value || rejecting.value || !active.value || !confirmed.value) return;
 
+  const payoutId = active.value.id;
+  const orderId = active.value.order_id;
   confirming.value = true;
   try {
-    await useBaseFetch(`payout/admin/${active.value.id}/confirm`, {
+    await useBaseFetch(`payout/admin/${payoutId}/confirm`, {
       method: "POST",
       apiVersion: 3,
     });
     app.$notify({
       group: "main",
       title: "已提交转账",
-      text: `${active.value.order_id} 已提交云账户处理。`,
+      text: `${orderId} 已提交云账户处理。`,
       type: "success",
     });
     confirmModal.value?.hide();
-    await refresh();
+    const refreshed = await refreshPayouts();
+    if (!refreshed) {
+      app.$notify({
+        group: "main",
+        title: "转账已提交，页面刷新失败",
+        text: "转账请求已经提交，但列表与金额汇总尚未更新，请点击刷新重试。",
+        type: "warn",
+      });
+    }
   } catch (err) {
     app.$notify({
       group: "main",
@@ -404,25 +520,36 @@ async function doConfirm() {
 }
 
 async function doReject() {
-  if (!rejectActive.value) return;
+  if (confirming.value || rejecting.value || !rejectActive.value) return;
 
+  const payoutId = rejectActive.value.id;
+  const orderId = rejectActive.value.order_id;
+  const reason = rejectReason.value.trim();
   rejecting.value = true;
   try {
-    await useBaseFetch(`payout/admin/${rejectActive.value.id}/reject`, {
+    await useBaseFetch(`payout/admin/${payoutId}/reject`, {
       method: "POST",
       apiVersion: 3,
       body: {
-        reason: rejectReason.value.trim() || undefined,
+        reason: reason || undefined,
       },
     });
     app.$notify({
       group: "main",
       title: "已退回提现",
-      text: `${rejectActive.value.order_id} 已退回，用户余额已释放。`,
+      text: `${orderId} 已退回，用户余额已释放。`,
       type: "success",
     });
     rejectModal.value?.hide();
-    await refresh();
+    const refreshed = await refreshPayouts();
+    if (!refreshed) {
+      app.$notify({
+        group: "main",
+        title: "提现已退回，页面刷新失败",
+        text: "提现已经退回，但列表与金额汇总尚未更新，请点击刷新重试。",
+        type: "warn",
+      });
+    }
   } catch (err) {
     app.$notify({
       group: "main",
@@ -448,7 +575,8 @@ function canReject(item) {
 }
 
 function arrivalAmount(item) {
-  return Math.max(0, Number(item?.amount || 0) - Number(item?.fee || 0));
+  const amount = subtractMoney(item?.amount || 0, item?.fee || 0);
+  return amount.startsWith("-") ? "0.00" : amount;
 }
 
 function payoutStateLabel(item) {
@@ -551,6 +679,56 @@ function formatDateTime(value) {
   color: var(--color-text);
 }
 
+.payout-summary-scope {
+  margin: 0 0 var(--gap-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.payout-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-sm);
+  margin-bottom: var(--gap-lg);
+}
+
+.payout-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  min-width: 0;
+  padding: var(--gap-md);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+
+  &.total {
+    border-color: var(--color-green);
+  }
+}
+
+.payout-summary-label,
+.payout-summary-hint {
+  color: var(--color-text);
+}
+
+.payout-summary-hint {
+  font-size: var(--font-size-sm);
+}
+
+.payout-summary-value {
+  color: var(--color-heading);
+  font-size: 1.35rem;
+
+  &.fee {
+    color: var(--color-orange, #d97706);
+  }
+
+  &.total {
+    color: var(--color-green);
+  }
+}
+
 .tabs-wrapper {
   margin-bottom: var(--gap-lg);
 }
@@ -561,6 +739,32 @@ function formatDateTime(value) {
   align-items: center;
   gap: var(--gap-sm);
   color: var(--color-text);
+}
+
+.load-error {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+  padding: var(--gap-md);
+  border: 1px solid var(--color-red);
+  border-radius: var(--radius-md);
+  background: var(--color-red-bg, rgba(220, 38, 38, 0.08));
+  color: var(--color-red);
+
+  > svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  p {
+    margin: var(--gap-xs) 0 0;
+  }
 }
 
 .payout-list {
@@ -737,6 +941,10 @@ code {
 }
 
 @media (max-width: 700px) {
+  .payout-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .header-section,
   .payout-item,
   .payout-header {
@@ -754,6 +962,11 @@ code {
   }
 
   .modal-actions {
+    flex-direction: column;
+  }
+
+  .load-error {
+    align-items: stretch;
     flex-direction: column;
   }
 }

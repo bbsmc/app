@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            SELECT 1\n            FROM user_yunzhanghu_profiles\n            WHERE sign_status = 'signing'\n              AND sign_nonce = $1\n        ) AS \"exists!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ee6444edac3dc6bfce7da57ad34b21e609cbf594b29fa7f6f70ebf6d9b60b6c6"
+}

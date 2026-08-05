@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE yunzhanghu_unsign_reconciliations\n            SET status = 'resolved',\n                lease_owner = NULL,\n                lease_expires_at = NULL,\n                last_error = 'stale_event',\n                resolved_status = 'ignored',\n                resolved_at = NOW(),\n                updated_at = NOW()\n            WHERE nonce = $1 AND status = 'pending'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d645e2e76b0594173938cb9e67e3cc44a6ba6cc018a04a40274c3276f79bf1f7"
+}

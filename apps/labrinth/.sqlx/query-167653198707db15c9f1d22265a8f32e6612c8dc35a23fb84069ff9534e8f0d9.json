@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM admin_payout_batches\n        WHERE id IN (\n            SELECT id\n            FROM admin_payout_batches\n            WHERE status = 'previewed'\n              AND expires_at < NOW()\n              AND NOT EXISTS (\n                  SELECT 1\n                  FROM admin_payout_batch_events e\n                  WHERE e.batch_id = admin_payout_batches.id\n              )\n            ORDER BY expires_at\n            LIMIT $1\n            FOR UPDATE SKIP LOCKED\n        )\n          AND status = 'previewed'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "167653198707db15c9f1d22265a8f32e6612c8dc35a23fb84069ff9534e8f0d9"
+}

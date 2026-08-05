@@ -15,8 +15,9 @@ use crate::routes::ApiError;
 use crate::util::yunzhanghu::api::CERTIFICATE_TYPE_IDCARD;
 use crate::util::yunzhanghu::{NotifyEnvelope, YzhClient, api as yzh_api};
 use actix_web::{HttpRequest, HttpResponse, get, post, web};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use hex::ToHex;
+use hmac::{Hmac, Mac};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -28,10 +29,161 @@ use validator::Validate;
 
 const YZH_NOTIFY_REPLAY_NAMESPACE: &str = "yunzhanghu_notify_seen";
 const YZH_NOTIFY_REPLAY_TTL_SECONDS: i64 = 26 * 60 * 60;
+const YZH_H5_OPERATION_VALID_HOURS: i64 = 2;
+const YZH_UNSIGN_RECONCILE_LEASE_SECONDS: i64 = 2 * 60;
+const YZH_UNSIGN_RECONCILE_RETRY_SECONDS: i64 = 5 * 60;
+const YZH_UNSIGN_RECONCILE_BATCH_SIZE: i64 = 50;
+
+#[derive(Clone, Copy)]
+enum UnsignReconcileClaimMode {
+    DueOnly,
+    Force,
+}
+
+enum UnsignReconcileOutcome {
+    NotClaimed,
+    Ignored,
+    Pending {
+        remote_status: Option<i32>,
+    },
+    Resolved {
+        status: YzhSignStatus,
+        remote_status: i32,
+        signed_at: Option<DateTime<Utc>>,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OrderStatusApplyOutcome {
+    Applied,
+    Ignored,
+    EvidenceRejected,
+}
+
+fn ensure_order_status_evidence_accepted(
+    outcome: OrderStatusApplyOutcome,
+) -> Result<(), ApiError> {
+    if outcome == OrderStatusApplyOutcome::EvidenceRejected {
+        return Err(ApiError::InvalidInput(
+            "云账户订单金额或身份信息与本地提交记录不一致".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn ensure_order_callback_status_applied(
+    outcome: OrderStatusApplyOutcome,
+) -> Result<(), ApiError> {
+    match outcome {
+        OrderStatusApplyOutcome::Applied => Ok(()),
+        OrderStatusApplyOutcome::EvidenceRejected => {
+            ensure_order_status_evidence_accepted(outcome)
+        }
+        OrderStatusApplyOutcome::Ignored => Err(ApiError::InvalidInput(
+            "云账户订单状态未能应用到本地提现记录，请稍后重试通知".to_string(),
+        )),
+    }
+}
+
+fn ensure_refund_status_applied(
+    outcome: OrderStatusApplyOutcome,
+) -> Result<(), ApiError> {
+    match outcome {
+        OrderStatusApplyOutcome::Applied => Ok(()),
+        OrderStatusApplyOutcome::EvidenceRejected => {
+            ensure_order_status_evidence_accepted(outcome)
+        }
+        OrderStatusApplyOutcome::Ignored => Err(ApiError::InvalidInput(
+            "云账户退款未能应用到本地提现状态，请人工核对".to_string(),
+        )),
+    }
+}
+
+fn should_ignore_terminal_order_transition(
+    current: crate::models::payouts::PayoutStatus,
+    new_status: crate::models::payouts::PayoutStatus,
+    allow_success_refund: bool,
+) -> bool {
+    let is_terminal = matches!(
+        current,
+        crate::models::payouts::PayoutStatus::Success
+            | crate::models::payouts::PayoutStatus::Cancelled
+            | crate::models::payouts::PayoutStatus::Failed
+    );
+    let is_verified_refund = allow_success_refund
+        && current == crate::models::payouts::PayoutStatus::Success
+        && new_status == crate::models::payouts::PayoutStatus::Cancelled;
+
+    is_terminal && current != new_status && !is_verified_refund
+}
+
+fn is_verified_channel_return(status: &str, refund_origin: &str) -> bool {
+    matches!(status.trim(), "4" | "refund") && refund_origin.trim() == "2"
+}
+
+fn channel_return_query_matches_callback(
+    notify: &OrderNotifyData,
+    resp: &yzh_api::QueryOrderResponse,
+) -> bool {
+    let amounts_match = notify
+        .pay
+        .trim()
+        .parse::<rust_decimal::Decimal>()
+        .ok()
+        .zip(resp.pay.trim().parse::<rust_decimal::Decimal>().ok())
+        .is_some_and(|(callback_pay, queried_pay)| {
+            callback_pay.round_dp(2) == queried_pay.round_dp(2)
+        });
+
+    resp.order_id == notify.order_id
+        && is_verified_channel_return(&resp.status, &resp.refund_origin)
+        && amounts_match
+}
+
+fn order_callback_evidence(
+    notify: &OrderNotifyData,
+    verified_channel_return: bool,
+) -> OrderStatusEvidence<'_> {
+    let (real_name, id_card, phone_no) = if verified_channel_return {
+        // 历史订单只能绑定不可变快照；提现成功后当前实名资料允许修改。
+        (None, None, None)
+    } else {
+        (
+            non_empty_str(&notify.real_name),
+            non_empty_str(&notify.id_card),
+            non_empty_str(&notify.phone_no),
+        )
+    };
+
+    OrderStatusEvidence {
+        require_callback_fields: true,
+        allow_success_refund: verified_channel_return,
+        pay: non_empty_str(&notify.pay),
+        dealer_id: non_empty_str(&notify.dealer_id),
+        broker_id: non_empty_str(&notify.broker_id),
+        real_name,
+        id_card,
+        phone_no,
+        card_no: non_empty_str(&notify.card_no),
+    }
+}
+
+fn ensure_full_refund_amount(
+    original_pay: rust_decimal::Decimal,
+    refund_amount: rust_decimal::Decimal,
+) -> Result<(), ApiError> {
+    if refund_amount.round_dp(2) != original_pay.round_dp(2) {
+        return Err(ApiError::InvalidInput(
+            "云账户部分退款不能自动取消整笔提现，请人工核对".to_string(),
+        ));
+    }
+    Ok(())
+}
 
 #[derive(Clone, Copy)]
 pub struct OrderStatusEvidence<'a> {
     require_callback_fields: bool,
+    allow_success_refund: bool,
     pay: Option<&'a str>,
     dealer_id: Option<&'a str>,
     broker_id: Option<&'a str>,
@@ -45,6 +197,7 @@ impl<'a> OrderStatusEvidence<'a> {
     fn empty() -> Self {
         Self {
             require_callback_fields: false,
+            allow_success_refund: false,
             pay: None,
             dealer_id: None,
             broker_id: None,
@@ -54,6 +207,101 @@ impl<'a> OrderStatusEvidence<'a> {
             card_no: None,
         }
     }
+}
+
+fn required_order_callback_fields_present(
+    evidence: &OrderStatusEvidence<'_>,
+) -> bool {
+    evidence.pay.is_some()
+        && evidence.dealer_id.is_some()
+        && evidence.broker_id.is_some()
+        && evidence.card_no.is_some()
+}
+
+#[derive(Deserialize)]
+struct OrderNotifyData {
+    order_id: String,
+    #[serde(default)]
+    pay: String,
+    #[serde(default)]
+    dealer_id: String,
+    #[serde(default)]
+    broker_id: String,
+    #[serde(default)]
+    real_name: String,
+    #[serde(default)]
+    card_no: String,
+    #[serde(default)]
+    id_card: String,
+    #[serde(default)]
+    phone_no: String,
+    #[serde(default)]
+    status: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    status_detail: String,
+    #[serde(default)]
+    status_detail_message: String,
+    #[serde(default, rename = "ref")]
+    ref_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum OrderNotifyPayload {
+    Wrapped {
+        #[serde(default)]
+        notify_id: String,
+        #[allow(dead_code)]
+        #[serde(default)]
+        notify_time: String,
+        data: OrderNotifyData,
+    },
+    Flat(OrderNotifyData),
+}
+
+#[derive(Deserialize)]
+struct RefundNotifyData {
+    order_id: String,
+    #[serde(default)]
+    broker_id: String,
+    #[serde(default)]
+    dealer_id: String,
+    #[serde(default, rename = "ref")]
+    ref_id: String,
+    #[serde(default)]
+    refund_ref: String,
+    #[serde(default)]
+    real_name: String,
+    #[serde(default)]
+    card_no: String,
+    #[serde(default)]
+    id_card: String,
+    #[serde(default)]
+    refund_type: String,
+    #[serde(default)]
+    refund_total_amount: String,
+    // 兼容旧版回调字段。
+    #[serde(default)]
+    pay: String,
+    #[serde(default)]
+    refund_amount: String,
+    #[serde(default)]
+    refund_status: String,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum RefundNotifyPayload {
+    Wrapped {
+        #[serde(default)]
+        notify_id: String,
+        #[allow(dead_code)]
+        #[serde(default)]
+        notify_time: String,
+        data: RefundNotifyData,
+    },
+    Flat(RefundNotifyData),
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -129,8 +377,16 @@ pub struct ProfileResponse {
     pub alipay_account_masked: Option<String>,
     /// 签约状态：unsigned / signing / signed / terminated
     pub sign_status: String,
+    /// 当前 H5 操作：sign / release。用于把 signing 状态正确展示为签约中或解约中。
+    pub sign_operation: Option<String>,
+    /// 当前仍在有效期内的 H5 操作链接，仅返回给资料所属用户。
+    pub sign_url: Option<String>,
+    /// 当前 H5 操作的到期时间。云账户签约 token 与解约链接有效期均为 2 小时。
+    pub sign_operation_expires_at: Option<DateTime<Utc>>,
+    /// H5 操作是否已过期；过期后需先刷新远端状态，才能安全重新发起。
+    pub sign_operation_expired: bool,
     pub signed_at: Option<DateTime<Utc>>,
-    /// 是否存在云账户支付宝提现中的订单。存在时禁止修改资料、重新签约或解约。
+    /// 是否存在仍在处理或取消中的提现订单。存在时禁止修改资料、重新签约或解约。
     pub has_active_payout: bool,
 }
 
@@ -164,6 +420,10 @@ impl ProfileResponse {
                 phone_masked: None,
                 alipay_account_masked: None,
                 sign_status: YzhSignStatus::Unsigned.as_str().to_string(),
+                sign_operation: None,
+                sign_url: None,
+                sign_operation_expires_at: None,
+                sign_operation_expired: false,
                 signed_at: None,
                 has_active_payout,
             };
@@ -172,6 +432,39 @@ impl ProfileResponse {
             && p.id_card_encrypted.is_some()
             && p.phone.is_some()
             && p.alipay_account.is_some();
+        let sign_operation = if p.sign_status == YzhSignStatus::Signing {
+            Some(
+                if p.sign_nonce
+                    .as_deref()
+                    .is_some_and(|nonce| nonce.starts_with("release:"))
+                {
+                    "release"
+                } else {
+                    "sign"
+                }
+                .to_string(),
+            )
+        } else {
+            None
+        };
+        let is_unsign_reconcile = p
+            .sign_nonce
+            .as_deref()
+            .and_then(unsign_reconcile_event_at)
+            .is_some();
+        let sign_operation_expires_at = sign_operation
+            .as_ref()
+            .filter(|_| !is_unsign_reconcile)
+            .map(|_| {
+                p.updated_at + Duration::hours(YZH_H5_OPERATION_VALID_HOURS)
+            });
+        let sign_operation_expired = sign_operation_expires_at
+            .is_some_and(|expires_at| expires_at <= Utc::now());
+        let sign_url = if sign_operation.is_some() && !sign_operation_expired {
+            p.sign_url.clone()
+        } else {
+            None
+        };
         Self {
             kyc_completed,
             real_name: p.real_name.as_deref().map(mask_real_name),
@@ -179,6 +472,10 @@ impl ProfileResponse {
             phone_masked: p.phone.as_deref().map(mask_phone),
             alipay_account_masked: p.alipay_account.as_deref().map(mask_alipay),
             sign_status: p.sign_status.as_str().to_string(),
+            sign_operation,
+            sign_url,
+            sign_operation_expires_at,
+            sign_operation_expired,
             signed_at: p.signed_at,
             has_active_payout,
         }
@@ -209,8 +506,7 @@ pub async fn get_profile(
 
     let user_id = UserId::from(user.id);
     let profile = YunzhanghuProfile::get(user_id, &**pool).await?;
-    let has_active_payout =
-        has_active_yunzhanghu_payout(user_id, &pool).await?;
+    let has_active_payout = has_processing_payout(user_id, &pool).await?;
 
     Ok(HttpResponse::Ok()
         .json(ProfileResponse::from_db(profile, has_active_payout)))
@@ -249,10 +545,19 @@ pub async fn submit_profile(
     let phone = body.phone.trim();
     let alipay_account = body.alipay_account.trim();
     let user_id = UserId::from(user.id);
-    ensure_no_active_yunzhanghu_payout(user_id, &pool).await?;
 
     let mut tx = pool.begin().await?;
+    lock_user_and_ensure_no_processing_payout(&mut tx, user_id).await?;
     let existing = YunzhanghuProfile::get(user_id, &mut *tx).await?;
+    if existing
+        .as_ref()
+        .is_some_and(profile_has_pending_sign_operation)
+    {
+        return Err(ApiError::InvalidInput(
+            "云账户签约或解约正在处理中，请先刷新签约状态后再修改资料。"
+                .to_string(),
+        ));
+    }
     let kyc_changed = existing.as_ref().is_some_and(|p| {
         !profile_matches_kyc(p, real_name, &id_card, phone, alipay_account)
     });
@@ -273,8 +578,7 @@ pub async fn submit_profile(
     tx.commit().await?;
 
     let profile = YunzhanghuProfile::get(user_id, &**pool).await?;
-    let has_active_payout =
-        has_active_yunzhanghu_payout(user_id, &pool).await?;
+    let has_active_payout = has_processing_payout(user_id, &pool).await?;
     Ok(HttpResponse::Ok()
         .json(ProfileResponse::from_db(profile, has_active_payout)))
 }
@@ -304,62 +608,116 @@ pub async fn initiate_sign(
     .await?
     .1;
     let user_id = UserId::from(user.id);
-    ensure_no_active_yunzhanghu_payout(user_id, &pool).await?;
-
-    let (real_name, id_card) = load_kyc_for_yzh(user_id, &pool).await?;
-
-    let client = YzhClient::new();
-    let presign = yzh_api::h5_presign(
-        &client,
-        &yzh_api::PresignRequest {
-            real_name: &real_name,
-            id_card: &id_card,
-            certificate_type: CERTIFICATE_TYPE_IDCARD,
-            collect_phone_no: Some(0),
-        },
-    )
-    .await
-    .map_err(yzh_to_api_error)?;
-
+    let sign_nonce = Uuid::new_v4().simple().to_string();
     let self_addr =
         dotenvy::var("SELF_ADDR")?.trim_end_matches('/').to_string();
     let site_url = dotenvy::var("SITE_URL")
         .unwrap_or_else(|_| "https://bbsmc.net".to_string())
         .trim_end_matches('/')
         .to_string();
-
-    let sign_nonce = Uuid::new_v4().simple().to_string();
     let event_callback_url = format!(
         "{}/v3/yunzhanghu/_webhook/sign/{}/{}",
         self_addr, user.id.0, sign_nonce
     );
     let redirect_url = format!("{}/yunzhanghu-result?action=sign", site_url);
 
-    let sign = yzh_api::h5_sign_apply(
-        &client,
-        &yzh_api::SignApplyRequest {
-            token: &presign.token,
-            color: None,
-            url: None,
-            redirect_url: Some(&redirect_url),
-            event_callback_url: Some(&event_callback_url),
-        },
-    )
-    .await
-    .map_err(yzh_to_api_error)?;
-
+    // 先用短事务写入本地签约意图，阻止其间创建新的提现；
+    // 云账户 HTTP 必须在事务提交后执行。
     let mut tx = pool.begin().await?;
-    YunzhanghuProfile::update_sign_status(
-        &mut *tx,
-        user_id,
-        YzhSignStatus::Signing,
-        Some(&sign.url),
-        Some(&sign_nonce),
+    lock_user_and_ensure_no_processing_payout(&mut tx, user_id).await?;
+    let profile = YunzhanghuProfile::get(user_id, &mut *tx)
+        .await?
+        .ok_or_else(|| {
+            ApiError::InvalidInput("请先完善实名信息与支付宝账号".to_string())
+        })?;
+    if profile_has_pending_sign_operation(&profile) {
+        return Err(ApiError::InvalidInput(
+            "已有云账户签约或解约操作正在处理中，请先刷新状态。".to_string(),
+        ));
+    }
+    if !matches!(
+        profile.sign_status,
+        YzhSignStatus::Unsigned | YzhSignStatus::Terminated
+    ) {
+        return Err(ApiError::InvalidInput(
+            "当前签约状态不允许重新发起签约。".to_string(),
+        ));
+    }
+    let previous_status = profile.sign_status;
+    let (real_name, id_card) = kyc_for_yzh_from_profile(&profile)?;
+    sqlx::query!(
+        "
+        UPDATE user_yunzhanghu_profiles
+        SET sign_status = 'signing',
+            sign_url = NULL,
+            sign_nonce = $2,
+            updated_at = NOW()
+        WHERE user_id = $1
+        ",
+        user_id.0,
+        &sign_nonce,
     )
+    .execute(&mut *tx)
     .await?;
     tx.commit().await?;
 
-    Ok(HttpResponse::Ok().json(json!({ "url": sign.url })))
+    let remote_result: Result<String, ApiError> = async {
+        let client = YzhClient::new();
+        let presign = yzh_api::h5_presign(
+            &client,
+            &yzh_api::PresignRequest {
+                real_name: &real_name,
+                id_card: &id_card,
+                certificate_type: CERTIFICATE_TYPE_IDCARD,
+                collect_phone_no: Some(0),
+            },
+        )
+        .await
+        .map_err(yzh_to_api_error)?;
+
+        let sign = yzh_api::h5_sign_apply(
+            &client,
+            &yzh_api::SignApplyRequest {
+                token: &presign.token,
+                color: None,
+                url: None,
+                redirect_url: Some(&redirect_url),
+                event_callback_url: Some(&event_callback_url),
+            },
+        )
+        .await
+        .map_err(yzh_to_api_error)?;
+        Ok(sign.url)
+    }
+    .await;
+
+    let sign_url = match remote_result {
+        Ok(url) => url,
+        Err(err) => {
+            restore_failed_sign_operation(
+                &pool,
+                user_id,
+                &sign_nonce,
+                previous_status,
+            )
+            .await;
+            return Err(err);
+        }
+    };
+
+    let url_persisted = store_sign_operation_url(
+        &pool,
+        user_id,
+        &sign_nonce,
+        &sign_url,
+        "签约",
+    )
+    .await?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "url": sign_url,
+        "url_persisted": url_persisted,
+    })))
 }
 
 /// 主动从云账户拉取签约状态，并同步到本地。
@@ -381,12 +739,72 @@ pub async fn refresh_sign_status(
     .await?
     .1;
     let user_id = UserId::from(user.id);
-    let current_status = YunzhanghuProfile::get(user_id, &**pool)
+    let requested_profile = YunzhanghuProfile::get(user_id, &**pool)
         .await?
-        .map(|p| p.sign_status)
-        .unwrap_or(YzhSignStatus::Unsigned);
-
-    let (real_name, id_card) = load_kyc_for_yzh(user_id, &pool).await?;
+        .ok_or_else(|| {
+            ApiError::InvalidInput("请先完善实名信息与支付宝账号".to_string())
+        })?;
+    if let Some(reconcile_nonce) = requested_profile
+        .sign_nonce
+        .as_deref()
+        .filter(|nonce| unsign_reconcile_event_at(nonce).is_some())
+    {
+        let outcome = reconcile_pending_unsign_nonce(
+            &pool,
+            &redis,
+            reconcile_nonce,
+            UnsignReconcileClaimMode::Force,
+        )
+        .await?;
+        return match outcome {
+            UnsignReconcileOutcome::Resolved {
+                status,
+                remote_status,
+                signed_at,
+            } => Ok(HttpResponse::Ok().json(json!({
+                "sign_status": status.as_str(),
+                "remote_status": remote_status,
+                "signed_at": signed_at,
+                "operation_pending": false,
+            }))),
+            UnsignReconcileOutcome::Pending { remote_status } => {
+                Ok(HttpResponse::Ok().json(json!({
+                    "sign_status": YzhSignStatus::Signing.as_str(),
+                    "remote_status": remote_status,
+                    "operation_pending": true,
+                })))
+            }
+            UnsignReconcileOutcome::Ignored => {
+                let current = YunzhanghuProfile::get(user_id, &**pool)
+                    .await?
+                    .ok_or_else(|| {
+                    ApiError::InvalidInput(
+                        "云账户资料不存在，请刷新页面。".to_string(),
+                    )
+                })?;
+                Ok(HttpResponse::Ok().json(json!({
+                    "sign_status": current.sign_status.as_str(),
+                    "signed_at": current.signed_at,
+                    "operation_pending": profile_has_pending_sign_operation(&current),
+                })))
+            }
+            UnsignReconcileOutcome::NotClaimed => {
+                let current = YunzhanghuProfile::get(user_id, &**pool)
+                    .await?
+                    .ok_or_else(|| {
+                    ApiError::InvalidInput(
+                        "云账户资料不存在，请刷新页面。".to_string(),
+                    )
+                })?;
+                Ok(HttpResponse::Ok().json(json!({
+                    "sign_status": current.sign_status.as_str(),
+                    "operation_pending": profile_has_pending_sign_operation(&current),
+                })))
+            }
+        };
+    }
+    let requested_profile_updated_at = requested_profile.updated_at;
+    let (real_name, id_card) = kyc_for_yzh_from_profile(&requested_profile)?;
 
     let client = YzhClient::new();
     let resp = yzh_api::h5_sign_status(
@@ -406,6 +824,31 @@ pub async fn refresh_sign_status(
         _ => YzhSignStatus::Unsigned,
     };
 
+    let mut tx = pool.begin().await?;
+    lock_yunzhanghu_user(&mut tx, user_id).await?;
+    let locked_profile = YunzhanghuProfile::get(user_id, &mut *tx)
+        .await?
+        .ok_or_else(|| {
+            ApiError::InvalidInput("云账户资料不存在，请刷新页面。".to_string())
+        })?;
+    if locked_profile.updated_at != requested_profile_updated_at {
+        return Err(ApiError::InvalidInput(
+            "实名或签约资料已变化，请刷新页面后重新查询。".to_string(),
+        ));
+    }
+    let current_status = locked_profile.sign_status;
+    let was_release_operation = locked_profile
+        .sign_nonce
+        .as_deref()
+        .is_some_and(|nonce| nonce.starts_with("release:"));
+    let has_pending_operation =
+        profile_has_pending_sign_operation(&locked_profile);
+    let operation_expired =
+        sign_operation_is_expired(&locked_profile, Utc::now());
+    let unsign_reconcile_at = locked_profile
+        .sign_nonce
+        .as_deref()
+        .and_then(unsign_reconcile_event_at);
     if new_status == YzhSignStatus::Signed
         && !matches!(
             current_status,
@@ -417,6 +860,7 @@ pub async fn refresh_sign_status(
             user_id.0,
             current_status
         );
+        tx.commit().await?;
         return Ok(HttpResponse::Ok().json(json!({
             "sign_status": current_status.as_str(),
             "remote_status": resp.status,
@@ -424,8 +868,48 @@ pub async fn refresh_sign_status(
             "requires_new_sign": true,
         })));
     }
-
-    let mut tx = pool.begin().await?;
+    let remote_still_before_operation = if was_release_operation {
+        new_status == YzhSignStatus::Signed
+    } else {
+        new_status != YzhSignStatus::Signed
+    };
+    let remote_signed_at = parse_yzh_event_time(&resp.signed_at);
+    let keep_unsign_reconcile = unsign_reconcile_at.is_some_and(|release_at| {
+        new_status != YzhSignStatus::Terminated
+            && !(new_status == YzhSignStatus::Signed
+                && remote_signed_at
+                    .is_some_and(|signed_at| signed_at > release_at))
+    });
+    if keep_unsign_reconcile
+        || (unsign_reconcile_at.is_none()
+            && should_keep_pending_sign_operation(
+                has_pending_operation,
+                was_release_operation,
+                new_status,
+                operation_expired,
+            ))
+    {
+        // H5 仍在有效期内且远端尚未完成本次操作时，必须保留本地 intent。
+        // 否则旧链接稍后完成操作时，可能与资料修改或新提现并发。
+        tx.commit().await?;
+        return Ok(HttpResponse::Ok().json(json!({
+            "sign_status": YzhSignStatus::Signing.as_str(),
+            "remote_sign_status": new_status.as_str(),
+            "remote_status": resp.status,
+            "signed_at": resp.signed_at,
+            "operation_pending": true,
+        })));
+    }
+    if new_status == YzhSignStatus::Terminated
+        && has_processing_payout_in_tx(&mut tx, user_id).await?
+    {
+        // 远端终态优先落库，阻止继续创建新提现；现有订单交由查单/回调完成，
+        // 同时留下高优先级日志供人工核对。
+        log::error!(
+            "云账户已解约但仍有处理中提现，需要人工核对 user_id={}",
+            user_id.0
+        );
+    }
     YunzhanghuProfile::update_sign_status(
         &mut *tx, user_id, new_status, None, None,
     )
@@ -445,6 +929,9 @@ pub async fn refresh_sign_status(
         "sign_status": new_status.as_str(),
         "remote_status": resp.status,
         "signed_at": resp.signed_at,
+        "operation_expired": has_pending_operation
+            && remote_still_before_operation
+            && operation_expired,
     })))
 }
 
@@ -467,18 +954,51 @@ pub async fn release_sign(
     .await?
     .1;
     let user_id = UserId::from(user.id);
-    ensure_no_active_yunzhanghu_payout(user_id, &pool).await?;
-
-    let (real_name, id_card) = load_kyc_for_yzh(user_id, &pool).await?;
-
     let site_url = dotenvy::var("SITE_URL")
         .unwrap_or_else(|_| "https://bbsmc.net".to_string())
         .trim_end_matches('/')
         .to_string();
     let redirect_url = format!("{}/yunzhanghu-result?action=release", site_url);
+    let release_nonce = format!("release:{}", Uuid::new_v4().simple());
+
+    // 写入本地解约意图后再调用云账户。提现创建会要求 signed 且无 operation nonce，
+    // 因而解约 H5 有效期间不会出现新提现。
+    let mut tx = pool.begin().await?;
+    lock_user_and_ensure_no_processing_payout(&mut tx, user_id).await?;
+    let profile = YunzhanghuProfile::get(user_id, &mut *tx)
+        .await?
+        .ok_or_else(|| {
+            ApiError::InvalidInput("请先完善实名信息与支付宝账号".to_string())
+        })?;
+    if profile_has_pending_sign_operation(&profile) {
+        return Err(ApiError::InvalidInput(
+            "已有云账户签约或解约操作正在处理中，请先刷新状态。".to_string(),
+        ));
+    }
+    if profile.sign_status != YzhSignStatus::Signed {
+        return Err(ApiError::InvalidInput(
+            "当前用户尚未完成签约，不能申请解约。".to_string(),
+        ));
+    }
+    let (real_name, id_card) = kyc_for_yzh_from_profile(&profile)?;
+    sqlx::query!(
+        "
+        UPDATE user_yunzhanghu_profiles
+        SET sign_status = 'signing',
+            sign_url = NULL,
+            sign_nonce = $2,
+            updated_at = NOW()
+        WHERE user_id = $1
+        ",
+        user_id.0,
+        &release_nonce,
+    )
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
 
     let client = YzhClient::new();
-    let resp = yzh_api::h5_release_apply(
+    let remote_result = yzh_api::h5_release_apply(
         &client,
         &yzh_api::SignReleaseApplyRequest {
             real_name: &real_name,
@@ -489,12 +1009,33 @@ pub async fn release_sign(
             redirect_url: Some(&redirect_url),
         },
     )
-    .await
-    .map_err(yzh_to_api_error)?;
+    .await;
+    let resp = match remote_result {
+        Ok(resp) => resp,
+        Err(err) => {
+            restore_failed_sign_operation(
+                &pool,
+                user_id,
+                &release_nonce,
+                YzhSignStatus::Signed,
+            )
+            .await;
+            return Err(yzh_to_api_error(err));
+        }
+    };
+    let url_persisted = store_sign_operation_url(
+        &pool,
+        user_id,
+        &release_nonce,
+        &resp.url,
+        "解约",
+    )
+    .await?;
 
     Ok(HttpResponse::Ok().json(json!({
         "url": resp.url,
         "remote_status": resp.status,
+        "url_persisted": url_persisted,
     })))
 }
 
@@ -581,18 +1122,39 @@ pub async fn sign_callback(
         return Ok(HttpResponse::Ok().body("success"));
     }
 
-    if new_status == YzhSignStatus::Terminated
-        && has_active_yunzhanghu_payout(user_id, &pool).await?
+    let mut tx = pool.begin().await?;
+    lock_yunzhanghu_user(&mut tx, user_id).await?;
+    let Some(locked_profile) =
+        YunzhanghuProfile::get(user_id, &mut *tx).await?
+    else {
+        tx.commit().await?;
+        mark_notify_replay(&redis, &replay_key).await?;
+        return Ok(HttpResponse::Ok().body("success"));
+    };
+    if locked_profile.sign_nonce.as_deref() != Some(nonce.as_str())
+        || !sign_notify_matches_profile(&notify, &locked_profile, creds)
     {
         log::warn!(
-            "忽略有处理中提现用户的云账户签约/解约事件回调 user_id={}",
-            user_id.0
+            "忽略锁定后资料已变化的云账户签约回调 user_id={} status={}",
+            user_id.0,
+            notify.status
         );
+        tx.commit().await?;
         mark_notify_replay(&redis, &replay_key).await?;
         return Ok(HttpResponse::Ok().body("success"));
     }
+    let previous_status = locked_profile.sign_status;
+    if new_status == YzhSignStatus::Terminated
+        && has_processing_payout_in_tx(&mut tx, user_id).await?
+    {
+        // 远端终态必须落库以阻止后续新提现；已存在订单继续依赖订单回调/查单，
+        // 并通过错误日志进入人工核对队列。
+        log::error!(
+            "云账户解约回调到达时仍有处理中提现，需要人工核对 user_id={}",
+            user_id.0
+        );
+    }
 
-    let mut tx = pool.begin().await?;
     YunzhanghuProfile::update_sign_status(
         &mut *tx, user_id, new_status, None, None,
     )
@@ -603,7 +1165,7 @@ pub async fn sign_callback(
         &pool,
         &redis,
         user_id,
-        profile.sign_status,
+        previous_status,
         new_status,
     )
     .await;
@@ -645,8 +1207,7 @@ pub async fn handle_unsign_callback(
         #[serde(default)]
         #[allow(dead_code)]
         release_reason: String,
-        #[serde(default)]
-        #[allow(dead_code)]
+        #[serde(default, alias = "cancellation_time")]
         release_time: String,
     }
 
@@ -687,7 +1248,9 @@ pub async fn handle_unsign_callback(
     .fetch_all(&**pool)
     .await?;
 
-    // 在候选里逐个解密匹配（同末 4 位的用户很少）
+    // 在候选里逐个解密匹配（同末 4 位的用户很少）。同一身份可能因历史
+    // 数据绑定多个本地账号，云账户签约状态按身份生效，因此必须全部同步。
+    let mut matching_profiles = Vec::new();
     for row in candidates {
         let Some(profile) =
             YunzhanghuProfile::get(UserId(row.user_id), &**pool).await?
@@ -698,47 +1261,196 @@ pub async fn handle_unsign_callback(
             .real_name
             .as_deref()
             .is_some_and(|name| name.trim() == notify.real_name.trim());
-        if real_name_matches
-            && profile
-                .decrypt_id_card()
-                .ok()
-                .flatten()
-                .as_deref()
-                .is_some_and(|id_card| id_card == notify.id_card)
-        {
-            if has_active_yunzhanghu_payout(profile.user_id, &pool).await? {
-                log::warn!(
-                    "忽略有处理中提现用户的云账户解约回调 user_id={}",
-                    profile.user_id.0
+        let id_card_matches = match profile.decrypt_id_card() {
+            Ok(Some(id_card)) => id_card == notify.id_card,
+            Ok(None) => false,
+            Err(err) => {
+                log::error!(
+                    "云账户解约回调匹配候选资料时解密失败 user_id={}: {}",
+                    profile.user_id.0,
+                    err
                 );
-                mark_notify_replay(&redis, &replay_key).await?;
-                return Ok(HttpResponse::Ok().body("success"));
+                return Err(ApiError::InvalidInput(
+                    "云账户实名资料暂时无法解密，请稍后重试通知".to_string(),
+                ));
             }
-
-            let mut tx = pool.begin().await?;
-            YunzhanghuProfile::update_sign_status(
-                &mut *tx,
-                profile.user_id,
-                YzhSignStatus::Terminated,
-                None,
-                None,
-            )
-            .await?;
-            tx.commit().await?;
-            notify_yunzhanghu_sign_status_change(
-                &pool,
-                &redis,
-                profile.user_id,
-                profile.sign_status,
-                YzhSignStatus::Terminated,
-            )
-            .await;
-            break;
+        };
+        if real_name_matches && id_card_matches {
+            matching_profiles.push(profile);
         }
     }
 
-    mark_notify_replay(&redis, &replay_key).await?;
-    Ok(HttpResponse::Ok().body("success"))
+    if matching_profiles.is_empty() {
+        log::warn!("云账户解约回调未匹配到本地实名资料");
+        mark_notify_replay(&redis, &replay_key).await?;
+        return Ok(HttpResponse::Ok().body("success"));
+    }
+
+    matching_profiles.sort_by_key(|profile| profile.user_id.0);
+    let release_at =
+        parse_yzh_event_time(&notify.release_time).ok_or_else(|| {
+            ApiError::InvalidInput(
+                "云账户解约回调缺少可解析的 release_time，请重试通知"
+                    .to_string(),
+            )
+        })?;
+    // envelope 的 timestamp/sign 可能在重试时变化，不能拿 replay key 当业务
+    // nonce。使用已验签解密的身份 + 解约时间和应用密钥生成稳定 HMAC，同一业务
+    // 事件在多实例与多次重试中始终竞争同一 reconciliation 行。
+    let reconcile_nonce = unsign_reconciliation_nonce(
+        creds,
+        &notify.real_name,
+        &notify.id_card,
+        release_at,
+    );
+
+    // 可信解约回调一到达，先在一个短事务内锁定同一身份的全部本地账号并写入
+    // pending marker。提现创建也会锁用户并要求 signed + 无 nonce，因此远端状态
+    // 尚未最终一致时不会出现新的提现。事件时间晚于最近签约事件的账号才进入核对，
+    // 旧回调不会覆盖后来完成的新签约。
+    let all_user_ids = matching_profiles
+        .iter()
+        .map(|profile| profile.user_id.0)
+        .collect::<Vec<_>>();
+    let mut block_tx = pool.begin().await?;
+    sqlx::query!(
+        "
+        INSERT INTO yunzhanghu_unsign_reconciliations (
+            nonce, release_at, next_attempt_at
+        )
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (nonce) DO NOTHING
+        ",
+        &reconcile_nonce,
+        release_at,
+    )
+    .execute(&mut *block_tx)
+    .await?;
+    let reconciliation = sqlx::query!(
+        "
+        SELECT status, release_at
+        FROM yunzhanghu_unsign_reconciliations
+        WHERE nonce = $1
+        FOR UPDATE
+        ",
+        &reconcile_nonce,
+    )
+    .fetch_one(&mut *block_tx)
+    .await?;
+    if reconciliation.release_at != release_at {
+        return Err(ApiError::InvalidInput(
+            "云账户解约核对事件时间不一致".to_string(),
+        ));
+    }
+    if reconciliation.status == "resolved" {
+        block_tx.commit().await?;
+        mark_notify_replay(&redis, &replay_key).await?;
+        return Ok(HttpResponse::Ok().body("success"));
+    }
+    lock_yunzhanghu_users(&mut block_tx, &all_user_ids).await?;
+    let mut reconcile_user_ids = Vec::new();
+    for snapshot in &matching_profiles {
+        let Some(locked_profile) =
+            YunzhanghuProfile::get(snapshot.user_id, &mut *block_tx).await?
+        else {
+            return Err(ApiError::InvalidInput(
+                "签约资料并发变化，请稍后重试解约通知".to_string(),
+            ));
+        };
+        if locked_profile.updated_at != snapshot.updated_at
+            && locked_profile.sign_nonce.as_deref()
+                != Some(reconcile_nonce.as_str())
+        {
+            return Err(ApiError::InvalidInput(
+                "签约资料并发变化，请稍后重试解约通知".to_string(),
+            ));
+        }
+        if !yunzhanghu_identity_matches(
+            &locked_profile,
+            &notify.real_name,
+            &notify.id_card,
+        ) {
+            return Err(ApiError::InvalidInput(
+                "签约身份并发变化，请稍后重试解约通知".to_string(),
+            ));
+        }
+        if unsign_event_is_stale(&locked_profile, release_at, &reconcile_nonce)
+        {
+            log::warn!(
+                "忽略早于最近本地签约事件的解约回调 user_id={} release_time={}",
+                locked_profile.user_id.0,
+                notify.release_time
+            );
+            continue;
+        }
+        if has_processing_payout_in_tx(&mut block_tx, locked_profile.user_id)
+            .await?
+        {
+            log::error!(
+                "云账户解约回调到达时仍有处理中提现，需要人工核对 user_id={}",
+                locked_profile.user_id.0
+            );
+        }
+        reconcile_user_ids.push(locked_profile.user_id.0);
+    }
+    if !reconcile_user_ids.is_empty() {
+        sqlx::query!(
+            r#"
+            UPDATE user_yunzhanghu_profiles
+            SET sign_status = 'signing',
+                sign_url = NULL,
+                sign_nonce = $2,
+                updated_at = NOW()
+            WHERE user_id = ANY($1::bigint[])
+            "#,
+            &reconcile_user_ids,
+            &reconcile_nonce,
+        )
+        .execute(&mut *block_tx)
+        .await?;
+    } else {
+        sqlx::query!(
+            "
+            UPDATE yunzhanghu_unsign_reconciliations
+            SET status = 'resolved',
+                lease_owner = NULL,
+                lease_expires_at = NULL,
+                last_error = 'stale_event',
+                resolved_status = 'ignored',
+                resolved_at = NOW(),
+                updated_at = NOW()
+            WHERE nonce = $1 AND status = 'pending'
+            ",
+            &reconcile_nonce,
+        )
+        .execute(&mut *block_tx)
+        .await?;
+    }
+    block_tx.commit().await?;
+
+    if reconcile_user_ids.is_empty() {
+        mark_notify_replay(&redis, &replay_key).await?;
+        return Ok(HttpResponse::Ok().body("success"));
+    }
+
+    match reconcile_pending_unsign_nonce(
+        &pool,
+        &redis,
+        &reconcile_nonce,
+        UnsignReconcileClaimMode::Force,
+    )
+    .await?
+    {
+        UnsignReconcileOutcome::Resolved { .. }
+        | UnsignReconcileOutcome::Ignored => {
+            mark_notify_replay(&redis, &replay_key).await?;
+            Ok(HttpResponse::Ok().body("success"))
+        }
+        UnsignReconcileOutcome::Pending { .. }
+        | UnsignReconcileOutcome::NotClaimed => Err(ApiError::InvalidInput(
+            "云账户解约状态尚未同步，请稍后重试通知".to_string(),
+        )),
+    }
 }
 
 // ============================================================================
@@ -761,48 +1473,6 @@ pub async fn handle_order_callback(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-    #[derive(Deserialize)]
-    struct OrderNotifyData {
-        order_id: String,
-        #[serde(default)]
-        pay: String,
-        #[serde(default)]
-        dealer_id: String,
-        #[serde(default)]
-        broker_id: String,
-        #[serde(default)]
-        real_name: String,
-        #[serde(default)]
-        card_no: String,
-        #[serde(default)]
-        id_card: String,
-        #[serde(default)]
-        phone_no: String,
-        #[serde(default)]
-        status: String,
-        #[serde(default)]
-        #[allow(dead_code)]
-        status_detail: String,
-        #[serde(default)]
-        status_detail_message: String,
-        #[serde(default, rename = "ref")]
-        ref_id: String,
-    }
-
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum OrderNotifyPayload {
-        Wrapped {
-            #[serde(default)]
-            notify_id: String,
-            #[allow(dead_code)]
-            #[serde(default)]
-            notify_time: String,
-            data: OrderNotifyData,
-        },
-        Flat(OrderNotifyData),
-    }
-
     let payload: OrderNotifyPayload =
         form.decode().map_err(yzh_to_api_error)?;
     let (notify_id, notify) = match payload {
@@ -817,31 +1487,49 @@ pub async fn handle_order_callback(
         return Ok(HttpResponse::Ok().body("success"));
     }
 
-    apply_order_status(
+    // 支付渠道可能在订单成功后退汇。先主动查单确认同一订单、同一提交净额且
+    // refund_origin=2，再改用历史订单不可变快照校验并放行 Success -> Cancelled。
+    let verified_channel_return =
+        if matches!(notify.status.trim(), "4" | "refund") {
+            let client = YzhClient::new();
+            let resp = yzh_api::query_order(
+                &client,
+                &yzh_api::QueryOrderRequest {
+                    order_id: &notify.order_id,
+                    channel: "支付宝",
+                },
+            )
+            .await
+            .map_err(yzh_to_api_error)?;
+            if !channel_return_query_matches_callback(&notify, &resp) {
+                return Err(ApiError::InvalidInput(
+                    "云账户退汇回调未通过主动查单确认，请稍后重试通知"
+                        .to_string(),
+                ));
+            }
+            true
+        } else {
+            false
+        };
+
+    let outcome = apply_order_status(
         &pool,
         &redis,
         &notify.order_id,
         &notify.status,
         &notify.status_detail_message,
-        Some(&notify.ref_id),
-        OrderStatusEvidence {
-            require_callback_fields: true,
-            pay: non_empty_str(&notify.pay),
-            dealer_id: non_empty_str(&notify.dealer_id),
-            broker_id: non_empty_str(&notify.broker_id),
-            real_name: non_empty_str(&notify.real_name),
-            id_card: non_empty_str(&notify.id_card),
-            phone_no: non_empty_str(&notify.phone_no),
-            card_no: non_empty_str(&notify.card_no),
-        },
+        non_empty_ref(&notify.ref_id),
+        order_callback_evidence(&notify, verified_channel_return),
     )
     .await?;
+
+    ensure_order_callback_status_applied(outcome)?;
 
     mark_notify_replay(&redis, &replay_key).await?;
     Ok(HttpResponse::Ok().body("success"))
 }
 
-/// 退款回调（用户支付失败被退款，或银行/支付宝退汇）。
+/// 劳动者主动退款回调；云账户当前仅通知全额退款（refund_type=0）。
 #[post("_webhook/refund")]
 pub async fn refund_callback(
     form: web::Form<NotifyEnvelope>,
@@ -856,44 +1544,134 @@ pub async fn handle_refund_callback(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
-    #[derive(Deserialize)]
-    struct RefundNotifyData {
-        order_id: String,
-        #[serde(default)]
-        pay: String,
-        #[serde(default)]
-        refund_amount: String,
-        #[serde(default)]
-        refund_status: String,
-    }
-
-    let notify: RefundNotifyData = form.decode().map_err(yzh_to_api_error)?;
-    let replay_key = notify_replay_key("refund", &form);
+    let payload: RefundNotifyPayload =
+        form.decode().map_err(yzh_to_api_error)?;
+    let (notify_id, notify) = match payload {
+        RefundNotifyPayload::Wrapped {
+            notify_id, data, ..
+        } => (notify_id, data),
+        RefundNotifyPayload::Flat(data) => (String::new(), data),
+    };
+    let replay_key = notify_replay_key_with_id("refund", &notify_id, &form);
     if notify_replay_seen(&redis, &replay_key).await? {
         return Ok(HttpResponse::Ok().body("success"));
     }
 
-    // 退款成功 → 把对应 payouts 改为 Cancelled，用户余额自动回退
-    if notify.refund_status.eq_ignore_ascii_case("success")
-        || notify.refund_status == "1"
-    {
-        let pay_for_validation = non_empty_str(&notify.pay)
-            .or_else(|| non_empty_str(&notify.refund_amount));
-        apply_order_status(
-            &pool,
-            &redis,
-            &notify.order_id,
-            "cancelled",
-            "用户退款",
-            None,
-            OrderStatusEvidence {
-                require_callback_fields: false,
-                pay: pay_for_validation,
-                ..OrderStatusEvidence::empty()
-            },
-        )
-        .await?;
-    }
+    let is_current_full_refund = notify.refund_type.trim() == "0";
+    let is_legacy_success = notify.refund_type.trim().is_empty()
+        && (notify.refund_status.eq_ignore_ascii_case("success")
+            || notify.refund_status == "1");
+
+    let evidence = if is_current_full_refund {
+        let refund_total_amount_raw =
+            non_empty_str(&notify.refund_total_amount).ok_or_else(|| {
+                ApiError::InvalidInput(
+                    "云账户退款回调缺少退款总金额".to_string(),
+                )
+            })?;
+        let refund_total_amount = parse_yzh_decimal_option(
+            refund_total_amount_raw,
+            "refund.refund_total_amount",
+        )?
+        .filter(|amount| *amount > rust_decimal::Decimal::ZERO)
+        .ok_or_else(|| {
+            ApiError::InvalidInput(
+                "云账户退款回调缺少合法的退款总金额".to_string(),
+            )
+        })?;
+        let dealer_id = non_empty_str(&notify.dealer_id).ok_or_else(|| {
+            ApiError::InvalidInput("云账户退款回调缺少平台企业 ID".to_string())
+        })?;
+        let broker_id = non_empty_str(&notify.broker_id).ok_or_else(|| {
+            ApiError::InvalidInput(
+                "云账户退款回调缺少综合服务主体 ID".to_string(),
+            )
+        })?;
+        let _real_name = non_empty_str(&notify.real_name).ok_or_else(|| {
+            ApiError::InvalidInput("云账户退款回调缺少劳动者姓名".to_string())
+        })?;
+        let _id_card = non_empty_str(&notify.id_card).ok_or_else(|| {
+            ApiError::InvalidInput(
+                "云账户退款回调缺少劳动者身份证号".to_string(),
+            )
+        })?;
+        let card_no = non_empty_str(&notify.card_no).ok_or_else(|| {
+            ApiError::InvalidInput(
+                "云账户退款回调缺少劳动者收款账号".to_string(),
+            )
+        })?;
+
+        log::info!(
+            "收到云账户全额退款 order_id={} refund_total_amount={} refund_ref={}",
+            notify.order_id,
+            refund_total_amount.round_dp(2),
+            notify.refund_ref
+        );
+
+        OrderStatusEvidence {
+            require_callback_fields: false,
+            allow_success_refund: true,
+            // 仅在平台实际收回的退款总额等于本站提交 pay 时自动整单回退。
+            pay: Some(refund_total_amount_raw),
+            dealer_id: Some(dealer_id),
+            broker_id: Some(broker_id),
+            // 回调身份属于原订单；提现成功后当前 profile 允许变更，不能拿可变
+            // 资料做历史订单绑定。原收款账号使用 payout.method_address 快照校验。
+            real_name: None,
+            id_card: None,
+            phone_no: None,
+            card_no: Some(card_no),
+        }
+    } else if is_legacy_success {
+        let pay_for_validation =
+            non_empty_str(&notify.pay).ok_or_else(|| {
+                ApiError::InvalidInput(
+                    "云账户退款回调缺少原订单金额 pay".to_string(),
+                )
+            })?;
+        let original_pay =
+            parse_yzh_decimal_option(pay_for_validation, "refund.pay")?
+                .ok_or_else(|| {
+                    ApiError::InvalidInput(
+                        "云账户退款回调缺少原订单金额 pay".to_string(),
+                    )
+                })?;
+        let refund_amount = parse_yzh_decimal_option(
+            &notify.refund_amount,
+            "refund.refund_amount",
+        )?
+        .ok_or_else(|| {
+            ApiError::InvalidInput(
+                "云账户退款回调缺少退款金额 refund_amount".to_string(),
+            )
+        })?;
+        ensure_full_refund_amount(original_pay, refund_amount)?;
+
+        OrderStatusEvidence {
+            require_callback_fields: false,
+            allow_success_refund: true,
+            pay: Some(pay_for_validation),
+            ..OrderStatusEvidence::empty()
+        }
+    } else {
+        return Err(ApiError::InvalidInput(
+            "无法识别云账户退款回调状态或退款类型".to_string(),
+        ));
+    };
+
+    // 云账户当前只通知 refund_type=0 的全额退款。状态改为 Cancelled 后，
+    // 用户余额按现有 payout 账务规则自动回退。
+    let outcome = apply_order_status(
+        &pool,
+        &redis,
+        &notify.order_id,
+        "cancelled",
+        "用户全额退款",
+        non_empty_ref(&notify.ref_id),
+        evidence,
+    )
+    .await?;
+    ensure_refund_status_applied(outcome)?;
 
     mark_notify_replay(&redis, &replay_key).await?;
     Ok(HttpResponse::Ok().body("success"))
@@ -1045,7 +1823,7 @@ pub async fn refresh_payout_status(
     .await
     .map_err(yzh_to_api_error)?;
 
-    apply_order_status(
+    let outcome = apply_order_status(
         &pool,
         &redis,
         &resp.order_id,
@@ -1059,6 +1837,7 @@ pub async fn refresh_payout_status(
         },
     )
     .await?;
+    ensure_order_status_evidence_accepted(outcome)?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "order_id": resp.order_id,
@@ -1077,7 +1856,7 @@ pub async fn apply_order_status(
     status_message: &str,
     ref_id: Option<&str>,
     evidence: OrderStatusEvidence<'_>,
-) -> Result<(), ApiError> {
+) -> Result<OrderStatusApplyOutcome, ApiError> {
     let Some(new_status) =
         crate::util::yunzhanghu::api::map_order_status(remote_status)
     else {
@@ -1086,20 +1865,20 @@ pub async fn apply_order_status(
             order_id,
             remote_status
         );
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     };
 
     // 找到对应 payout 记录。我们的 order_id = "bbsmc-{base62 payout_id}"。
     let Some(payout_id_str) = order_id.strip_prefix("bbsmc-") else {
         log::warn!("忽略非本站云账户订单号回调 order_id={}", order_id);
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     };
     let payout_db_id: i64 =
         match crate::models::ids::base62_impl::parse_base62(payout_id_str) {
             Ok(n) => n as i64,
             Err(_) => {
                 log::warn!("无法解析 order_id={}", order_id);
-                return Ok(());
+                return Ok(OrderStatusApplyOutcome::Ignored);
             }
         };
 
@@ -1108,7 +1887,7 @@ pub async fn apply_order_status(
     // 锁定 payout 行，避免并发回调重复通知或终态竞争。
     let row = sqlx::query!(
         "
-        SELECT user_id, status, amount, method, method_address,
+        SELECT user_id, status, amount, fee, method, method_address,
                yunzhanghu_order_id, yunzhanghu_submit_started_at
         FROM payouts
         WHERE id = $1
@@ -1121,7 +1900,7 @@ pub async fn apply_order_status(
 
     let Some(row) = row else {
         log::warn!("收到未知 order_id 的回调: {}", order_id);
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     };
 
     if row.method.as_deref()
@@ -1130,7 +1909,7 @@ pub async fn apply_order_status(
         )
     {
         log::warn!("忽略非云账户支付宝提现订单回调 order_id={}", order_id);
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     }
 
     if let Some(stored_order_id) = row.yunzhanghu_order_id.as_deref()
@@ -1142,7 +1921,7 @@ pub async fn apply_order_status(
             stored_order_id,
             order_id
         );
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     }
 
     if row.yunzhanghu_order_id.is_none()
@@ -1153,7 +1932,7 @@ pub async fn apply_order_status(
             payout_db_id,
             order_id
         );
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     }
 
     if !validate_order_status_evidence(
@@ -1161,31 +1940,30 @@ pub async fn apply_order_status(
         payout_db_id,
         crate::database::models::UserId(row.user_id),
         row.amount,
+        row.fee.unwrap_or_default(),
         row.method_address.as_deref(),
         evidence,
     )
     .await?
     {
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::EvidenceRejected);
     }
 
     // 幂等：终态不能回滚
     let current =
         crate::models::payouts::PayoutStatus::from_string(&row.status);
-    if matches!(
+    if should_ignore_terminal_order_transition(
         current,
-        crate::models::payouts::PayoutStatus::Success
-            | crate::models::payouts::PayoutStatus::Cancelled
-            | crate::models::payouts::PayoutStatus::Failed
-    ) && current != new_status
-    {
+        new_status,
+        evidence.allow_success_refund,
+    ) {
         log::info!(
             "忽略状态回退 order_id={} 当前={} 收到={}",
             order_id,
             current,
             new_status
         );
-        return Ok(());
+        return Ok(OrderStatusApplyOutcome::Ignored);
     }
 
     let should_notify_success = current
@@ -1278,7 +2056,7 @@ pub async fn apply_order_status(
         );
     }
 
-    Ok(())
+    Ok(OrderStatusApplyOutcome::Applied)
 }
 
 async fn insert_payout_terminal_notification(
@@ -1585,6 +2363,579 @@ fn parse_yzh_decimal_or_zero(
 // 后台定时任务：每分钟扫描 in-transit 订单，主动调云账户 query-order 同步状态
 // ============================================================================
 
+/// 定时核对因解约回调与远端查询短暂不一致而留下的安全 marker。
+///
+/// 云账户只在约 25 小时内重试回调；该任务让远端长时间故障恢复后仍能自动解除
+/// `signing` 阻断，而不依赖用户手动进入收益页刷新。
+pub async fn poll_pending_unsign_reconciliations(
+    pool: PgPool,
+    redis: RedisPool,
+) {
+    let nonces = match sqlx::query_scalar!(
+        r#"
+        SELECT nonce AS "nonce!"
+        FROM yunzhanghu_unsign_reconciliations
+        WHERE status = 'pending'
+          AND next_attempt_at <= NOW()
+          AND (lease_expires_at IS NULL OR lease_expires_at <= NOW())
+        ORDER BY next_attempt_at, created_at, nonce
+        LIMIT $1
+        "#,
+        YZH_UNSIGN_RECONCILE_BATCH_SIZE,
+    )
+    .fetch_all(&pool)
+    .await
+    {
+        Ok(nonces) => nonces,
+        Err(err) => {
+            log::error!("拉取待核对云账户解约状态失败: {}", err);
+            return;
+        }
+    };
+
+    for nonce in nonces {
+        if let Err(err) = reconcile_pending_unsign_nonce(
+            &pool,
+            &redis,
+            &nonce,
+            UnsignReconcileClaimMode::DueOnly,
+        )
+        .await
+        {
+            log::warn!("核对云账户解约 marker 失败 nonce={}: {}", nonce, err);
+        }
+    }
+}
+
+async fn reconcile_pending_unsign_nonce(
+    pool: &PgPool,
+    redis: &RedisPool,
+    reconcile_nonce: &str,
+    claim_mode: UnsignReconcileClaimMode,
+) -> Result<UnsignReconcileOutcome, ApiError> {
+    let Some((lease_owner, release_at)) =
+        claim_unsign_reconciliation(pool, reconcile_nonce, claim_mode).await?
+    else {
+        return Ok(UnsignReconcileOutcome::NotClaimed);
+    };
+
+    let first_user_id = match sqlx::query_scalar!(
+        "
+        SELECT user_id
+        FROM user_yunzhanghu_profiles
+        WHERE sign_status = 'signing'
+          AND sign_nonce = $1
+        ORDER BY user_id
+        LIMIT 1
+        ",
+        reconcile_nonce,
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(user_id) => user_id,
+        Err(err) => {
+            let err = ApiError::from(err);
+            defer_unsign_reconciliation_after_error(
+                pool,
+                reconcile_nonce,
+                &lease_owner,
+                None,
+                &err,
+            )
+            .await;
+            return Err(err);
+        }
+    };
+    let Some(first_user_id) = first_user_id else {
+        let outcome = resolve_empty_claimed_unsign_reconciliation(
+            pool,
+            reconcile_nonce,
+            &lease_owner,
+        )
+        .await;
+        if let Err(err) = &outcome {
+            defer_unsign_reconciliation_after_error(
+                pool,
+                reconcile_nonce,
+                &lease_owner,
+                None,
+                err,
+            )
+            .await;
+        }
+        return outcome;
+    };
+
+    let kyc = async {
+        let profile = YunzhanghuProfile::get(UserId(first_user_id), pool)
+            .await?
+            .ok_or_else(|| {
+                ApiError::InvalidInput("云账户资料不存在".to_string())
+            })?;
+        kyc_for_yzh_from_profile(&profile)
+    }
+    .await;
+    let (real_name, id_card) = match kyc {
+        Ok(kyc) => kyc,
+        Err(err) => {
+            defer_unsign_reconciliation_after_error(
+                pool,
+                reconcile_nonce,
+                &lease_owner,
+                None,
+                &err,
+            )
+            .await;
+            return Err(err);
+        }
+    };
+
+    let remote = match yzh_api::h5_sign_status(
+        &YzhClient::new(),
+        &yzh_api::SignStatusRequest {
+            real_name: &real_name,
+            id_card: &id_card,
+        },
+    )
+    .await
+    {
+        Ok(remote) => remote,
+        Err(err) => {
+            let err = yzh_to_api_error(err);
+            defer_unsign_reconciliation_after_error(
+                pool,
+                reconcile_nonce,
+                &lease_owner,
+                None,
+                &err,
+            )
+            .await;
+            return Err(err);
+        }
+    };
+    let remote_signed_at = parse_yzh_event_time(&remote.signed_at);
+    let final_status = if remote.status == 2 {
+        Some(YzhSignStatus::Terminated)
+    } else if remote.status == 1
+        && remote_signed_at.is_some_and(|signed_at| signed_at > release_at)
+    {
+        Some(YzhSignStatus::Signed)
+    } else {
+        None
+    };
+    let Some(final_status) = final_status else {
+        let reason = if remote.status == 1 {
+            "远端仍是回调之前的签约状态"
+        } else {
+            "远端解约状态尚未收敛"
+        };
+        defer_claimed_unsign_reconciliation(
+            pool,
+            reconcile_nonce,
+            &lease_owner,
+            Some(remote.status),
+            reason,
+        )
+        .await?;
+        return Ok(UnsignReconcileOutcome::Pending {
+            remote_status: Some(remote.status),
+        });
+    };
+
+    let outcome = finalize_claimed_unsign_reconciliation(
+        pool,
+        redis,
+        reconcile_nonce,
+        &lease_owner,
+        final_status,
+        remote.status,
+        remote_signed_at,
+    )
+    .await;
+    if let Err(err) = &outcome {
+        defer_unsign_reconciliation_after_error(
+            pool,
+            reconcile_nonce,
+            &lease_owner,
+            Some(remote.status),
+            err,
+        )
+        .await;
+    }
+    outcome
+}
+
+async fn claim_unsign_reconciliation(
+    pool: &PgPool,
+    reconcile_nonce: &str,
+    claim_mode: UnsignReconcileClaimMode,
+) -> Result<Option<(String, DateTime<Utc>)>, ApiError> {
+    let lease_owner = Uuid::new_v4().simple().to_string();
+    let force = matches!(claim_mode, UnsignReconcileClaimMode::Force);
+    let row = sqlx::query!(
+        r#"
+        UPDATE yunzhanghu_unsign_reconciliations
+        SET lease_owner = $2,
+            lease_expires_at = NOW() + ($3::double precision * INTERVAL '1 second'),
+            attempt_count = attempt_count + 1,
+            last_attempt_at = NOW(),
+            updated_at = NOW()
+        WHERE nonce = $1
+          AND status = 'pending'
+          AND ($4::boolean OR next_attempt_at <= NOW())
+          AND (lease_expires_at IS NULL OR lease_expires_at <= NOW())
+        RETURNING release_at
+        "#,
+        reconcile_nonce,
+        &lease_owner,
+        YZH_UNSIGN_RECONCILE_LEASE_SECONDS as f64,
+        force,
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|row| (lease_owner, row.release_at)))
+}
+
+async fn defer_claimed_unsign_reconciliation(
+    pool: &PgPool,
+    reconcile_nonce: &str,
+    lease_owner: &str,
+    remote_status: Option<i32>,
+    last_error: &str,
+) -> Result<bool, ApiError> {
+    let last_error = last_error.chars().take(1000).collect::<String>();
+    let result = sqlx::query!(
+        r#"
+        UPDATE yunzhanghu_unsign_reconciliations
+        SET lease_owner = NULL,
+            lease_expires_at = NULL,
+            last_remote_status = COALESCE($3, last_remote_status),
+            last_error = $4,
+            next_attempt_at = NOW() + ($5::double precision * INTERVAL '1 second'),
+            updated_at = NOW()
+        WHERE nonce = $1
+          AND status = 'pending'
+          AND lease_owner = $2
+        "#,
+        reconcile_nonce,
+        lease_owner,
+        remote_status,
+        &last_error,
+        YZH_UNSIGN_RECONCILE_RETRY_SECONDS as f64,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() == 1)
+}
+
+async fn defer_unsign_reconciliation_after_error(
+    pool: &PgPool,
+    reconcile_nonce: &str,
+    lease_owner: &str,
+    remote_status: Option<i32>,
+    error: &ApiError,
+) {
+    if let Err(release_error) = defer_claimed_unsign_reconciliation(
+        pool,
+        reconcile_nonce,
+        lease_owner,
+        remote_status,
+        &error.to_string(),
+    )
+    .await
+    {
+        log::error!(
+            "释放云账户解约核对租约失败 nonce={}: {}",
+            reconcile_nonce,
+            release_error
+        );
+    }
+}
+
+async fn resolve_empty_claimed_unsign_reconciliation(
+    pool: &PgPool,
+    reconcile_nonce: &str,
+    lease_owner: &str,
+) -> Result<UnsignReconcileOutcome, ApiError> {
+    let mut tx = pool.begin().await?;
+    let reconciliation = sqlx::query!(
+        "
+        SELECT status, lease_owner
+        FROM yunzhanghu_unsign_reconciliations
+        WHERE nonce = $1
+        FOR UPDATE
+        ",
+        reconcile_nonce,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    let Some(reconciliation) = reconciliation else {
+        tx.commit().await?;
+        return Ok(UnsignReconcileOutcome::NotClaimed);
+    };
+    if reconciliation.status != "pending"
+        || reconciliation.lease_owner.as_deref() != Some(lease_owner)
+    {
+        tx.commit().await?;
+        return Ok(UnsignReconcileOutcome::NotClaimed);
+    }
+
+    let marker_exists = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM user_yunzhanghu_profiles
+            WHERE sign_status = 'signing'
+              AND sign_nonce = $1
+        ) AS "exists!"
+        "#,
+        reconcile_nonce,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if marker_exists {
+        sqlx::query!(
+            r#"
+            UPDATE yunzhanghu_unsign_reconciliations
+            SET lease_owner = NULL,
+                lease_expires_at = NULL,
+                last_error = 'marker_appeared_after_claim',
+                next_attempt_at = NOW() + ($3::double precision * INTERVAL '1 second'),
+                updated_at = NOW()
+            WHERE nonce = $1
+              AND status = 'pending'
+              AND lease_owner = $2
+            "#,
+            reconcile_nonce,
+            lease_owner,
+            YZH_UNSIGN_RECONCILE_RETRY_SECONDS as f64,
+        )
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        return Ok(UnsignReconcileOutcome::Pending {
+            remote_status: None,
+        });
+    }
+
+    let result = sqlx::query!(
+        "
+        UPDATE yunzhanghu_unsign_reconciliations
+        SET status = 'resolved',
+            lease_owner = NULL,
+            lease_expires_at = NULL,
+            last_error = 'no_pending_profiles',
+            resolved_status = 'ignored',
+            resolved_at = NOW(),
+            updated_at = NOW()
+        WHERE nonce = $1
+          AND status = 'pending'
+          AND lease_owner = $2
+        ",
+        reconcile_nonce,
+        lease_owner,
+    )
+    .execute(&mut *tx)
+    .await?;
+    if result.rows_affected() != 1 {
+        return Err(ApiError::InvalidInput(
+            "云账户解约核对租约已变化".to_string(),
+        ));
+    }
+    tx.commit().await?;
+    Ok(UnsignReconcileOutcome::Ignored)
+}
+
+async fn finalize_claimed_unsign_reconciliation(
+    pool: &PgPool,
+    redis: &RedisPool,
+    reconcile_nonce: &str,
+    lease_owner: &str,
+    final_status: YzhSignStatus,
+    remote_status: i32,
+    remote_signed_at: Option<DateTime<Utc>>,
+) -> Result<UnsignReconcileOutcome, ApiError> {
+    let mut tx = pool.begin().await?;
+    let reconciliation = sqlx::query!(
+        "
+        SELECT status, lease_owner, release_at
+        FROM yunzhanghu_unsign_reconciliations
+        WHERE nonce = $1
+        FOR UPDATE
+        ",
+        reconcile_nonce,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    let Some(reconciliation) = reconciliation else {
+        tx.commit().await?;
+        return Ok(UnsignReconcileOutcome::NotClaimed);
+    };
+    if reconciliation.status != "pending"
+        || reconciliation.lease_owner.as_deref() != Some(lease_owner)
+    {
+        tx.commit().await?;
+        return Ok(UnsignReconcileOutcome::NotClaimed);
+    }
+
+    // reconciliation 行锁必须先于 users 锁。回调也遵循相同顺序，因此在这次
+    // 查询之后不会再有同 nonce 的用户加入，下面锁住的就是完整结算组。
+    let rows = sqlx::query!(
+        "
+        SELECT user_id
+        FROM user_yunzhanghu_profiles
+        WHERE sign_status = 'signing'
+          AND sign_nonce = $1
+        ORDER BY user_id
+        ",
+        reconcile_nonce,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    let user_ids = rows.into_iter().map(|row| row.user_id).collect::<Vec<_>>();
+    if user_ids.is_empty() {
+        let result = sqlx::query!(
+            "
+            UPDATE yunzhanghu_unsign_reconciliations
+            SET status = 'resolved',
+                lease_owner = NULL,
+                lease_expires_at = NULL,
+                last_remote_status = $3,
+                last_error = 'no_pending_profiles',
+                resolved_status = 'ignored',
+                resolved_at = NOW(),
+                updated_at = NOW()
+            WHERE nonce = $1
+              AND status = 'pending'
+              AND lease_owner = $2
+            ",
+            reconcile_nonce,
+            lease_owner,
+            remote_status,
+        )
+        .execute(&mut *tx)
+        .await?;
+        if result.rows_affected() != 1 {
+            return Err(ApiError::InvalidInput(
+                "云账户解约核对租约已变化".to_string(),
+            ));
+        }
+        tx.commit().await?;
+        return Ok(UnsignReconcileOutcome::Ignored);
+    }
+
+    lock_yunzhanghu_users(&mut tx, &user_ids).await?;
+    let mut transitioned_user_ids = match final_status {
+        YzhSignStatus::Terminated => sqlx::query!(
+            r#"
+            UPDATE user_yunzhanghu_profiles
+            SET sign_status = 'terminated',
+                sign_url = NULL,
+                sign_nonce = NULL,
+                signed_at = NULL,
+                terminated_at = $3,
+                updated_at = NOW()
+            WHERE user_id = ANY($1::bigint[])
+              AND sign_status = 'signing'
+              AND sign_nonce = $2
+            RETURNING user_id
+            "#,
+            &user_ids,
+            reconcile_nonce,
+            reconciliation.release_at,
+        )
+        .fetch_all(&mut *tx)
+        .await?
+        .into_iter()
+        .map(|row| row.user_id)
+        .collect::<Vec<_>>(),
+        YzhSignStatus::Signed => sqlx::query!(
+            r#"
+            UPDATE user_yunzhanghu_profiles
+            SET sign_status = 'signed',
+                sign_url = NULL,
+                sign_nonce = NULL,
+                signed_at = $3,
+                terminated_at = NULL,
+                updated_at = NOW()
+            WHERE user_id = ANY($1::bigint[])
+              AND sign_status = 'signing'
+              AND sign_nonce = $2
+            RETURNING user_id
+            "#,
+            &user_ids,
+            reconcile_nonce,
+            remote_signed_at,
+        )
+        .fetch_all(&mut *tx)
+        .await?
+        .into_iter()
+        .map(|row| row.user_id)
+        .collect::<Vec<_>>(),
+        _ => {
+            return Err(ApiError::InvalidInput(
+                "云账户解约核对终态无效".to_string(),
+            ));
+        }
+    };
+    transitioned_user_ids.sort_unstable();
+    if transitioned_user_ids != user_ids {
+        return Err(ApiError::InvalidInput(
+            "云账户解约核对用户组发生并发变化".to_string(),
+        ));
+    }
+
+    let result = sqlx::query!(
+        "
+        UPDATE yunzhanghu_unsign_reconciliations
+        SET status = 'resolved',
+            lease_owner = NULL,
+            lease_expires_at = NULL,
+            last_remote_status = $3,
+            last_error = NULL,
+            resolved_status = $4,
+            resolved_at = NOW(),
+            updated_at = NOW()
+        WHERE nonce = $1
+          AND status = 'pending'
+          AND lease_owner = $2
+        ",
+        reconcile_nonce,
+        lease_owner,
+        remote_status,
+        final_status.as_str(),
+    )
+    .execute(&mut *tx)
+    .await?;
+    if result.rows_affected() != 1 {
+        return Err(ApiError::InvalidInput(
+            "云账户解约核对租约已变化".to_string(),
+        ));
+    }
+    tx.commit().await?;
+
+    for user_id in &transitioned_user_ids {
+        notify_yunzhanghu_sign_status_change(
+            pool,
+            redis,
+            UserId(*user_id),
+            YzhSignStatus::Signing,
+            final_status,
+        )
+        .await;
+    }
+    Ok(UnsignReconcileOutcome::Resolved {
+        status: final_status,
+        remote_status,
+        signed_at: if final_status == YzhSignStatus::Signed {
+            remote_signed_at
+        } else {
+            None
+        },
+    })
+}
+
 /// 由 `lib.rs` 的 scheduler 每分钟调用一次。
 pub async fn poll_in_transit_payouts(pool: PgPool, redis: RedisPool) {
     let in_transit = match sqlx::query!(
@@ -1622,7 +2973,9 @@ pub async fn poll_in_transit_payouts(pool: PgPool, redis: RedisPool) {
     );
 
     let client = YzhClient::new();
-    let mut succeeded = 0usize;
+    let mut applied = 0usize;
+    let mut ignored = 0usize;
+    let mut rejected = 0usize;
     let mut failed = 0usize;
 
     for row in in_transit {
@@ -1650,7 +3003,7 @@ pub async fn poll_in_transit_payouts(pool: PgPool, redis: RedisPool) {
             }
         };
 
-        if let Err(e) = apply_order_status(
+        match apply_order_status(
             &pool,
             &redis,
             &resp.order_id,
@@ -1665,14 +3018,26 @@ pub async fn poll_in_transit_payouts(pool: PgPool, redis: RedisPool) {
         )
         .await
         {
-            failed += 1;
-            log::warn!("更新订单状态失败 order_id={}: {:?}", order_id, e);
-        } else {
-            succeeded += 1;
+            Ok(OrderStatusApplyOutcome::Applied) => applied += 1,
+            Ok(OrderStatusApplyOutcome::Ignored) => ignored += 1,
+            Ok(OrderStatusApplyOutcome::EvidenceRejected) => {
+                rejected += 1;
+                log::warn!("订单状态证据校验拒绝 order_id={}", order_id);
+            }
+            Err(e) => {
+                failed += 1;
+                log::warn!("更新订单状态失败 order_id={}: {:?}", order_id, e);
+            }
         }
     }
 
-    log::info!("云账户轮询：成功 {}，失败 {}", succeeded, failed);
+    log::info!(
+        "云账户轮询：已同步 {}，已忽略 {}，校验拒绝 {}，失败 {}",
+        applied,
+        ignored,
+        rejected,
+        failed
+    );
 }
 
 // ============================================================================
@@ -1747,11 +3112,216 @@ async fn insert_yunzhanghu_sign_status_notification(
     Ok(())
 }
 
-async fn ensure_no_active_yunzhanghu_payout(
+fn profile_has_pending_sign_operation(profile: &YunzhanghuProfile) -> bool {
+    profile.sign_status == YzhSignStatus::Signing
+        || profile
+            .sign_nonce
+            .as_deref()
+            .is_some_and(|nonce| !nonce.is_empty())
+}
+
+fn sign_operation_is_expired(
+    profile: &YunzhanghuProfile,
+    now: DateTime<Utc>,
+) -> bool {
+    if profile
+        .sign_nonce
+        .as_deref()
+        .and_then(unsign_reconcile_event_at)
+        .is_some()
+    {
+        return false;
+    }
+    profile_has_pending_sign_operation(profile)
+        && profile.updated_at + Duration::hours(YZH_H5_OPERATION_VALID_HOURS)
+            <= now
+}
+
+fn should_keep_pending_sign_operation(
+    has_pending_operation: bool,
+    is_release_operation: bool,
+    remote_status: YzhSignStatus,
+    operation_expired: bool,
+) -> bool {
+    if !has_pending_operation || operation_expired {
+        return false;
+    }
+
+    if is_release_operation {
+        remote_status == YzhSignStatus::Signed
+    } else {
+        remote_status != YzhSignStatus::Signed
+    }
+}
+
+fn parse_yzh_event_time(value: &str) -> Option<DateTime<Utc>> {
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    if let Ok(value) = DateTime::parse_from_rfc3339(value) {
+        return Some(value.with_timezone(&Utc));
+    }
+
+    chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S")
+        .ok()
+        .and_then(|value| {
+            crate::util::date::app_tz()
+                .from_local_datetime(&value)
+                .single()
+        })
+        .map(|value| value.with_timezone(&Utc))
+}
+
+fn unsign_reconcile_event_at(nonce: &str) -> Option<DateTime<Utc>> {
+    let timestamp = nonce
+        .strip_prefix("release:webhook:")?
+        .split(':')
+        .next()?
+        .parse::<i64>()
+        .ok()?;
+    Utc.timestamp_opt(timestamp, 0).single()
+}
+
+fn unsign_reconciliation_nonce(
+    creds: &crate::util::yunzhanghu::secrets::YzhCredentials,
+    real_name: &str,
+    id_card: &str,
+    release_at: DateTime<Utc>,
+) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(creds.app_key.as_bytes())
+        .expect("HMAC accepts keys of any length");
+    mac.update(b"yunzhanghu-unsign-reconciliation\0");
+    mac.update(real_name.trim().as_bytes());
+    mac.update(b"\0");
+    mac.update(id_card.trim().to_uppercase().as_bytes());
+    mac.update(b"\0");
+    mac.update(release_at.timestamp().to_string().as_bytes());
+    let digest = mac.finalize().into_bytes().encode_hex::<String>();
+    format!("release:webhook:{}:{}", release_at.timestamp(), digest)
+}
+
+fn yunzhanghu_identity_matches(
+    profile: &YunzhanghuProfile,
+    real_name: &str,
+    id_card: &str,
+) -> bool {
+    profile
+        .real_name
+        .as_deref()
+        .is_some_and(|name| name.trim() == real_name.trim())
+        && profile
+            .decrypt_id_card()
+            .ok()
+            .flatten()
+            .as_deref()
+            .is_some_and(|stored_id_card| stored_id_card == id_card)
+}
+
+fn unsign_event_is_stale(
+    profile: &YunzhanghuProfile,
+    release_at: DateTime<Utc>,
+    reconcile_nonce: &str,
+) -> bool {
+    if profile.sign_nonce.as_deref() == Some(reconcile_nonce) {
+        return false;
+    }
+
+    // 一个更早（或相同时间）的回调不能覆盖已经在核对中的更新解约事件。
+    // 同 nonce 已在上方视为幂等重试；不同 nonce 仅在事件时间严格更新时替换。
+    if profile
+        .sign_nonce
+        .as_deref()
+        .and_then(unsign_reconcile_event_at)
+        .is_some_and(|current_release_at| current_release_at >= release_at)
+    {
+        return true;
+    }
+
+    let latest_local_sign_intent = match profile.sign_status {
+        YzhSignStatus::Signing
+            if profile
+                .sign_nonce
+                .as_deref()
+                .is_some_and(|nonce| !nonce.starts_with("release:")) =>
+        {
+            Some(profile.updated_at)
+        }
+        _ => None,
+    };
+    // Signed.signed_at 是本地处理签约回调的时间，不一定是远端事件时间，不能
+    // 用它跳过可信解约回调；已签约状态必须进入 marker 后以远端 status/signed_at
+    // 排序。只有尚未完成的新签约 intent 的创建时间可作为本地并发保护。
+    latest_local_sign_intent.is_some_and(|event_at| event_at > release_at)
+}
+
+async fn lock_yunzhanghu_user(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     user_id: UserId,
-    pool: &PgPool,
 ) -> Result<(), ApiError> {
-    if has_active_yunzhanghu_payout(user_id, pool).await? {
+    let user_exists = sqlx::query_scalar!(
+        "SELECT id FROM users WHERE id = $1 FOR UPDATE",
+        user_id.0,
+    )
+    .fetch_optional(&mut **tx)
+    .await?;
+    if user_exists.is_none() {
+        return Err(ApiError::InvalidInput("用户不存在".to_string()));
+    }
+    Ok(())
+}
+
+async fn lock_yunzhanghu_users(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_ids: &[i64],
+) -> Result<(), ApiError> {
+    if user_ids.is_empty() {
+        return Ok(());
+    }
+    let locked_user_ids = sqlx::query_scalar!(
+        r#"
+        SELECT id AS "id!"
+        FROM users
+        WHERE id = ANY($1::bigint[])
+        ORDER BY id
+        FOR UPDATE
+        "#,
+        user_ids,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+    if locked_user_ids.len() != user_ids.len() {
+        return Err(ApiError::InvalidInput("用户不存在".to_string()));
+    }
+    Ok(())
+}
+
+async fn lock_user_and_ensure_no_processing_payout(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: UserId,
+) -> Result<(), ApiError> {
+    // 与批量落单/管理员退回保持 payouts -> users 的锁顺序。
+    let _payout_locks = sqlx::query_scalar!(
+        "
+        SELECT id
+        FROM payouts
+        WHERE user_id = $1
+          AND status IN ('in-transit', 'cancelling')
+        FOR SHARE
+        ",
+        user_id.0,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+    lock_yunzhanghu_user(tx, user_id).await?;
+    ensure_no_processing_payout_in_tx(tx, user_id).await
+}
+
+async fn ensure_no_processing_payout_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: UserId,
+) -> Result<(), ApiError> {
+    if has_processing_payout_in_tx(tx, user_id).await? {
         return Err(ApiError::InvalidInput(
             "您有提现正在处理中，请等待提现完成或由管理员退回后再修改实名资料/收款账号、签约或解约。"
                 .to_string(),
@@ -1761,7 +3331,105 @@ async fn ensure_no_active_yunzhanghu_payout(
     Ok(())
 }
 
-async fn has_active_yunzhanghu_payout(
+async fn has_processing_payout_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: UserId,
+) -> Result<bool, ApiError> {
+    Ok(sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM payouts
+            WHERE user_id = $1
+              AND status IN ('in-transit', 'cancelling')
+        ) AS "active!"
+        "#,
+        user_id.0,
+    )
+    .fetch_one(&mut **tx)
+    .await?)
+}
+
+async fn restore_failed_sign_operation(
+    pool: &PgPool,
+    user_id: UserId,
+    sign_nonce: &str,
+    previous_status: YzhSignStatus,
+) {
+    if let Err(err) = sqlx::query!(
+        "
+        UPDATE user_yunzhanghu_profiles
+        SET sign_status = $3,
+            sign_url = NULL,
+            sign_nonce = NULL,
+            updated_at = NOW()
+        WHERE user_id = $1
+          AND sign_status = 'signing'
+          AND sign_nonce = $2
+        ",
+        user_id.0,
+        sign_nonce,
+        previous_status.as_str(),
+    )
+    .execute(pool)
+    .await
+    {
+        log::error!(
+            "恢复云账户签约意图失败 user_id={} previous_status={}: {}",
+            user_id.0,
+            previous_status,
+            err
+        );
+    }
+}
+
+/// 保存已经由云账户创建的 H5 操作链接。
+///
+/// 远端请求成功后，即使此处因瞬时数据库错误无法保存 URL，也应把链接返回给
+/// 当前请求方；本地已提前写入的 nonce 仍会阻止重复发起，并可在有效期结束后
+/// 通过状态刷新恢复。若 nonce 已变化，则说明本地状态已被另一个操作推进，不能
+/// 把旧链接交给用户继续执行。
+async fn store_sign_operation_url(
+    pool: &PgPool,
+    user_id: UserId,
+    sign_nonce: &str,
+    sign_url: &str,
+    operation_name: &str,
+) -> Result<bool, ApiError> {
+    match sqlx::query!(
+        "
+        UPDATE user_yunzhanghu_profiles
+        SET sign_url = $3,
+            updated_at = NOW()
+        WHERE user_id = $1
+          AND sign_status = 'signing'
+          AND sign_nonce = $2
+        ",
+        user_id.0,
+        sign_nonce,
+        sign_url,
+    )
+    .execute(pool)
+    .await
+    {
+        Ok(result) if result.rows_affected() == 1 => Ok(true),
+        Ok(_) => Err(ApiError::InvalidInput(format!(
+            "本地云账户{}状态已变化，请刷新页面后重试。",
+            operation_name
+        ))),
+        Err(err) => {
+            log::error!(
+                "保存云账户{} H5 链接失败 user_id={}: {}",
+                operation_name,
+                user_id.0,
+                err
+            );
+            Ok(false)
+        }
+    }
+}
+
+async fn has_processing_payout(
     user_id: UserId,
     pool: &PgPool,
 ) -> Result<bool, ApiError> {
@@ -1770,8 +3438,7 @@ async fn has_active_yunzhanghu_payout(
         SELECT id
         FROM payouts
         WHERE user_id = $1
-          AND status = 'in-transit'
-          AND method = 'yunzhanghu_alipay'
+          AND status IN ('in-transit', 'cancelling')
         LIMIT 1
         ",
         user_id.0
@@ -1801,13 +3468,12 @@ async fn validate_order_status_evidence(
     payout_db_id: i64,
     user_id: UserId,
     amount: rust_decimal::Decimal,
+    fee: rust_decimal::Decimal,
     payout_account: Option<&str>,
     evidence: OrderStatusEvidence<'_>,
 ) -> Result<bool, ApiError> {
     if evidence.require_callback_fields
-        && (evidence.pay.is_none()
-            || evidence.dealer_id.is_none()
-            || evidence.broker_id.is_none())
+        && !required_order_callback_fields_present(&evidence)
     {
         log::warn!(
             "云账户订单回调缺少必要业务绑定字段 payout_id={}",
@@ -1825,11 +3491,17 @@ async fn validate_order_status_evidence(
             );
             return Ok(false);
         };
-        if remote_amount.round_dp(2) != amount.round_dp(2) {
+        let expected_amount =
+            super::payouts::calculate_yunzhanghu_submitted_pay_amount(
+                amount, fee,
+            );
+        if remote_amount.round_dp(2) != expected_amount.round_dp(2) {
             log::warn!(
-                "云账户订单回调金额不匹配 payout_id={} local={} remote={}",
+                "云账户订单金额不匹配 payout_id={} gross={} fee={} expected_pay={} remote_pay={}",
                 payout_db_id,
                 amount.round_dp(2),
+                fee.round_dp(2),
+                expected_amount.round_dp(2),
                 remote_amount.round_dp(2)
             );
             return Ok(false);
@@ -1860,7 +3532,6 @@ async fn validate_order_status_evidence(
     if evidence.real_name.is_none()
         && evidence.id_card.is_none()
         && evidence.phone_no.is_none()
-        && evidence.card_no.is_none()
     {
         return Ok(true);
     }
@@ -1886,14 +3557,6 @@ async fn validate_order_status_evidence(
         && profile.phone.as_deref().map(str::trim) != Some(phone_no.trim())
     {
         log::warn!("云账户订单回调手机号不匹配 payout_id={}", payout_db_id);
-        return Ok(false);
-    }
-
-    if let Some(card_no) = evidence.card_no
-        && profile.alipay_account.as_deref().map(str::trim)
-            != Some(card_no.trim())
-    {
-        log::warn!("云账户订单回调支付宝账号不匹配 payout_id={}", payout_db_id);
         return Ok(false);
     }
 
@@ -2048,21 +3711,10 @@ async fn mark_notify_replay(
     Ok(())
 }
 
-/// 加载用户已绑定的真实姓名 + 身份证号（解密后）。
-/// 缺失时返回 [`ApiError::InvalidInput`]，提示前端先完善 KYC。
-async fn load_kyc_for_yzh(
-    user_id: UserId,
-    pool: &PgPool,
+/// 从已锁定/已读取的资料中取得云账户签约所需 KYC，避免再次跨连接读取。
+fn kyc_for_yzh_from_profile(
+    profile: &YunzhanghuProfile,
 ) -> Result<(String, String), ApiError> {
-    let profile =
-        YunzhanghuProfile::get(user_id, pool)
-            .await?
-            .ok_or_else(|| {
-                ApiError::InvalidInput(
-                    "请先完善实名信息与支付宝账号".to_string(),
-                )
-            })?;
-
     let id_card = profile
         .decrypt_id_card()
         .map_err(|e| {
@@ -2072,7 +3724,7 @@ async fn load_kyc_for_yzh(
             ApiError::InvalidInput("请先完善身份证号".to_string())
         })?;
 
-    let real_name = profile.real_name.ok_or_else(|| {
+    let real_name = profile.real_name.clone().ok_or_else(|| {
         ApiError::InvalidInput("请先完善实名信息".to_string())
     })?;
 
@@ -2177,5 +3829,347 @@ mod tests {
         assert!(RE_ALIPAY.is_match("alice@example.com"));
         assert!(!RE_ALIPAY.is_match("alice"));
         assert!(!RE_ALIPAY.is_match(""));
+    }
+
+    #[test]
+    fn rejected_order_status_evidence_is_not_accepted() {
+        assert!(
+            ensure_order_status_evidence_accepted(
+                OrderStatusApplyOutcome::EvidenceRejected,
+            )
+            .is_err()
+        );
+        assert!(
+            ensure_order_status_evidence_accepted(
+                OrderStatusApplyOutcome::Applied,
+            )
+            .is_ok()
+        );
+        assert!(
+            ensure_order_status_evidence_accepted(
+                OrderStatusApplyOutcome::Ignored,
+            )
+            .is_ok()
+        );
+
+        assert!(
+            ensure_order_callback_status_applied(
+                OrderStatusApplyOutcome::Applied,
+            )
+            .is_ok()
+        );
+        assert!(
+            ensure_order_callback_status_applied(
+                OrderStatusApplyOutcome::EvidenceRejected,
+            )
+            .is_err()
+        );
+        assert!(
+            ensure_order_callback_status_applied(
+                OrderStatusApplyOutcome::Ignored,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn successful_payout_allows_only_verified_full_refund_transition() {
+        use crate::models::payouts::PayoutStatus;
+
+        assert!(
+            ensure_refund_status_applied(OrderStatusApplyOutcome::Applied)
+                .is_ok()
+        );
+        assert!(
+            ensure_refund_status_applied(OrderStatusApplyOutcome::Ignored)
+                .is_err()
+        );
+        assert!(
+            ensure_refund_status_applied(
+                OrderStatusApplyOutcome::EvidenceRejected,
+            )
+            .is_err()
+        );
+
+        assert!(!should_ignore_terminal_order_transition(
+            PayoutStatus::Success,
+            PayoutStatus::Cancelled,
+            true,
+        ));
+        assert!(should_ignore_terminal_order_transition(
+            PayoutStatus::Success,
+            PayoutStatus::Cancelled,
+            false,
+        ));
+        assert!(should_ignore_terminal_order_transition(
+            PayoutStatus::Success,
+            PayoutStatus::Failed,
+            true,
+        ));
+
+        assert!(is_verified_channel_return("4", "2"));
+        assert!(is_verified_channel_return("refund", "2"));
+        assert!(!is_verified_channel_return("4", "1"));
+        assert!(!is_verified_channel_return("5", "2"));
+
+        assert!(
+            ensure_full_refund_amount(
+                rust_decimal::Decimal::new(105_819, 2),
+                rust_decimal::Decimal::new(105_819, 2),
+            )
+            .is_ok()
+        );
+        assert!(
+            ensure_full_refund_amount(
+                rust_decimal::Decimal::new(105_819, 2),
+                rust_decimal::Decimal::new(50_000, 2),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn verified_channel_return_uses_immutable_order_evidence() {
+        let notify: OrderNotifyData = serde_json::from_value(json!({
+            "order_id": "bbsmc-test",
+            "pay": "1058.19",
+            "dealer_id": "dealer",
+            "broker_id": "broker",
+            "real_name": "原姓名",
+            "card_no": "original-account",
+            "id_card": "original-id-card",
+            "phone_no": "13800000000",
+            "status": "4"
+        }))
+        .unwrap();
+        let mut queried: yzh_api::QueryOrderResponse =
+            serde_json::from_value(json!({
+                "order_id": "bbsmc-test",
+                "pay": "1058.19",
+                "status": "4",
+                "refund_origin": "2"
+            }))
+            .unwrap();
+
+        assert!(channel_return_query_matches_callback(&notify, &queried));
+
+        let normal_evidence = order_callback_evidence(&notify, false);
+        assert_eq!(normal_evidence.real_name, Some("原姓名"));
+        assert_eq!(normal_evidence.id_card, Some("original-id-card"));
+        assert_eq!(normal_evidence.phone_no, Some("13800000000"));
+
+        let returned_evidence = order_callback_evidence(&notify, true);
+        assert!(returned_evidence.allow_success_refund);
+        assert_eq!(returned_evidence.card_no, Some("original-account"));
+        assert!(returned_evidence.real_name.is_none());
+        assert!(returned_evidence.id_card.is_none());
+        assert!(returned_evidence.phone_no.is_none());
+        assert!(required_order_callback_fields_present(&returned_evidence));
+        assert!(!required_order_callback_fields_present(
+            &OrderStatusEvidence {
+                card_no: None,
+                ..returned_evidence
+            }
+        ));
+
+        queried.refund_origin = "1".to_string();
+        assert!(!channel_return_query_matches_callback(&notify, &queried));
+    }
+
+    #[test]
+    fn current_refund_callback_payload_uses_wrapped_full_refund_fields() {
+        let payload: RefundNotifyPayload = serde_json::from_value(json!({
+            "notify_id": "notify-1",
+            "notify_time": "2026-08-02 18:00:00",
+            "data": {
+                "broker_id": "broker",
+                "dealer_id": "dealer",
+                "ref": "original-ref",
+                "refund_ref": "refund-ref",
+                "order_id": "bbsmc-test",
+                "real_name": "测试用户",
+                "card_no": "account",
+                "id_card": "id-card",
+                "refund_type": "0",
+                "refund_total_amount": "1058.19"
+            }
+        }))
+        .unwrap();
+
+        let RefundNotifyPayload::Wrapped {
+            notify_id, data, ..
+        } = payload
+        else {
+            panic!("current refund callback must decode as wrapped payload");
+        };
+        assert_eq!(notify_id, "notify-1");
+        assert_eq!(data.order_id, "bbsmc-test");
+        assert_eq!(data.refund_type, "0");
+        assert_eq!(data.refund_total_amount, "1058.19");
+        assert_eq!(data.refund_ref, "refund-ref");
+    }
+
+    #[test]
+    fn yunzhanghu_event_time_uses_application_timezone() {
+        assert_eq!(
+            parse_yzh_event_time("2026-08-02 12:34:56"),
+            Some(Utc.with_ymd_and_hms(2026, 8, 2, 4, 34, 56).unwrap())
+        );
+        assert_eq!(
+            unsign_reconcile_event_at(
+                "release:webhook:1785645296:callback-digest"
+            ),
+            Utc.timestamp_opt(1785645296, 0).single()
+        );
+    }
+
+    #[test]
+    fn unsign_callback_preserves_newer_local_operations() {
+        let release_at = Utc.with_ymd_and_hms(2026, 8, 2, 4, 34, 56).unwrap();
+        let mut profile = YunzhanghuProfile {
+            user_id: UserId(1),
+            real_name: None,
+            id_card_encrypted: None,
+            id_card_last4: None,
+            phone: None,
+            alipay_account: None,
+            sign_status: YzhSignStatus::Signed,
+            sign_url: None,
+            sign_nonce: None,
+            signed_at: Some(release_at + Duration::minutes(1)),
+            terminated_at: None,
+            created_at: release_at - Duration::days(1),
+            updated_at: release_at + Duration::minutes(1),
+        };
+
+        // signed_at 是本地处理回调的时间，不能据此丢弃可信解约事件。
+        assert!(!unsign_event_is_stale(
+            &profile,
+            release_at,
+            "release:webhook:1785645296:digest"
+        ));
+        profile.sign_status = YzhSignStatus::Signing;
+        profile.sign_nonce = Some("new-sign-intent".to_string());
+        assert!(unsign_event_is_stale(
+            &profile,
+            release_at,
+            "release:webhook:1785645296:digest"
+        ));
+        assert!(!unsign_event_is_stale(
+            &profile,
+            release_at + Duration::minutes(2),
+            "release:webhook:1785645416:digest"
+        ));
+
+        let newer_release_at = release_at + Duration::minutes(1);
+        profile.sign_nonce = Some(format!(
+            "release:webhook:{}:newer-release",
+            newer_release_at.timestamp()
+        ));
+        assert!(unsign_event_is_stale(
+            &profile,
+            release_at,
+            "release:webhook:1785645296:older-release"
+        ));
+        assert!(!unsign_event_is_stale(
+            &profile,
+            newer_release_at + Duration::minutes(1),
+            "release:webhook:1785645416:newest-release"
+        ));
+    }
+
+    #[test]
+    fn unsign_reconciliation_nonce_is_stable_for_business_event() {
+        let creds = crate::util::yunzhanghu::secrets::YzhCredentials {
+            api_url: "https://example.invalid".to_string(),
+            dealer_id: "dealer".to_string(),
+            broker_id: "broker".to_string(),
+            app_key: "test-app-key".to_string(),
+            des_key: "000000000000000000000000".to_string(),
+            dealer_private_key_pem: String::new(),
+            platform_public_key_pem: String::new(),
+        };
+        let release_at = Utc.with_ymd_and_hms(2026, 8, 2, 4, 34, 56).unwrap();
+        let nonce = unsign_reconciliation_nonce(
+            &creds,
+            "张三",
+            "11010519491231002X",
+            release_at,
+        );
+        assert_eq!(
+            nonce,
+            unsign_reconciliation_nonce(
+                &creds,
+                " 张三 ",
+                "11010519491231002x",
+                release_at,
+            )
+        );
+        assert_ne!(
+            nonce,
+            unsign_reconciliation_nonce(
+                &creds,
+                "张三",
+                "11010519491231002X",
+                release_at + Duration::seconds(1),
+            )
+        );
+    }
+
+    #[test]
+    fn pending_sign_operation_is_kept_until_remote_signs_or_it_expires() {
+        assert!(should_keep_pending_sign_operation(
+            true,
+            false,
+            YzhSignStatus::Unsigned,
+            false,
+        ));
+        assert!(should_keep_pending_sign_operation(
+            true,
+            false,
+            YzhSignStatus::Terminated,
+            false,
+        ));
+        assert!(!should_keep_pending_sign_operation(
+            true,
+            false,
+            YzhSignStatus::Signed,
+            false,
+        ));
+        assert!(!should_keep_pending_sign_operation(
+            true,
+            false,
+            YzhSignStatus::Unsigned,
+            true,
+        ));
+    }
+
+    #[test]
+    fn pending_release_operation_is_kept_until_remote_terminates_or_it_expires()
+    {
+        assert!(should_keep_pending_sign_operation(
+            true,
+            true,
+            YzhSignStatus::Signed,
+            false,
+        ));
+        assert!(!should_keep_pending_sign_operation(
+            true,
+            true,
+            YzhSignStatus::Terminated,
+            false,
+        ));
+        assert!(!should_keep_pending_sign_operation(
+            true,
+            true,
+            YzhSignStatus::Signed,
+            true,
+        ));
+        assert!(!should_keep_pending_sign_operation(
+            false,
+            true,
+            YzhSignStatus::Signed,
+            false,
+        ));
     }
 }

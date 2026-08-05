@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT user_id, username, amount, profile_updated_at\n        FROM admin_payout_batch_items\n        WHERE batch_id = $1 AND status IN ('pending', 'failed')\n        ORDER BY user_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "profile_updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "253b9405e02cfe71842d8876fac83727ef50e9b8d634252f96a605891d4dc25b"
+}

@@ -26,8 +26,19 @@ use std::collections::HashMap;
 
 /// 提现最低额度（人民币元）
 const MIN_WITHDRAW_AMOUNT: Decimal = Decimal::from_parts(5, 0, 0, false, 0);
+/// 云账户支付宝单笔提现上限（人民币元）。
+const MAX_WITHDRAW_AMOUNT: Decimal =
+    Decimal::from_parts(50_000, 0, 0, false, 0);
 const WITHDRAW_SERVICE_FEE_RATE: Decimal =
     Decimal::from_parts(3, 0, 0, false, 2);
+/// 云账户待转账金额之外由平台承担的额外服务费率（6.8%）。
+const YUNZHANGHU_EXTRA_SERVICE_FEE_RATE: Decimal =
+    Decimal::from_parts(68, 0, 0, false, 3);
+const BATCH_PAYOUT_ADMIN_USERNAME: &str = "BBSMC";
+const BATCH_PAYOUT_CONFIRMATION: &str = "我确认批量申请提现";
+const BATCH_PAYOUT_PREVIEW_MINUTES: i64 = 15;
+const BATCH_PAYOUT_HEARTBEAT_TIMEOUT_SECONDS: i64 = 5 * 60;
+const BATCH_PAYOUT_PREVIEW_CLEANUP_LIMIT: i64 = 100;
 
 /// 云账户合规要求 - 平台企业名称
 const DEALER_PLATFORM_NAME: &str = "青岛柒兮网络科技";
@@ -42,6 +53,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(create_payout)
             .service(admin_payouts)
             .service(admin_processing_payouts)
+            .service(admin_batch_payout_preview)
+            .service(admin_batch_payout_apply)
             .service(admin_processing_payout_detail)
             .service(admin_confirm_payout)
             .service(admin_reject_payout)
@@ -278,6 +291,18 @@ pub struct AdminPayoutsResponse {
     pub total: i64,
     pub page: i64,
     pub page_size: i64,
+    pub pending_transfer_summary: AdminPendingTransferSummary,
+}
+
+#[derive(Serialize)]
+pub struct AdminPendingTransferSummary {
+    pub order_count: i64,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub transfer_amount: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub additional_service_fee: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_with_service_fee: Decimal,
 }
 
 #[derive(Serialize)]
@@ -311,6 +336,1949 @@ pub struct AdminRejectPayout {
     pub reason: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct AdminBatchPayoutSource {
+    pub project_id: Option<crate::models::ids::ProjectId>,
+    pub slug: Option<String>,
+    pub title: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AdminBatchPayoutUser {
+    pub user_id: crate::models::ids::UserId,
+    pub username: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+    pub order_count: usize,
+    pub orders: Vec<AdminBatchPayoutPlannedOrder>,
+    pub sources: Vec<AdminBatchPayoutSource>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AdminBatchPayoutPlannedOrder {
+    pub chunk_index: usize,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AdminBatchPayoutExcludedUser {
+    pub user_id: crate::models::ids::UserId,
+    pub username: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+    pub reason_code: String,
+}
+
+#[derive(Serialize)]
+pub struct AdminBatchPayoutPreview {
+    pub batch_id: String,
+    pub expires_at: DateTime<Utc>,
+    pub source_attribution: &'static str,
+    pub user_count: usize,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_amount: Decimal,
+    pub users: Vec<AdminBatchPayoutUser>,
+    pub excluded_count: usize,
+    pub excluded_users: Vec<AdminBatchPayoutExcludedUser>,
+}
+
+#[derive(Deserialize)]
+pub struct AdminBatchPayoutApplyRequest {
+    pub confirmation: String,
+}
+
+#[derive(Serialize)]
+pub struct AdminBatchPayoutApplyItem {
+    pub user_id: crate::models::ids::UserId,
+    pub username: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+    pub status: String,
+    /// 兼容旧管理端：拆单时取第一笔，完整结果以 `payout_ids` 为准。
+    pub payout_id: Option<crate::models::ids::PayoutId>,
+    pub payout_ids: Vec<crate::models::ids::PayoutId>,
+    pub reason_code: Option<String>,
+    pub retryable: bool,
+}
+
+#[derive(Serialize)]
+pub struct AdminBatchPayoutApplyResponse {
+    pub batch_id: String,
+    pub status: String,
+    pub requested_count: usize,
+    pub created_count: usize,
+    pub skipped_count: usize,
+    pub failed_count: usize,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_previewed: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_created: Decimal,
+    pub items: Vec<AdminBatchPayoutApplyItem>,
+}
+
+struct BatchPayoutCandidate {
+    user_id: crate::database::models::UserId,
+    username: String,
+    amount: Decimal,
+    profile_updated_at: DateTime<Utc>,
+    sources: Vec<AdminBatchPayoutSource>,
+    payout_amounts: Vec<Decimal>,
+}
+
+struct BatchPayoutPreviewData {
+    candidates: Vec<BatchPayoutCandidate>,
+    excluded_users: Vec<AdminBatchPayoutExcludedUser>,
+}
+
+#[derive(Clone, Debug)]
+struct BatchLedgerValue {
+    mod_id: Option<i64>,
+    amount: Decimal,
+    project_name: Option<String>,
+    project_slug: Option<String>,
+}
+
+struct BatchSourceAccumulator {
+    mod_id: Option<i64>,
+    project_name: Option<String>,
+    project_slug: Option<String>,
+    exact_amount: Decimal,
+    first_order: usize,
+}
+
+struct BatchBalanceSnapshot {
+    available: Decimal,
+    positive_earned: Decimal,
+}
+
+#[derive(Debug)]
+enum BatchItemApplyOutcome {
+    Created(Vec<crate::database::models::PayoutId>),
+    Skipped,
+    Failed,
+}
+
+fn batch_item_event_type(status: &str) -> Option<&'static str> {
+    match status {
+        "skipped" => Some("item_skipped"),
+        "failed" => Some("item_failed"),
+        _ => None,
+    }
+}
+
+fn batch_terminal_state(
+    total_count: i64,
+    created_count: i64,
+) -> (&'static str, &'static str) {
+    if created_count == total_count {
+        ("completed", "batch_completed")
+    } else {
+        ("partial", "batch_partial")
+    }
+}
+
+fn batch_processing_kind(
+    previous_status: &str,
+    takeover: bool,
+) -> &'static str {
+    if takeover {
+        "takeover"
+    } else if previous_status == "partial" {
+        "retry"
+    } else {
+        "initial"
+    }
+}
+
+#[post("admin/batch/preview")]
+pub async fn admin_batch_payout_preview(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let admin = check_is_admin_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PAYOUTS_WRITE]),
+    )
+    .await?;
+    ensure_batch_payout_admin(&admin.username)?;
+    cleanup_expired_batch_previews(&pool).await?;
+
+    let mut tx = pool.begin().await?;
+    sqlx::query!("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        .execute(&mut *tx)
+        .await?;
+
+    let preview_data = build_batch_payout_candidates(&mut tx).await?;
+    let batch_id = uuid::Uuid::new_v4().simple().to_string();
+    let expires_at =
+        Utc::now() + Duration::minutes(BATCH_PAYOUT_PREVIEW_MINUTES);
+    let admin_id = crate::database::models::UserId::from(admin.id);
+
+    sqlx::query!(
+        "
+        INSERT INTO admin_payout_batches (
+            id, requested_by, requested_by_username, expires_at
+        )
+        VALUES ($1, $2, $3, $4)
+        ",
+        batch_id,
+        admin_id.0,
+        admin.username,
+        expires_at,
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    for candidate in &preview_data.candidates {
+        let sources = serde_json::to_value(&candidate.sources)?;
+        sqlx::query!(
+            "
+            INSERT INTO admin_payout_batch_items (
+                batch_id, user_id, username, amount, profile_updated_at, sources
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ",
+            batch_id,
+            candidate.user_id.0,
+            candidate.username,
+            candidate.amount,
+            candidate.profile_updated_at,
+            sources,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        for (chunk_index, amount) in candidate.payout_amounts.iter().enumerate()
+        {
+            sqlx::query!(
+                "
+                INSERT INTO admin_payout_batch_orders (
+                    batch_id, user_id, chunk_index, amount
+                )
+                VALUES ($1, $2, $3, $4)
+                ",
+                batch_id,
+                candidate.user_id.0,
+                chunk_index as i32,
+                amount,
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
+    for excluded in &preview_data.excluded_users {
+        let user_id: crate::database::models::UserId = excluded.user_id.into();
+        sqlx::query!(
+            "
+            INSERT INTO admin_payout_batch_exclusions (
+                batch_id, user_id, username, amount, reason_code
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            ",
+            batch_id,
+            user_id.0,
+            excluded.username,
+            excluded.amount,
+            excluded.reason_code,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    let users = preview_data
+        .candidates
+        .into_iter()
+        .map(|candidate| AdminBatchPayoutUser {
+            user_id: crate::models::ids::UserId::from(candidate.user_id),
+            username: candidate.username,
+            amount: candidate.amount,
+            order_count: candidate.payout_amounts.len(),
+            orders: candidate
+                .payout_amounts
+                .into_iter()
+                .enumerate()
+                .map(|(chunk_index, amount)| AdminBatchPayoutPlannedOrder {
+                    chunk_index,
+                    amount,
+                })
+                .collect(),
+            sources: candidate.sources,
+        })
+        .collect::<Vec<_>>();
+    let total_amount = users.iter().map(|user| user.amount).sum();
+    let excluded_count = preview_data.excluded_users.len();
+
+    Ok(HttpResponse::Ok().json(AdminBatchPayoutPreview {
+        batch_id,
+        expires_at,
+        source_attribution: "fifo_reconstructed",
+        user_count: users.len(),
+        total_amount,
+        users,
+        excluded_count,
+        excluded_users: preview_data.excluded_users,
+    }))
+}
+
+async fn append_batch_payout_event_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    batch_id: &str,
+    event_type: &str,
+    owner_token: &str,
+    user_id: Option<crate::database::models::UserId>,
+    details: serde_json::Value,
+) -> Result<(), sqlx::Error> {
+    let user_id = user_id.map(|id| id.0);
+    let result = sqlx::query!(
+        "
+        INSERT INTO admin_payout_batch_events (
+            batch_id,
+            event_type,
+            actor_user_id,
+            actor_username,
+            processing_owner,
+            user_id,
+            details
+        )
+        SELECT
+            id,
+            $2,
+            requested_by,
+            requested_by_username,
+            $3,
+            $4,
+            $5
+        FROM admin_payout_batches
+        WHERE id = $1
+        ",
+        batch_id,
+        event_type,
+        owner_token,
+        user_id,
+        details,
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    if result.rows_affected() != 1 {
+        return Err(sqlx::Error::RowNotFound);
+    }
+    Ok(())
+}
+
+#[post("admin/batch/{batch_id}/apply")]
+pub async fn admin_batch_payout_apply(
+    req: HttpRequest,
+    path: web::Path<String>,
+    body: web::Json<AdminBatchPayoutApplyRequest>,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    let admin = check_is_admin_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PAYOUTS_WRITE]),
+    )
+    .await?;
+    ensure_batch_payout_admin(&admin.username)?;
+    if body.confirmation != BATCH_PAYOUT_CONFIRMATION {
+        return Err(ApiError::InvalidInput(
+            "请输入完整确认短语后再执行批量提现".to_string(),
+        ));
+    }
+
+    let batch_id = path.into_inner();
+    let admin_id = crate::database::models::UserId::from(admin.id);
+    let owner_token = uuid::Uuid::new_v4().simple().to_string();
+    let mut batch_tx = pool.begin().await?;
+    let batch = sqlx::query!(
+        "
+        SELECT requested_by, status, expires_at, processing_owner, heartbeat_at
+        FROM admin_payout_batches
+        WHERE id = $1
+        FOR UPDATE
+        ",
+        batch_id,
+    )
+    .fetch_optional(&mut *batch_tx)
+    .await?
+    .ok_or_else(|| ApiError::InvalidInput("批量提现预览不存在".to_string()))?;
+
+    if batch.requested_by != admin_id.0 {
+        return Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ));
+    }
+    append_batch_payout_event_in_tx(
+        &mut batch_tx,
+        &batch_id,
+        "apply_requested",
+        &owner_token,
+        None,
+        serde_json::json!({
+            "observed_status": batch.status.as_str(),
+            "expires_at": batch.expires_at,
+            "processing_owner": batch.processing_owner.as_deref(),
+            "heartbeat_at": batch.heartbeat_at,
+        }),
+    )
+    .await?;
+    if batch.status == "completed" {
+        batch_tx.commit().await?;
+        return Ok(HttpResponse::Ok()
+            .json(build_batch_payout_apply_response(&pool, &batch_id).await?));
+    }
+    if batch.status == "processing"
+        && batch.heartbeat_at.is_some_and(|heartbeat_at| {
+            Utc::now().signed_duration_since(heartbeat_at)
+                < Duration::seconds(BATCH_PAYOUT_HEARTBEAT_TIMEOUT_SECONDS)
+        })
+    {
+        batch_tx.commit().await?;
+        return Err(ApiError::InvalidInput(
+            "该批次正在处理中，请稍后重试".to_string(),
+        ));
+    }
+    let item_state = sqlx::query!(
+        r#"
+        SELECT
+            COUNT(*)::bigint AS "total!",
+            COUNT(*) FILTER (WHERE status = 'created')::bigint AS "created!",
+            COUNT(*) FILTER (WHERE status = 'failed')::bigint AS "failed!"
+        FROM admin_payout_batch_items
+        WHERE batch_id = $1
+        "#,
+        batch_id,
+    )
+    .fetch_one(&mut *batch_tx)
+    .await?;
+
+    // 兼容历史并发异常：若所有 item 均已创建，锁住 batch 后原子修复终态。
+    if batch.status != "previewed" && item_state.created == item_state.total {
+        sqlx::query!(
+            "
+            UPDATE admin_payout_batches
+            SET status = 'completed',
+                processing_owner = NULL,
+                heartbeat_at = NULL,
+                finished_at = COALESCE(finished_at, NOW())
+            WHERE id = $1
+            ",
+            batch_id,
+        )
+        .execute(&mut *batch_tx)
+        .await?;
+        append_batch_payout_event_in_tx(
+            &mut batch_tx,
+            &batch_id,
+            "batch_completed",
+            &owner_token,
+            None,
+            serde_json::json!({
+                "recovered_terminal_state": true,
+                "created_count": item_state.created,
+                "total_count": item_state.total,
+            }),
+        )
+        .await?;
+        batch_tx.commit().await?;
+        return Ok(HttpResponse::Ok()
+            .json(build_batch_payout_apply_response(&pool, &batch_id).await?));
+    }
+    if batch.status == "partial" && item_state.failed == 0 {
+        batch_tx.commit().await?;
+        return Ok(HttpResponse::Ok()
+            .json(build_batch_payout_apply_response(&pool, &batch_id).await?));
+    }
+    if batch.status == "previewed" && batch.expires_at < Utc::now() {
+        batch_tx.commit().await?;
+        return Err(ApiError::InvalidInput(
+            "批量提现预览已过期，请重新打开弹窗计算".to_string(),
+        ));
+    }
+    let is_takeover = batch.status == "processing";
+    if is_takeover {
+        append_batch_payout_event_in_tx(
+            &mut batch_tx,
+            &batch_id,
+            "processing_taken_over",
+            &owner_token,
+            None,
+            serde_json::json!({
+                "previous_owner": batch.processing_owner.as_deref(),
+                "previous_heartbeat_at": batch.heartbeat_at,
+            }),
+        )
+        .await?;
+    }
+    let processing_kind = batch_processing_kind(&batch.status, is_takeover);
+    sqlx::query!(
+        "
+        UPDATE admin_payout_batches
+        SET status = 'processing',
+            processing_started_at = NOW(),
+            processing_owner = $2,
+            heartbeat_at = NOW(),
+            finished_at = NULL
+        WHERE id = $1
+        ",
+        batch_id,
+        owner_token,
+    )
+    .execute(&mut *batch_tx)
+    .await?;
+    append_batch_payout_event_in_tx(
+        &mut batch_tx,
+        &batch_id,
+        "processing_started",
+        &owner_token,
+        None,
+        serde_json::json!({
+            "kind": processing_kind,
+            "previous_status": batch.status.as_str(),
+        }),
+    )
+    .await?;
+    batch_tx.commit().await?;
+
+    let items = sqlx::query!(
+        "
+        SELECT user_id, username, amount, profile_updated_at
+        FROM admin_payout_batch_items
+        WHERE batch_id = $1 AND status IN ('pending', 'failed')
+        ORDER BY user_id
+        ",
+        batch_id,
+    )
+    .fetch_all(&**pool)
+    .await?;
+
+    let mut created_user_ids = Vec::new();
+    let yzh_client = YzhClient::new();
+    for item in items {
+        refresh_batch_payout_heartbeat(&pool, &batch_id, &owner_token).await?;
+        match apply_batch_payout_item(
+            &pool,
+            &batch_id,
+            &owner_token,
+            crate::database::models::UserId(item.user_id),
+            item.amount,
+            item.profile_updated_at,
+            &yzh_client,
+        )
+        .await
+        {
+            Ok(BatchItemApplyOutcome::Created(payout_ids)) => {
+                created_user_ids.push((
+                    crate::database::models::UserId(item.user_id),
+                    None,
+                ));
+                for payout_id in payout_ids {
+                    log::info!(
+                        "批量提现申请已创建 batch_id={} payout_id={} user_id={}",
+                        batch_id,
+                        payout_id.0,
+                        item.user_id
+                    );
+                }
+            }
+            Ok(BatchItemApplyOutcome::Skipped) => {}
+            Ok(BatchItemApplyOutcome::Failed) => {}
+            Err(err) => {
+                log::error!(
+                    "批量提现申请失败 batch_id={} user_id={}: {}",
+                    batch_id,
+                    item.user_id,
+                    err
+                );
+                mark_batch_payout_item(
+                    &pool,
+                    &batch_id,
+                    &owner_token,
+                    crate::database::models::UserId(item.user_id),
+                    "failed",
+                    Some("database_error"),
+                )
+                .await?;
+            }
+        }
+        refresh_batch_payout_heartbeat(&pool, &batch_id, &owner_token).await?;
+    }
+
+    finalize_batch_payout(&pool, &batch_id, &owner_token).await?;
+
+    if !created_user_ids.is_empty() {
+        if let Err(err) = crate::database::models::User::clear_caches(
+            &created_user_ids,
+            &redis,
+        )
+        .await
+        {
+            log::warn!(
+                "批量提现已落库，但清理用户缓存失败 batch_id={}: {}",
+                batch_id,
+                err
+            );
+        }
+        crate::routes::internal::moderation::clear_pending_counts_cache(&redis)
+            .await;
+    }
+
+    Ok(HttpResponse::Ok()
+        .json(build_batch_payout_apply_response(&pool, &batch_id).await?))
+}
+
+async fn cleanup_expired_batch_previews(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "
+        DELETE FROM admin_payout_batches
+        WHERE id IN (
+            SELECT id
+            FROM admin_payout_batches
+            WHERE status = 'previewed'
+              AND expires_at < NOW()
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM admin_payout_batch_events e
+                  WHERE e.batch_id = admin_payout_batches.id
+              )
+            ORDER BY expires_at
+            LIMIT $1
+            FOR UPDATE SKIP LOCKED
+        )
+          AND status = 'previewed'
+        ",
+        BATCH_PAYOUT_PREVIEW_CLEANUP_LIMIT,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+async fn refresh_batch_payout_heartbeat(
+    pool: &PgPool,
+    batch_id: &str,
+    owner_token: &str,
+) -> Result<(), ApiError> {
+    let result = sqlx::query!(
+        "
+        UPDATE admin_payout_batches
+        SET heartbeat_at = NOW()
+        WHERE id = $1
+          AND status = 'processing'
+          AND processing_owner = $2
+        ",
+        batch_id,
+        owner_token,
+    )
+    .execute(pool)
+    .await?;
+    if result.rows_affected() != 1 {
+        return Err(ApiError::InvalidInput(
+            "批量提现处理权已失效，请刷新批次状态".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+async fn finalize_batch_payout(
+    pool: &PgPool,
+    batch_id: &str,
+    owner_token: &str,
+) -> Result<(), ApiError> {
+    let mut tx = pool.begin().await?;
+    let batch = sqlx::query!(
+        "
+        SELECT status, processing_owner
+        FROM admin_payout_batches
+        WHERE id = $1
+        FOR UPDATE
+        ",
+        batch_id,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(|| ApiError::InvalidInput("批量提现预览不存在".to_string()))?;
+    if batch.status != "processing"
+        || batch.processing_owner.as_deref() != Some(owner_token)
+    {
+        return Err(ApiError::InvalidInput(
+            "批量提现处理权已失效，请刷新批次状态".to_string(),
+        ));
+    }
+
+    let item_state = sqlx::query!(
+        r#"
+        SELECT
+            COUNT(*)::bigint AS "total!",
+            COUNT(*) FILTER (WHERE status = 'created')::bigint AS "created!",
+            COUNT(*) FILTER (WHERE status = 'skipped')::bigint AS "skipped!",
+            COUNT(*) FILTER (WHERE status = 'failed')::bigint AS "failed!",
+            COUNT(*) FILTER (WHERE status = 'pending')::bigint AS "pending!"
+        FROM admin_payout_batch_items
+        WHERE batch_id = $1
+        "#,
+        batch_id,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    let (final_status, final_event_type) =
+        batch_terminal_state(item_state.total, item_state.created);
+    let updated = sqlx::query!(
+        "
+        UPDATE admin_payout_batches
+        SET status = $3,
+            processing_owner = NULL,
+            heartbeat_at = NULL,
+            finished_at = NOW()
+        WHERE id = $1
+          AND status = 'processing'
+          AND processing_owner = $2
+        ",
+        batch_id,
+        owner_token,
+        final_status,
+    )
+    .execute(&mut *tx)
+    .await?;
+    if updated.rows_affected() != 1 {
+        return Err(ApiError::InvalidInput(
+            "批量提现处理权已失效，请刷新批次状态".to_string(),
+        ));
+    }
+    append_batch_payout_event_in_tx(
+        &mut tx,
+        batch_id,
+        final_event_type,
+        owner_token,
+        None,
+        serde_json::json!({
+            "total_count": item_state.total,
+            "created_count": item_state.created,
+            "skipped_count": item_state.skipped,
+            "failed_count": item_state.failed,
+            "pending_count": item_state.pending,
+        }),
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+fn ensure_batch_payout_admin(username: &str) -> Result<(), ApiError> {
+    if username == BATCH_PAYOUT_ADMIN_USERNAME {
+        Ok(())
+    } else {
+        Err(ApiError::Authentication(
+            AuthenticationError::InvalidCredentials,
+        ))
+    }
+}
+
+fn batch_profile_is_complete(profile: &YunzhanghuProfile) -> bool {
+    let is_present = |value: Option<&str>| {
+        value.is_some_and(|value| !value.trim().is_empty())
+    };
+
+    profile.sign_status == YzhSignStatus::Signed
+        && profile.sign_nonce.is_none()
+        && is_present(profile.real_name.as_deref())
+        && is_present(profile.phone.as_deref())
+        && is_present(profile.alipay_account.as_deref())
+        && profile
+            .decrypt_id_card()
+            .ok()
+            .flatten()
+            .is_some_and(|value| !value.trim().is_empty())
+}
+
+fn batch_profile_exclusion_reason(
+    profile: &YunzhanghuProfile,
+) -> Option<&'static str> {
+    if profile.sign_status != YzhSignStatus::Signed {
+        Some("not_signed")
+    } else if profile.sign_nonce.is_some() {
+        Some("sign_operation_pending")
+    } else if !batch_profile_is_complete(profile) {
+        Some("incomplete_profile")
+    } else {
+        None
+    }
+}
+
+fn batch_payout_exclusion(
+    user_id: crate::database::models::UserId,
+    username: &str,
+    amount: Decimal,
+    reason_code: &str,
+) -> AdminBatchPayoutExcludedUser {
+    AdminBatchPayoutExcludedUser {
+        user_id: crate::models::ids::UserId::from(user_id),
+        username: username.to_string(),
+        amount: amount.max(Decimal::ZERO),
+        reason_code: reason_code.to_string(),
+    }
+}
+
+async fn build_batch_payout_candidates(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+) -> Result<BatchPayoutPreviewData, ApiError> {
+    let balances = sqlx::query!(
+        r#"
+        WITH earnings AS (
+            SELECT
+                user_id,
+                COALESCE(SUM(amount), 0)::numeric AS earned,
+                COALESCE(SUM(amount) FILTER (WHERE amount > 0), 0)::numeric
+                    AS positive_earned
+            FROM payouts_values
+            WHERE date_available <= NOW()
+            GROUP BY user_id
+        ), withdrawn AS (
+            SELECT
+                user_id,
+                COALESCE(SUM(amount), 0)::numeric AS amount,
+                COALESCE(SUM(
+                    CASE
+                        WHEN method = 'yunzhanghu_alipay' THEN 0
+                        ELSE COALESCE(fee, 0)
+                    END
+                ), 0)::numeric AS old_channel_fees
+            FROM payouts
+            WHERE status IN ('success', 'in-transit')
+            GROUP BY user_id
+        )
+        SELECT
+            u.id,
+            u.username,
+            COALESCE(e.earned, 0)::numeric AS "earned!",
+            COALESCE(e.positive_earned, 0)::numeric AS "positive_earned!",
+            COALESCE(w.amount, 0)::numeric AS "withdrawn!",
+            COALESCE(w.old_channel_fees, 0)::numeric AS "old_channel_fees!",
+            EXISTS (
+                SELECT 1
+                FROM user_bans ub
+                WHERE ub.user_id = u.id
+                  AND ub.ban_type IN ('global', 'resource')
+                  AND ub.is_active = TRUE
+                  AND (ub.expires_at IS NULL OR ub.expires_at > NOW())
+            ) AS "is_banned!"
+        FROM earnings e
+        INNER JOIN users u ON u.id = e.user_id
+        LEFT JOIN withdrawn w ON w.user_id = u.id
+        WHERE u.id <> $1
+        ORDER BY u.id
+        "#,
+        crate::models::users::DELETED_USER.0 as i64,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+
+    struct EligibleBalance {
+        user_id: crate::database::models::UserId,
+        username: String,
+        available: Decimal,
+        amount: Decimal,
+        positive_earned: Decimal,
+        profile_updated_at: DateTime<Utc>,
+    }
+
+    let mut eligible = Vec::new();
+    let mut excluded_users = Vec::new();
+    for balance in balances {
+        let available = balance.earned.round_dp(16)
+            - balance.withdrawn.round_dp(16)
+            - balance.old_channel_fees.round_dp(16);
+        let amount = truncate_money_to_cents(available);
+        if available <= Decimal::ZERO {
+            continue;
+        }
+        let user_id = crate::database::models::UserId(balance.id);
+        if amount < MIN_WITHDRAW_AMOUNT {
+            excluded_users.push(batch_payout_exclusion(
+                user_id,
+                &balance.username,
+                amount,
+                "below_minimum",
+            ));
+            continue;
+        }
+        if balance.is_banned {
+            excluded_users.push(batch_payout_exclusion(
+                user_id,
+                &balance.username,
+                amount,
+                "banned",
+            ));
+            continue;
+        }
+
+        let profile = match YunzhanghuProfile::get(user_id, &mut **tx).await {
+            Ok(Some(profile)) => profile,
+            Ok(None) => {
+                excluded_users.push(batch_payout_exclusion(
+                    user_id,
+                    &balance.username,
+                    amount,
+                    "missing_profile",
+                ));
+                continue;
+            }
+            Err(crate::database::models::DatabaseError::SchemaError(_)) => {
+                log::warn!("批量提现资料无法解密 user_id={}", user_id.0);
+                excluded_users.push(batch_payout_exclusion(
+                    user_id,
+                    &balance.username,
+                    amount,
+                    "profile_unreadable",
+                ));
+                continue;
+            }
+            Err(err) => return Err(err.into()),
+        };
+        if let Some(reason) = batch_profile_exclusion_reason(&profile) {
+            excluded_users.push(batch_payout_exclusion(
+                user_id,
+                &balance.username,
+                amount,
+                reason,
+            ));
+            continue;
+        }
+
+        eligible.push(EligibleBalance {
+            user_id,
+            username: balance.username,
+            available,
+            amount,
+            positive_earned: balance.positive_earned,
+            profile_updated_at: profile.updated_at,
+        });
+    }
+
+    let eligible_ids = eligible
+        .iter()
+        .map(|balance| balance.user_id.0)
+        .collect::<Vec<_>>();
+    let ledger_rows = sqlx::query!(
+        r#"
+        SELECT
+            pv.user_id,
+            pv.mod_id,
+            pv.amount,
+            m.name AS "project_name?",
+            m.slug AS "project_slug?"
+        FROM payouts_values pv
+        LEFT JOIN mods m ON m.id = pv.mod_id
+        WHERE pv.user_id = ANY($1::bigint[])
+          AND pv.date_available <= NOW()
+          AND pv.amount > 0
+        ORDER BY pv.user_id, pv.date_available, pv.created, pv.id
+        "#,
+        &eligible_ids,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+
+    let mut ledger_by_user = HashMap::<i64, Vec<BatchLedgerValue>>::new();
+    for row in ledger_rows {
+        ledger_by_user
+            .entry(row.user_id)
+            .or_default()
+            .push(BatchLedgerValue {
+                mod_id: row.mod_id,
+                amount: row.amount,
+                project_name: row.project_name,
+                project_slug: row.project_slug,
+            });
+    }
+
+    let mut candidates = Vec::with_capacity(eligible.len());
+    for balance in eligible {
+        let amount = balance.amount;
+        let values = ledger_by_user
+            .remove(&balance.user_id.0)
+            .unwrap_or_default();
+        let sources = match attribute_batch_payout_sources(
+            balance.positive_earned,
+            balance.available,
+            amount,
+            &values,
+        ) {
+            Ok(sources) => sources,
+            Err(reason) => {
+                log::warn!(
+                    "批量提现收益来源无法对齐 user_id={}: {}",
+                    balance.user_id.0,
+                    reason
+                );
+                excluded_users.push(AdminBatchPayoutExcludedUser {
+                    user_id: crate::models::ids::UserId::from(balance.user_id),
+                    username: balance.username,
+                    amount,
+                    reason_code: "source_attribution_failed".to_string(),
+                });
+                continue;
+            }
+        };
+        let payout_amounts =
+            split_batch_payout_amount(amount).map_err(|reason| {
+                ApiError::InvalidInput(format!("批量提现拆单失败: {reason}"))
+            })?;
+
+        candidates.push(BatchPayoutCandidate {
+            user_id: balance.user_id,
+            username: balance.username,
+            amount,
+            profile_updated_at: balance.profile_updated_at,
+            sources,
+            payout_amounts,
+        });
+    }
+
+    candidates.sort_by(|left, right| {
+        right
+            .amount
+            .cmp(&left.amount)
+            .then_with(|| left.username.cmp(&right.username))
+    });
+    excluded_users.sort_by(|left, right| {
+        right
+            .amount
+            .cmp(&left.amount)
+            .then_with(|| left.username.cmp(&right.username))
+    });
+    Ok(BatchPayoutPreviewData {
+        candidates,
+        excluded_users,
+    })
+}
+
+fn split_batch_payout_amount(
+    amount: Decimal,
+) -> Result<Vec<Decimal>, &'static str> {
+    if amount != truncate_money_to_cents(amount) {
+        return Err("批量提现金额必须精确到分");
+    }
+    if amount < MIN_WITHDRAW_AMOUNT {
+        return Err("批量提现金额低于最低限额");
+    }
+
+    let mut remaining = amount;
+    let mut chunks = Vec::new();
+    while remaining > MAX_WITHDRAW_AMOUNT {
+        chunks.push(MAX_WITHDRAW_AMOUNT);
+        remaining -= MAX_WITHDRAW_AMOUNT;
+    }
+    if remaining > Decimal::ZERO {
+        chunks.push(remaining);
+    }
+
+    if chunks.len() > 1
+        && chunks
+            .last()
+            .is_some_and(|last| *last < MIN_WITHDRAW_AMOUNT)
+    {
+        let last_index = chunks.len() - 1;
+        let deficit = MIN_WITHDRAW_AMOUNT - chunks[last_index];
+        chunks[last_index - 1] -= deficit;
+        chunks[last_index] = MIN_WITHDRAW_AMOUNT;
+    }
+
+    if chunks.is_empty()
+        || chunks.iter().any(|chunk| {
+            *chunk < MIN_WITHDRAW_AMOUNT || *chunk > MAX_WITHDRAW_AMOUNT
+        })
+        || chunks.iter().copied().sum::<Decimal>() != amount
+    {
+        return Err("无法按云账户单笔限额完整拆分提现金额");
+    }
+    Ok(chunks)
+}
+
+fn attribute_batch_payout_sources(
+    positive_earned: Decimal,
+    available: Decimal,
+    payout_amount: Decimal,
+    values: &[BatchLedgerValue],
+) -> Result<Vec<AdminBatchPayoutSource>, &'static str> {
+    if payout_amount <= Decimal::ZERO {
+        return Err("提现金额必须大于零");
+    }
+
+    let fifo_consumed = (positive_earned - available).max(Decimal::ZERO);
+    let payout_end = fifo_consumed + payout_amount;
+    let mut cursor = Decimal::ZERO;
+    let mut grouped = HashMap::<Option<i64>, BatchSourceAccumulator>::new();
+
+    for (order, value) in values.iter().enumerate() {
+        if value.amount <= Decimal::ZERO {
+            continue;
+        }
+        let value_start = cursor;
+        let value_end = cursor + value.amount;
+        cursor = value_end;
+        let overlap = (value_end.min(payout_end)
+            - value_start.max(fifo_consumed))
+        .max(Decimal::ZERO);
+        if overlap <= Decimal::ZERO {
+            continue;
+        }
+
+        let entry = grouped.entry(value.mod_id).or_insert_with(|| {
+            BatchSourceAccumulator {
+                mod_id: value.mod_id,
+                project_name: value.project_name.clone(),
+                project_slug: value.project_slug.clone(),
+                exact_amount: Decimal::ZERO,
+                first_order: order,
+            }
+        });
+        entry.exact_amount += overlap;
+    }
+
+    let exact_total = grouped
+        .values()
+        .map(|source| source.exact_amount)
+        .sum::<Decimal>();
+    if (exact_total - payout_amount).abs() >= Decimal::new(1, 2) {
+        return Err("FIFO 来源合计与提现金额相差至少一分钱");
+    }
+    if grouped.is_empty() {
+        return Err("没有可归因的收益来源");
+    }
+
+    struct RoundedSource {
+        source: BatchSourceAccumulator,
+        amount: Decimal,
+        remainder: Decimal,
+    }
+
+    let mut rounded = grouped
+        .into_values()
+        .map(|source| {
+            let amount = truncate_money_to_cents(source.exact_amount);
+            let remainder = source.exact_amount - amount;
+            RoundedSource {
+                source,
+                amount,
+                remainder,
+            }
+        })
+        .collect::<Vec<_>>();
+    let base_total =
+        rounded.iter().map(|source| source.amount).sum::<Decimal>();
+    let mut missing = payout_amount - base_total;
+    let cent = Decimal::new(1, 2);
+    rounded.sort_by(|left, right| {
+        right
+            .remainder
+            .cmp(&left.remainder)
+            .then_with(|| {
+                left.source.first_order.cmp(&right.source.first_order)
+            })
+            .then_with(|| left.source.mod_id.cmp(&right.source.mod_id))
+    });
+    for source in &mut rounded {
+        if missing < cent {
+            break;
+        }
+        source.amount += cent;
+        missing -= cent;
+    }
+    if missing != Decimal::ZERO {
+        return Err("无法将来源尾差分配到分");
+    }
+
+    let mut sources = rounded
+        .into_iter()
+        .filter(|source| source.amount > Decimal::ZERO)
+        .map(|source| AdminBatchPayoutSource {
+            project_id: source.source.mod_id.map(|id| {
+                crate::models::ids::ProjectId::from(
+                    crate::database::models::ProjectId(id),
+                )
+            }),
+            slug: source.source.project_slug,
+            title: source
+                .source
+                .project_name
+                .unwrap_or_else(|| "已删除或无资源归属".to_string()),
+            amount: source.amount,
+        })
+        .collect::<Vec<_>>();
+    sources.sort_by(|left, right| {
+        right
+            .amount
+            .cmp(&left.amount)
+            .then_with(|| left.title.cmp(&right.title))
+    });
+
+    if sources.iter().map(|source| source.amount).sum::<Decimal>()
+        != payout_amount
+    {
+        return Err("来源分配结果与提现金额不一致");
+    }
+    Ok(sources)
+}
+
+async fn apply_batch_payout_item(
+    pool: &PgPool,
+    batch_id: &str,
+    owner_token: &str,
+    user_id: crate::database::models::UserId,
+    amount: Decimal,
+    expected_profile_updated_at: DateTime<Utc>,
+    yzh_client: &YzhClient,
+) -> Result<BatchItemApplyOutcome, ApiError> {
+    let planned_orders = sqlx::query!(
+        "
+        SELECT chunk_index, amount, status, payout_id
+        FROM admin_payout_batch_orders
+        WHERE batch_id = $1 AND user_id = $2
+        ORDER BY chunk_index
+        ",
+        batch_id,
+        user_id.0,
+    )
+    .fetch_all(pool)
+    .await?;
+    if planned_orders.is_empty()
+        || planned_orders
+            .iter()
+            .map(|order| order.amount)
+            .sum::<Decimal>()
+            != amount
+        || planned_orders.iter().any(|order| {
+            order.amount < MIN_WITHDRAW_AMOUNT
+                || order.amount > MAX_WITHDRAW_AMOUNT
+        })
+    {
+        return Err(ApiError::InvalidInput(
+            "批量提现拆单快照不完整".to_string(),
+        ));
+    }
+    if planned_orders
+        .iter()
+        .all(|order| order.status == "created" && order.payout_id.is_some())
+    {
+        return Ok(BatchItemApplyOutcome::Created(
+            planned_orders
+                .into_iter()
+                .filter_map(|order| {
+                    order.payout_id.map(crate::database::models::PayoutId)
+                })
+                .collect(),
+        ));
+    }
+    if planned_orders
+        .iter()
+        .any(|order| order.status != "planned" || order.payout_id.is_some())
+    {
+        return Err(ApiError::InvalidInput(
+            "批量提现拆单状态不一致".to_string(),
+        ));
+    }
+
+    let profile = match YunzhanghuProfile::get(user_id, pool).await {
+        Ok(Some(profile)) => profile,
+        Ok(None) => {
+            mark_batch_payout_item(
+                pool,
+                batch_id,
+                owner_token,
+                user_id,
+                "skipped",
+                Some("missing_profile"),
+            )
+            .await?;
+            return Ok(BatchItemApplyOutcome::Skipped);
+        }
+        Err(crate::database::models::DatabaseError::SchemaError(_)) => {
+            mark_batch_payout_item(
+                pool,
+                batch_id,
+                owner_token,
+                user_id,
+                "skipped",
+                Some("profile_unreadable"),
+            )
+            .await?;
+            return Ok(BatchItemApplyOutcome::Skipped);
+        }
+        Err(err) => return Err(err.into()),
+    };
+    if profile.updated_at != expected_profile_updated_at {
+        mark_batch_payout_item(
+            pool,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("profile_changed"),
+        )
+        .await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+    if let Some(reason) = batch_profile_exclusion_reason(&profile) {
+        mark_batch_payout_item(
+            pool,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some(reason),
+        )
+        .await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let mut quotes = Vec::with_capacity(planned_orders.len());
+    for order in &planned_orders {
+        refresh_batch_payout_heartbeat(pool, batch_id, owner_token).await?;
+        match quote_yunzhanghu_payout_with_client(
+            order.amount,
+            &profile,
+            yzh_client,
+        )
+        .await
+        {
+            Ok(quote) => quotes.push(quote),
+            Err(_) => {
+                log::warn!(
+                    "批量提现云账户试算失败 user_id={} chunk_index={}",
+                    user_id.0,
+                    order.chunk_index
+                );
+                mark_batch_payout_item(
+                    pool,
+                    batch_id,
+                    owner_token,
+                    user_id,
+                    "failed",
+                    Some("quote_failed"),
+                )
+                .await?;
+                return Ok(BatchItemApplyOutcome::Failed);
+            }
+        }
+    }
+    refresh_batch_payout_heartbeat(pool, batch_id, owner_token).await?;
+
+    let mut tx = pool.begin().await?;
+    let item = sqlx::query!(
+        "
+        SELECT status, sources
+        FROM admin_payout_batch_items
+        WHERE batch_id = $1 AND user_id = $2
+        FOR UPDATE
+        ",
+        batch_id,
+        user_id.0,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(|| {
+        ApiError::InvalidInput("批量提现用户快照不存在".to_string())
+    })?;
+    if item.status == "created" {
+        let payout_ids = sqlx::query!(
+            r#"
+            SELECT payout_id AS "payout_id!"
+            FROM admin_payout_batch_orders
+            WHERE batch_id = $1
+              AND user_id = $2
+              AND status = 'created'
+            ORDER BY chunk_index
+            "#,
+            batch_id,
+            user_id.0,
+        )
+        .fetch_all(&mut *tx)
+        .await?
+        .into_iter()
+        .map(|order| crate::database::models::PayoutId(order.payout_id))
+        .collect();
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Created(payout_ids));
+    }
+    if item.status == "skipped" {
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+    let expected_sources =
+        serde_json::from_value::<Vec<AdminBatchPayoutSource>>(item.sources)?;
+
+    // 与管理员退回、用户注销保持 payouts -> users 的锁顺序，避免死锁。
+    let _payout_locks = sqlx::query_scalar!(
+        "
+        SELECT id
+        FROM payouts
+        WHERE user_id = $1 AND status IN ('success', 'in-transit')
+        FOR SHARE
+        ",
+        user_id.0,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let user_exists = sqlx::query_scalar!(
+        "SELECT id FROM users WHERE id = $1 FOR UPDATE",
+        user_id.0,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    if user_exists.is_none() {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("user_missing"),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let ban = sqlx::query!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM user_bans
+            WHERE user_id = $1
+              AND ban_type IN ('global', 'resource')
+              AND is_active = TRUE
+              AND (expires_at IS NULL OR expires_at > NOW())
+        ) AS "is_banned!"
+        "#,
+        user_id.0,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if ban.is_banned {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("banned"),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let profile_lock = sqlx::query_scalar!(
+        "
+        SELECT user_id
+        FROM user_yunzhanghu_profiles
+        WHERE user_id = $1
+        FOR UPDATE
+        ",
+        user_id.0,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    if profile_lock.is_none() {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("missing_profile"),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let locked_profile = match YunzhanghuProfile::get(user_id, &mut *tx).await {
+        Ok(Some(profile)) => profile,
+        Ok(None) => {
+            mark_batch_payout_item_in_tx(
+                &mut tx,
+                batch_id,
+                owner_token,
+                user_id,
+                "skipped",
+                Some("missing_profile"),
+            )
+            .await?;
+            tx.commit().await?;
+            return Ok(BatchItemApplyOutcome::Skipped);
+        }
+        Err(crate::database::models::DatabaseError::SchemaError(_)) => {
+            mark_batch_payout_item_in_tx(
+                &mut tx,
+                batch_id,
+                owner_token,
+                user_id,
+                "skipped",
+                Some("profile_unreadable"),
+            )
+            .await?;
+            tx.commit().await?;
+            return Ok(BatchItemApplyOutcome::Skipped);
+        }
+        Err(err) => return Err(err.into()),
+    };
+    if locked_profile.updated_at != expected_profile_updated_at {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("profile_changed"),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+    if let Some(reason) = batch_profile_exclusion_reason(&locked_profile) {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some(reason),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let current_balance = get_batch_balance_in_tx(&mut tx, user_id).await?;
+    if truncate_money_to_cents(current_balance.available) != amount {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("balance_changed"),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let current_values = get_batch_ledger_in_tx(&mut tx, user_id).await?;
+    let current_sources = match attribute_batch_payout_sources(
+        current_balance.positive_earned,
+        current_balance.available,
+        amount,
+        &current_values,
+    ) {
+        Ok(sources) => sources,
+        Err(_) => {
+            mark_batch_payout_item_in_tx(
+                &mut tx,
+                batch_id,
+                owner_token,
+                user_id,
+                "skipped",
+                Some("sources_changed"),
+            )
+            .await?;
+            tx.commit().await?;
+            return Ok(BatchItemApplyOutcome::Skipped);
+        }
+    };
+    if !batch_payout_sources_match(&expected_sources, &current_sources) {
+        mark_batch_payout_item_in_tx(
+            &mut tx,
+            batch_id,
+            owner_token,
+            user_id,
+            "skipped",
+            Some("sources_changed"),
+        )
+        .await?;
+        tx.commit().await?;
+        return Ok(BatchItemApplyOutcome::Skipped);
+    }
+
+    let alipay_account =
+        locked_profile.alipay_account.clone().ok_or_else(|| {
+            ApiError::InvalidInput("KYC 信息异常：缺少支付宝账号".to_string())
+        })?;
+
+    let locked_orders = sqlx::query!(
+        "
+        SELECT chunk_index, amount, status, payout_id
+        FROM admin_payout_batch_orders
+        WHERE batch_id = $1 AND user_id = $2
+        ORDER BY chunk_index
+        FOR UPDATE
+        ",
+        batch_id,
+        user_id.0,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    if locked_orders.len() != planned_orders.len()
+        || locked_orders
+            .iter()
+            .zip(&planned_orders)
+            .any(|(locked, planned)| {
+                locked.chunk_index != planned.chunk_index
+                    || locked.amount != planned.amount
+                    || locked.status != "planned"
+                    || locked.payout_id.is_some()
+            })
+    {
+        return Err(ApiError::InvalidInput(
+            "批量提现拆单快照已变化".to_string(),
+        ));
+    }
+
+    let mut payout_ids = Vec::with_capacity(locked_orders.len());
+    for (order, quote) in locked_orders.iter().zip(&quotes) {
+        let payout_id = generate_payout_id(&mut tx).await?;
+        let payout_item = crate::database::models::payout_item::Payout {
+            id: payout_id,
+            user_id,
+            created: Utc::now(),
+            status: PayoutStatus::InTransit,
+            amount: order.amount,
+            fee: Some(quote.user_fee),
+            method: Some(PayoutMethodType::YunzhanghuAlipay),
+            method_address: Some(alipay_account.clone()),
+            platform_id: None,
+            admin_reject_reason: None,
+        };
+        payout_item.insert(&mut tx).await?;
+        let updated = sqlx::query!(
+            "
+            UPDATE admin_payout_batch_orders
+            SET status = 'created', payout_id = $4
+            WHERE batch_id = $1
+              AND user_id = $2
+              AND chunk_index = $3
+              AND status = 'planned'
+              AND payout_id IS NULL
+            ",
+            batch_id,
+            user_id.0,
+            order.chunk_index,
+            payout_id.0,
+        )
+        .execute(&mut *tx)
+        .await?;
+        if updated.rows_affected() != 1 {
+            return Err(ApiError::InvalidInput(
+                "批量提现子订单状态已变化".to_string(),
+            ));
+        }
+        payout_ids.push(payout_id);
+    }
+    let item_updated = sqlx::query!(
+        "
+        UPDATE admin_payout_batch_items
+        SET status = 'created', error_code = NULL
+        WHERE batch_id = $1
+          AND user_id = $2
+          AND status IN ('pending', 'failed')
+        ",
+        batch_id,
+        user_id.0,
+    )
+    .execute(&mut *tx)
+    .await?;
+    if item_updated.rows_affected() != 1 {
+        return Err(ApiError::InvalidInput(
+            "批量提现用户状态已变化".to_string(),
+        ));
+    }
+    append_batch_payout_event_in_tx(
+        &mut tx,
+        batch_id,
+        "item_created",
+        owner_token,
+        Some(user_id),
+        serde_json::json!({
+            "amount": amount.to_string(),
+            "payout_ids": payout_ids.iter().map(|id| id.0).collect::<Vec<_>>(),
+        }),
+    )
+    .await?;
+    tx.commit().await?;
+
+    Ok(BatchItemApplyOutcome::Created(payout_ids))
+}
+
+async fn get_batch_balance_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: crate::database::models::UserId,
+) -> Result<BatchBalanceSnapshot, sqlx::Error> {
+    let balance = sqlx::query!(
+        "
+        SELECT
+            COALESCE((
+                SELECT SUM(amount)
+                FROM payouts_values
+                WHERE user_id = $1 AND date_available <= NOW()
+            ), 0)::numeric AS \"earned!\",
+            COALESCE((
+                SELECT SUM(amount)
+                FROM payouts_values
+                WHERE user_id = $1
+                  AND date_available <= NOW()
+                  AND amount > 0
+            ), 0)::numeric AS \"positive_earned!\",
+            COALESCE((
+                SELECT SUM(amount)
+                FROM payouts
+                WHERE user_id = $1 AND status IN ('success', 'in-transit')
+            ), 0)::numeric AS \"withdrawn!\",
+            COALESCE((
+                SELECT SUM(
+                    CASE
+                        WHEN method = 'yunzhanghu_alipay' THEN 0
+                        ELSE COALESCE(fee, 0)
+                    END
+                )
+                FROM payouts
+                WHERE user_id = $1 AND status IN ('success', 'in-transit')
+            ), 0)::numeric AS \"old_channel_fees!\"
+        ",
+        user_id.0,
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(BatchBalanceSnapshot {
+        available: balance.earned.round_dp(16)
+            - balance.withdrawn.round_dp(16)
+            - balance.old_channel_fees.round_dp(16),
+        positive_earned: balance.positive_earned,
+    })
+}
+
+async fn get_batch_ledger_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: crate::database::models::UserId,
+) -> Result<Vec<BatchLedgerValue>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT
+            pv.mod_id,
+            pv.amount,
+            m.name AS "project_name?",
+            m.slug AS "project_slug?"
+        FROM payouts_values pv
+        LEFT JOIN mods m ON m.id = pv.mod_id
+        WHERE pv.user_id = $1
+          AND pv.date_available <= NOW()
+          AND pv.amount > 0
+        ORDER BY pv.date_available, pv.created, pv.id
+        "#,
+        user_id.0,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| BatchLedgerValue {
+            mod_id: row.mod_id,
+            amount: row.amount,
+            project_name: row.project_name,
+            project_slug: row.project_slug,
+        })
+        .collect())
+}
+
+fn batch_payout_sources_match(
+    expected: &[AdminBatchPayoutSource],
+    current: &[AdminBatchPayoutSource],
+) -> bool {
+    expected.len() == current.len()
+        && expected.iter().all(|expected_source| {
+            current.iter().any(|current_source| {
+                current_source.project_id == expected_source.project_id
+                    && current_source.amount == expected_source.amount
+            })
+        })
+}
+
+async fn mark_batch_payout_item(
+    pool: &PgPool,
+    batch_id: &str,
+    owner_token: &str,
+    user_id: crate::database::models::UserId,
+    status: &str,
+    error_code: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    mark_batch_payout_item_in_tx(
+        &mut tx,
+        batch_id,
+        owner_token,
+        user_id,
+        status,
+        error_code,
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn mark_batch_payout_item_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    batch_id: &str,
+    owner_token: &str,
+    user_id: crate::database::models::UserId,
+    status: &str,
+    error_code: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    let event_type = batch_item_event_type(status).ok_or_else(|| {
+        sqlx::Error::Protocol(format!(
+            "unsupported audited batch item status: {status}"
+        ))
+    })?;
+    let result = sqlx::query!(
+        "
+        UPDATE admin_payout_batch_items
+        SET status = $3, error_code = $4
+        WHERE batch_id = $1
+          AND user_id = $2
+          AND status IN ('pending', 'failed')
+        ",
+        batch_id,
+        user_id.0,
+        status,
+        error_code,
+    )
+    .execute(&mut **tx)
+    .await?;
+    if result.rows_affected() == 1 {
+        append_batch_payout_event_in_tx(
+            tx,
+            batch_id,
+            event_type,
+            owner_token,
+            Some(user_id),
+            serde_json::json!({
+                "item_status": status,
+                "reason_code": error_code,
+            }),
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+async fn build_batch_payout_apply_response(
+    pool: &PgPool,
+    batch_id: &str,
+) -> Result<AdminBatchPayoutApplyResponse, ApiError> {
+    let status = sqlx::query_scalar!(
+        "SELECT status FROM admin_payout_batches WHERE id = $1",
+        batch_id,
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or_else(|| ApiError::InvalidInput("批量提现预览不存在".to_string()))?;
+    let rows = sqlx::query!(
+        "
+        SELECT user_id, username, amount, status, error_code
+        FROM admin_payout_batch_items
+        WHERE batch_id = $1
+        ORDER BY amount DESC, username ASC
+        ",
+        batch_id,
+    )
+    .fetch_all(pool)
+    .await?;
+    let order_rows = sqlx::query!(
+        r#"
+        SELECT user_id, payout_id AS "payout_id!"
+        FROM admin_payout_batch_orders
+        WHERE batch_id = $1 AND status = 'created'
+        ORDER BY user_id, chunk_index
+        "#,
+        batch_id,
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut payout_ids_by_user =
+        HashMap::<i64, Vec<crate::models::ids::PayoutId>>::new();
+    for order in order_rows {
+        payout_ids_by_user.entry(order.user_id).or_default().push(
+            crate::models::ids::PayoutId::from(
+                crate::database::models::PayoutId(order.payout_id),
+            ),
+        );
+    }
+
+    let requested_count = rows.len();
+    let created_count =
+        rows.iter().filter(|row| row.status == "created").count();
+    let skipped_count =
+        rows.iter().filter(|row| row.status == "skipped").count();
+    let failed_count = rows.iter().filter(|row| row.status == "failed").count();
+    let total_previewed = rows.iter().map(|row| row.amount).sum();
+    let total_created = rows
+        .iter()
+        .filter(|row| row.status == "created")
+        .map(|row| row.amount)
+        .sum();
+    let items = rows
+        .into_iter()
+        .map(|row| {
+            let payout_ids =
+                payout_ids_by_user.remove(&row.user_id).unwrap_or_default();
+            AdminBatchPayoutApplyItem {
+                user_id: crate::models::ids::UserId::from(
+                    crate::database::models::UserId(row.user_id),
+                ),
+                username: row.username,
+                amount: row.amount,
+                retryable: row.status == "failed",
+                status: row.status,
+                payout_id: payout_ids.first().copied(),
+                payout_ids,
+                reason_code: row.error_code,
+            }
+        })
+        .collect();
+
+    Ok(AdminBatchPayoutApplyResponse {
+        batch_id: batch_id.to_string(),
+        status,
+        requested_count,
+        created_count,
+        skipped_count,
+        failed_count,
+        total_previewed,
+        total_created,
+        items,
+    })
+}
+
 #[get("admin")]
 pub async fn admin_payouts(
     req: HttpRequest,
@@ -333,18 +2301,31 @@ pub async fn admin_payouts(
     let page_size = query.page_size.unwrap_or(20).clamp(1, 100);
     let offset = (page - 1) * page_size;
 
-    let total = sqlx::query_scalar!(
-        "
-        SELECT COUNT(*)
+    let totals = sqlx::query!(
+        r#"
+        SELECT
+            COUNT(*) FILTER (
+                WHERE $1::text IS NULL OR p.status = $1
+            )::bigint AS "filtered_total!",
+            COUNT(*) FILTER (
+                WHERE p.status = 'in-transit'
+                  AND p.platform_id IS NULL
+            )::bigint AS "pending_order_count!",
+            COALESCE(SUM(
+                TRUNC(p.amount - COALESCE(p.fee, 0), 2)
+            ) FILTER (
+                WHERE p.status = 'in-transit'
+                  AND p.platform_id IS NULL
+            ), 0)::numeric AS "pending_transfer_amount!"
         FROM payouts p
         WHERE p.method = 'yunzhanghu_alipay'
-          AND ($1::text IS NULL OR p.status = $1)
-        ",
+        "#,
         status_filter,
     )
     .fetch_one(&**pool)
-    .await?
-    .unwrap_or(0);
+    .await?;
+    let additional_service_fee =
+        calculate_yunzhanghu_extra_service_fee(totals.pending_transfer_amount);
 
     let rows = sqlx::query!(
         "
@@ -437,9 +2418,16 @@ pub async fn admin_payouts(
 
     Ok(HttpResponse::Ok().json(AdminPayoutsResponse {
         items,
-        total,
+        total: totals.filtered_total,
         page,
         page_size,
+        pending_transfer_summary: AdminPendingTransferSummary {
+            order_count: totals.pending_order_count,
+            transfer_amount: totals.pending_transfer_amount,
+            additional_service_fee,
+            total_with_service_fee: totals.pending_transfer_amount
+                + additional_service_fee,
+        },
     }))
 }
 
@@ -909,6 +2897,11 @@ async fn prepare_yunzhanghu_submit(
             "用户当前未完成云账户签约，不能确认转账".to_string(),
         ));
     }
+    if profile.sign_nonce.is_some() {
+        return Err(ApiError::InvalidInput(
+            "用户签约或解约操作正在处理中，不能确认转账".to_string(),
+        ));
+    }
 
     let real_name = profile.real_name.clone().ok_or_else(|| {
         ApiError::InvalidInput("KYC 信息异常：缺少真实姓名".to_string())
@@ -935,8 +2928,10 @@ async fn prepare_yunzhanghu_submit(
         .ok_or_else(|| {
             ApiError::InvalidInput("KYC 信息异常：缺少身份证号".to_string())
         })?;
-    let pay_amount =
-        truncate_money_to_cents(payout.amount - payout.fee.unwrap_or_default());
+    let pay_amount = calculate_yunzhanghu_submitted_pay_amount(
+        payout.amount,
+        payout.fee.unwrap_or_default(),
+    );
     if pay_amount <= Decimal::ZERO {
         return Err(ApiError::InvalidInput(
             "扣除手续费后到账金额必须大于 0".to_string(),
@@ -1166,11 +3161,23 @@ fn calculate_withdraw_service_fee(amount: Decimal) -> Decimal {
     truncate_money_to_cents(amount * WITHDRAW_SERVICE_FEE_RATE)
 }
 
+pub(super) fn calculate_yunzhanghu_submitted_pay_amount(
+    amount: Decimal,
+    fee: Decimal,
+) -> Decimal {
+    truncate_money_to_cents(amount - fee)
+}
+
+fn calculate_yunzhanghu_extra_service_fee(amount: Decimal) -> Decimal {
+    (amount * YUNZHANGHU_EXTRA_SERVICE_FEE_RATE)
+        .round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero)
+}
+
 fn calculate_yunzhanghu_pay_amount(
     amount: Decimal,
 ) -> Result<Decimal, ApiError> {
     let fee = calculate_withdraw_service_fee(amount);
-    let pay_amount = truncate_money_to_cents(amount - fee);
+    let pay_amount = calculate_yunzhanghu_submitted_pay_amount(amount, fee);
     if pay_amount <= Decimal::ZERO {
         return Err(ApiError::InvalidInput(
             "扣除手续费后到账金额必须大于 0".to_string(),
@@ -1191,6 +3198,12 @@ fn ensure_supported_payout_amount(
             MIN_WITHDRAW_AMOUNT
         )));
     }
+    if amount > MAX_WITHDRAW_AMOUNT {
+        return Err(ApiError::InvalidInput(format!(
+            "单笔提现金额不能超过 ¥{}",
+            MAX_WITHDRAW_AMOUNT
+        )));
+    }
     Ok(amount)
 }
 
@@ -1206,9 +3219,35 @@ fn normalize_requested_payout_amount(
     ensure_supported_payout_amount(amount)
 }
 
+fn ensure_yunzhanghu_profile_ready(
+    profile: &YunzhanghuProfile,
+) -> Result<(), ApiError> {
+    if profile.sign_status != YzhSignStatus::Signed {
+        return Err(ApiError::InvalidInput(
+            "您尚未完成签约，无法提现。请到「实名认证 & 收款账号」卡片完成签约。"
+                .to_string(),
+        ));
+    }
+    if profile.sign_nonce.is_some() {
+        return Err(ApiError::InvalidInput(
+            "签约或解约操作正在处理中，请完成操作后再提现。".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 async fn quote_yunzhanghu_payout(
     amount: Decimal,
     profile: &YunzhanghuProfile,
+) -> Result<PayoutQuote, ApiError> {
+    let client = YzhClient::new();
+    quote_yunzhanghu_payout_with_client(amount, profile, &client).await
+}
+
+async fn quote_yunzhanghu_payout_with_client(
+    amount: Decimal,
+    profile: &YunzhanghuProfile,
+    client: &YzhClient,
 ) -> Result<PayoutQuote, ApiError> {
     let real_name = profile.real_name.as_deref().ok_or_else(|| {
         ApiError::InvalidInput("KYC 信息异常：缺少真实姓名".to_string())
@@ -1225,9 +3264,8 @@ async fn quote_yunzhanghu_payout(
     let arrival_amount = calculate_yunzhanghu_pay_amount(amount)?;
     let pay_str = format!("{arrival_amount:.2}");
 
-    let client = YzhClient::new();
     let resp = yzh_api::calc_tax(
-        &client,
+        client,
         &yzh_api::CalcTaxRequest {
             real_name,
             id_card: &id_card,
@@ -1367,12 +3405,7 @@ pub async fn quote_payout(
                     "请先完善实名信息与支付宝账号".to_string(),
                 )
             })?;
-    if profile.sign_status != YzhSignStatus::Signed {
-        return Err(ApiError::InvalidInput(
-            "您尚未完成签约，无法提现。请到「实名认证 & 收款账号」卡片完成签约。"
-                .to_string(),
-        ));
-    }
+    ensure_yunzhanghu_profile_ready(&profile)?;
 
     Ok(HttpResponse::Ok()
         .json(quote_yunzhanghu_payout(amount, &profile).await?))
@@ -1426,20 +3459,17 @@ pub async fn create_payout(
                     "请先完善实名信息与支付宝账号".to_string(),
                 )
             })?;
-    if profile.sign_status != YzhSignStatus::Signed {
-        return Err(ApiError::InvalidInput(
-            "您尚未完成签约，无法提现。请到「实名认证 & 收款账号」卡片完成签约。"
-                .to_string(),
-        ));
-    }
+    ensure_yunzhanghu_profile_ready(&profile)?;
     if profile.real_name.is_none() {
         return Err(ApiError::InvalidInput(
             "KYC 信息异常：缺少真实姓名".to_string(),
         ));
     }
-    let alipay_account = profile.alipay_account.clone().ok_or_else(|| {
-        ApiError::InvalidInput("KYC 信息异常：缺少支付宝账号".to_string())
-    })?;
+    if profile.alipay_account.is_none() {
+        return Err(ApiError::InvalidInput(
+            "KYC 信息异常：缺少支付宝账号".to_string(),
+        ));
+    }
     if profile.phone.is_none() {
         return Err(ApiError::InvalidInput(
             "KYC 信息异常：缺少手机号".to_string(),
@@ -1457,12 +3487,47 @@ pub async fn create_payout(
     let mut transaction = pool.begin().await?;
 
     // 锁住用户行避免并发提现
-    sqlx::query!(
+    let user_lock = sqlx::query!(
         "SELECT balance FROM users WHERE id = $1 FOR UPDATE",
         user.id.0
     )
     .fetch_optional(&mut *transaction)
     .await?;
+    if user_lock.is_none() {
+        return Err(ApiError::InvalidInput("用户不存在".to_string()));
+    }
+
+    let profile_lock = sqlx::query_scalar!(
+        "
+        SELECT user_id
+        FROM user_yunzhanghu_profiles
+        WHERE user_id = $1
+        FOR UPDATE
+        ",
+        user.id.0,
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    if profile_lock.is_none() {
+        return Err(ApiError::InvalidInput(
+            "请先完善实名信息与支付宝账号".to_string(),
+        ));
+    }
+    let locked_profile = YunzhanghuProfile::get(user.id, &mut *transaction)
+        .await?
+        .ok_or_else(|| {
+            ApiError::InvalidInput("请先完善实名信息与支付宝账号".to_string())
+        })?;
+    if locked_profile.updated_at != profile.updated_at {
+        return Err(ApiError::InvalidInput(
+            "实名资料或签约状态已变化，请重新试算".to_string(),
+        ));
+    }
+    ensure_yunzhanghu_profile_ready(&locked_profile)?;
+    let alipay_account =
+        locked_profile.alipay_account.clone().ok_or_else(|| {
+            ApiError::InvalidInput("KYC 信息异常：缺少支付宝账号".to_string())
+        })?;
 
     // 校验可用余额：用户输入金额就是本次从余额扣除的总额，服务费只影响预计到账。
     let balance = get_user_balance(user.id, &pool).await?;
@@ -1565,7 +3630,8 @@ pub async fn payment_methods(
         image_url: None,
         interval: PayoutInterval::Standard {
             min: MIN_WITHDRAW_AMOUNT,
-            max: Decimal::from(50000), // 单笔上限，云账户/支付宝实际限额以风控为准
+            // 云账户/支付宝实际限额仍以通道风控为准。
+            max: MAX_WITHDRAW_AMOUNT,
         },
         fee: PayoutMethodFee {
             // 手续费从提现金额中内扣，实际到账金额由 /payout/quote 返回。
@@ -1826,6 +3892,19 @@ fn get_legacy_data_point(timestamp: u64) -> RevenueData {
 mod tests {
     use super::*;
 
+    fn ledger_value(
+        mod_id: Option<i64>,
+        title: &str,
+        amount: Decimal,
+    ) -> BatchLedgerValue {
+        BatchLedgerValue {
+            mod_id,
+            amount,
+            project_name: Some(title.to_string()),
+            project_slug: Some(title.to_lowercase()),
+        }
+    }
+
     #[test]
     fn money_truncates_to_cents() {
         assert_eq!(
@@ -1845,10 +3924,211 @@ mod tests {
     }
 
     #[test]
+    fn yunzhanghu_extra_service_fee_is_six_point_eight_percent_rounded() {
+        assert_eq!(
+            calculate_yunzhanghu_extra_service_fee(Decimal::from(97)),
+            Decimal::from_parts(660, 0, 0, false, 2)
+        );
+        assert_eq!(
+            calculate_yunzhanghu_extra_service_fee(Decimal::from_parts(
+                125, 0, 0, false, 2
+            )),
+            Decimal::from_parts(9, 0, 0, false, 2)
+        );
+    }
+
+    #[test]
     fn yunzhanghu_pay_amount_deducts_fee_from_requested_amount() {
         assert_eq!(
             calculate_yunzhanghu_pay_amount(Decimal::from(100)).unwrap(),
             Decimal::from(97)
         );
+    }
+
+    #[test]
+    fn yunzhanghu_submitted_pay_matches_production_orders() {
+        assert_eq!(
+            calculate_yunzhanghu_submitted_pay_amount(
+                Decimal::new(109_091, 2),
+                Decimal::new(3_272, 2),
+            ),
+            Decimal::new(105_819, 2)
+        );
+        assert_eq!(
+            calculate_yunzhanghu_submitted_pay_amount(
+                Decimal::new(61_476, 2),
+                Decimal::new(1_844, 2),
+            ),
+            Decimal::new(59_632, 2)
+        );
+    }
+
+    #[test]
+    fn yunzhanghu_submitted_pay_keeps_legacy_orders_without_fee() {
+        assert_eq!(
+            calculate_yunzhanghu_submitted_pay_amount(
+                Decimal::new(10_091, 2),
+                Decimal::ZERO,
+            ),
+            Decimal::new(10_091, 2)
+        );
+    }
+
+    #[test]
+    fn batch_payout_admin_username_must_match_exactly() {
+        assert!(ensure_batch_payout_admin("BBSMC").is_ok());
+        assert!(ensure_batch_payout_admin("bbsmc").is_err());
+        assert!(ensure_batch_payout_admin("OtherAdmin").is_err());
+    }
+
+    #[test]
+    fn batch_audit_event_types_cover_item_and_batch_terminal_states() {
+        assert_eq!(batch_item_event_type("skipped"), Some("item_skipped"));
+        assert_eq!(batch_item_event_type("failed"), Some("item_failed"));
+        assert_eq!(batch_item_event_type("pending"), None);
+        assert_eq!(batch_item_event_type("created"), None);
+
+        assert_eq!(
+            batch_terminal_state(3, 3),
+            ("completed", "batch_completed")
+        );
+        assert_eq!(batch_terminal_state(3, 2), ("partial", "batch_partial"));
+        assert_eq!(
+            batch_terminal_state(0, 0),
+            ("completed", "batch_completed")
+        );
+    }
+
+    #[test]
+    fn batch_audit_processing_kind_distinguishes_retry_and_takeover() {
+        assert_eq!(batch_processing_kind("previewed", false), "initial");
+        assert_eq!(batch_processing_kind("partial", false), "retry");
+        assert_eq!(batch_processing_kind("processing", true), "takeover");
+    }
+
+    #[test]
+    fn ordinary_payout_rejects_amount_over_single_order_limit() {
+        assert!(ensure_supported_payout_amount(MAX_WITHDRAW_AMOUNT).is_ok());
+        assert!(
+            ensure_supported_payout_amount(
+                MAX_WITHDRAW_AMOUNT + Decimal::new(1, 2)
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn batch_amount_at_limit_stays_single_order() {
+        assert_eq!(
+            split_batch_payout_amount(MAX_WITHDRAW_AMOUNT).unwrap(),
+            vec![MAX_WITHDRAW_AMOUNT]
+        );
+    }
+
+    #[test]
+    fn batch_amount_over_limit_is_fully_split() {
+        let amount = Decimal::from(100_002);
+        let chunks = split_batch_payout_amount(amount).unwrap();
+
+        assert_eq!(
+            chunks,
+            vec![
+                Decimal::from(50_000),
+                Decimal::from(49_997),
+                Decimal::from(5)
+            ]
+        );
+        assert_eq!(chunks.iter().copied().sum::<Decimal>(), amount);
+        assert!(chunks.iter().all(|chunk| {
+            *chunk >= MIN_WITHDRAW_AMOUNT && *chunk <= MAX_WITHDRAW_AMOUNT
+        }));
+    }
+
+    #[test]
+    fn batch_split_moves_subminimum_remainder_into_final_order() {
+        let amount = MAX_WITHDRAW_AMOUNT + Decimal::new(1, 2);
+        assert_eq!(
+            split_batch_payout_amount(amount).unwrap(),
+            vec![Decimal::new(4_999_501, 2), Decimal::from(5)]
+        );
+    }
+
+    #[test]
+    fn batch_sources_consume_oldest_earnings_first() {
+        let values = vec![
+            ledger_value(Some(1), "A", Decimal::from(10)),
+            ledger_value(Some(2), "B", Decimal::from(20)),
+        ];
+
+        let sources = attribute_batch_payout_sources(
+            Decimal::from(30),
+            Decimal::from(20),
+            Decimal::from(20),
+            &values,
+        )
+        .unwrap();
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].title, "B");
+        assert_eq!(sources[0].amount, Decimal::from(20));
+    }
+
+    #[test]
+    fn batch_sources_allocate_cent_remainder_deterministically() {
+        let values = vec![
+            ledger_value(Some(1), "A", Decimal::new(2335, 3)),
+            ledger_value(Some(2), "B", Decimal::new(2335, 3)),
+            ledger_value(Some(3), "C", Decimal::new(2335, 3)),
+        ];
+
+        let sources = attribute_batch_payout_sources(
+            Decimal::new(7005, 3),
+            Decimal::new(7005, 3),
+            Decimal::from(7),
+            &values,
+        )
+        .unwrap();
+
+        assert_eq!(
+            sources.iter().map(|source| source.amount).sum::<Decimal>(),
+            Decimal::from(7)
+        );
+        assert_eq!(sources[0].title, "A");
+        assert_eq!(sources[0].amount, Decimal::new(234, 2));
+        assert_eq!(sources[1].amount, Decimal::new(233, 2));
+        assert_eq!(sources[2].amount, Decimal::new(233, 2));
+    }
+
+    #[test]
+    fn batch_sources_absorb_sub_cent_balance_rounding() {
+        let exact = Decimal::from_str_exact("4.99999999999999996").unwrap();
+        let values = vec![ledger_value(None, "无资源", exact)];
+
+        let sources = attribute_batch_payout_sources(
+            exact,
+            exact.round_dp(16),
+            Decimal::from(5),
+            &values,
+        )
+        .unwrap();
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].amount, Decimal::from(5));
+    }
+
+    #[test]
+    fn batch_source_snapshot_matches_ids_and_amounts() {
+        let expected = vec![AdminBatchPayoutSource {
+            project_id: None,
+            slug: None,
+            title: "预览标题".to_string(),
+            amount: Decimal::from(5),
+        }];
+        let mut current = expected.clone();
+        current[0].title = "改名后的标题".to_string();
+        assert!(batch_payout_sources_match(&expected, &current));
+
+        current[0].amount = Decimal::new(499, 2);
+        assert!(!batch_payout_sources_match(&expected, &current));
     }
 }

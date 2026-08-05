@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE yunzhanghu_unsign_reconciliations\n        SET lease_owner = $2,\n            lease_expires_at = NOW() + ($3::double precision * INTERVAL '1 second'),\n            attempt_count = attempt_count + 1,\n            last_attempt_at = NOW(),\n            updated_at = NOW()\n        WHERE nonce = $1\n          AND status = 'pending'\n          AND ($4::boolean OR next_attempt_at <= NOW())\n          AND (lease_expires_at IS NULL OR lease_expires_at <= NOW())\n        RETURNING release_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "release_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Float8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "873db752a8d4322c7d806f26bbdb1a06b5a3a0d170ac7e9e80aa932cdde56627"
+}
