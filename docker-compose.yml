@@ -14,7 +14,7 @@ services:
       TZ: Asia/Shanghai
       PGTZ: Asia/Shanghai
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: ['CMD-SHELL', 'pg_isready -U labrinth']
       interval: 3s
       timeout: 5s
       retries: 3
