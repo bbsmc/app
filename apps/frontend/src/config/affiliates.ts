@@ -85,7 +85,7 @@ export const affiliates: Record<string, Affiliate> = {
   ZangHeRo: {
     name: "ZangHeRo",
     link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
-    projects: ["F4xIzfIX"], // 机械殖民地
+    projects: ["F4xIzfIX", "k04waacm"], // 机械殖民地
   },
   snk: {
     name: "二十二度幻月",
