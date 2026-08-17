@@ -33,10 +33,12 @@ pub enum IndexingError {
     Task,
 }
 
-// 添加项目到索引数据库的块大小。如果请求大小
-// 太大 (>10MiB) 则请求失败。这个块大小
-// 假设每个项目平均大小为 4KiB 以避免这个限制。
-const MEILISEARCH_CHUNK_SIZE: usize = 10000000;
+// 添加项目到索引数据库时单个请求的最大序列化字节数。Meilisearch 的
+// payload 限制取决于部署配置（官方默认 100MiB，超出会返回 413 PayloadTooLarge），
+// 因此按序列化后大小分块，确保单个请求不会超过限制。
+// 注意：此前按文档数（10000000）分块形同一次性发送全部文档，
+// 生产环境全量索引曾因超过 1.25GiB 的 payload 限制而失败。
+const MEILISEARCH_CHUNK_MAX_BYTES: usize = 100 * 1024 * 1024;
 const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 // Modrinth 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
@@ -297,19 +299,54 @@ async fn add_to_index(
     index: &Index,
     mods: &[UploadSearchProject],
 ) -> Result<(), IndexingError> {
-    for chunk in mods.chunks(MEILISEARCH_CHUNK_SIZE) {
-        info!("添加以版本 ID {} 开头的版本", chunk[0].version_id);
-        index
-            .add_or_replace(chunk, Some("version_id"))
-            .await?
-            .wait_for_completion(
-                client,
-                None,
-                Some(std::time::Duration::from_secs(3600)),
-            )
-            .await?;
-        info!("将 {} 个项目的块添加到索引中", chunk.len());
+    // 按序列化后的字节大小分块发送，避免单个请求超过 Meilisearch 的 payload 限制
+    let mut chunk: Vec<&UploadSearchProject> = Vec::new();
+    let mut chunk_bytes: usize = 0;
+
+    for search_project in mods {
+        let document_bytes = serde_json::to_vec(search_project)?.len();
+
+        if !chunk.is_empty()
+            && chunk_bytes + document_bytes > MEILISEARCH_CHUNK_MAX_BYTES
+        {
+            submit_index_chunk(client, index, &chunk, chunk_bytes).await?;
+            chunk.clear();
+            chunk_bytes = 0;
+        }
+
+        chunk.push(search_project);
+        chunk_bytes += document_bytes;
     }
+
+    if !chunk.is_empty() {
+        submit_index_chunk(client, index, &chunk, chunk_bytes).await?;
+    }
+
+    Ok(())
+}
+
+async fn submit_index_chunk(
+    client: &Client,
+    index: &Index,
+    chunk: &[&UploadSearchProject],
+    chunk_bytes: usize,
+) -> Result<(), IndexingError> {
+    info!(
+        "添加以版本 ID {} 开头的版本（{} 个文档，约 {} MiB）",
+        chunk[0].version_id,
+        chunk.len(),
+        chunk_bytes / (1024 * 1024)
+    );
+    index
+        .add_or_replace(chunk, Some("version_id"))
+        .await?
+        .wait_for_completion(
+            client,
+            None,
+            Some(std::time::Duration::from_secs(3600)),
+        )
+        .await?;
+    info!("将 {} 个项目的块添加到索引中", chunk.len());
 
     Ok(())
 }
