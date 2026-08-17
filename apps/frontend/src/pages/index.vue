@@ -701,7 +701,7 @@ const heroBanners = ref([
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94_350.webp",
+      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7c2ccd747457f54652540972f8f61cc88f24d3a0_350.webp",
     title: "龙之冒险：新征程",
     description: "面对众多怪物的冒险之旅，你做好准备了吗？",
     badge: "精选整合包",
