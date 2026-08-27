@@ -104,6 +104,18 @@ export const affiliates: Record<string, Affiliate> = {
     link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["YgvldBV8"],
   },
+  "ymzz": {
+    name: "远梦之棺",
+    code: "远梦之棺",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["g1Bj9aPx"],
+  },
+  "incandescent-verity": {
+    name: "方可梦：炽白真形",
+    code: "方可梦：炽白真形",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["qoClGU9p"],
+  },
   Latxx: {
     name: "辣某人",
     code: "沉浸战斗",
@@ -166,6 +178,12 @@ export const affiliates: Record<string, Affiliate> = {
     link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["zT3k10EZ", "i2V4lWdp", "37yTxfMk"],
   },
+  "syqj": {
+    name: "摄影奇境",
+    code: "摄影奇境",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["iz5Q6p0G"],
+  },
   deceasedcraft: {
     name: "亡者世界",
     code: "亡者世界",
@@ -190,6 +208,18 @@ export const affiliates: Record<string, Affiliate> = {
     code: "尘封古纪",
     link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["PNjet8tS"],
+  },
+  heavenlypath: {
+    name: "通天之路",
+    code: "通天之路",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["Nt9lp3GH"],
+  },
+  arcadiaapocalypse: {
+    name: "阿卡迪亚的天启",
+    code: "阿卡迪亚的天启",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["ZvIENE9v"],
   },
   woyaozuofan: {
     name: "我要做饭",

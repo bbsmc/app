@@ -546,14 +546,18 @@ pub async fn version_edit_helper(
                 .await?;
 
                 for u in urls {
+                    let display = u
+                        .normalized_display()
+                        .map_err(ApiError::InvalidInput)?;
                     sqlx::query!(
                         "
-                        INSERT INTO disk_urls (version_id, url, platform)
-                        VALUES ($1, $2, $3)
+                        INSERT INTO disk_urls (version_id, url, platform, display)
+                        VALUES ($1, $2, $3, $4)
                         ",
                         id as database::models::ids::VersionId,
                         u.url,
                         u.platform,
+                        display,
                     )
                     .execute(&mut *transaction)
                     .await?;

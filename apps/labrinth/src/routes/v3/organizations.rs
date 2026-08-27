@@ -1416,7 +1416,7 @@ pub async fn organization_icon_edit(
     .await?;
 
     let bytes =
-        read_from_payload(&mut payload, 262144, "图标必须小于256KiB").await?;
+        read_from_payload(&mut payload, 1048576, "图标必须小于1MiB").await?;
 
     let organization_id: OrganizationId = organization_item.id.into();
     let upload_result = crate::util::img::upload_image_optimized(

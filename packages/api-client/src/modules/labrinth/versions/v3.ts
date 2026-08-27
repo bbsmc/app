@@ -368,14 +368,14 @@ function aggregateDiskUrls(
   }
 
   const out: Labrinth.Versions.v3.QueryDisk[] = []
-  const push = (platform: string, url?: string) => {
-    if (url && url.trim() !== '') out.push({ platform, url })
+  const push = (platform: string, url?: string, display?: string) => {
+    if (url && url.trim() !== '') out.push({ platform, url, display: display ?? 'default' })
   }
-  push('quark', draft.quark_disk)
-  push('baidu', draft.baidu_disk)
+  push('quark', draft.quark_disk, draft.quark_disk_display)
+  push('baidu', draft.baidu_disk, draft.baidu_disk_display)
   push('curseforge', draft.curseforge)
   push('modrinth', draft.modrinth)
-  push('xunlei', draft.xunlei_disk)
+  push('xunlei', draft.xunlei_disk, draft.xunlei_disk_display)
   return out
 }
 

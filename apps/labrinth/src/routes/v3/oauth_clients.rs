@@ -388,7 +388,7 @@ pub async fn oauth_client_icon_edit(
     .await?;
 
     let bytes =
-        read_from_payload(&mut payload, 262144, "图标必须小于256KiB").await?;
+        read_from_payload(&mut payload, 1048576, "图标必须小于1MiB").await?;
     let upload_result = upload_image_optimized(
         &format!("data/{}", client_id),
         bytes.freeze(),

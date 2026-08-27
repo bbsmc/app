@@ -327,14 +327,20 @@ impl QueryDisk {
         version_id: VersionId,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> Result<(), DatabaseError> {
+        let display = if self.display.is_empty() {
+            "default".to_string()
+        } else {
+            self.display
+        };
         sqlx::query!(
             "
-            INSERT INTO disk_urls (version_id, url, platform)
-            VALUES ($1, $2, $3)
+            INSERT INTO disk_urls (version_id, url, platform, display)
+            VALUES ($1, $2, $3, $4)
             ",
             version_id as VersionId,
             self.url,
             self.platform,
+            display,
         )
         .execute(&mut **transaction)
         .await?;
@@ -777,7 +783,7 @@ impl Version {
 
                 let disks : DashMap<VersionId, Vec<QueryDisk>> = sqlx::query!(
                     "
-                    SELECT DISTINCT version_id, f.url,f.platform
+                    SELECT DISTINCT version_id, f.url,f.platform, f.display
                     FROM disk_urls f
                     WHERE f.version_id = ANY($1)
                     ",
@@ -786,7 +792,8 @@ impl Version {
                     .try_fold(DashMap::new(), |acc : DashMap<VersionId, Vec<QueryDisk>>, m| {
                         let disk = QueryDisk {
                             url: m.url,
-                            platform: m.platform
+                            platform: m.platform,
+                            display: m.display,
                         };
 
                         acc.entry(VersionId(m.version_id))
@@ -1179,6 +1186,31 @@ pub struct QueryDisk {
         length(max = 2048)
     )]
     pub url: String,
+    /// 展示方式：default 直接跳转 / qrcode 纯二维码 / both 二维码+跳转链接
+    #[serde(default = "default_disk_display")]
+    #[validate(custom(
+        function = "crate::util::validate::validate_disk_display"
+    ))]
+    pub display: String,
+}
+
+fn default_disk_display() -> String {
+    "default".to_string()
+}
+
+impl QueryDisk {
+    /// 空值归一化为 default，非法值返回错误信息（配合数据库 CHECK 约束）
+    pub fn normalized_display(&self) -> Result<String, String> {
+        let display = if self.display.is_empty() {
+            "default"
+        } else {
+            self.display.as_str()
+        };
+        match display {
+            "default" | "qrcode" | "both" => Ok(display.to_string()),
+            _ => Err("网盘展示方式仅支持 default、qrcode、both".to_string()),
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]

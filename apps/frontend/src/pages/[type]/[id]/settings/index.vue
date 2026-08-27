@@ -28,7 +28,7 @@
         <div class="input-stack">
           <FileInput
             id="project-icon"
-            :max-size="262144"
+            :max-size="1048576"
             :show-icon="true"
             accept="image/png,image/jpeg,image/gif,image/webp"
             class="choose-image iconified-button"

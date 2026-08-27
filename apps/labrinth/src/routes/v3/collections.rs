@@ -447,7 +447,7 @@ pub async fn collection_icon_edit(
     .await?;
 
     let bytes =
-        read_from_payload(&mut payload, 262144, "头像必须小于256KiB").await?;
+        read_from_payload(&mut payload, 1048576, "头像必须小于1MiB").await?;
 
     let collection_id: CollectionId = collection_item.id.into();
     let upload_result = crate::util::img::upload_image_optimized(

@@ -1320,12 +1320,12 @@ function selectAdminAvatar(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  if (file.size > 262144) {
+  if (file.size > 1048576) {
     event.target.value = "";
     addNotification({
       group: "main",
       title: "头像过大",
-      text: "头像必须小于 256KiB。",
+      text: "头像必须小于 1MiB。",
       type: "error",
     });
     return;

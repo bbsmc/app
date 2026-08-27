@@ -47,31 +47,14 @@
       <VersionChannelIndicator :channel="version.version_type" />
       <div class="flex min-w-0 flex-col gap-1">
         <span class="my-0 truncate text-nowrap text-base font-extrabold leading-none text-contrast">
-          [{{
-            u.platform === "quark"
-              ? "夸克云盘"
-              : u.platform === "baidu"
-                ? "百度云盘"
-                : u.platform === "curseforge"
-                  ? "CurseForge"
-                  : u.platform === "modrinth"
-                    ? "Modrinth"
-                    : u.platform === "xunlei"
-                      ? "迅雷"
-                      : "第三方云盘"
-          }}] {{ version.name }}
+          [{{ diskPlatformTag(u.platform) }}] {{ version.name }}
         </span>
         <p class="m-0 truncate text-nowrap text-xs font-semibold text-secondary">
           {{ version.version_number }}
         </p>
       </div>
       <ButtonStyled color="brand">
-        <a
-          :href="u.url"
-          @click="emit('onDownload', props.version.id)"
-          target="_blank"
-          class="min-w-0"
-        >
+        <a :href="u.url" target="_blank" class="min-w-0" @click="handleDiskDownload(u, $event)">
           <DownloadIcon aria-hidden="true" />
         </a>
       </ButtonStyled>
@@ -87,20 +70,66 @@
       </ButtonStyled>
     </div>
   </div>
+
+  <!--  网盘扫码弹窗（纯二维码 / 二维码+链接 模式） -->
+  <NewModal ref="diskQrModal" :header="DISK_QR_TITLE">
+    <div v-if="qrTarget" class="flex w-full flex-col items-center gap-4">
+      <QrcodeVue :value="qrTarget.url" :size="220" margin="3" class="rounded-xl bg-white p-2" />
+      <p class="m-0 text-center text-sm text-secondary">
+        请使用{{ qrTarget.platformLabel }}手机App「扫一扫」识别二维码，转存后即可下载
+      </p>
+      <Admonition type="info" class="w-full">
+        {{ DISK_QR_REVENUE_NOTICE }}
+      </Admonition>
+      <ButtonStyled v-if="qrTarget.mode === 'both'" color="brand" class="w-full">
+        <a :href="qrTarget.url" target="_blank" rel="noopener" class="w-full justify-center">
+          打开{{ qrTarget.platformLabel }}页面
+          <ExternalIcon aria-hidden="true" />
+        </a>
+      </ButtonStyled>
+    </div>
+  </NewModal>
 </template>
 
 <script setup lang="ts">
-import { ButtonStyled, VersionChannelIndicator } from "@modrinth/ui";
+import { ButtonStyled, Admonition, NewModal, VersionChannelIndicator } from "@modrinth/ui";
 import { DownloadIcon, ExternalIcon } from "@modrinth/assets";
+import QrcodeVue from "qrcode.vue";
 import { usePrivateDownload, isPrivateUrl } from "~/composables/usePrivateDownload";
+import {
+  diskPlatformLabel,
+  diskPlatformTag,
+  DISK_QR_REVENUE_NOTICE,
+  DISK_QR_TITLE,
+} from "~/utils/disk-urls";
 
 const props = defineProps<{
   version: Version;
 }>();
 
-const emit = defineEmits(["onDownload", "onNavigate"]);
+const emit = defineEmits(["onDownload", "onNavigate", "onDiskQr"]);
 
 const { isDownloading, download, getHref } = usePrivateDownload();
+
+// 网盘扫码弹窗状态
+const diskQrModal = ref();
+const qrTarget = ref<{ url: string; platformLabel: string; mode: string } | null>(null);
+
+// 网盘下载点击：default 直接跳转；qrcode/both 弹出扫码窗口并统计
+const handleDiskDownload = (
+  u: { url: string; platform: string; display?: string },
+  event: MouseEvent,
+) => {
+  const mode = u.display ?? "default";
+  if (mode === "default") {
+    emit("onDownload", props.version.id);
+    return; // 默认模式：a 标签自身新标签页跳转
+  }
+  event.preventDefault();
+  qrTarget.value = { url: u.url, platformLabel: diskPlatformLabel(u.platform), mode };
+  diskQrModal.value?.show();
+  emit("onDiskQr", props.version.id);
+};
 
 // 获取主文件
 const primaryFile = computed(() => {

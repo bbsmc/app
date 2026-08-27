@@ -1066,7 +1066,7 @@ pub async fn user_icon_edit(
         }
 
         let bytes =
-            read_from_payload(&mut payload, 262144, "头像必须小于256KiB")
+            read_from_payload(&mut payload, 1048576, "头像必须小于1MiB")
                 .await?;
 
         let user_id: UserId = actual_user.id.into();

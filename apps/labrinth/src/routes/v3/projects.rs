@@ -1860,7 +1860,7 @@ pub async fn project_icon_edit(
     .await?;
 
     let bytes =
-        read_from_payload(&mut payload, 262144, "图标必须小于 256KiB").await?;
+        read_from_payload(&mut payload, 1048576, "图标必须小于 1MiB").await?;
 
     let project_id: ProjectId = project_item.inner.id.into();
     let upload_result = upload_image_optimized(

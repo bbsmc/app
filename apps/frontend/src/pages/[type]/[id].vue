@@ -610,18 +610,21 @@
               v-if="filteredRelease"
               :version="filteredRelease"
               @on-download="onDownload"
+              @on-disk-qr="onDiskQrDownload"
               @on-navigate="downloadModal.hide"
             />
             <VersionSummary
               v-if="filteredBeta"
               :version="filteredBeta"
               @on-download="onDownload"
+              @on-disk-qr="onDiskQrDownload"
               @on-navigate="downloadModal.hide"
             />
             <VersionSummary
               v-if="filteredAlpha"
               :version="filteredAlpha"
               @on-download="onDownload"
+              @on-disk-qr="onDiskQrDownload"
               @on-navigate="downloadModal.hide"
             />
             <p
@@ -3036,6 +3039,16 @@ function onDownload(event) {
       });
     }
   }, 400);
+}
+
+// 网盘二维码模式下载统计：只计数，不关闭下载弹窗
+function onDiskQrDownload(versionId) {
+  if (versionId) {
+    useBaseFetch(`version/${versionId}/download`, {
+      method: "PATCH",
+      apiVersion: 3,
+    });
+  }
 }
 
 async function fetchTranslationRecommendation() {
