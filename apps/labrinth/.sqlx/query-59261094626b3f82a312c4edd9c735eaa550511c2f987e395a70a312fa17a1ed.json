@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH earnings AS (\n            SELECT\n                user_id,\n                COALESCE(SUM(amount), 0)::numeric AS earned,\n                COALESCE(SUM(amount) FILTER (WHERE amount > 0), 0)::numeric\n                    AS positive_earned\n            FROM payouts_values\n            WHERE date_available <= NOW()\n            GROUP BY user_id\n        ), withdrawn AS (\n            SELECT\n                user_id,\n                COALESCE(SUM(amount), 0)::numeric AS amount,\n                COALESCE(SUM(\n                    CASE\n                        WHEN method = 'yunzhanghu_alipay' THEN 0\n                        ELSE COALESCE(fee, 0)\n                    END\n                ), 0)::numeric AS old_channel_fees\n            FROM payouts\n            WHERE status IN ('success', 'in-transit')\n            GROUP BY user_id\n        )\n        SELECT\n            u.id,\n            u.username,\n            COALESCE(e.earned, 0)::numeric AS \"earned!\",\n            COALESCE(e.positive_earned, 0)::numeric AS \"positive_earned!\",\n            COALESCE(w.amount, 0)::numeric AS \"withdrawn!\",\n            COALESCE(w.old_channel_fees, 0)::numeric AS \"old_channel_fees!\",\n            EXISTS (\n                SELECT 1\n                FROM user_bans ub\n                WHERE ub.user_id = u.id\n                  AND ub.ban_type IN ('global', 'resource')\n                  AND ub.is_active = TRUE\n                  AND (ub.expires_at IS NULL OR ub.expires_at > NOW())\n            ) AS \"is_banned!\"\n        FROM earnings e\n        INNER JOIN users u ON u.id = e.user_id\n        LEFT JOIN withdrawn w ON w.user_id = u.id\n        WHERE u.id <> $1\n        ORDER BY u.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "earned!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "positive_earned!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "withdrawn!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "old_channel_fees!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_banned!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "59261094626b3f82a312c4edd9c735eaa550511c2f987e395a70a312fa17a1ed"
+}

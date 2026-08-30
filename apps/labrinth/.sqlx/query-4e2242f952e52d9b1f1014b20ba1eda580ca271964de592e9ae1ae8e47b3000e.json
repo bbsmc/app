@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO yunzhanghu_unsign_reconciliations (\n            nonce, release_at, next_attempt_at\n        )\n        VALUES ($1, $2, NOW())\n        ON CONFLICT (nonce) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4e2242f952e52d9b1f1014b20ba1eda580ca271964de592e9ae1ae8e47b3000e"
+}

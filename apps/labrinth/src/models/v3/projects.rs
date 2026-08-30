@@ -107,6 +107,10 @@ pub struct Project {
     /// The monetization status of this project
     pub monetization_status: MonetizationStatus,
 
+    /// Whether creator incentive is enabled for this project.
+    #[serde(default)]
+    pub incentive_enabled: bool,
+
     /// Aggregated loader-fields across its myriad of versions
     #[serde(flatten)]
     pub fields: HashMap<String, Vec<serde_json::Value>>,
@@ -269,6 +273,7 @@ impl From<QueryProject> for Project {
             color: m.color,
             thread_id: data.thread_id.into(),
             monetization_status: m.monetization_status,
+            incentive_enabled: m.incentive_enabled,
             issues_type: m.issues_type,
             fields,
             forum: m.forum.map(|x| x.into()),
@@ -1130,4 +1135,146 @@ pub struct SearchRequest {
     pub facets: Option<String>,
     pub filters: Option<String>,
     pub version: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct ProjectListPagination {
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+    pub project_type: Option<String>,
+}
+
+impl ProjectListPagination {
+    pub const DEFAULT_LIMIT: usize = 10;
+    pub const MAX_LIMIT: usize = 30;
+    pub const MAX_OFFSET: usize = 3000;
+    pub const PUBLIC_CACHE_TTL_SECONDS: i64 = 60;
+    pub const VALID_PROJECT_TYPES: &'static [&'static str] = &[
+        "mod",
+        "modpack",
+        "plugin",
+        "datapack",
+        "shader",
+        "resourcepack",
+        "software",
+        "language",
+        "map",
+        "project",
+    ];
+
+    pub fn offset_limit(&self) -> (usize, usize) {
+        let limit = self
+            .limit
+            .unwrap_or(Self::DEFAULT_LIMIT as i64)
+            .clamp(1, Self::MAX_LIMIT as i64) as usize;
+
+        let offset = match self.offset {
+            Some(offset) => {
+                usize::try_from(offset.max(0)).unwrap_or(usize::MAX)
+            }
+            None => {
+                let page = usize::try_from(self.page.unwrap_or(1).max(1))
+                    .unwrap_or(usize::MAX);
+                page.saturating_sub(1).saturating_mul(limit)
+            }
+        };
+
+        (offset.min(Self::MAX_OFFSET), limit)
+    }
+
+    pub fn project_type_filter(&self) -> Option<Option<String>> {
+        let project_type = self
+            .project_type
+            .as_ref()
+            .map(|x| x.trim().to_ascii_lowercase())
+            .filter(|x| !x.is_empty());
+
+        match project_type {
+            Some(project_type)
+                if Self::VALID_PROJECT_TYPES
+                    .contains(&project_type.as_str()) =>
+            {
+                Some(Some(project_type))
+            }
+            Some(_) => None,
+            None => Some(None),
+        }
+    }
+
+    pub fn cache_key(
+        scope: &str,
+        id: impl std::fmt::Display,
+        offset: usize,
+        limit: usize,
+        project_type: Option<&str>,
+    ) -> String {
+        format!(
+            "{scope}:{id}:offset={offset}:limit={limit}:type={}",
+            project_type.unwrap_or("all")
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PaginatedProjects<T> {
+    pub hits: Vec<T>,
+    pub offset: usize,
+    pub limit: usize,
+    pub total_hits: usize,
+    pub total_downloads: u64,
+    pub project_types: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PaginatedItems<T> {
+    pub hits: Vec<T>,
+    pub offset: usize,
+    pub limit: usize,
+    pub total_hits: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ProjectListPagination;
+
+    #[test]
+    fn project_list_pagination_clamps_limit_and_offset() {
+        let query = ProjectListPagination {
+            offset: Some(999_999),
+            limit: Some(300),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            query.offset_limit(),
+            (
+                ProjectListPagination::MAX_OFFSET,
+                ProjectListPagination::MAX_LIMIT,
+            ),
+        );
+    }
+
+    #[test]
+    fn project_list_pagination_rejects_unknown_project_type() {
+        let query = ProjectListPagination {
+            project_type: Some("not-a-type".to_string()),
+            ..Default::default()
+        };
+
+        assert_eq!(query.project_type_filter(), None);
+    }
+
+    #[test]
+    fn project_list_pagination_normalizes_project_type() {
+        let query = ProjectListPagination {
+            project_type: Some(" DataPack ".to_string()),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            query.project_type_filter(),
+            Some(Some("datapack".to_string()))
+        );
+    }
 }

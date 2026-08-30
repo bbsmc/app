@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id\n        FROM payouts\n        WHERE user_id = $1\n          AND status IN ('in-transit', 'cancelling')\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "537f5563cd58bbfaa3dd98b387fdf1c57ec79e8dcba75bc7f51f7d4b2959fce1"
+}

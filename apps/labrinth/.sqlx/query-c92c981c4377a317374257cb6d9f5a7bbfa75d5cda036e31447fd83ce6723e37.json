@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT user_id, real_name, real_name_encrypted, id_card_encrypted, id_card_last4,\n                   phone, phone_encrypted, alipay_account, alipay_account_encrypted,\n                   sign_status, sign_url, sign_nonce, signed_at, terminated_at, created_at,\n                   updated_at\n            FROM user_yunzhanghu_profiles\n            WHERE user_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "real_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "real_name_encrypted",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "id_card_encrypted",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "id_card_last4",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "phone_encrypted",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "alipay_account",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "alipay_account_encrypted",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "sign_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "sign_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "sign_nonce",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "signed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "terminated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "c92c981c4377a317374257cb6d9f5a7bbfa75d5cda036e31447fd83ce6723e37"
+}

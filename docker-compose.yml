@@ -9,8 +9,12 @@ services:
       POSTGRES_USER: labrinth
       POSTGRES_PASSWORD: labrinth
       POSTGRES_HOST_AUTH_METHOD: trust
+      # 容器系统时区设为北京时间，影响日志输出。数据库 session timezone 由 labrinth
+      # 在 PgPoolOptions::after_connect 时通过 SET TIME ZONE 'Asia/Shanghai' 显式设置。
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: ['CMD-SHELL', 'pg_isready -U labrinth']
       interval: 3s
       timeout: 5s
       retries: 3
@@ -51,6 +55,9 @@ services:
     environment:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: default
+      # 容器系统时区设为北京时间。CH 服务端 timezone 与桶函数无关，
+      # 桶函数必须由 labrinth 显式传 'Asia/Shanghai' 第三参数。
+      TZ: Asia/Shanghai
     healthcheck:
       test: ['CMD', 'clickhouse-client', '--query', 'SELECT 1']
       interval: 3s

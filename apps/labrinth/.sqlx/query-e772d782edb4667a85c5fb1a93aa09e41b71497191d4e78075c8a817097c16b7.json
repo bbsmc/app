@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO payout_yunzhanghu_order_details (\n            payout_id, order_id, platform_id, pay,\n            user_real_amount, user_real_excluding_vat_amount,\n            user_fee, received_user_fee,\n            tax, received_tax_amount,\n            personal_tax, value_added_tax, additional_tax,\n            user_personal_tax, user_value_added_tax, user_additional_tax,\n            received_personal_tax, user_received_personal_tax,\n            received_value_added_tax, user_received_value_added_tax,\n            received_additional_tax, user_received_additional_tax,\n            raw_status, raw_status_detail, queried_at\n        )\n        VALUES (\n            $1, $2, NULLIF($3, ''), $4,\n            $5, $6,\n            $7, $8,\n            $9, $10,\n            $11, $12, $13,\n            $14, $15, $16,\n            $17, $18,\n            $19, $20,\n            $21, $22,\n            $23, $24, NOW()\n        )\n        ON CONFLICT (payout_id) DO UPDATE\n        SET order_id = EXCLUDED.order_id,\n            platform_id = EXCLUDED.platform_id,\n            pay = EXCLUDED.pay,\n            user_real_amount = EXCLUDED.user_real_amount,\n            user_real_excluding_vat_amount = EXCLUDED.user_real_excluding_vat_amount,\n            user_fee = EXCLUDED.user_fee,\n            received_user_fee = EXCLUDED.received_user_fee,\n            tax = EXCLUDED.tax,\n            received_tax_amount = EXCLUDED.received_tax_amount,\n            personal_tax = EXCLUDED.personal_tax,\n            value_added_tax = EXCLUDED.value_added_tax,\n            additional_tax = EXCLUDED.additional_tax,\n            user_personal_tax = EXCLUDED.user_personal_tax,\n            user_value_added_tax = EXCLUDED.user_value_added_tax,\n            user_additional_tax = EXCLUDED.user_additional_tax,\n            received_personal_tax = EXCLUDED.received_personal_tax,\n            user_received_personal_tax = EXCLUDED.user_received_personal_tax,\n            received_value_added_tax = EXCLUDED.received_value_added_tax,\n            user_received_value_added_tax = EXCLUDED.user_received_value_added_tax,\n            received_additional_tax = EXCLUDED.received_additional_tax,\n            user_received_additional_tax = EXCLUDED.user_received_additional_tax,\n            raw_status = EXCLUDED.raw_status,\n            raw_status_detail = EXCLUDED.raw_status_detail,\n            queried_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e772d782edb4667a85c5fb1a93aa09e41b71497191d4e78075c8a817097c16b7"
+}

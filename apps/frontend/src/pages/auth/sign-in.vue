@@ -88,6 +88,10 @@
           <SSOBilibiliIcon />
           <span>哔哩哔哩</span>
         </a>
+        <button type="button" class="btn sso-btn" @click="openWeChatLogin">
+          <SSOWeChatIcon />
+          <span>微信</span>
+        </button>
         <!-- <a class="btn sso-btn" :href="getAuthUrl('google', redirectTarget)">
           <SSOGoogleIcon />
           <span>Google</span>
@@ -105,6 +109,12 @@
         >
       </p>
     </template>
+
+    <WeChatLoginModal
+      ref="wechatLoginModal"
+      :redirect-target="redirectTarget"
+      @authenticated="finishWeChatSignIn"
+    />
   </div>
 </template>
 
@@ -113,12 +123,15 @@ import { RightArrowIcon, KeyIcon, MailIcon } from "@modrinth/assets";
 import SSOGitHubIcon from "assets/icons/auth/sso-github.svg";
 import SSOMicrosoftIcon from "assets/icons/auth/sso-microsoft.svg";
 import SSOBilibiliIcon from "assets/icons/auth/sso-bilibili.svg";
+import SSOWeChatIcon from "assets/icons/auth/sso-wechat.svg";
 // import SSOGoogleIcon from "assets/icons/auth/sso-google.svg";
 import SSOQQIcon from "assets/icons/auth/sso-qq.svg";
 import TACaptcha from "@/components/ui/TACaptcha.vue";
+import WeChatLoginModal from "@/components/auth/WeChatLoginModal.vue";
 import { getAuthUrl } from "@/composables/auth.js";
 
 const captcha = ref();
+const wechatLoginModal = ref();
 const token = ref("");
 
 const { formatMessage } = useVIntl();
@@ -186,11 +199,52 @@ const password = ref("");
 
 const flow = ref(route.query.flow);
 
-const redirectTarget = route.query.redirect || "/dashboard";
+const redirectTarget =
+  typeof route.query.redirect === "string" ? route.query.redirect : "/dashboard";
 
 const signUpLink = computed(
   () => `/auth/sign-up${route.query.redirect ? `?redirect=${route.query.redirect}` : ""}`,
 );
+
+function openWeChatLogin(event) {
+  wechatLoginModal.value?.show(event);
+}
+
+async function finishWeChatSignIn(result) {
+  wechatLoginModal.value?.hide();
+
+  if (result.error === "2fa_required") {
+    flow.value = result.flow;
+    addNotification({
+      group: "main",
+      title: "需要双重验证",
+      text: "请使用账号密码登录后完成双重验证。",
+      type: "error",
+    });
+    return;
+  }
+
+  if (!result.code) {
+    addNotification({
+      group: "main",
+      title: formatMessage(commonMessages.errorNotificationTitle),
+      text: "微信登录未完成，请重试。",
+      type: "error",
+    });
+    return;
+  }
+
+  if (result.newAccount) {
+    await navigateTo(
+      `/auth/welcome?authToken=${encodeURIComponent(result.code)}&redirect=${encodeURIComponent(
+        redirectTarget,
+      )}`,
+    );
+    return;
+  }
+
+  await finishSignIn(result.code);
+}
 
 async function beginPasswordSignIn() {
   startLoading();

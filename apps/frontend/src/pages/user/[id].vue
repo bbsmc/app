@@ -75,6 +75,131 @@
       </div>
     </NewModal>
 
+    <NewModal v-if="auth.user && isAdmin(auth.user)" ref="adminProfileModal">
+      <template #title>
+        <div class="truncate text-lg font-extrabold text-contrast">管理员操作</div>
+      </template>
+
+      <div class="admin-profile-modal">
+        <p class="modal-lead">
+          强制覆盖该用户的公开资料。上传新头像会调用后端头像上传接口，成功后由后端删除旧头像的对象存储文件。
+        </p>
+
+        <div class="target-user">
+          <Avatar
+            :src="adminProfileForm.avatarPreview || user.avatar_url"
+            :alt="user.username"
+            size="48px"
+            circle
+          />
+          <div>
+            <strong>@{{ user.username }}</strong>
+            <span>{{ user.id }}</span>
+          </div>
+        </div>
+
+        <label class="form-group">
+          <span>头像</span>
+          <input
+            ref="adminAvatarInput"
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            :disabled="adminProfileSubmitting"
+            @change="selectAdminAvatar"
+          />
+          <small v-if="adminProfileForm.avatarFile">
+            已选择 {{ adminProfileForm.avatarFile.name }}，保存后会覆盖当前头像。
+          </small>
+        </label>
+
+        <label class="form-group">
+          <span>用户名</span>
+          <input
+            v-model="adminProfileForm.username"
+            maxlength="39"
+            :disabled="adminProfileSubmitting"
+            placeholder="新的用户名"
+          />
+        </label>
+
+        <label class="form-group">
+          <span>签名</span>
+          <textarea
+            v-model="adminProfileForm.bio"
+            maxlength="160"
+            rows="4"
+            :disabled="adminProfileSubmitting"
+            placeholder="新的用户签名，可留空"
+          />
+        </label>
+
+        <div class="danger-zone">
+          <div class="danger-zone-header">
+            <TrashIcon aria-hidden="true" />
+            <div>
+              <strong>一键删除该用户所有资源</strong>
+              <span>
+                当前将删除
+                {{ userProjectCount }} 个资源。删除后资源、版本和附加数据会从服务器中移除。
+              </span>
+            </div>
+          </div>
+
+          <label class="form-group">
+            <span>输入用户名确认删除</span>
+            <input
+              v-model="adminProfileForm.deleteProjectsConfirm"
+              :disabled="adminProfileSubmitting || adminDeletingProjects || userProjectCount === 0"
+              :placeholder="`输入 ${user.username} 确认`"
+            />
+          </label>
+
+          <ButtonStyled color="red">
+            <button
+              :disabled="
+                adminProfileSubmitting ||
+                adminDeletingProjects ||
+                userProjectCount === 0 ||
+                !adminDeleteProjectsConfirmed
+              "
+              @click="deleteAllUserProjects"
+            >
+              <TrashIcon aria-hidden="true" />
+              {{ adminDeletingProjects ? "删除中..." : "删除所有资源" }}
+            </button>
+          </ButtonStyled>
+        </div>
+
+        <p v-if="adminProfileError" class="operation-error">{{ adminProfileError }}</p>
+      </div>
+
+      <div class="modal-actions">
+        <ButtonStyled color="green">
+          <button
+            :disabled="adminProfileSubmitting || !adminProfileHasChanges"
+            @click="saveAdminProfile"
+          >
+            <SaveIcon aria-hidden="true" />
+            {{ adminProfileSubmitting ? "保存中..." : "保存覆盖" }}
+          </button>
+        </ButtonStyled>
+        <ButtonStyled>
+          <button
+            :disabled="adminProfileSubmitting || !adminProfileForm.avatarFile"
+            @click="clearAdminAvatar"
+          >
+            <UndoIcon aria-hidden="true" />
+            取消头像
+          </button>
+        </ButtonStyled>
+        <ButtonStyled>
+          <button :disabled="adminProfileSubmitting" @click="adminProfileModal?.hide()">
+            取消
+          </button>
+        </ButtonStyled>
+      </div>
+    </NewModal>
+
     <div class="new-page sidebar" :class="{ 'alt-layout': cosmetics.leftContentLayout }">
       <div class="normal-page__header py-4">
         <ContentPageHeader>
@@ -100,14 +225,14 @@
             </span>
           </template>
           <template #summary>
-            {{ user.bio ? user.bio : projects.length === 0 ? "BBSMC 用户" : "BBSMC 创作者" }}
+            {{ user.bio ? user.bio : projectTotalHits === 0 ? "BBSMC 用户" : "BBSMC 创作者" }}
           </template>
           <template #stats>
             <div
               class="flex items-center gap-2 border-0 border-r border-solid border-button-bg pr-4 font-semibold"
             >
               <BoxIcon class="h-6 w-6 text-secondary" />
-              {{ formatCompactNumber(projects?.length || 0) }}
+              {{ formatCompactNumber(projectTotalHits) }}
               个资源
             </div>
             <div
@@ -158,6 +283,13 @@
                       auth.user.id !== user.id,
                   },
                   {
+                    id: 'admin-profile',
+                    action: () => openAdminProfileModal(),
+                    color: 'red',
+                    hoverOnly: true,
+                    shown: auth.user && isAdmin(auth.user) && auth.user.id !== user.id,
+                  },
+                  {
                     id: 'manage-projects',
                     action: () => navigateTo('/dashboard/projects'),
                     hoverOnly: true,
@@ -183,6 +315,10 @@
                 <template #manage-bans>
                   <UserXIcon aria-hidden="true" />
                   管理封禁
+                </template>
+                <template #admin-profile>
+                  <ShieldIcon aria-hidden="true" />
+                  管理员操作
                 </template>
                 <template #manage-projects>
                   <BoxIcon aria-hidden="true" />
@@ -219,18 +355,11 @@
         <div v-if="navLinks.length > 2" class="mb-4 max-w-full overflow-x-auto">
           <NavTabs :links="navLinks" />
         </div>
-        <div v-if="projects.length > 0">
-          <div
-            v-if="route.params.projectType !== 'collections'"
-            :class="'project-list display-mode--' + cosmetics.searchDisplayMode.user"
-          >
+        <div v-if="isProjectListRoute && projectTotalHits > 0">
+          <div :class="'project-list display-mode--' + cosmetics.searchDisplayMode.user">
             <ProjectCard
-              v-for="project in (route.params.projectType !== undefined
-                ? projects.filter(
-                    (x) =>
-                      x.project_type ===
-                      route.params.projectType.substr(0, route.params.projectType.length - 1),
-                  )
+              v-for="project in (selectedProjectType
+                ? projects.filter((x) => x.project_type === selectedProjectType)
                 : projects
               )
                 .slice()
@@ -258,8 +387,15 @@
               :color="project.color"
             />
           </div>
+          <Pagination
+            :page="projectCurrentPage"
+            :count="projectPageCount"
+            :link-function="projectPageLink"
+            class="mt-4 justify-end"
+            @switch-page="changeProjectPage"
+          />
         </div>
-        <div v-else-if="route.params.projectType !== 'collections'" class="error">
+        <div v-else-if="isProjectListRoute" class="error">
           <UpToDate class="icon" /><br />
           <span v-if="auth.user && auth.user.id === user.id" class="preserve-lines text">
             <IntlFormatted :message-id="messages.profileNoProjectsAuthLabel">
@@ -546,6 +682,10 @@ import {
   ChevronRightIcon,
   CheckIcon,
   InfoIcon,
+  SaveIcon,
+  ShieldIcon,
+  TrashIcon,
+  UndoIcon,
 } from "@modrinth/assets";
 import { OverflowMenu, ButtonStyled, ContentPageHeader, NewModal } from "@modrinth/ui";
 import { isStaff, isAdmin } from "~/helpers/users.js";
@@ -568,10 +708,12 @@ import ModalCreation from "~/components/ui/ModalCreation.vue";
 import Avatar from "~/components/ui/Avatar.vue";
 import CollectionCreateModal from "~/components/ui/CollectionCreateModal.vue";
 import BanManageModal from "~/components/ui/BanManageModal.vue";
+import Pagination from "~/components/ui/Pagination.vue";
 import UserXIcon from "~/assets/images/utils/user-x.svg?component";
 
 const data = useNuxtApp();
 const route = useNativeRoute();
+const router = useNativeRouter();
 const auth = await useAuth();
 const cosmetics = useCosmetics();
 const tags = useTags();
@@ -583,6 +725,46 @@ const formatCompactNumber = useCompactNumber();
 
 const formatRelativeTime = useRelativeTime();
 const formatDate = (date) => data.$dayjs(date).format("YYYY-MM-DD");
+const PROJECT_PAGE_SIZE = 10;
+
+const projectPage = computed(() => {
+  const raw = Array.isArray(route.query.page) ? route.query.page[0] : route.query.page;
+  const parsed = Number.parseInt(raw || "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+});
+
+const selectedProjectType = computed(() => {
+  const raw = Array.isArray(route.params.projectType)
+    ? route.params.projectType[0]
+    : route.params.projectType;
+  if (!raw || raw === "collections" || raw === "forum") return undefined;
+  return raw.endsWith("s") ? raw.slice(0, -1) : raw;
+});
+const isProjectListRoute = computed(
+  () => route.params.projectType !== "collections" && route.params.projectType !== "forum",
+);
+
+const routeUserId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id;
+const projectPagination = useState(`user/${routeUserId}/projects-pagination`, () => ({
+  offset: 0,
+  limit: PROJECT_PAGE_SIZE,
+  total_hits: 0,
+  total_downloads: 0,
+}));
+const projectTypeOptions = useState(`user/${routeUserId}/project-types`, () => []);
+const userProjectDataKey = computed(
+  () =>
+    `user/${route.params.id}/projects:${selectedProjectType.value ?? "all"}:${projectPage.value}`,
+);
+
+const fetchWithAuth = (url, options = {}) => {
+  const headers = { ...(options.headers ?? {}) };
+  if (auth.value?.token) {
+    headers.Authorization = auth.value.token;
+  }
+
+  return data.runWithContext(() => useBaseFetch(url, { ...options, headers }, true));
+};
 
 const messages = defineMessages({
   profileProjectsStats: {
@@ -682,12 +864,44 @@ let user, projects, organizations, collections;
 try {
   [{ data: user }, { data: projects }, { data: organizations }, { data: collections }] =
     await Promise.all([
-      useAsyncData(`user/${route.params.id}`, () => useBaseFetch(`user/${route.params.id}`)),
+      useAsyncData(`user/${route.params.id}`, () => fetchWithAuth(`user/${route.params.id}`)),
       useAsyncData(
-        `user/${route.params.id}/projects`,
-        () => useBaseFetch(`user/${route.params.id}/projects`),
+        userProjectDataKey.value,
+        async () => {
+          const query = {
+            page: projectPage.value,
+            limit: PROJECT_PAGE_SIZE,
+          };
+          if (selectedProjectType.value) {
+            query.project_type = selectedProjectType.value;
+          }
+
+          const response = await fetchWithAuth(`user/${route.params.id}/projects`, {
+            query,
+          });
+
+          if (
+            !Array.isArray(response) &&
+            projectPage.value > 1 &&
+            (response?.hits?.length ?? 0) === 0 &&
+            (response?.total_hits ?? 0) > 0
+          ) {
+            return fetchWithAuth(`user/${route.params.id}/projects`, {
+              query: {
+                ...query,
+                page: 1,
+              },
+            });
+          }
+
+          return response;
+        },
         {
-          transform: (projects) => {
+          watch: [projectPage, selectedProjectType],
+          transform: (response) => {
+            const isLegacyResponse = Array.isArray(response);
+            const projects = isLegacyResponse ? response : (response?.hits ?? []);
+
             if (!projects) return [];
             for (const project of projects) {
               project.categories = project.categories.concat(project.loaders);
@@ -698,17 +912,60 @@ try {
               );
             }
 
+            if (isLegacyResponse) {
+              const filteredProjects = selectedProjectType.value
+                ? projects.filter((project) => project.project_type === selectedProjectType.value)
+                : projects;
+              const offset = (projectPage.value - 1) * PROJECT_PAGE_SIZE;
+
+              projectPagination.value = {
+                offset,
+                limit: PROJECT_PAGE_SIZE,
+                total_hits: filteredProjects.length,
+                total_downloads: filteredProjects.reduce(
+                  (sum, project) => sum + (project.downloads ?? 0),
+                  0,
+                ),
+              };
+              projectTypeOptions.value = Array.from(
+                new Set(projects.map((project) => project.project_type).filter(Boolean)),
+              );
+
+              return filteredProjects
+                .slice()
+                .sort((a, b) => b.downloads - a.downloads)
+                .slice(offset, offset + PROJECT_PAGE_SIZE);
+            }
+
+            projectPagination.value = {
+              offset: response?.offset ?? 0,
+              limit: response?.limit ?? PROJECT_PAGE_SIZE,
+              total_hits: response?.total_hits ?? projects.length,
+              total_downloads:
+                response?.total_downloads ??
+                projects.reduce((sum, project) => sum + (project.downloads ?? 0), 0),
+            };
+            projectTypeOptions.value = response?.project_types ?? [];
+
             return projects;
           },
         },
       ),
       useAsyncData(`user/${route.params.id}/organizations`, () =>
-        useBaseFetch(`user/${route.params.id}/organizations`, {
-          apiVersion: 3,
-        }),
+        fetchPaginatedHits(({ page, limit }) =>
+          fetchWithAuth(`user/${route.params.id}/organizations`, {
+            apiVersion: 3,
+            query: { page, limit },
+          }),
+        ),
       ),
       useAsyncData(`user/${route.params.id}/collections`, () =>
-        useBaseFetch(`user/${route.params.id}/collections`, { apiVersion: 3 }),
+        fetchPaginatedHits(({ page, limit }) =>
+          fetchWithAuth(`user/${route.params.id}/collections`, {
+            apiVersion: 3,
+            query: { page, limit },
+          }),
+        ),
       ),
     ]);
 } catch (err) {
@@ -889,15 +1146,31 @@ const projectTypes = computed(() => {
     obj.collection = true;
   }
 
+  for (const projectType of projectTypeOptions.value) {
+    obj[projectType] = true;
+  }
   for (const project of projects.value ?? []) {
-    obj[project.project_type] = true;
+    if (project.project_type) {
+      obj[project.project_type] = true;
+    }
   }
 
   delete obj.project;
 
   return Object.keys(obj);
 });
+const projectTotalHits = computed(() => projectPagination.value.total_hits);
+const projectPageCount = computed(() =>
+  Math.max(1, Math.ceil(projectTotalHits.value / PROJECT_PAGE_SIZE)),
+);
+const projectCurrentPage = computed(() =>
+  Math.max(1, Math.floor((projectPagination.value.offset || 0) / PROJECT_PAGE_SIZE) + 1),
+);
 const sumDownloads = computed(() => {
+  if (typeof projectPagination.value.total_downloads === "number") {
+    return projectPagination.value.total_downloads;
+  }
+
   let sum = 0;
 
   for (const project of projects.value ?? []) {
@@ -959,6 +1232,37 @@ async function copyId() {
   await navigator.clipboard.writeText(user.value.id);
 }
 
+function projectPageQuery(page) {
+  const query = { ...route.query };
+  if (page > 1) {
+    query.page = String(page);
+  } else {
+    delete query.page;
+  }
+  return query;
+}
+
+function projectPageLink(page) {
+  const query = projectPageQuery(page);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item !== undefined && item !== null) params.append(key, String(item));
+      }
+    } else {
+      params.set(key, String(value));
+    }
+  }
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "?";
+}
+
+function changeProjectPage(page) {
+  router.push({ query: projectPageQuery(page) });
+}
+
 // 封禁管理模态框引用
 const banManageModal = ref(null);
 
@@ -971,6 +1275,202 @@ const userDetailsModal = ref(null);
 
 function openUserDetailsModal() {
   userDetailsModal.value?.show();
+}
+
+const adminProfileModal = ref(null);
+const adminAvatarInput = ref(null);
+const adminProfileSubmitting = ref(false);
+const adminDeletingProjects = ref(false);
+const adminProfileError = ref("");
+const adminProfileForm = reactive({
+  username: "",
+  bio: "",
+  avatarFile: null,
+  avatarPreview: null,
+  deleteProjectsConfirm: "",
+});
+
+const adminProfileHasChanges = computed(() => {
+  return (
+    adminProfileForm.username.trim() !== user.value.username ||
+    adminProfileForm.bio !== (user.value.bio || "") ||
+    !!adminProfileForm.avatarFile
+  );
+});
+const userProjects = computed(() => projects.value || []);
+const userProjectCount = computed(() => userProjects.value.length);
+const adminDeleteProjectsConfirmed = computed(() => {
+  return adminProfileForm.deleteProjectsConfirm === user.value.username;
+});
+
+function openAdminProfileModal() {
+  adminProfileForm.username = user.value.username;
+  adminProfileForm.bio = user.value.bio || "";
+  adminProfileForm.deleteProjectsConfirm = "";
+  clearAdminAvatar();
+  adminProfileError.value = "";
+  adminProfileModal.value?.show();
+}
+
+function getErrorMessage(err, fallback) {
+  return err?.data?.description || err?.data || err?.message || fallback;
+}
+
+function selectAdminAvatar(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (file.size > 1048576) {
+    event.target.value = "";
+    addNotification({
+      group: "main",
+      title: "头像过大",
+      text: "头像必须小于 1MiB。",
+      type: "error",
+    });
+    return;
+  }
+
+  clearAdminAvatar();
+  adminProfileForm.avatarFile = file;
+  adminProfileForm.avatarPreview = URL.createObjectURL(file);
+}
+
+function clearAdminAvatar() {
+  if (adminProfileForm.avatarPreview) {
+    URL.revokeObjectURL(adminProfileForm.avatarPreview);
+  }
+  adminProfileForm.avatarFile = null;
+  adminProfileForm.avatarPreview = null;
+  if (adminAvatarInput.value) {
+    adminAvatarInput.value.value = "";
+  }
+}
+
+async function saveAdminProfile() {
+  if (!auth.value?.user || !isAdmin(auth.value.user) || adminProfileSubmitting.value) return;
+
+  adminProfileError.value = "";
+  adminProfileSubmitting.value = true;
+  startLoading();
+
+  try {
+    let pendingReview = false;
+
+    if (adminProfileForm.avatarFile) {
+      const ext = adminProfileForm.avatarFile.type.split("/").pop();
+      const iconResult = await useBaseFetch(`user/${user.value.id}/icon?ext=${ext}`, {
+        method: "PATCH",
+        body: adminProfileForm.avatarFile,
+      });
+      pendingReview = !!iconResult?.pending_review;
+    }
+
+    const body = {};
+    const nextUsername = adminProfileForm.username.trim();
+    if (nextUsername && nextUsername !== user.value.username) {
+      body.username = nextUsername;
+    }
+    if (adminProfileForm.bio !== (user.value.bio || "")) {
+      body.bio = adminProfileForm.bio;
+    }
+
+    if (Object.keys(body).length > 0) {
+      const result = await useBaseFetch(`user/${user.value.id}`, {
+        method: "PATCH",
+        body,
+      });
+      pendingReview = pendingReview || !!result?.pending_review;
+    }
+
+    await refreshUserData();
+    clearAdminAvatar();
+    adminProfileModal.value?.hide();
+    if (user.value.username !== route.params.id) {
+      await navigateTo(`/user/${user.value.username}`, { replace: true });
+    }
+    addNotification({
+      group: "main",
+      title: pendingReview ? "已提交审核" : "已保存",
+      text: pendingReview ? "资料修改命中风控，已进入资料审核队列。" : "管理员操作已完成。",
+      type: pendingReview ? "warn" : "success",
+    });
+  } catch (err) {
+    const message = getErrorMessage(err, "管理员操作失败");
+    adminProfileError.value = message;
+    addNotification({
+      group: "main",
+      title: "操作失败",
+      text: message,
+      type: "error",
+    });
+  } finally {
+    adminProfileSubmitting.value = false;
+    stopLoading();
+  }
+}
+
+async function deleteAllUserProjects() {
+  if (
+    !auth.value?.user ||
+    !isAdmin(auth.value.user) ||
+    adminDeletingProjects.value ||
+    !adminDeleteProjectsConfirmed.value
+  ) {
+    return;
+  }
+
+  const targets = [...userProjects.value];
+  if (targets.length === 0) return;
+
+  adminProfileError.value = "";
+  adminDeletingProjects.value = true;
+  startLoading();
+
+  const failed = [];
+  try {
+    for (const project of targets) {
+      try {
+        await useBaseFetch(`project/${project.id}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        failed.push({
+          id: project.id,
+          title: project.title || project.name || project.id,
+          message: getErrorMessage(err, "删除失败"),
+        });
+      }
+    }
+
+    const failedIds = new Set(failed.map((item) => item.id));
+    projects.value = userProjects.value.filter((project) => failedIds.has(project.id));
+    adminProfileForm.deleteProjectsConfirm = "";
+
+    if (failed.length > 0) {
+      const message = `已删除 ${targets.length - failed.length} 个资源，失败 ${failed.length} 个。`;
+      adminProfileError.value = `${message} ${failed
+        .slice(0, 3)
+        .map((item) => `${item.title}: ${item.message}`)
+        .join("；")}`;
+      addNotification({
+        group: "main",
+        title: "部分资源删除失败",
+        text: message,
+        type: "error",
+      });
+    } else {
+      addNotification({
+        group: "main",
+        title: "资源已删除",
+        text: `已删除 @${user.value.username} 的 ${targets.length} 个资源。`,
+        type: "success",
+      });
+    }
+  } finally {
+    adminDeletingProjects.value = false;
+    stopLoading();
+  }
 }
 
 // 获取用户角色名称
@@ -987,7 +1487,7 @@ function getUserRoleName(role) {
 async function refreshUserData() {
   // 重新获取用户数据以刷新封禁状态
   try {
-    const updatedUser = await useBaseFetch(`user/${route.params.id}`);
+    const updatedUser = await useBaseFetch(`user/${user.value?.id || route.params.id}`);
     if (updatedUser) {
       user.value = updatedUser;
     }
@@ -1193,11 +1693,137 @@ export default defineNuxtComponent({
   }
 }
 
+.admin-profile-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  min-width: min(32rem, calc(100vw - 4rem));
+
+  .modal-lead {
+    margin: 0;
+    color: var(--color-text);
+    line-height: 1.5;
+  }
+
+  .target-user {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-md);
+    padding: var(--gap-md);
+    background: var(--color-raised-bg);
+    border-radius: var(--radius-md);
+
+    div {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    strong,
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    span {
+      color: var(--color-secondary);
+      font-family: var(--font-monospace);
+      font-size: 0.85rem;
+    }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xs);
+
+    span {
+      font-weight: 700;
+      color: var(--color-contrast);
+    }
+
+    small {
+      color: var(--color-secondary);
+      line-height: 1.35;
+    }
+  }
+
+  input,
+  textarea {
+    width: 100%;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  .operation-error {
+    margin: 0;
+    padding: var(--gap-sm) var(--gap-md);
+    border-left: 0.25rem solid var(--color-red);
+    background: var(--color-red-bg);
+    color: var(--color-red);
+  }
+
+  .danger-zone {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+    padding: var(--gap-md);
+    border: 1px solid var(--color-red);
+    border-radius: var(--radius-md);
+    background: var(--color-red-bg);
+  }
+
+  .danger-zone-header {
+    display: flex;
+    gap: var(--gap-sm);
+    align-items: flex-start;
+    color: var(--color-red);
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    strong {
+      color: var(--color-red);
+    }
+
+    span {
+      color: var(--color-text);
+      line-height: 1.4;
+    }
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-lg);
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .ban-banner {
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
+  }
+
+  .admin-profile-modal {
+    min-width: 0;
   }
 }
 

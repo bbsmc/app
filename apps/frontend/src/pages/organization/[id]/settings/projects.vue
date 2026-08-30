@@ -293,6 +293,13 @@
             </div>
           </div>
         </div>
+        <Pagination
+          :page="projectPage"
+          :count="projectPageCount"
+          :link-function="projectPageLink"
+          class="mt-4 justify-end"
+          @switch-page="changeProjectPage"
+        />
       </template>
     </div>
   </div>
@@ -316,16 +323,30 @@ import { Button, Modal, Avatar, CopyCode, Badge, Checkbox } from "@modrinth/ui";
 
 import ModalCreation from "~/components/ui/ModalCreation.vue";
 import OrganizationProjectTransferModal from "~/components/ui/OrganizationProjectTransferModal.vue";
+import Pagination from "~/components/ui/Pagination.vue";
 
 const { formatMessage } = useVIntl();
 
-const { organization, projects, refresh } = inject("organizationContext");
+const {
+  organization,
+  projects,
+  projectPage,
+  projectPageCount,
+  projectPageLink,
+  changeProjectPage,
+  refresh,
+} = inject("organizationContext");
 
 const auth = await useAuth();
 
 const { data: userProjects, refresh: refreshUserProjects } = await useAsyncData(
   `user/${auth.value.user.id}/projects`,
-  () => useBaseFetch(`user/${auth.value.user.id}/projects`),
+  () =>
+    fetchPaginatedHits(({ page, limit }) =>
+      useBaseFetch(`user/${auth.value.user.id}/projects`, {
+        query: { page, limit },
+      }),
+    ),
   {
     watch: [auth],
   },

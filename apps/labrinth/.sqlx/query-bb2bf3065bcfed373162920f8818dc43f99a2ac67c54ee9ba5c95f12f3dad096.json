@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COUNT(*) FILTER (\n                WHERE $1::text IS NULL OR p.status = $1\n            )::bigint AS \"filtered_total!\",\n            COUNT(*) FILTER (\n                WHERE p.status = 'in-transit'\n                  AND p.platform_id IS NULL\n            )::bigint AS \"pending_order_count!\",\n            COALESCE(SUM(\n                TRUNC(p.amount - COALESCE(p.fee, 0), 2)\n            ) FILTER (\n                WHERE p.status = 'in-transit'\n                  AND p.platform_id IS NULL\n            ), 0)::numeric AS \"pending_transfer_amount!\"\n        FROM payouts p\n        WHERE p.method = 'yunzhanghu_alipay'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "filtered_total!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "pending_order_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "pending_transfer_amount!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "bb2bf3065bcfed373162920f8818dc43f99a2ac67c54ee9ba5c95f12f3dad096"
+}

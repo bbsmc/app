@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE incentive_applications\n        SET status = $2, review_notes = $3, reviewed_by = $4, reviewed_at = NOW()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "325f75e1528715a86d0acc0774e2af8f510c70034100b8304968bba57f402a7d"
+}

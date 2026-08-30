@@ -85,6 +85,7 @@
           :version="version"
           @on-navigate="$refs.downloadModal.hide"
           @on-download="onDownload(version.id)"
+          @on-disk-qr="onDownload"
         />
 
         <!-- 汉化包推荐 -->
@@ -404,32 +405,68 @@
 
       <div v-if="version.disk_only === true">
         <h3>夸克网盘</h3>
-        <input
-          id="version-quark"
-          v-model="version.quark_disk"
-          placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
-          type="text"
-          autocomplete="off"
-          style="width: 100%"
-        />
+        <div class="flex gap-2">
+          <input
+            id="version-quark"
+            v-model="version.quark_disk"
+            placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
+            type="text"
+            autocomplete="off"
+            class="min-w-0 flex-1"
+            style="width: 100%"
+          />
+          <div class="w-40 shrink-0">
+            <DropdownSelect
+              v-model="version.quark_disk_display"
+              :options="diskUrlDisplayModes"
+              :display-name="diskUrlDisplayLabel"
+              style="width: 100%"
+              name="夸克网盘展示方式"
+            />
+          </div>
+        </div>
         <h3>迅雷网盘</h3>
-        <input
-          id="version-xunlei"
-          v-model="version.xunlei_disk"
-          placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
-          type="text"
-          autocomplete="off"
-          style="width: 100%"
-        />
+        <div class="flex gap-2">
+          <input
+            id="version-xunlei"
+            v-model="version.xunlei_disk"
+            placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
+            type="text"
+            autocomplete="off"
+            class="min-w-0 flex-1"
+            style="width: 100%"
+          />
+          <div class="w-40 shrink-0">
+            <DropdownSelect
+              v-model="version.xunlei_disk_display"
+              :options="diskUrlDisplayModes"
+              :display-name="diskUrlDisplayLabel"
+              style="width: 100%"
+              name="迅雷网盘展示方式"
+            />
+          </div>
+        </div>
         <h3>百度网盘</h3>
-        <input
-          id="version-baidu"
-          v-model="version.baidu_disk"
-          placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
-          type="text"
-          autocomplete="off"
-          style="width: 100%"
-        />
+        <div class="flex gap-2">
+          <input
+            id="version-baidu"
+            v-model="version.baidu_disk"
+            placeholder="直接链接，不要设置网盘访问密码，否则无法正常跳转"
+            type="text"
+            autocomplete="off"
+            class="min-w-0 flex-1"
+            style="width: 100%"
+          />
+          <div class="w-40 shrink-0">
+            <DropdownSelect
+              v-model="version.baidu_disk_display"
+              :options="diskUrlDisplayModes"
+              :display-name="diskUrlDisplayLabel"
+              style="width: 100%"
+              name="百度网盘展示方式"
+            />
+          </div>
+        </div>
         <h3>Modrinth版本页面(转载)</h3>
         <input
           id="version-modrinth"
@@ -1304,10 +1341,11 @@
 </template>
 <script>
 import { formatProjectRelease, renderString } from "@modrinth/utils";
-import { ButtonStyled, ConfirmModal, MarkdownEditor, NewModal } from "@modrinth/ui";
+import { ButtonStyled, ConfirmModal, DropdownSelect, MarkdownEditor, NewModal } from "@modrinth/ui";
 import { BoxIcon as ModBoxIcon, InfoIcon as ModInfoIcon, FileIcon as ModFileIcon } from "@modrinth/assets";
 import CreateProjectVersionModal from "~/components/ui/create-project-version/CreateProjectVersionModal.vue";
 import MapInstallHint from "~/components/ui/MapInstallHint.vue";
+import { diskUrlDisplayLabel, diskUrlDisplayModes } from "~/utils/disk-urls";
 import { Multiselect } from "vue-multiselect";
 import JSZip from "jszip";
 import UploadModal from "@modrinth/ui/src/components/modal/UploadModal.vue";
@@ -1364,6 +1402,7 @@ export default defineNuxtComponent({
     Modal,
     FileInput,
     Checkbox,
+    DropdownSelect,
     ChevronRightIcon,
     Chips,
     Categories,
@@ -1635,10 +1674,13 @@ export default defineNuxtComponent({
       version.disk_urls.forEach((url) => {
         if (url.platform === "baidu") {
           version.baidu_disk = url.url;
+          version.baidu_disk_display = url.display ?? "default";
         } else if (url.platform === "xunlei") {
           version.xunlei_disk = url.url;
+          version.xunlei_disk_display = url.display ?? "default";
         } else if (url.platform === "quark") {
           version.quark_disk = url.url;
+          version.quark_disk_display = url.display ?? "default";
         } else if (url.platform === "modrinth") {
           version.modrinth = url.url;
         } else if (url.platform === "curseforge") {
@@ -1847,6 +1889,8 @@ export default defineNuxtComponent({
   },
   data() {
     return {
+      diskUrlDisplayModes,
+      diskUrlDisplayLabel,
       dependencyAddMode: "project",
       newDependencyType: "required",
       newDependencyId: "",
@@ -2288,12 +2332,14 @@ export default defineNuxtComponent({
           disks.push({
             platform: "quark",
             url: this.version.quark_disk,
+            display: this.version.quark_disk_display ?? "default",
           });
         }
         if (this.version.baidu_disk !== "" && this.version.baidu_disk !== undefined) {
           disks.push({
             platform: "baidu",
             url: this.version.baidu_disk,
+            display: this.version.baidu_disk_display ?? "default",
           });
         }
         if (this.version.curseforge !== "" && this.version.curseforge !== undefined) {
@@ -2312,6 +2358,7 @@ export default defineNuxtComponent({
           disks.push({
             platform: "xunlei",
             url: this.version.xunlei_disk,
+            display: this.version.xunlei_disk_display ?? "default",
           });
         }
         // 如果版本类型是language，强制设置loaders为language
@@ -2468,12 +2515,14 @@ export default defineNuxtComponent({
         disks.push({
           platform: "quark",
           url: version.quark_disk,
+          display: version.quark_disk_display ?? "default",
         });
       }
       if (version.baidu_disk !== "" && version.baidu_disk !== undefined) {
         disks.push({
           platform: "baidu",
           url: version.baidu_disk,
+          display: version.baidu_disk_display ?? "default",
         });
       }
       if (version.curseforge !== "" && version.curseforge !== undefined) {
@@ -2492,6 +2541,7 @@ export default defineNuxtComponent({
         disks.push({
           platform: "xunlei",
           url: version.xunlei_disk,
+          display: version.xunlei_disk_display ?? "default",
         });
       }
       const newVersion = {

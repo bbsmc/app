@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT nonce AS \"nonce!\"\n        FROM yunzhanghu_unsign_reconciliations\n        WHERE status = 'pending'\n          AND next_attempt_at <= NOW()\n          AND (lease_expires_at IS NULL OR lease_expires_at <= NOW())\n        ORDER BY next_attempt_at, created_at, nonce\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "nonce!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "28c54f75c0b125a1f0e8b2c1d63c0df810d4d7fffa7a91ae429fe7cb8b5e36c8"
+}

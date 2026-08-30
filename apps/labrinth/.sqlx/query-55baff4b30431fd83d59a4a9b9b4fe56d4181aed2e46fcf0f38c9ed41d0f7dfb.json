@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin_payout_batches\n        SET status = $3,\n            processing_owner = NULL,\n            heartbeat_at = NULL,\n            finished_at = NOW()\n        WHERE id = $1\n          AND status = 'processing'\n          AND processing_owner = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "55baff4b30431fd83d59a4a9b9b4fe56d4181aed2e46fcf0f38c9ed41d0f7dfb"
+}

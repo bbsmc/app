@@ -1,5 +1,55 @@
 <template>
   <div>
+    <!-- 头像放大查看 lightbox -->
+    <div
+      v-if="expandedImage"
+      class="expanded-image-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="expandedTitle ? `查看 ${expandedTitle} 头像` : '查看头像'"
+      @click="closeExpanded"
+    >
+      <div class="content">
+        <img
+          class="image"
+          :class="{ 'zoomed-in': expandedZoomed }"
+          :src="expandedImage"
+          :alt="expandedTitle"
+          @click.stop
+        />
+        <div class="floating" @click.stop>
+          <div v-if="expandedTitle" class="text">
+            <h2>{{ expandedTitle }}</h2>
+            <p>待审核头像</p>
+          </div>
+          <div class="controls">
+            <div class="buttons">
+              <button class="close circle-button" aria-label="关闭" @click="closeExpanded">
+                <XIcon aria-hidden="true" />
+              </button>
+              <a
+                class="open circle-button"
+                target="_blank"
+                rel="noopener"
+                :href="expandedImage"
+                aria-label="新标签打开原图"
+              >
+                <ExternalIcon aria-hidden="true" />
+              </a>
+              <button
+                class="circle-button"
+                :aria-label="expandedZoomed ? '缩小' : '放大'"
+                @click="expandedZoomed = !expandedZoomed"
+              >
+                <ContractIcon v-if="expandedZoomed" aria-hidden="true" />
+                <ExpandIcon v-else aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <ProfileReviewModal ref="reviewModal" @reviewed="fetchReviews" />
 
     <!-- 一键通过确认弹窗 -->
@@ -77,19 +127,40 @@
               <div class="review-preview">
                 <template v-if="review.review_type === 'avatar'">
                   <div class="avatar-preview">
-                    <Avatar
-                      :src="getAvatarUrl(review.old_value, 'avatar_url')"
-                      size="xs"
-                      circle
-                      alt="旧"
-                    />
+                    <div class="avatar-cell avatar-cell--old">
+                      <span class="avatar-cell__label">旧</span>
+                      <img
+                        class="avatar-cell__img"
+                        :src="
+                          getAvatarUrl(review.old_value, 'avatar_url') ||
+                          'https://cdn.bbsmc.net/raw/placeholder-banner.svg'
+                        "
+                        alt="旧头像"
+                      />
+                    </div>
                     <span class="preview-arrow">&rarr;</span>
-                    <Avatar
-                      :src="getAvatarUrl(review.new_value, 'avatar_url')"
-                      size="xs"
-                      circle
-                      alt="新"
-                    />
+                    <button
+                      type="button"
+                      class="avatar-cell avatar-cell--new"
+                      :aria-label="`查看 ${review.username} 待审核头像大图`"
+                      @click="
+                        openExpanded(
+                          getAvatarUrl(review.new_value, 'avatar_url'),
+                          review.username,
+                        )
+                      "
+                    >
+                      <span class="avatar-cell__label">违规</span>
+                      <img
+                        class="avatar-cell__img"
+                        :src="
+                          getAvatarUrl(review.new_value, 'avatar_url') ||
+                          'https://cdn.bbsmc.net/raw/placeholder-banner.svg'
+                        "
+                        alt="待审核头像"
+                      />
+                      <span class="avatar-cell__badge">违规</span>
+                    </button>
                   </div>
                 </template>
                 <template v-else>
@@ -136,8 +207,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { NewModal, ButtonStyled } from "@modrinth/ui";
+import {
+  XIcon,
+  ExternalIcon,
+  ExpandIcon,
+  ContractIcon,
+} from "@modrinth/assets";
 import Avatar from "~/components/ui/Avatar.vue";
 import Chips from "~/components/ui/Chips.vue";
 import ProfileReviewModal from "~/components/ui/ProfileReviewModal.vue";
@@ -168,6 +245,30 @@ const reviewModal = ref(null);
 const approveAllModal = ref(null);
 const approveAllLoading = ref(false);
 
+// 头像放大 lightbox 状态
+const expandedImage = ref(null);
+const expandedTitle = ref("");
+const expandedZoomed = ref(false);
+
+const openExpanded = (url, title) => {
+  if (!url) return;
+  expandedImage.value = url;
+  expandedTitle.value = title || "";
+  expandedZoomed.value = false;
+};
+
+const closeExpanded = () => {
+  expandedImage.value = null;
+  expandedTitle.value = "";
+  expandedZoomed.value = false;
+};
+
+const onKeyDown = (e) => {
+  if (e.key === "Escape" && expandedImage.value) {
+    closeExpanded();
+  }
+};
+
 const pendingCount = computed(() => {
   return reviews.value.filter((r) => r.status === "pending").length;
 });
@@ -189,7 +290,7 @@ const formatStatusLabel = (status) => {
 };
 
 const formatDateTime = (date) => {
-  return app.$dayjs(date).format("YYYY-MM-DD HH:mm");
+  return app.$dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
 };
 
 const truncate = (text, maxLen) => {
@@ -273,6 +374,15 @@ watch(statusFilter, () => {
 
 onMounted(() => {
   fetchReviews();
+  if (typeof window !== "undefined") {
+    window.addEventListener("keydown", onKeyDown);
+  }
+});
+
+onUnmounted(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("keydown", onKeyDown);
+  }
 });
 </script>
 
@@ -421,7 +531,85 @@ onMounted(() => {
 .avatar-preview {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.avatar-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  text-decoration: none;
+  position: relative;
+}
+
+.avatar-cell__label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.avatar-cell__img {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--color-button-bg);
+  border: 1px solid var(--color-button-bg);
+  display: block;
+}
+
+.avatar-cell--new {
+  cursor: zoom-in;
+  /* 重置 button 默认样式 */
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.avatar-cell--new:focus-visible {
+  outline: 2px solid rgb(239, 68, 68);
+  outline-offset: 4px;
+  border-radius: var(--radius-md);
+}
+
+.avatar-cell--new .avatar-cell__label {
+  color: rgb(239, 68, 68);
+  font-weight: 700;
+}
+
+.avatar-cell--new .avatar-cell__img {
+  width: 112px;
+  height: 112px;
+  border: 3px solid rgb(239, 68, 68);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+  border-radius: var(--radius-md);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.avatar-cell--new:hover .avatar-cell__img {
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.28);
+  transform: scale(1.02);
+}
+
+.avatar-cell__badge {
+  position: absolute;
+  top: 18px;
+  right: -4px;
+  padding: 0.125rem 0.375rem;
+  background: rgb(239, 68, 68);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.05em;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
 }
 
 .text-preview {
@@ -501,6 +689,124 @@ onMounted(() => {
   svg {
     width: 2rem;
     height: 2rem;
+  }
+}
+
+/* 头像放大 lightbox（复用项目主页 gallery 风格） */
+.expanded-image-modal {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .content {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .image {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    /* 明确高度让小尺寸头像也放大撑满视口；max-width 防止横图溢出 */
+    height: 85vh;
+    width: auto;
+    max-width: 92vw;
+    max-height: 92vh;
+    object-fit: contain;
+    border-radius: var(--size-rounded-card, var(--radius-md));
+    background: var(--color-button-bg);
+    /* 头像放大后看像素级细节更准确（避免浏览器过度平滑） */
+    image-rendering: -webkit-optimize-contrast;
+
+    &.zoomed-in {
+      height: 100vh;
+      max-height: none;
+      max-width: 100vw;
+      width: auto;
+      image-rendering: pixelated;
+    }
+  }
+
+  .floating {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: var(--spacing-card-md, 1rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    transition: opacity 0.25s ease-in-out;
+    opacity: 1;
+    padding: 2rem 2rem 0 2rem;
+
+    &:not(&:hover) {
+      opacity: 0.5;
+    }
+
+    .text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 40rem;
+      text-shadow: 1px 1px 10px #000000d4;
+      gap: 0.25rem;
+
+      h2 {
+        color: #fff;
+        font-size: 1.125rem;
+        margin: 0;
+      }
+
+      p {
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+        font-size: 0.875rem;
+      }
+    }
+
+    .controls {
+      background-color: var(--color-raised-bg);
+      padding: 0.5rem;
+      border-radius: var(--size-rounded-card, var(--radius-md));
+
+      .buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+    }
+  }
+
+  .circle-button {
+    padding: 0.5rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-button-text);
+    background-color: var(--color-button-bg);
+    border: none;
+    border-radius: 9999px;
+    cursor: pointer;
+    box-shadow: inset 0 -1px 1px rgb(17 24 39 / 10%);
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: var(--color-button-bg-hover);
+    }
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
   }
 }
 </style>

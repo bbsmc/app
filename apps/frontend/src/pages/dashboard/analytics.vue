@@ -20,6 +20,10 @@ const auth = await useAuth();
 const id = auth.value?.user?.id;
 
 const { data: projects } = await useAsyncData(`user/${id}/projects`, () =>
-  useBaseFetch(`user/${id}/projects`),
+  fetchPaginatedHits(({ page, limit }) =>
+    useBaseFetch(`user/${id}/projects`, {
+      query: { page, limit },
+    }),
+  ),
 );
 </script>

@@ -13,6 +13,12 @@
           <NavStackItem link="/legal/copyright" label="版权政策">
             <CopyrightIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem link="/legal/incentive-info" label="激励介绍">
+            <InfoIcon aria-hidden="true" />
+          </NavStackItem>
+          <NavStackItem link="/legal/incentive" label="创作者激励计划协议">
+            <CurrencyIcon aria-hidden="true" />
+          </NavStackItem>
 
           <h3>隐私</h3>
           <NavStackItem link="/legal/privacy" label="隐私保护声明">
@@ -28,7 +34,14 @@
 </template>
 
 <script setup>
-import { HeartHandshakeIcon, LockIcon, ScaleIcon, CopyrightIcon } from "@modrinth/assets";
+import {
+  HeartHandshakeIcon,
+  InfoIcon,
+  LockIcon,
+  ScaleIcon,
+  CopyrightIcon,
+  CurrencyIcon,
+} from "@modrinth/assets";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 

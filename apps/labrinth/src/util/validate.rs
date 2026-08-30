@@ -151,6 +151,16 @@ pub fn validate_url(value: &str) -> Result<(), validator::ValidationError> {
     Ok(())
 }
 
+/// 校验网盘展示方式（disk_urls.display）：default / qrcode / both
+pub fn validate_disk_display(
+    value: &str,
+) -> Result<(), validator::ValidationError> {
+    match value {
+        "default" | "qrcode" | "both" => Ok(()),
+        _ => Err(validator::ValidationError::new("无效的网盘展示方式")),
+    }
+}
+
 pub fn validate_url_hashmap_optional_values(
     values: &std::collections::HashMap<String, Option<String>>,
 ) -> Result<(), validator::ValidationError> {

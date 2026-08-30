@@ -29,6 +29,7 @@ use crate::models::v3::bans::{
 use crate::models::v3::notifications::NotificationBody;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
+use crate::util::routes::parse_limited_ids_json;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -1566,20 +1567,7 @@ pub async fn get_bans_batch(
         ));
     }
 
-    // 解析 JSON 格式的 ID 列表
-    let ban_ids: Vec<String> =
-        serde_json::from_str(&query.ids).map_err(|_| {
-            ApiError::InvalidInput(
-                "无效的 ids 参数格式，需要 JSON 数组".to_string(),
-            )
-        })?;
-
-    // 限制批量查询数量
-    if ban_ids.len() > 100 {
-        return Err(ApiError::InvalidInput(
-            "批量查询数量不能超过 100".to_string(),
-        ));
-    }
+    let ban_ids = parse_limited_ids_json::<String>(&query.ids)?;
 
     if ban_ids.is_empty() {
         return Ok(HttpResponse::Ok()
@@ -1590,6 +1578,8 @@ pub async fn get_bans_batch(
     let db_ban_ids: Vec<i64> = ban_ids
         .iter()
         .filter_map(|id| parse_base62(id).ok().map(|v| v as i64))
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
         .collect();
 
     if db_ban_ids.is_empty() {

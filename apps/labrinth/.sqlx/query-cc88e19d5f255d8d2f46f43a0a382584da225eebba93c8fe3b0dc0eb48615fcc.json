@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT yunzhanghu_order_id, yunzhanghu_submit_started_at\n            FROM payouts\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "yunzhanghu_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "yunzhanghu_submit_started_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "cc88e19d5f255d8d2f46f43a0a382584da225eebba93c8fe3b0dc0eb48615fcc"
+}

@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, project_id, team_id, payout_amount, split_snapshot\n        FROM incentive_download_events\n        WHERE status = 'pending'\n          AND recorded_at < NOW() - INTERVAL '7 days'\n        ORDER BY id ASC\n        LIMIT 20000\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "team_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "payout_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "split_snapshot",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "be9a33eda6f7f868c225a6dd30815c5c2750e589f46b1528bd4a031186ea6e96"
+}

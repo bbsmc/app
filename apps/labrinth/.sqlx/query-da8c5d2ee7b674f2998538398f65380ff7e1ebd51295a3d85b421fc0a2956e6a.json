@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT m.id AS project_id, m.name AS title, m.slug AS slug,\n               EXISTS(SELECT 1 FROM incentive_enabled_projects e WHERE e.project_id = m.id) AS \"enabled!\",\n               c.lifetime_eff_downloads AS \"lifetime_eff_downloads?\"\n        FROM mods m\n        LEFT JOIN organizations o ON m.organization_id = o.id\n        JOIN team_members tm ON tm.accepted = TRUE\n          AND tm.user_id = $1\n          AND (tm.team_id = m.team_id OR tm.team_id = o.team_id)\n        LEFT JOIN incentive_project_counters c ON c.project_id = m.id\n        ORDER BY m.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "lifetime_eff_downloads?",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      false
+    ]
+  },
+  "hash": "da8c5d2ee7b674f2998538398f65380ff7e1ebd51295a3d85b421fc0a2956e6a"
+}

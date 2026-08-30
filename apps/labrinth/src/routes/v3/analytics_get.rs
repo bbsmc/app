@@ -2,6 +2,7 @@ use super::ApiError;
 use crate::database;
 use crate::database::redis::RedisPool;
 use crate::models::teams::ProjectPermissions;
+use crate::util::routes::parse_limited_ids_json;
 use crate::{
     auth::get_user_from_headers,
     database::models::user_item,
@@ -16,7 +17,7 @@ use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use sqlx::postgres::types::PgInterval;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -48,6 +49,20 @@ pub struct GetData {
     pub end_date: Option<DateTime<Utc>>,   // 默认当前日期
 
     pub resolution_minutes: Option<u32>, // 默认 1 天。在未聚合到分辨率的路径中忽略（例如：/countries）
+}
+
+fn parse_analytics_project_ids(
+    ids: &Option<String>,
+) -> Result<Option<Vec<String>>, ApiError> {
+    ids.as_deref()
+        .map(|ids| {
+            let mut seen = HashSet::new();
+            Ok(parse_limited_ids_json::<String>(ids)?
+                .into_iter()
+                .filter(|id| seen.insert(id.to_lowercase()))
+                .collect::<Vec<_>>())
+        })
+        .transpose()
 }
 
 /// 获取一组项目或版本的游玩时间数据
@@ -85,11 +100,7 @@ pub async fn playtimes_get(
     .await
     .map(|x| x.1)?;
 
-    let project_ids = data
-        .project_ids
-        .as_ref()
-        .map(|ids| serde_json::from_str::<Vec<String>>(ids))
-        .transpose()?;
+    let project_ids = parse_analytics_project_ids(&data.project_ids)?;
 
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
@@ -152,11 +163,7 @@ pub async fn views_get(
     .await
     .map(|x| x.1)?;
 
-    let project_ids = data
-        .project_ids
-        .as_ref()
-        .map(|ids| serde_json::from_str::<Vec<String>>(ids))
-        .transpose()?;
+    let project_ids = parse_analytics_project_ids(&data.project_ids)?;
 
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
@@ -219,11 +226,7 @@ pub async fn downloads_get(
     .await
     .map(|x| x.1)?;
 
-    let project_ids = data
-        .project_ids
-        .as_ref()
-        .map(|ids| serde_json::from_str::<Vec<String>>(ids))
-        .transpose()?;
+    let project_ids = parse_analytics_project_ids(&data.project_ids)?;
 
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
@@ -286,11 +289,7 @@ pub async fn revenue_get(
     .await
     .map(|x| x.1)?;
 
-    let project_ids = data
-        .project_ids
-        .as_ref()
-        .map(|ids| serde_json::from_str::<Vec<String>>(ids))
-        .transpose()?;
+    let project_ids = parse_analytics_project_ids(&data.project_ids)?;
 
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
@@ -424,11 +423,7 @@ pub async fn countries_downloads_get(
     .await
     .map(|x| x.1)?;
 
-    let project_ids = data
-        .project_ids
-        .as_ref()
-        .map(|ids| serde_json::from_str::<Vec<String>>(ids))
-        .transpose()?;
+    let project_ids = parse_analytics_project_ids(&data.project_ids)?;
 
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());
@@ -497,11 +492,7 @@ pub async fn countries_views_get(
     .await
     .map(|x| x.1)?;
 
-    let project_ids = data
-        .project_ids
-        .as_ref()
-        .map(|ids| serde_json::from_str::<Vec<String>>(ids))
-        .transpose()?;
+    let project_ids = parse_analytics_project_ids(&data.project_ids)?;
 
     let start_date = data.start_date.unwrap_or(Utc::now() - Duration::weeks(2));
     let end_date = data.end_date.unwrap_or(Utc::now());

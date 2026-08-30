@@ -198,7 +198,7 @@
             <template #flags> <ReportIcon aria-hidden="true" /> 标签 </template>
             <template #projects> <BoxIcon aria-hidden="true" /> 我的资源 </template>
             <template #organizations> <OrganizationIcon aria-hidden="true" /> 团队 </template>
-            <template #revenue> <CurrencyIcon aria-hidden="true" /> 收入 </template>
+            <template #revenue> <CurrencyIcon aria-hidden="true" /> 收益 </template>
             <template #analytics> <ChartIcon aria-hidden="true" /> 统计 </template>
             <template #moderation> <ModerationIcon aria-hidden="true" /> 管理 </template>
             <template #sign-out> <LogOutIcon aria-hidden="true" /> 登出 </template>
@@ -799,10 +799,10 @@ const userMenuOptions = computed(() => {
       id: "organizations",
       link: "/dashboard/organizations",
     },
-    // {
-    //   id: "revenue",
-    //   link: "/dashboard/revenue",
-    // },
+    {
+      id: "revenue",
+      link: "/dashboard/revenue",
+    },
     {
       id: "analytics",
       link: "/dashboard/analytics",

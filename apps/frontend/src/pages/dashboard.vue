@@ -33,9 +33,9 @@
           <NavStackItem link="/dashboard/purchases" label="已购买资源">
             <CoinsIcon aria-hidden="true" />
           </NavStackItem>
-          <!--          <NavStackItem link="/dashboard/revenue" label="收入">-->
-          <!--            <CurrencyIcon aria-hidden="true" />-->
-          <!--          </NavStackItem>-->
+          <NavStackItem link="/dashboard/revenue" label="收益">
+            <CurrencyIcon aria-hidden="true" />
+          </NavStackItem>
         </NavStack>
       </aside>
     </div>
@@ -45,7 +45,7 @@
   </div>
 </template>
 <script setup>
-import { LibraryIcon, ChartIcon } from "@modrinth/assets";
+import { LibraryIcon, ChartIcon, CurrencyIcon } from "@modrinth/assets";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 

@@ -18,11 +18,13 @@ use crate::models::threads::{MessageBody, ThreadType};
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::util::img;
+use crate::util::routes::parse_limited_ids_json;
 use actix_web::{HttpRequest, HttpResponse, web};
 use chrono::Utc;
 use futures::StreamExt;
 use serde::Deserialize;
 use sqlx::PgPool;
+use std::collections::HashSet;
 use validator::Validate;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -329,9 +331,11 @@ pub async fn reports_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
+    let mut seen = HashSet::new();
     let report_ids: Vec<crate::database::models::ids::ReportId> =
-        serde_json::from_str::<Vec<crate::models::ids::ReportId>>(&ids.ids)?
+        parse_limited_ids_json::<crate::models::ids::ReportId>(&ids.ids)?
             .into_iter()
+            .filter(|id| seen.insert(id.0))
             .map(|x| x.into())
             .collect();
 

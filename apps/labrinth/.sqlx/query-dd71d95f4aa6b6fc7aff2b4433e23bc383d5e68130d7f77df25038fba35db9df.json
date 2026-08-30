@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH today AS (\n            SELECT project_id, COUNT(*)::bigint AS cnt\n            FROM incentive_download_events\n            WHERE recorded_at >= CURRENT_DATE\n              AND recorded_at < CURRENT_DATE + INTERVAL '1 day'\n            GROUP BY project_id\n        ),\n        baseline AS (\n            SELECT project_id, AVG(daily_cnt)::numeric AS avg_cnt\n            FROM (\n                SELECT project_id, DATE_TRUNC('day', recorded_at) AS d, COUNT(*) AS daily_cnt\n                FROM incentive_download_events\n                WHERE recorded_at >= CURRENT_DATE - INTERVAL '8 days'\n                  AND recorded_at < CURRENT_DATE\n                GROUP BY project_id, d\n            ) sub\n            GROUP BY project_id\n        )\n        INSERT INTO incentive_anomaly_alerts\n            (project_id, alert_date, daily_count, baseline_avg, ratio)\n        SELECT t.project_id, CURRENT_DATE, t.cnt, COALESCE(b.avg_cnt, 0),\n               CASE WHEN COALESCE(b.avg_cnt, 0) = 0 THEN 999.99\n                    ELSE ROUND((t.cnt::numeric / b.avg_cnt)::numeric, 2) END\n        FROM today t LEFT JOIN baseline b USING (project_id)\n        WHERE t.cnt >= $1\n          AND t.cnt > GREATEST(COALESCE(b.avg_cnt, 0) * $2, $1::numeric)\n        ON CONFLICT (project_id, alert_date) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dd71d95f4aa6b6fc7aff2b4433e23bc383d5e68130d7f77df25038fba35db9df"
+}

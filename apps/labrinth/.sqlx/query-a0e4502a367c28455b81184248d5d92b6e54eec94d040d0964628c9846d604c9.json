@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            DATE(recorded_at) AS \"date!\",\n            COUNT(*)::bigint AS \"effective_downloads!\",\n            COALESCE(SUM(payout_amount), 0)::numeric AS \"daily_amount!\",\n            COUNT(DISTINCT project_id)::bigint AS \"active_projects!\"\n        FROM incentive_download_events\n        WHERE recorded_at >= NOW() - INTERVAL '30 days'\n        GROUP BY DATE(recorded_at)\n        ORDER BY DATE(recorded_at)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "effective_downloads!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "daily_amount!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "active_projects!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "a0e4502a367c28455b81184248d5d92b6e54eec94d040d0964628c9846d604c9"
+}

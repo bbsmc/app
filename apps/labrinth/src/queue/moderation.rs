@@ -2,6 +2,7 @@ use crate::auth::checks::filter_visible_versions;
 use crate::database;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::thread_item::ThreadMessageBuilder;
+use crate::database::models::version_item::{QueryFile, QueryVersion};
 use crate::database::redis::RedisPool;
 use crate::models::ids::ProjectId;
 use crate::models::notifications::NotificationBody;
@@ -20,6 +21,23 @@ use std::time::Duration;
 use zip::ZipArchive;
 
 const AUTOMOD_ID: i64 = 0;
+
+fn is_disk_only_placeholder_version(version: &QueryVersion) -> bool {
+    !version.disks.is_empty()
+        && version
+            .files
+            .iter()
+            .all(|file| is_disk_placeholder_file(file, version))
+}
+
+fn is_disk_placeholder_file(file: &QueryFile, version: &QueryVersion) -> bool {
+    file.id.0 < 0
+        || (file.filename.is_empty()
+            && file.hashes.is_empty()
+            && !file.primary
+            && file.size == 0
+            && version.disks.iter().any(|disk| disk.url == file.url))
+}
 
 pub struct ModerationMessages {
     pub messages: Vec<ModerationMessage>,
@@ -280,8 +298,9 @@ impl AutomatedModerationQueue {
                                     .collect::<Vec<_>>();
 
                             for version in versions {
-                                // 跳过云盘版本（没有实际文件，只有云盘链接）
-                                if version.files.is_empty() && !version.disks.is_empty() {
+                                // 跳过纯网盘版本。数据库查询层会给纯网盘版本补一个
+                                // url=网盘链接的占位文件，不能把它当作可解析的站内 zip。
+                                if is_disk_only_placeholder_version(&version) {
                                     log::debug!("跳过云盘版本 {} 的文件检查", version.inner.id.0);
                                     continue;
                                 }

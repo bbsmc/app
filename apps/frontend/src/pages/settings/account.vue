@@ -9,6 +9,27 @@
       :has-to-type="true"
       @proceed="deleteAccount"
     />
+    <NewModal ref="removeAuthProviderModal" header="确认解绑登录方式" danger>
+      <div class="flex flex-col gap-4">
+        <span v-if="pendingAuthProvider" class="text-secondary">
+          解绑后将无法使用 {{ pendingAuthProvider.display }} 登录此账号。
+        </span>
+        <div class="flex gap-2">
+          <ButtonStyled>
+            <button @click="closeRemoveAuthProviderModal">
+              <XIcon aria-hidden="true" />
+              取消
+            </button>
+          </ButtonStyled>
+          <ButtonStyled color="red">
+            <button @click="removeSelectedAuthProvider">
+              <TrashIcon aria-hidden="true" />
+              解绑
+            </button>
+          </ButtonStyled>
+        </div>
+      </div>
+    </NewModal>
     <Modal ref="changeEmailModal" :header="`${auth.user.email ? '修改' : '新增'} 电子邮箱`">
       <div class="universal-modal">
         <p>您的帐户信息不会公开显示</p>
@@ -313,7 +334,7 @@
               <button
                 v-if="auth.user.auth_providers.includes(provider.id)"
                 class="btn"
-                @click="removeAuthProvider(provider.id)"
+                @click="confirmRemoveAuthProvider(provider, $event)"
               >
                 <TrashIcon /> 解绑
               </button>
@@ -625,6 +646,7 @@ import { NewModal, ButtonStyled } from "@modrinth/ui";
 import GitHubIcon from "assets/icons/auth/sso-github.svg";
 import MicrosoftIcon from "assets/icons/auth/sso-microsoft.svg";
 import BilibiliIcon from "assets/icons/auth/sso-bilibili.svg";
+import WeChatIcon from "assets/icons/auth/sso-wechat.svg";
 // import GoogleIcon from "assets/icons/auth/sso-google.svg";
 import QQIcon from "assets/icons/auth/sso-qq.svg";
 import KeyIcon from "assets/icons/auth/key.svg";
@@ -646,6 +668,8 @@ const data = useNuxtApp();
 const auth = await useAuth();
 const token = ref("");
 const tokenCode = ref("");
+const removeAuthProviderModal = ref();
+const pendingAuthProvider = ref(null);
 
 const changeEmailModal = ref();
 const email = ref(auth.value.user.email);
@@ -937,11 +961,77 @@ const authProviders = [
     icon: BilibiliIcon,
   },
   {
+    id: "wechat",
+    display: "微信",
+    icon: WeChatIcon,
+  },
+  {
     id: "qq",
     display: "QQ",
     icon: QQIcon,
   },
 ];
+
+function confirmRemoveAuthProvider(provider, event) {
+  pendingAuthProvider.value = provider;
+  manageProvidersModal.value.hide();
+  setTimeout(() => {
+    removeAuthProviderModal.value.show(event);
+  }, 300);
+}
+
+function closeRemoveAuthProviderModal(reopenProviders = true) {
+  removeAuthProviderModal.value.hide();
+  pendingAuthProvider.value = null;
+  if (reopenProviders) {
+    setTimeout(() => {
+      manageProvidersModal.value.show();
+    }, 300);
+  }
+}
+
+async function removeSelectedAuthProvider() {
+  const provider = pendingAuthProvider.value;
+  if (!provider) {
+    return;
+  }
+
+  startLoading();
+  try {
+    await useBaseFetch("auth/provider", {
+      method: "DELETE",
+      body: {
+        provider: provider.id,
+      },
+    });
+
+    auth.value.user = await useBaseFetch(
+      "user",
+      {
+        headers: {
+          Authorization: auth.value.token,
+        },
+      },
+      true,
+    );
+    closeRemoveAuthProviderModal(false);
+
+    data.$notify({
+      group: "main",
+      title: "已解绑",
+      text: `${provider.display} 登录方式已解绑`,
+      type: "success",
+    });
+  } catch (err) {
+    data.$notify({
+      group: "main",
+      title: "发生错误",
+      text: err.data?.description ?? "解绑登录方式失败",
+      type: "error",
+    });
+  }
+  stopLoading();
+}
 
 async function deleteAccount() {
   startLoading();

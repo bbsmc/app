@@ -1,7 +1,13 @@
 <script setup>
 import dayjs from "dayjs";
+// UTC 插件必须在 timezone 之前加载；启用后 dayjs(...).tz("Asia/Shanghai") 可用
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { formatNumber, formatMoney } from "@modrinth/utils";
 import VueApexCharts from "vue3-apexcharts";
+
+dayjs.extend(utc); // eslint-disable-line import/no-named-as-default-member
+dayjs.extend(timezone); // eslint-disable-line import/no-named-as-default-member
 
 const props = defineProps({
   name: {
@@ -185,6 +191,10 @@ const chartOptions = computed(() => {
         style: {
           borderRadius: "var(--radius-sm)",
         },
+        // ApexCharts 默认 datetimeUTC=true 会让 datetime 类型 X 轴的 tick 标签按 UTC 渲染，
+        // 与浏览器本地（中国 = 北京时间）错位 8 小时。强制 false 以使用浏览器本地时区，
+        // tooltip 仍走 formatLabels 走自定义格式化逻辑。
+        datetimeUTC: false,
       },
       axisTicks: {
         show: false,

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE user_yunzhanghu_profiles\n                    SET real_name_encrypted = COALESCE($2, real_name_encrypted),\n                        phone_encrypted = COALESCE($3, phone_encrypted),\n                        alipay_account_encrypted = COALESCE($4, alipay_account_encrypted),\n                        real_name = NULL,\n                        phone = NULL,\n                        alipay_account = NULL,\n                        updated_at = NOW()\n                    WHERE user_id = $1\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a088ec1061bf4b26e487f0dd12b059940f2c4f3626dae2daae832525746c95b"
+}

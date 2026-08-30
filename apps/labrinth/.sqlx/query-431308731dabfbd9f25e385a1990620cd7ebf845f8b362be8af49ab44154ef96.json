@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO incentive_enabled_projects (project_id, enabled_by, notes)\n            VALUES ($1, $2, $3)\n            ON CONFLICT (project_id) DO UPDATE SET\n                enabled_by = EXCLUDED.enabled_by,\n                notes = EXCLUDED.notes,\n                enabled_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "431308731dabfbd9f25e385a1990620cd7ebf845f8b362be8af49ab44154ef96"
+}

@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COALESCE(e.project_id, c.project_id) AS \"project_id!\",\n            m.name AS \"title?\",\n            m.slug AS \"slug?\",\n            (e.project_id IS NOT NULL) AS \"enabled!\",\n            e.enabled_at AS \"enabled_at?\",\n            e.enabled_by AS \"enabled_by?\",\n            e.notes AS \"notes?\",\n            c.lifetime_eff_downloads AS \"lifetime_eff_downloads?\",\n            c.pending_amount AS \"pending_amount?\",\n            c.settled_amount AS \"settled_amount?\",\n            c.voided_amount AS \"voided_amount?\",\n            c.last_event_at AS \"last_event_at?\"\n        FROM incentive_project_counters c\n        FULL OUTER JOIN incentive_enabled_projects e ON e.project_id = c.project_id\n        LEFT JOIN mods m ON m.id = COALESCE(e.project_id, c.project_id)\n        WHERE COALESCE(c.lifetime_eff_downloads, 0) > 0 OR e.project_id IS NOT NULL\n        ORDER BY COALESCE(c.pending_amount, 0) DESC,\n                 COALESCE(c.lifetime_eff_downloads, 0) DESC,\n                 e.enabled_at DESC NULLS LAST\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "enabled_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "enabled_by?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "notes?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "lifetime_eff_downloads?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "pending_amount?",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "settled_amount?",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "voided_amount?",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_event_at?",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      false,
+      true,
+      null,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3140e280d33d8c15152bb33988c38bc4b6da8a851eaa1a767d025e0d0aee2c0e"
+}

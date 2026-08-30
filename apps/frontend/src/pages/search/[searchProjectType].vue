@@ -41,6 +41,16 @@
           label="Hide already installed"
         />
       </section>
+      <Transition name="search-sidebar-ad-fade" mode="out-in">
+        <ResourcePromoAd
+          :key="currentSidebarAdVariant"
+          :variant="currentSidebarAdVariant"
+          class="search-sidebar-ad"
+          :class="{ 'max-lg:!hidden': !sidebarMenuOpen }"
+          @mouseenter="stopSidebarAdAutoPlay"
+          @mouseleave="startSidebarAdAutoPlay"
+        />
+      </Transition>
       <section class="card gap-1" :class="{ 'max-lg:!hidden': !sidebarMenuOpen }">
         <div class="flex items-center gap-2">
           <div class="iconified-input w-full">
@@ -353,7 +363,7 @@
         </div>
       </div>
       <!-- Google AdSense -->
-<!--      <AdUnit slot="7766138161" format="horizontal" class="mt-4" />-->
+      <!--      <AdUnit slot="7766138161" format="horizontal" class="mt-4" />-->
       <div class="pagination-after">
         <pagination
           :page="currentPage"
@@ -373,7 +383,7 @@ import { Multiselect } from "vue-multiselect";
 import { Pagination, ScrollablePanel, Checkbox, Avatar } from "@modrinth/ui";
 import { BanIcon, DropdownIcon, CheckIcon, FilterXIcon, DownloadIcon } from "@modrinth/assets";
 import ProjectCard from "~/components/ui/ProjectCard.vue";
-import AdUnit from "~/components/ui/AdUnit.vue";
+import ResourcePromoAd from "~/components/ui/ResourcePromoAd.vue";
 import LogoAnimated from "~/components/brand/LogoAnimated.vue";
 import { addNotification } from "~/composables/notifs.js";
 
@@ -404,7 +414,7 @@ const bannerItemsConfig = ref({
     },
     {
       image:
-        "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7d43813f0ff22b6c769e7382d36d5059657e8a94_350.webp",
+        "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7c2ccd747457f54652540972f8f61cc88f24d3a0_350.webp",
       title: "龙之冒险：新征程",
       description: "面对众多怪物的冒险之旅，你做好准备了吗？",
       slug: "/modpack/lzmx",
@@ -432,7 +442,22 @@ const bannerItemsConfig = ref({
       slug: "/install-tutorial",
     },
   ],
-  software: [],
+  software: [
+    {
+      image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
+      title: "PCL2",
+      description:
+        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
+      slug: "https://afdian.com/p/0164034c016c11ebafcb52540025c377",
+    },
+    {
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
+      title: "PCL CE",
+      description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
+      slug: "https://github.com/PCL-Community/PCL-CE",
+    },
+  ],
 });
 
 // 获取当前项目类型的 banner 列表
@@ -452,6 +477,13 @@ const dragCurrentX = ref(0);
 const hasDragged = ref(false);
 const bannerAutoPlayInterval = ref(null);
 const isClientMounted = ref(false);
+const sidebarAdVariants = ["server", "incentive"];
+const sidebarAdRotateIntervalMs = 10000;
+const currentSidebarAdIndex = ref(0);
+const sidebarAdAutoPlayInterval = ref(null);
+const currentSidebarAdVariant = computed(
+  () => sidebarAdVariants[currentSidebarAdIndex.value] || "server",
+);
 
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -1265,9 +1297,13 @@ const nextBannerSlide = () => {
   startBannerAutoPlay();
 };
 
+const openBannerTarget = (url) => {
+  window.open(url, "_blank", "noopener");
+};
+
 const goToBannerSlide = (index) => {
   if (index === currentBannerSlide.value) {
-    window.open(bannerItems.value[index].slug, "_blank");
+    openBannerTarget(bannerItems.value[index].slug);
     return;
   }
   currentBannerSlide.value = index;
@@ -1283,7 +1319,7 @@ const handleBannerClick = (e, url) => {
     return;
   }
 
-  window.open(url, "_blank");
+  openBannerTarget(url);
 };
 
 const startBannerAutoPlay = () => {
@@ -1311,9 +1347,27 @@ const handleMouseLeave = () => {
   startBannerAutoPlay();
 };
 
+const startSidebarAdAutoPlay = () => {
+  if (!isClientMounted.value) return;
+  stopSidebarAdAutoPlay();
+  sidebarAdAutoPlayInterval.value = setInterval(() => {
+    currentSidebarAdIndex.value = (currentSidebarAdIndex.value + 1) % sidebarAdVariants.length;
+  }, sidebarAdRotateIntervalMs);
+};
+
+const stopSidebarAdAutoPlay = () => {
+  if (sidebarAdAutoPlayInterval.value) {
+    clearInterval(sidebarAdAutoPlayInterval.value);
+    sidebarAdAutoPlayInterval.value = null;
+  }
+};
+
 // 生命周期钩子
 onMounted(() => {
   isClientMounted.value = true;
+  currentSidebarAdIndex.value = Math.floor(Math.random() * sidebarAdVariants.length);
+  startSidebarAdAutoPlay();
+
   if (hasBanner.value) {
     currentBannerSlide.value = Math.floor(Math.random() * bannerItems.value.length);
     startBannerAutoPlay();
@@ -1322,6 +1376,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopBannerAutoPlay();
+  stopSidebarAdAutoPlay();
   isClientMounted.value = false;
 });
 </script>
@@ -1344,6 +1399,20 @@ onUnmounted(() => {
   @media screen and (min-width: 1024px) {
     display: block;
   }
+}
+
+.search-sidebar-ad {
+  margin-bottom: var(--spacing-card-md);
+}
+
+.search-sidebar-ad-fade-enter-active,
+.search-sidebar-ad-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.search-sidebar-ad-fade-enter-from,
+.search-sidebar-ad-fade-leave-to {
+  opacity: 0;
 }
 
 .filters-card {

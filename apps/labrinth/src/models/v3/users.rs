@@ -107,9 +107,6 @@ pub struct User {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserPayoutData {
-    pub paypal_address: Option<String>,
-    pub paypal_country: Option<String>,
-    pub venmo_handle: Option<String>,
     #[serde(with = "rust_decimal::serde::float")]
     pub balance: Decimal,
 }
@@ -215,14 +212,14 @@ impl User {
         if db_user.steam_id.is_some() {
             auth_providers.push(AuthProvider::Steam)
         }
-        if db_user.paypal_id.is_some() {
-            auth_providers.push(AuthProvider::PayPal)
-        }
         if db_user.bilibili_id.is_some() {
             auth_providers.push(AuthProvider::Bilibili)
         }
         if db_user.qq_id.is_some() {
             auth_providers.push(AuthProvider::QQ)
+        }
+        if db_user.wechat_id.is_some() {
+            auth_providers.push(AuthProvider::WeChat)
         }
 
         // 转换封禁信息
@@ -292,9 +289,6 @@ impl User {
             has_totp: Some(db_user.totp_secret.is_some()),
             github_id: None,
             payout_data: Some(UserPayoutData {
-                paypal_address: db_user.paypal_email,
-                paypal_country: db_user.paypal_country,
-                venmo_handle: db_user.venmo_handle,
                 balance: Decimal::ZERO,
             }),
             stripe_customer_id: db_user.stripe_customer_id,

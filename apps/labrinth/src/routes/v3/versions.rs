@@ -3,7 +3,7 @@ use crate::auth::checks::{
     check_resource_ban, filter_visible_versions, is_visible_project,
     is_visible_version,
 };
-use crate::auth::get_user_from_headers;
+use crate::auth::{get_optional_user_from_headers, get_user_from_headers};
 use crate::database;
 use crate::database::models::loader_fields::{
     self, LoaderField, LoaderFieldEnumValue, VersionField,
@@ -25,17 +25,19 @@ use crate::models::projects::{
 use crate::models::projects::{Loader, skip_nulls};
 use crate::models::teams::ProjectPermissions;
 use crate::queue::analytics::AnalyticsQueue;
+use crate::queue::incentive::IncentiveQueue;
 use crate::queue::session::AuthQueue;
 use crate::search::SearchConfig;
 use crate::search::indexing::remove_documents;
 use crate::util::date::get_current_tenths_of_ms;
 use crate::util::img;
+use crate::util::routes::parse_limited_ids_json;
 use crate::util::validate::validation_errors_to_string;
 use actix_web::{HttpRequest, HttpResponse, web};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 use validator::Validate;
@@ -102,16 +104,14 @@ pub async fn version_project_get_helper(
 ) -> Result<HttpResponse, ApiError> {
     let result = database::models::Project::get(&id.0, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     if let Some(project) = result {
         if !is_visible_project(&project.inner, &user_option, &pool, false)
@@ -157,25 +157,25 @@ pub async fn versions_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
+    let mut seen = HashSet::new();
     let version_ids =
-        serde_json::from_str::<Vec<models::ids::VersionId>>(&ids.ids)?
+        parse_limited_ids_json::<models::ids::VersionId>(&ids.ids)?
             .into_iter()
+            .filter(|id| seen.insert(id.0))
             .map(|x| x.into())
             .collect::<Vec<database::models::VersionId>>();
     let versions_data =
         database::models::Version::get_many(&version_ids, &**pool, &redis)
             .await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::VERSION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     let versions =
         filter_visible_versions(versions_data, &user_option, &pool, &redis)
@@ -206,16 +206,14 @@ pub async fn version_get_helper(
     let version_data =
         database::models::Version::get(db_version_id, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::VERSION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     if let Some(data) = version_data
         && is_visible_version(&data.inner, &user_option, &pool, &redis).await?
@@ -285,21 +283,20 @@ pub async fn version_download(
     info: web::Path<(VersionId,)>,
     pool: web::Data<PgPool>,
     analytics_queue: web::Data<Arc<AnalyticsQueue>>,
+    incentive_queue: web::Data<Arc<IncentiveQueue>>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let version_id = info.0;
     let id = version_id.into();
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::VERSION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
     let user_id = if let Some(user_option) = user_option {
         user_option.id.0
     } else {
@@ -363,6 +360,12 @@ pub async fn version_download(
                     .unwrap_or_default(),
                 headers: Vec::new(),
             });
+            incentive_queue.add(
+                id.0,
+                user_id,
+                ip,
+                chrono::Utc::now().timestamp(),
+            );
         } else {
             let url = version_item.disks.first().unwrap().url.clone();
 
@@ -385,6 +388,12 @@ pub async fn version_download(
                     .unwrap_or_default(),
                 headers: Vec::new(),
             });
+            incentive_queue.add(
+                id.0,
+                user_id,
+                ip,
+                chrono::Utc::now().timestamp(),
+            );
         }
         Ok(HttpResponse::NoContent().body(""))
     } else {
@@ -537,14 +546,18 @@ pub async fn version_edit_helper(
                 .await?;
 
                 for u in urls {
+                    let display = u
+                        .normalized_display()
+                        .map_err(ApiError::InvalidInput)?;
                     sqlx::query!(
                         "
-                        INSERT INTO disk_urls (version_id, url, platform)
-                        VALUES ($1, $2, $3)
+                        INSERT INTO disk_urls (version_id, url, platform, display)
+                        VALUES ($1, $2, $3, $4)
                         ",
                         id as database::models::ids::VersionId,
                         u.url,
                         u.platform,
+                        display,
                     )
                     .execute(&mut *transaction)
                     .await?;
@@ -1178,16 +1191,14 @@ pub async fn version_list(
     let result =
         database::models::Project::get(&string, &**pool, &redis).await?;
 
-    let user_option = get_user_from_headers(
+    let user_option = get_optional_user_from_headers(
         &req,
         &**pool,
         &redis,
         &session_queue,
         Some(&[Scopes::PROJECT_READ, Scopes::VERSION_READ]),
     )
-    .await
-    .map(|x| x.1)
-    .ok();
+    .await?;
 
     if let Some(project) = result {
         if !is_visible_project(&project.inner, &user_option, &pool, false)

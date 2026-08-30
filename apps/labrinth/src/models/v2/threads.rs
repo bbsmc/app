@@ -80,6 +80,10 @@ impl From<crate::models::v3::threads::ThreadType> for LegacyThreadType {
                 // Creator application threads映射为Report类型，因为v2没有这个类型
                 LegacyThreadType::Report
             }
+            crate::models::v3::threads::ThreadType::IncentiveApplication => {
+                // Incentive application threads 也映射为 Report
+                LegacyThreadType::Report
+            }
         }
     }
 }

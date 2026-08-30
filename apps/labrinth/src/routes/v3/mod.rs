@@ -25,6 +25,7 @@ pub mod versions;
 
 pub mod creator;
 pub mod image_reviews;
+pub mod incentive;
 pub mod issues;
 pub mod oauth_clients;
 pub mod payment_merchant;
@@ -34,6 +35,7 @@ pub mod project_pricing;
 pub mod user_purchase;
 #[allow(clippy::unnecessary_unwrap, clippy::explicit_auto_deref)]
 mod wikis;
+pub mod yunzhanghu;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -64,7 +66,9 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .configure(forum::config)
             .configure(issues::config)
             .configure(bans::config)
-            .configure(project_order::config),
+            .configure(incentive::config)
+            .configure(project_order::config)
+            .configure(yunzhanghu::config),
     );
 }
 

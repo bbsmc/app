@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO incentive_project_counters\n            (project_id, lifetime_eff_downloads, pending_amount, last_event_at, updated_at)\n        VALUES ($1, 1, $2, NOW(), NOW())\n        ON CONFLICT (project_id) DO UPDATE SET\n            lifetime_eff_downloads = incentive_project_counters.lifetime_eff_downloads + 1,\n            pending_amount = incentive_project_counters.pending_amount + EXCLUDED.pending_amount,\n            last_event_at = NOW(),\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "922afdb742ab4bb276b2d1dad335281d2a070ead72d0b4fb53b6bb24ece3b9fd"
+}

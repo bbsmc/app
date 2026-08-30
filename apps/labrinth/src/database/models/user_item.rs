@@ -13,7 +13,9 @@ use std::hash::Hash;
 
 const USERS_NAMESPACE: &str = "users";
 const USER_USERNAMES_NAMESPACE: &str = "users_usernames";
+const USERS_NEGATIVE_NAMESPACE: &str = "users_negative";
 const USERS_PROJECTS_NAMESPACE: &str = "users_projects";
+const USERS_NEGATIVE_CACHE_TTL_SECONDS: i64 = 60;
 
 /// 用户活跃封禁摘要（用于 User 查询结果）
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -58,12 +60,9 @@ pub struct User {
     pub microsoft_id: Option<String>,
     pub bilibili_id: Option<String>,
     pub qq_id: Option<String>,
+    pub wechat_id: Option<String>,
     pub password: Option<String>,
 
-    pub paypal_id: Option<String>,
-    pub paypal_country: Option<String>,
-    pub paypal_email: Option<String>,
-    pub venmo_handle: Option<String>,
     pub stripe_customer_id: Option<String>,
 
     pub totp_secret: Option<String>,
@@ -106,15 +105,14 @@ impl User {
                 id, username, email,
                 avatar_url, raw_avatar_url, bio, created,
                 github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
-                bilibili_id, qq_id,
-                email_verified, password, paypal_id, paypal_country, paypal_email,
-                venmo_handle, stripe_customer_id
+                bilibili_id, qq_id, wechat_id,
+                email_verified, password, stripe_customer_id
             )
             VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7,
                 $8, $9, $10, $11, $12, $13,
-                $14, $15, $16, $17, $18, $19, $20, $21, $22
+                $14, $15, $16, $17, $18, $19
             )
             ",
             self.id as UserId,
@@ -132,12 +130,9 @@ impl User {
             self.microsoft_id,
             self.bilibili_id,
             self.qq_id,
+            self.wechat_id,
             self.email_verified,
             self.password,
-            self.paypal_id,
-            self.paypal_country,
-            self.paypal_email,
-            self.venmo_handle,
             self.stripe_customer_id
         )
         .execute(&mut **transaction)
@@ -154,9 +149,38 @@ impl User {
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
-        User::get_many(&[string], executor, redis)
-            .await
-            .map(|x| x.into_iter().next())
+        let cache_key = format!("name:{}", string.trim().to_lowercase());
+        let mut redis_conn = redis.connect().await?;
+        if redis_conn
+            .get_deserialized_from_json::<bool>(
+                USERS_NEGATIVE_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+            .unwrap_or(false)
+        {
+            return Ok(None);
+        }
+        drop(redis_conn);
+
+        let user = User::get_many(&[string], executor, redis)
+            .await?
+            .into_iter()
+            .next();
+
+        if user.is_none() {
+            let mut redis_conn = redis.connect().await?;
+            redis_conn
+                .set_serialized_to_json(
+                    USERS_NEGATIVE_NAMESPACE,
+                    cache_key,
+                    true,
+                    Some(USERS_NEGATIVE_CACHE_TTL_SECONDS),
+                )
+                .await?;
+        }
+
+        Ok(user)
     }
 
     pub async fn get_id<'a, 'b, E>(
@@ -167,9 +191,42 @@ impl User {
     where
         E: sqlx::Acquire<'a, Database = sqlx::Postgres>,
     {
-        User::get_many(&[crate::models::ids::UserId::from(id)], executor, redis)
-            .await
-            .map(|x| x.into_iter().next())
+        let cache_key = format!("id:{}", id.0);
+        let mut redis_conn = redis.connect().await?;
+        if redis_conn
+            .get_deserialized_from_json::<bool>(
+                USERS_NEGATIVE_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+            .unwrap_or(false)
+        {
+            return Ok(None);
+        }
+        drop(redis_conn);
+
+        let user = User::get_many(
+            &[crate::models::ids::UserId::from(id)],
+            executor,
+            redis,
+        )
+        .await?
+        .into_iter()
+        .next();
+
+        if user.is_none() {
+            let mut redis_conn = redis.connect().await?;
+            redis_conn
+                .set_serialized_to_json(
+                    USERS_NEGATIVE_NAMESPACE,
+                    cache_key,
+                    true,
+                    Some(USERS_NEGATIVE_CACHE_TTL_SECONDS),
+                )
+                .await?;
+        }
+
+        Ok(user)
     }
 
     pub async fn get_many_ids<'a, E>(
@@ -227,9 +284,9 @@ impl User {
                             avatar_url, raw_avatar_url, username, bio,
                             created, role, badges,
                             github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
-                            bilibili_id, qq_id,
-                            email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
-                            venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number,
+                            bilibili_id, qq_id, wechat_id,
+                            email_verified, password, totp_secret,
+                            stripe_customer_id,wiki_overtake_count,wiki_ban_time,phone_number,
                             is_premium_creator, creator_verified_at
                         FROM users
                         WHERE id = ANY($1) OR LOWER(username) = ANY($2)
@@ -249,6 +306,7 @@ impl User {
                             microsoft_id: u.microsoft_id,
                             bilibili_id: u.bilibili_id,
                             qq_id: u.qq_id,
+                            wechat_id: u.wechat_id,
                             email: u.email,
                             email_verified: u.email_verified,
                             avatar_url: u.avatar_url,
@@ -259,10 +317,6 @@ impl User {
                             role: u.role,
                             badges: Badges::from_bits(u.badges as u64).unwrap_or_default(),
                             password: u.password,
-                            paypal_id: u.paypal_id,
-                            paypal_country: u.paypal_country,
-                            paypal_email: u.paypal_email,
-                            venmo_handle: u.venmo_handle,
                             stripe_customer_id: u.stripe_customer_id,
                             totp_secret: u.totp_secret,
                             wiki_overtake_count: u.wiki_overtake_count,
@@ -602,9 +656,16 @@ impl User {
             .flat_map(|(id, username)| {
                 [
                     (USERS_NAMESPACE, Some(id.0.to_string())),
+                    (USERS_NEGATIVE_NAMESPACE, Some(format!("id:{}", id.0))),
                     (
                         USER_USERNAMES_NAMESPACE,
                         username.clone().map(|i| i.to_lowercase()),
+                    ),
+                    (
+                        USERS_NEGATIVE_NAMESPACE,
+                        username
+                            .clone()
+                            .map(|i| format!("name:{}", i.to_lowercase())),
                     ),
                 ]
             })
@@ -661,9 +722,16 @@ impl User {
             .flat_map(|(id, username)| {
                 [
                     (USERS_NAMESPACE, Some(id.0.to_string())),
+                    (USERS_NEGATIVE_NAMESPACE, Some(format!("id:{}", id.0))),
                     (
                         USER_USERNAMES_NAMESPACE,
                         username.clone().map(|i| i.to_lowercase()),
+                    ),
+                    (
+                        USERS_NEGATIVE_NAMESPACE,
+                        username
+                            .clone()
+                            .map(|i| format!("name:{}", i.to_lowercase())),
                     ),
                 ]
             })

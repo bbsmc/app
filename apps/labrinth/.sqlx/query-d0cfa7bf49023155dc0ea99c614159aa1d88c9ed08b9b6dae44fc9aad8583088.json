@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin_payout_batch_exclusions (\n                batch_id, user_id, username, amount, reason_code\n            )\n            VALUES ($1, $2, $3, $4, $5)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8",
+        "Varchar",
+        "Numeric",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d0cfa7bf49023155dc0ea99c614159aa1d88c9ed08b9b6dae44fc9aad8583088"
+}

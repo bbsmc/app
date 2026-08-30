@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE payouts\n        SET status = $1::text,\n            platform_id = COALESCE(NULLIF($2, ''), platform_id),\n            yunzhanghu_submit_finished_at = CASE\n                WHEN NULLIF($2, '') IS NOT NULL OR $1::text <> 'in-transit'\n                THEN NOW()\n                ELSE yunzhanghu_submit_finished_at\n            END,\n            yunzhanghu_submit_error = NULL\n        WHERE id = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "612cacf3988f69f73f8442a7c9d773f191ea2b3191b6069f631d1d25715e4b7f"
+}

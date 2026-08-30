@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COALESCE(SUM(payout_amount), 0)::numeric AS \"voided_amount!\"\n        FROM incentive_download_events\n        WHERE project_id = $1 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "voided_amount!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "930cf0993907ca0d9d9ef3a35cd97405eac740255f5f842b15302204b09d9a77"
+}

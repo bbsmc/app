@@ -208,16 +208,16 @@ const sortedItems = computed(() => {
   });
 });
 
-// 格式化发布时间
+// 格式化发布时间（强制北京时间，避免管理员浏览器在其他时区时显示偏差）
 const formatPublishTime = (date) => {
   if (!date) return "-";
-  return app.$dayjs(date).format("YYYY-MM-DD HH:mm");
+  return app.$dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
 };
 
-// 格式化日期时间
+// 格式化日期时间（强制北京时间）
 const formatDateTime = (date) => {
   if (!date) return "-";
-  return app.$dayjs(date).format("YYYY-MM-DD HH:mm:ss");
+  return app.$dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm:ss");
 };
 
 // 格式化持续时间

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE incentive_download_events\n        SET status = 'voided', settled_at = NOW()\n        WHERE project_id = $1 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "71325c3943d625adacf8e824988994cf4d7314247493715346ededab32bd3c0e"
+}

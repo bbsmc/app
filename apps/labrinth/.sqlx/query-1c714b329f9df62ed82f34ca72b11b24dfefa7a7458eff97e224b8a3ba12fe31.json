@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT status, sources\n        FROM admin_payout_batch_items\n        WHERE batch_id = $1 AND user_id = $2\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "sources",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "1c714b329f9df62ed82f34ca72b11b24dfefa7a7458eff97e224b8a3ba12fe31"
+}

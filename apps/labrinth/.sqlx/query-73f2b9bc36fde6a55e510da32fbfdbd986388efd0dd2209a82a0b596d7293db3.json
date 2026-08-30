@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            pv.user_id,\n            pv.mod_id,\n            pv.amount,\n            m.name AS \"project_name?\",\n            m.slug AS \"project_slug?\"\n        FROM payouts_values pv\n        LEFT JOIN mods m ON m.id = pv.mod_id\n        WHERE pv.user_id = ANY($1::bigint[])\n          AND pv.date_available <= NOW()\n          AND pv.amount > 0\n        ORDER BY pv.user_id, pv.date_available, pv.created, pv.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "mod_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "project_slug?",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "73f2b9bc36fde6a55e510da32fbfdbd986388efd0dd2209a82a0b596d7293db3"
+}

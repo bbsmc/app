@@ -40,9 +40,15 @@ RUN apt-get update && \
         libgcc-s1 \
         libc6 \
         dumb-init \
+        tzdata \
         curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# 容器时区设为北京时间，使容器日志、chrono::Local 等系统级时间显示一致。
+# 注意：应用层 PG/CH/Utc::now 都已显式管理时区，与该 ENV 无依赖关系。
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 从构建阶段复制二进制文件和依赖库
 COPY --from=build /usr/local/lib/*.so* /usr/lib/

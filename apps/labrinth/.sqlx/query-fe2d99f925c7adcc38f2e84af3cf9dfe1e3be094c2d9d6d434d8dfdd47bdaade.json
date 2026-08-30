@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE user_yunzhanghu_profiles\n        SET sign_url = $3,\n            updated_at = NOW()\n        WHERE user_id = $1\n          AND sign_status = 'signing'\n          AND sign_nonce = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fe2d99f925c7adcc38f2e84af3cf9dfe1e3be094c2d9d6d434d8dfdd47bdaade"
+}

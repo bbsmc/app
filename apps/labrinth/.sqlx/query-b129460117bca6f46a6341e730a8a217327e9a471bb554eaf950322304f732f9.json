@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT a.applicant_user_id, a.project_id, m.name AS \"project_name?\"\n                FROM incentive_applications a\n                LEFT JOIN mods m ON m.id = a.project_id\n                WHERE a.thread_id = $1\n                ORDER BY a.created_at DESC LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "applicant_user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_name?",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b129460117bca6f46a6341e730a8a217327e9a471bb554eaf950322304f732f9"
+}

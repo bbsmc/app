@@ -2,6 +2,8 @@ mod fetch;
 
 pub use fetch::*;
 
+use crate::util::date::APP_TZ_NAME;
+
 pub async fn init_client() -> clickhouse::error::Result<clickhouse::Client> {
     init_client_with_database(&dotenvy::var("CLICKHOUSE_DATABASE").unwrap())
         .await
@@ -10,10 +12,14 @@ pub async fn init_client() -> clickhouse::error::Result<clickhouse::Client> {
 pub async fn init_client_with_database(
     database: &str,
 ) -> clickhouse::error::Result<clickhouse::Client> {
+    // 让 now()/today()/toDate() 等返回 APP_TZ_NAME（北京时间）。
+    // 注意：toStartOfInterval / toStartOfDay 的桶起点不受 session_timezone 影响，
+    // 仍需在 SQL 中显式传入 APP_TZ_NAME 作为第三参数。
     let client = clickhouse::Client::default()
         .with_url(dotenvy::var("CLICKHOUSE_URL").unwrap())
         .with_user(dotenvy::var("CLICKHOUSE_USER").unwrap())
-        .with_password(dotenvy::var("CLICKHOUSE_PASSWORD").unwrap());
+        .with_password(dotenvy::var("CLICKHOUSE_PASSWORD").unwrap())
+        .with_option("session_timezone", APP_TZ_NAME);
 
     client
         .query(&format!("CREATE DATABASE IF NOT EXISTS {database}"))

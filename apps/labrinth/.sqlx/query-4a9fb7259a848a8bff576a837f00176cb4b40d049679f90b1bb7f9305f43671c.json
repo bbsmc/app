@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM incentive_download_events\n        WHERE recorded_at < NOW() - INTERVAL '3 months'\n          AND status IN ('settled', 'voided')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4a9fb7259a848a8bff576a837f00176cb4b40d049679f90b1bb7f9305f43671c"
+}

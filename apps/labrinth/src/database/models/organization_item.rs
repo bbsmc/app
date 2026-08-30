@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 
 const ORGANIZATIONS_NAMESPACE: &str = "organizations";
 const ORGANIZATIONS_TITLES_NAMESPACE: &str = "organizations_titles";
+const ORGANIZATIONS_NEGATIVE_NAMESPACE: &str = "organizations_negative";
+const ORGANIZATIONS_NEGATIVE_CACHE_TTL_SECONDS: i64 = 60;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 /// An organization of users who together control one or more projects and organizations.
@@ -69,9 +71,38 @@ impl Organization {
     where
         E: sqlx::Executor<'a, Database = sqlx::Postgres>,
     {
-        Self::get_many(&[string], exec, redis)
-            .await
-            .map(|x| x.into_iter().next())
+        let cache_key = format!("slug:{}", string.trim().to_lowercase());
+        let mut redis_conn = redis.connect().await?;
+        if redis_conn
+            .get_deserialized_from_json::<bool>(
+                ORGANIZATIONS_NEGATIVE_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+            .unwrap_or(false)
+        {
+            return Ok(None);
+        }
+        drop(redis_conn);
+
+        let organization = Self::get_many(&[string], exec, redis)
+            .await?
+            .into_iter()
+            .next();
+
+        if organization.is_none() {
+            let mut redis_conn = redis.connect().await?;
+            redis_conn
+                .set_serialized_to_json(
+                    ORGANIZATIONS_NEGATIVE_NAMESPACE,
+                    cache_key,
+                    true,
+                    Some(ORGANIZATIONS_NEGATIVE_CACHE_TTL_SECONDS),
+                )
+                .await?;
+        }
+
+        Ok(organization)
     }
 
     pub async fn get_id<'a, 'b, E>(
@@ -82,9 +113,38 @@ impl Organization {
     where
         E: sqlx::Executor<'a, Database = sqlx::Postgres>,
     {
-        Self::get_many_ids(&[id], exec, redis)
-            .await
-            .map(|x| x.into_iter().next())
+        let cache_key = format!("id:{}", id.0);
+        let mut redis_conn = redis.connect().await?;
+        if redis_conn
+            .get_deserialized_from_json::<bool>(
+                ORGANIZATIONS_NEGATIVE_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+            .unwrap_or(false)
+        {
+            return Ok(None);
+        }
+        drop(redis_conn);
+
+        let organization = Self::get_many_ids(&[id], exec, redis)
+            .await?
+            .into_iter()
+            .next();
+
+        if organization.is_none() {
+            let mut redis_conn = redis.connect().await?;
+            redis_conn
+                .set_serialized_to_json(
+                    ORGANIZATIONS_NEGATIVE_NAMESPACE,
+                    cache_key,
+                    true,
+                    Some(ORGANIZATIONS_NEGATIVE_CACHE_TTL_SECONDS),
+                )
+                .await?;
+        }
+
+        Ok(organization)
     }
 
     pub async fn get_many_ids<'a, 'b, E>(
@@ -261,8 +321,16 @@ impl Organization {
             .delete_many([
                 (ORGANIZATIONS_NAMESPACE, Some(id.0.to_string())),
                 (
+                    ORGANIZATIONS_NEGATIVE_NAMESPACE,
+                    Some(format!("id:{}", id.0)),
+                ),
+                (
                     ORGANIZATIONS_TITLES_NAMESPACE,
-                    slug.map(|x| x.to_lowercase()),
+                    slug.clone().map(|x| x.to_lowercase()),
+                ),
+                (
+                    ORGANIZATIONS_NEGATIVE_NAMESPACE,
+                    slug.map(|x| format!("slug:{}", x.to_lowercase())),
                 ),
             ])
             .await?;

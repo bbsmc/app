@@ -7,8 +7,8 @@ use actix_web::web;
 use chrono::Utc;
 use database::redis::RedisPool;
 use queue::{
-    analytics::AnalyticsQueue, payouts::PayoutsQueue, session::AuthQueue,
-    socket::ActiveSockets,
+    analytics::AnalyticsQueue, incentive::IncentiveQueue,
+    payouts::PayoutsQueue, session::AuthQueue, socket::ActiveSockets,
 };
 use sqlx::Postgres;
 use tokio::sync::RwLock;
@@ -67,6 +67,7 @@ pub struct LabrinthConfig {
     pub session_queue: web::Data<AuthQueue>,
     pub payouts_queue: web::Data<PayoutsQueue>,
     pub analytics_queue: Arc<AnalyticsQueue>,
+    pub incentive_queue: Arc<IncentiveQueue>,
     pub active_sockets: web::Data<RwLock<ActiveSockets>>,
     pub automated_moderation_queue: web::Data<AutomatedModerationQueue>,
     pub rate_limiter: KeyedRateLimiter,
@@ -234,6 +235,52 @@ pub fn app_setup(
         }
     });
 
+    // 云账户资料 PII 加密回填：把旧明文字段迁移到新密文字段后清空旧列。
+    {
+        let pool_ref = pool.clone();
+        actix_rt::spawn(async move {
+            match database::models::yunzhanghu_profile_item::YunzhanghuProfile::backfill_legacy_plaintext(&pool_ref).await {
+                Ok(count) if count > 0 => {
+                    info!("已回填并清空 {} 条云账户资料旧明文字段", count);
+                }
+                Err(e) => {
+                    warn!("云账户资料旧明文字段加密回填失败: {}", e);
+                }
+                _ => {}
+            }
+        });
+    }
+
+    // 云账户实时支付订单状态轮询：每分钟扫描 in-transit 订单，主动调云账户 query-order 同步状态
+    // 适用于本地开发回调收不到、回调丢失补救等场景
+    let pool_ref = pool.clone();
+    let redis_ref = redis_pool.clone();
+    scheduler.run(std::time::Duration::from_secs(60), move || {
+        let pool_ref = pool_ref.clone();
+        let redis_ref = redis_ref.clone();
+        async move {
+            crate::routes::v3::yunzhanghu::poll_in_transit_payouts(
+                pool_ref, redis_ref,
+            )
+            .await;
+        }
+    });
+
+    // 解约回调状态最终一致性核对：云账户重试窗口结束后仍可自动收敛，避免
+    // release:webhook 安全 marker 永久阻断用户签约状态。
+    let pool_ref = pool.clone();
+    let redis_ref = redis_pool.clone();
+    scheduler.run(std::time::Duration::from_secs(60 * 5), move || {
+        let pool_ref = pool_ref.clone();
+        let redis_ref = redis_ref.clone();
+        async move {
+            crate::routes::v3::yunzhanghu::poll_pending_unsign_reconciliations(
+                pool_ref, redis_ref,
+            )
+            .await;
+        }
+    });
+
     let analytics_queue = Arc::new(AnalyticsQueue::new());
     {
         let client_ref = clickhouse.clone();
@@ -255,6 +302,60 @@ pub fn app_setup(
                     warn!("分析服务索引失败: {:?}", e);
                 }
                 info!("分析索引完成");
+            }
+        });
+    }
+
+    let incentive_queue = Arc::new(IncentiveQueue::new());
+    {
+        let incentive_queue_ref = incentive_queue.clone();
+        let pool_ref = pool.clone();
+        scheduler.run(std::time::Duration::from_secs(60), move || {
+            let incentive_queue_ref = incentive_queue_ref.clone();
+            let pool_ref = pool_ref.clone();
+            async move {
+                if let Err(e) = incentive_queue_ref.index(&pool_ref).await {
+                    warn!("激励队列 flush 失败: {:?}", e);
+                }
+            }
+        });
+    }
+    {
+        let pool_ref = pool.clone();
+        scheduler.run(std::time::Duration::from_secs(3600), move || {
+            let pool_ref = pool_ref.clone();
+            async move {
+                match queue::incentive::settle_pending(&pool_ref).await {
+                    Ok(n) if n > 0 => info!("激励结算完成 {} 条", n),
+                    Err(e) => warn!("激励结算失败: {:?}", e),
+                    _ => {}
+                }
+            }
+        });
+    }
+    {
+        let pool_ref = pool.clone();
+        scheduler.run(std::time::Duration::from_secs(86_400), move || {
+            let pool_ref = pool_ref.clone();
+            async move {
+                match queue::incentive::cleanup_old_events(&pool_ref).await {
+                    Ok(n) if n > 0 => info!("激励事件明细清理完成 {} 条", n),
+                    Err(e) => warn!("激励事件明细清理失败: {:?}", e),
+                    _ => {}
+                }
+            }
+        });
+    }
+    {
+        let pool_ref = pool.clone();
+        scheduler.run(std::time::Duration::from_secs(3600), move || {
+            let pool_ref = pool_ref.clone();
+            async move {
+                match queue::incentive::detect_anomalies(&pool_ref).await {
+                    Ok(n) if n > 0 => info!("激励异常告警入库 {} 条", n),
+                    Err(e) => warn!("激励异常监测失败: {:?}", e),
+                    _ => {}
+                }
             }
         });
     }
@@ -287,6 +388,7 @@ pub fn app_setup(
                                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
                                     m.webhook_sent, m.color, m.wiki_open,m.issues_type issues_type, m.translation_tracking, m.translation_tracker, m.is_paid,
                                     (SELECT slug FROM mods WHERE translation_tracker = m.slug AND m.slug IS NOT NULL LIMIT 1) as translation_source,
+                                    EXISTS(SELECT 1 FROM incentive_enabled_projects iep WHERE iep.project_id = m.id) AS \"incentive_enabled!\",
                                     t.id thread_id, m.monetization_status monetization_status,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -339,6 +441,7 @@ pub fn app_setup(
                                             translation_tracking: m.translation_tracking,
                                             translation_tracker: m.translation_tracker.clone(),
                                             translation_source: m.translation_source.clone(),
+                                            incentive_enabled: m.incentive_enabled,
                                             is_paid: m.is_paid,
                                         };
                                         // println!("{:?}", inner);
@@ -349,8 +452,8 @@ pub fn app_setup(
                                                 avatar_url, raw_avatar_url, username, bio,
                                                 created, role, badges,
                                                 github_id, discord_id, gitlab_id, google_id, steam_id, microsoft_id,
-                                                email_verified, password, totp_secret, paypal_id, paypal_country, paypal_email,
-                                                venmo_handle, stripe_customer_id,wiki_overtake_count,wiki_ban_time
+                                                email_verified, password, totp_secret,
+                                                stripe_customer_id,wiki_overtake_count,wiki_ban_time
                                             FROM users
                                             WHERE id = $1
                                             ",
@@ -369,6 +472,7 @@ pub fn app_setup(
                                                     microsoft_id: None,
                                                     bilibili_id: None,
                                                     qq_id: None,
+                                                    wechat_id: None,
                                                     email: None,
                                                     email_verified: true,
                                                     avatar_url: None,
@@ -379,10 +483,6 @@ pub fn app_setup(
                                                     role: u.role.clone(),
                                                     badges: Badges::from_bits(u.badges as u64).unwrap_or_default(),
                                                     password: None,
-                                                    paypal_id: None,
-                                                    paypal_country: None,
-                                                    paypal_email: None,
-                                                    venmo_handle: None,
                                                     stripe_customer_id: None,
                                                     totp_secret: None,
                                                     wiki_overtake_count: u.wiki_overtake_count,
@@ -706,6 +806,7 @@ pub fn app_setup(
         session_queue,
         payouts_queue,
         analytics_queue,
+        incentive_queue,
         active_sockets,
         automated_moderation_queue,
         rate_limiter: limiter,
@@ -737,6 +838,7 @@ pub fn app_config(
     .app_data(labrinth_config.payouts_queue.clone())
     .app_data(web::Data::new(labrinth_config.ip_salt.clone()))
     .app_data(web::Data::new(labrinth_config.analytics_queue.clone()))
+    .app_data(web::Data::new(labrinth_config.incentive_queue.clone()))
     .app_data(web::Data::new(labrinth_config.clickhouse.clone()))
     .app_data(labrinth_config.active_sockets.clone())
     .app_data(labrinth_config.automated_moderation_queue.clone())
@@ -840,14 +942,8 @@ pub fn check_env_vars() -> bool {
     failed |= check_var::<String>("QQ_CLIENT_ID");
     failed |= check_var::<String>("QQ_CLIENT_SECRET");
 
-    failed |= check_var::<String>("TREMENDOUS_API_URL");
-    failed |= check_var::<String>("TREMENDOUS_API_KEY");
-    failed |= check_var::<String>("TREMENDOUS_PRIVATE_KEY");
-
-    failed |= check_var::<String>("PAYPAL_API_URL");
-    failed |= check_var::<String>("PAYPAL_WEBHOOK_ID");
-    failed |= check_var::<String>("PAYPAL_CLIENT_ID");
-    failed |= check_var::<String>("PAYPAL_CLIENT_SECRET");
+    failed |= check_var::<String>("WECHAT_CLIENT_ID");
+    failed |= check_var::<String>("WECHAT_CLIENT_SECRET");
 
     failed |= check_var::<String>("HCAPTCHA_SECRET");
 

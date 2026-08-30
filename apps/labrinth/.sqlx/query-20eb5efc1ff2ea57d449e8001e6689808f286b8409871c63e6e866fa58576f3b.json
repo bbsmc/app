@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT user_id, payout_id AS \"payout_id!\"\n        FROM admin_payout_batch_orders\n        WHERE batch_id = $1 AND status = 'created'\n        ORDER BY user_id, chunk_index\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "payout_id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "20eb5efc1ff2ea57d449e8001e6689808f286b8409871c63e6e866fa58576f3b"
+}

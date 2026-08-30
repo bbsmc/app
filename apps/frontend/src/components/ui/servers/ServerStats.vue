@@ -207,7 +207,7 @@ const getPotentialWarning = (metric: (typeof metrics.value)[0]) => {
       return word.toLowerCase();
     })
     .join(" ");
-  let data = metric.data.at(-1) || 0;
+  let data = metric.data[metric.data.length - 1] || 0;
   if (userPreferences.value.ramAsNumber) {
     data = (props.data.current.ram_usage_bytes / props.data.current.ram_total_bytes) * 100;
   }
@@ -221,7 +221,7 @@ const getPotentialWarning = (metric: (typeof metrics.value)[0]) => {
 
 const generateOptions = (metric: (typeof metrics.value)[0]) => {
   let color = "var(--color-brand)";
-  let data = metric.data.at(-1) || 0;
+  let data = metric.data[metric.data.length - 1] || 0;
   if (userPreferences.value.ramAsNumber) {
     data = (props.data.current.ram_usage_bytes / props.data.current.ram_total_bytes) * 100;
   }

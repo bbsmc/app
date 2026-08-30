@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            SUM(amount) amount,\n            SUM(\n                CASE\n                    WHEN method = 'yunzhanghu_alipay' THEN 0\n                    ELSE COALESCE(fee, 0)\n                END\n            ) fee\n        FROM payouts\n        WHERE user_id = $1 AND (status = 'success' OR status = 'in-transit')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "fee",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "36314944e08ca3844e08f0b1ec1c14bf5f34e8dbb912b63977f0e65a0f5daf1e"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE payouts\n        SET status = 'cancelled',\n            admin_rejected_at = NOW(),\n            admin_rejected_by = $2,\n            admin_reject_reason = $3\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25b2c18d0e9546549490c6ba9e63169544cb25c443ef5f8e6a0989e4422cdb3b"
+}

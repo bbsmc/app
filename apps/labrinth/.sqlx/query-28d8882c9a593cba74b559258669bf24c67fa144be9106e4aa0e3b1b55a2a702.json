@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT lifetime_eff_downloads, pending_amount, settled_amount, voided_amount\n        FROM incentive_project_counters WHERE project_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lifetime_eff_downloads",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "pending_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "settled_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "voided_amount",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "28d8882c9a593cba74b559258669bf24c67fa144be9106e4aa0e3b1b55a2a702"
+}

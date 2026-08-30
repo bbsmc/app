@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO user_yunzhanghu_profiles (\n                user_id, real_name, real_name_encrypted, id_card_encrypted, id_card_last4,\n                phone, phone_encrypted, alipay_account, alipay_account_encrypted\n            )\n            VALUES ($1, NULL, $2, $3, $4, NULL, $5, NULL, $6)\n            ON CONFLICT (user_id) DO UPDATE SET\n                real_name = NULL,\n                real_name_encrypted = EXCLUDED.real_name_encrypted,\n                id_card_encrypted = EXCLUDED.id_card_encrypted,\n                id_card_last4 = EXCLUDED.id_card_last4,\n                phone = NULL,\n                phone_encrypted = EXCLUDED.phone_encrypted,\n                alipay_account = NULL,\n                alipay_account_encrypted = EXCLUDED.alipay_account_encrypted,\n                updated_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a53a4307d7d85000880aefb30c401222b47765bffba9f1122454a7de63d5c683"
+}

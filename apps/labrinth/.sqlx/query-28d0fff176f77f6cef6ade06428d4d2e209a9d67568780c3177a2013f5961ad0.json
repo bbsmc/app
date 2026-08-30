@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE user_yunzhanghu_profiles\n            SET sign_status = 'signed',\n                sign_url = NULL,\n                sign_nonce = NULL,\n                signed_at = $3,\n                terminated_at = NULL,\n                updated_at = NOW()\n            WHERE user_id = ANY($1::bigint[])\n              AND sign_status = 'signing'\n              AND sign_nonce = $2\n            RETURNING user_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "28d0fff176f77f6cef6ade06428d4d2e209a9d67568780c3177a2013f5961ad0"
+}

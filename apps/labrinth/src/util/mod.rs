@@ -19,3 +19,4 @@ pub mod routes;
 pub mod safe_path;
 pub mod validate;
 pub mod webhook;
+pub mod yunzhanghu;

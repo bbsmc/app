@@ -102,7 +102,11 @@ const auth = await useAuth();
 
 const [{ data: projects }] = await Promise.all([
   useAsyncData(`user/${auth.value.user.id}/projects`, () =>
-    useBaseFetch(`user/${auth.value.user.id}/projects`),
+    fetchPaginatedHits(({ page, limit }) =>
+      useBaseFetch(`user/${auth.value.user.id}/projects`, {
+        query: { page, limit },
+      }),
+    ),
   ),
 ]);
 

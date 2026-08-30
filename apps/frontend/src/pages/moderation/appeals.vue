@@ -367,7 +367,7 @@ const getBanTypeName = (type) => {
 };
 
 const formatDateTime = (date) => {
-  return app.$dayjs(date).format("YYYY-MM-DD HH:mm");
+  return app.$dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
 };
 
 const getUserName = (userId) => {

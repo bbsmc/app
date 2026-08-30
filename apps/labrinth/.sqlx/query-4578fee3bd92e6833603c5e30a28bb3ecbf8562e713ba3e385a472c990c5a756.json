@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO payouts_values (user_id, mod_id, amount, created, date_available)\n                VALUES ($1, $2, $3, NOW(), NOW())\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4578fee3bd92e6833603c5e30a28bb3ecbf8562e713ba3e385a472c990c5a756"
+}

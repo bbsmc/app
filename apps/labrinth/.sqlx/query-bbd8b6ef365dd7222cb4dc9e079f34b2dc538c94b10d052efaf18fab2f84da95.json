@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE user_yunzhanghu_profiles\n            SET sign_status = $2,\n                sign_url = CASE\n                    WHEN $2 = 'signing' THEN COALESCE($3, sign_url)\n                    ELSE NULL\n                END,\n                sign_nonce = CASE\n                    WHEN $2 = 'signing' THEN COALESCE($4, sign_nonce)\n                    ELSE NULL\n                END,\n                signed_at = $5,\n                terminated_at = $6,\n                updated_at = NOW()\n            WHERE user_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bbd8b6ef365dd7222cb4dc9e079f34b2dc538c94b10d052efaf18fab2f84da95"
+}

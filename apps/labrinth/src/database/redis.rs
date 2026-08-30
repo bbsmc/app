@@ -31,6 +31,23 @@ pub struct RedisConnection {
     meta_namespace: String,
 }
 
+async fn release_singleflight_lock(
+    connection: &mut deadpool_redis::Connection,
+    lock_key: &str,
+    lock_token: &str,
+) {
+    let _ = cmd("EVAL")
+        .arg(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then \
+             return redis.call('DEL', KEYS[1]) else return 0 end",
+        )
+        .arg(1)
+        .arg(lock_key)
+        .arg(lock_token)
+        .query_async::<i64>(connection)
+        .await;
+}
+
 impl RedisPool {
     // initiate a new redis pool
     // testing pool uses a hashmap to mimic redis behaviour for very small data sizes (ie: tests)
@@ -559,12 +576,12 @@ impl RedisPool {
         T: Serialize + DeserializeOwned,
     {
         let mut connection = self.connect().await?.connection;
-
         let key_str = key.to_string();
+        let cache_key =
+            format!("{}_{namespace}:{key_str}", self.meta_namespace);
 
-        // 尝试从缓存获取
         let cached = cmd("GET")
-            .arg(format!("{}_{namespace}:{key_str}", self.meta_namespace))
+            .arg(&cache_key)
             .query_async::<Option<String>>(&mut connection)
             .await?;
 
@@ -574,12 +591,10 @@ impl RedisPool {
             return Ok(value);
         }
 
-        // 如果缓存没有，调用闭包获取数据
         let value = closure().await?;
 
-        // 存入缓存
         cmd("SET")
-            .arg(format!("{}_{namespace}:{key_str}", self.meta_namespace))
+            .arg(cache_key)
             .arg(serde_json::to_string(&value)?)
             .arg("EX")
             .arg(DEFAULT_EXPIRY.to_string())
@@ -587,6 +602,131 @@ impl RedisPool {
             .await?;
 
         Ok(value)
+    }
+
+    pub async fn get_cached_key_singleflight_with_expiry<F, Fut, T>(
+        &self,
+        namespace: &str,
+        key: impl Display,
+        expiry_seconds: i64,
+        closure: F,
+    ) -> Result<T, DatabaseError>
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<T, DatabaseError>>,
+        T: Serialize + DeserializeOwned,
+    {
+        let key_str = key.to_string();
+        let cache_key =
+            format!("{}_{namespace}:{key_str}", self.meta_namespace);
+        let lock_key =
+            format!("{}_{namespace}:{key_str}/lock", self.meta_namespace);
+        let lock_token = uuid::Uuid::new_v4().to_string();
+        let mut closure = Some(closure);
+        let start = Utc::now();
+        let mut wait_time_ms = 50;
+
+        loop {
+            let mut connection = self.connect().await?.connection;
+
+            let cached = cmd("GET")
+                .arg(&cache_key)
+                .query_async::<Option<String>>(&mut connection)
+                .await?;
+
+            if let Some(cached) = cached
+                && let Ok(value) = serde_json::from_str::<T>(&cached)
+            {
+                return Ok(value);
+            }
+
+            let acquired = cmd("SET")
+                .arg(&lock_key)
+                .arg(&lock_token)
+                .arg("NX")
+                .arg("EX")
+                .arg(60)
+                .query_async::<Option<String>>(&mut connection)
+                .await?
+                .is_some();
+
+            if acquired {
+                drop(connection);
+
+                let result = closure
+                    .take()
+                    .expect("cache fill closure should only run once")(
+                )
+                .await;
+
+                let mut connection = self.connect().await?.connection;
+                match result {
+                    Ok(value) => {
+                        let serialized = match serde_json::to_string(&value) {
+                            Ok(serialized) => serialized,
+                            Err(error) => {
+                                release_singleflight_lock(
+                                    &mut connection,
+                                    &lock_key,
+                                    &lock_token,
+                                )
+                                .await;
+                                return Err(error.into());
+                            }
+                        };
+
+                        let cache_result = cmd("SET")
+                            .arg(&cache_key)
+                            .arg(serialized)
+                            .arg("EX")
+                            .arg(expiry_seconds.to_string())
+                            .query_async::<()>(&mut connection)
+                            .await;
+
+                        if let Err(error) = cache_result {
+                            release_singleflight_lock(
+                                &mut connection,
+                                &lock_key,
+                                &lock_token,
+                            )
+                            .await;
+                            return Err(error.into());
+                        }
+
+                        release_singleflight_lock(
+                            &mut connection,
+                            &lock_key,
+                            &lock_token,
+                        )
+                        .await;
+                        return Ok(value);
+                    }
+                    Err(error) => {
+                        release_singleflight_lock(
+                            &mut connection,
+                            &lock_key,
+                            &lock_token,
+                        )
+                        .await;
+                        return Err(error);
+                    }
+                }
+            }
+
+            let spinning = Utc::now() - start;
+            if spinning > chrono::Duration::seconds(5) {
+                return Err(DatabaseError::CacheTimeout {
+                    locks_released: 0,
+                    locks_waiting: 1,
+                    time_spent_pool_wait_ms: 0,
+                    time_spent_total_ms: spinning.num_milliseconds().max(0)
+                        as u64,
+                });
+            }
+
+            tokio::time::sleep(Duration::from_millis(wait_time_ms)).await;
+            wait_time_ms = (wait_time_ms * 2).min(1000);
+        }
     }
 }
 

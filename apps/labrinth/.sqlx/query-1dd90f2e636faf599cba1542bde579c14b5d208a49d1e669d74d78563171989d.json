@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COUNT(*) as \"total!\",\n            COALESCE(SUM(m.downloads), 0)::bigint as \"total_downloads!\"\n        FROM mods m\n        WHERE m.organization_id = $1\n            AND (\n                m.status = ANY($2::text[])\n                OR $3\n                OR (\n                    $4::bigint IS NOT NULL\n                    AND EXISTS (\n                        SELECT 1\n                        FROM team_members current_tm\n                        LEFT JOIN organizations o\n                            ON o.team_id = current_tm.team_id\n                        WHERE current_tm.user_id = $4\n                            AND current_tm.accepted = TRUE\n                            AND (\n                                current_tm.team_id = m.team_id\n                                OR o.id = m.organization_id\n                            )\n                    )\n                )\n            )\n            AND (\n                $5::text IS NULL\n                OR EXISTS (\n                    SELECT 1\n                    FROM versions v\n                    INNER JOIN loaders_versions lv ON lv.version_id = v.id\n                    INNER JOIN loaders_project_types lpt\n                        ON lpt.joining_loader_id = lv.loader_id\n                    INNER JOIN project_types pt\n                        ON pt.id = lpt.joining_project_type_id\n                    WHERE v.mod_id = m.id\n                        AND v.status = ANY($6::text[])\n                        AND pt.name = $5\n                )\n            )\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_downloads!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray",
+        "Bool",
+        "Int8",
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "1dd90f2e636faf599cba1542bde579c14b5d208a49d1e669d74d78563171989d"
+}

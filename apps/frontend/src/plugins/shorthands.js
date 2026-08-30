@@ -1,4 +1,7 @@
 import { getProjectTypeForUrlShorthand } from "~/helpers/projects.js";
+import { formatMoney } from "~/utils/format-money.js";
+
+export { formatMoney };
 
 export default defineNuxtPlugin((nuxtApp) => {
   const tagStore = useTags();
@@ -138,24 +141,6 @@ export const formatNumber = (number, abbreviate = true) => {
   }
 };
 
-export const formatMoney = (number, abbreviate = false) => {
-  number = Math.floor(number * 100) / 100;
-  const x = +number;
-  if (x >= 1000000 && abbreviate) {
-    return "$" + (x / 1000000).toFixed(2).toString() + "M";
-  } else if (x >= 10000 && abbreviate) {
-    return "$" + (x / 1000).toFixed(2).toString() + "k";
-  } else {
-    return (
-      "$" +
-      x
-        .toFixed(2)
-        .toString()
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-    );
-  }
-};
-
 export const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) {
     return "0 Bytes";
@@ -175,9 +160,6 @@ export const capitalizeString = (name) => {
 };
 
 export const formatWallet = (name) => {
-  if (name === "paypal") {
-    return "PayPal";
-  }
   return capitalizeString(name);
 };
 

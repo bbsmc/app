@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT DISTINCT version_id, f.url,f.platform, f.display\n                    FROM disk_urls f\n                    WHERE f.version_id = ANY($1)\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "platform",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "display",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2cfd300b80601de45ed5933048cb8f913429865f9df80f51f1ed56fe0b6a6424"
+}

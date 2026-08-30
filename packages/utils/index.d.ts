@@ -187,9 +187,6 @@ declare global {
 
   interface PayoutData {
     balance: number
-    payout_wallet: 'paypal' | 'venmo'
-    payout_wallet_type: 'email' | 'phone' | 'user_handle'
-    payout_address: string
   }
 
   type UserRole = 'admin' | 'moderator' | 'pyro' | 'developer'

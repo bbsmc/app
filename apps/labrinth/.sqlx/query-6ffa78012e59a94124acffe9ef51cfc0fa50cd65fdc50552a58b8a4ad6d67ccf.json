@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO incentive_applications\n            (project_id, applicant_user_id, reason, status, thread_id)\n        VALUES ($1, $2, $3, 'pending', $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6ffa78012e59a94124acffe9ef51cfc0fa50cd65fdc50552a58b8a4ad6d67ccf"
+}

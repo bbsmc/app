@@ -23,3 +23,15 @@ pub fn strip_ip(ip: Ipv6Addr) -> u64 {
         ])
     }
 }
+
+/// 把 IP 转为激励系统去重身份字符串：
+/// IPv4 取完整 32 位；IPv6 取前 64 位（一条 ISP 线路 = 一个身份）。
+pub fn ip_to_identity_64(ip: Ipv6Addr) -> String {
+    if let Some(v4) = ip.to_ipv4_mapped() {
+        let o = v4.octets();
+        format!("ip4_{}.{}.{}.{}", o[0], o[1], o[2], o[3])
+    } else {
+        let s = ip.segments();
+        format!("ip6_{:x}:{:x}:{:x}:{:x}", s[0], s[1], s[2], s[3])
+    }
+}

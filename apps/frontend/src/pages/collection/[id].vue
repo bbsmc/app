@@ -30,7 +30,7 @@
                   <span class="icon-edit-menu">
                     <FileInput
                       id="project-icon"
-                      :max-size="262144"
+                      :max-size="1048576"
                       :show-icon="true"
                       accept="image/png,image/jpeg,image/gif,image/webp"
                       class="btn btn-transparent upload"

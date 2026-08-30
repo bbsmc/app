@@ -20,13 +20,24 @@ pub struct Payout {
     #[serde(with = "rust_decimal::serde::float_option")]
     pub fee: Option<Decimal>,
     pub method: Option<PayoutMethodType>,
-    /// the address this payout was sent to: ex: email, paypal email, venmo handle
+    /// 提现接收地址脱敏值（如支付宝手机号/邮箱等，原值只在后端支付流程中使用）
     pub method_address: Option<String>,
     pub platform_id: Option<String>,
+    /// 用户可见的退回/失败原因。
+    pub reject_reason: Option<String>,
+    /// 云账户成功订单回填的用户侧实际服务费/税费信息。
+    pub yunzhanghu_details: Option<PayoutYunzhanghuDetails>,
 }
 
 impl Payout {
     pub fn from(data: crate::database::models::payout_item::Payout) -> Self {
+        Self::from_with_yunzhanghu_details(data, None)
+    }
+
+    pub fn from_with_yunzhanghu_details(
+        data: crate::database::models::payout_item::Payout,
+        yunzhanghu_details: Option<PayoutYunzhanghuDetails>,
+    ) -> Self {
         Self {
             id: data.id.into(),
             user_id: data.user_id.into(),
@@ -35,18 +46,134 @@ impl Payout {
             amount: data.amount,
             fee: data.fee,
             method: data.method,
-            method_address: data.method_address,
+            method_address: mask_payout_method_address(
+                data.method,
+                data.method_address.as_deref(),
+            ),
             platform_id: data.platform_id,
+            reject_reason: match data.status {
+                PayoutStatus::Cancelled | PayoutStatus::Failed => {
+                    data.admin_reject_reason
+                }
+                _ => None,
+            },
+            yunzhanghu_details,
         }
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PayoutYunzhanghuDetails {
+    #[serde(with = "rust_decimal::serde::float")]
+    pub received_amount: Decimal,
+    #[serde(with = "rust_decimal::serde::float")]
+    pub service_fee: Decimal,
+    #[serde(with = "rust_decimal::serde::float")]
+    pub tax: Decimal,
+}
+
+fn mask_payout_method_address(
+    method: Option<PayoutMethodType>,
+    address: Option<&str>,
+) -> Option<String> {
+    let address = address?.trim();
+    if address.is_empty() {
+        return None;
+    }
+
+    Some(match method {
+        Some(PayoutMethodType::YunzhanghuAlipay) => {
+            mask_alipay_account(address)
+        }
+        _ => mask_generic_identifier(address),
+    })
+}
+
+fn mask_alipay_account(account: &str) -> String {
+    if account.chars().all(|c| c.is_ascii_digit())
+        && account.chars().count() >= 7
+    {
+        return mask_keep_edges(account, 3, 4);
+    }
+
+    if let Some((local, domain)) = account.split_once('@') {
+        let first = local.chars().next().unwrap_or('*');
+        return format!("{}***@{}", first, domain);
+    }
+
+    mask_generic_identifier(account)
+}
+
+fn mask_generic_identifier(value: &str) -> String {
+    let len = value.chars().count();
+    if len <= 4 {
+        return "*".repeat(len.max(1));
+    }
+    mask_keep_edges(value, 2, 2)
+}
+
+fn mask_keep_edges(
+    value: &str,
+    prefix_len: usize,
+    suffix_len: usize,
+) -> String {
+    let chars = value.chars().collect::<Vec<_>>();
+    if chars.len() <= prefix_len + suffix_len {
+        return "*".repeat(chars.len().max(1));
+    }
+
+    let prefix = chars.iter().take(prefix_len).collect::<String>();
+    let suffix = chars
+        .iter()
+        .skip(chars.len() - suffix_len)
+        .collect::<String>();
+    format!("{prefix}****{suffix}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn masks_yunzhanghu_alipay_phone() {
+        assert_eq!(
+            mask_payout_method_address(
+                Some(PayoutMethodType::YunzhanghuAlipay),
+                Some("13812345678")
+            ),
+            Some("138****5678".to_string())
+        );
+    }
+
+    #[test]
+    fn masks_yunzhanghu_alipay_email() {
+        assert_eq!(
+            mask_payout_method_address(
+                Some(PayoutMethodType::YunzhanghuAlipay),
+                Some("alice@example.com")
+            ),
+            Some("a***@example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn hides_short_addresses() {
+        assert_eq!(
+            mask_payout_method_address(
+                Some(PayoutMethodType::YunzhanghuAlipay),
+                Some("abcd")
+            ),
+            Some("****".to_string())
+        );
+    }
+}
+
 #[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Debug)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum PayoutMethodType {
-    Venmo,
-    PayPal,
-    Tremendous,
+    /// 云账户 - 支付宝实时支付
+    YunzhanghuAlipay,
+    /// 未知 / 历史遗留
     Unknown,
 }
 
@@ -59,18 +186,14 @@ impl std::fmt::Display for PayoutMethodType {
 impl PayoutMethodType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            PayoutMethodType::Venmo => "venmo",
-            PayoutMethodType::PayPal => "paypal",
-            PayoutMethodType::Tremendous => "tremendous",
+            PayoutMethodType::YunzhanghuAlipay => "yunzhanghu_alipay",
             PayoutMethodType::Unknown => "unknown",
         }
     }
 
-    pub fn from_string(string: &str) -> PayoutMethodType {
-        match string {
-            "venmo" => PayoutMethodType::Venmo,
-            "paypal" => PayoutMethodType::PayPal,
-            "tremendous" => PayoutMethodType::Tremendous,
+    pub fn from_string(s: &str) -> PayoutMethodType {
+        match s {
+            "yunzhanghu_alipay" => PayoutMethodType::YunzhanghuAlipay,
             _ => PayoutMethodType::Unknown,
         }
     }

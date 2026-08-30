@@ -336,9 +336,9 @@ const getLanguageName = (code) => {
   return languages[code] || code;
 };
 
-// 格式化日期时间
+// 格式化日期时间（强制北京时间）
 const formatDateTime = (date) => {
-  return app.$dayjs(date).format("YYYY-MM-DD HH:mm");
+  return app.$dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
 };
 
 // 获取翻译链接列表

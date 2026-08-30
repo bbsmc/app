@@ -23,7 +23,6 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, patch, post, web};
 use actix_ws::Closed;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use base64::Engine;
 use chrono::{Duration, Utc};
 use rand::Rng;
 use rand_chacha::ChaCha20Rng;
@@ -80,7 +79,8 @@ impl TempUser {
         client: &PgPool,
         file_host: &Arc<dyn FileHost + Send + Sync>,
         redis: &RedisPool,
-    ) -> Result<crate::database::models::UserId, AuthenticationError> {
+    ) -> Result<(crate::database::models::UserId, String), AuthenticationError>
+    {
         if let Some(email) = &self.email
             && crate::database::models::User::get_email(email, client)
                 .await?
@@ -247,6 +247,7 @@ impl TempUser {
         }
 
         if let Some(username) = username {
+            let username_for_cache = username.clone();
             crate::database::models::User {
                 id: user_id,
                 github_id: if provider == AuthProvider::GitHub {
@@ -305,19 +306,12 @@ impl TempUser {
                 } else {
                     None
                 },
+                wechat_id: if provider == AuthProvider::WeChat {
+                    Some(self.id.clone())
+                } else {
+                    None
+                },
                 password: None,
-                paypal_id: if provider == AuthProvider::PayPal {
-                    Some(self.id)
-                } else {
-                    None
-                },
-                paypal_country: self.country,
-                paypal_email: if provider == AuthProvider::PayPal {
-                    self.email.clone()
-                } else {
-                    None
-                },
-                venmo_handle: None,
                 stripe_customer_id: None,
                 totp_secret: None,
                 username,
@@ -376,7 +370,7 @@ impl TempUser {
                 }
             }
 
-            Ok(user_id)
+            Ok((user_id, username_for_cache))
         } else {
             Err(AuthenticationError::InvalidCredentials)
         }
@@ -460,23 +454,6 @@ impl AuthProvider {
                     "http://specs.openid.net/auth/2.0/identifier_select",
                 )
             }
-            AuthProvider::PayPal => {
-                let api_url = dotenvy::var("PAYPAL_API_URL")?;
-                let client_id = dotenvy::var("PAYPAL_CLIENT_ID")?;
-
-                let auth_url = if api_url.contains("sandbox") {
-                    "sandbox.paypal.com"
-                } else {
-                    "paypal.com"
-                };
-
-                format!(
-                    "https://{auth_url}/connect?flowEntry=static&client_id={client_id}&scope={}&response_type=code&redirect_uri={redirect_uri}&state={state}",
-                    urlencoding::encode(
-                        "openid email address https://uri.paypal.com/services/paypalattributes"
-                    ),
-                )
-            }
             AuthProvider::Bilibili => {
                 let client_id = dotenvy::var("BILIBILI_CLIENT_ID")?;
                 let raw_gourl =
@@ -493,6 +470,14 @@ impl AuthProvider {
 
                 format!(
                     "https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id={}&redirect_uri={}&state={}&scope=get_user_info",
+                    client_id, redirect_uri, state,
+                )
+            }
+            AuthProvider::WeChat => {
+                let client_id = dotenvy::var("WECHAT_CLIENT_ID")?;
+
+                format!(
+                    "https://open.weixin.qq.com/connect/qrconnect?appid={}&redirect_uri={}&response_type=code&scope=snsapi_login&state={}&lang=cn#wechat_redirect",
                     client_id, redirect_uri, state,
                 )
             }
@@ -690,37 +675,6 @@ impl AuthProvider {
                     return Err(AuthenticationError::InvalidCredentials);
                 }
             }
-            AuthProvider::PayPal => {
-                let code = query
-                    .get("code")
-                    .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
-                let api_url = dotenvy::var("PAYPAL_API_URL")?;
-                let client_id = dotenvy::var("PAYPAL_CLIENT_ID")?;
-                let client_secret = dotenvy::var("PAYPAL_CLIENT_SECRET")?;
-
-                let mut map = HashMap::new();
-                map.insert("code", code.as_str());
-                map.insert("grant_type", "authorization_code");
-
-                let token: AccessToken = reqwest::Client::new()
-                    .post(format!("{api_url}oauth2/token"))
-                    .header(reqwest::header::ACCEPT, "application/json")
-                    .header(
-                        AUTHORIZATION,
-                        format!(
-                            "Basic {}",
-                            base64::engine::general_purpose::STANDARD
-                                .encode(format!("{client_id}:{client_secret}"))
-                        ),
-                    )
-                    .form(&map)
-                    .send()
-                    .await?
-                    .json()
-                    .await?;
-
-                token.access_token
-            }
             AuthProvider::Bilibili => {
                 let code = query
                     .get("code")
@@ -804,6 +758,63 @@ impl AuthProvider {
 
                 resp.access_token
                     .ok_or(AuthenticationError::InvalidCredentials)?
+            }
+            AuthProvider::WeChat => {
+                let code = query
+                    .get("code")
+                    .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+                let client_id = dotenvy::var("WECHAT_CLIENT_ID")?;
+                let client_secret = dotenvy::var("WECHAT_CLIENT_SECRET")?;
+
+                let raw_resp = reqwest::Client::new()
+                    .get("https://api.weixin.qq.com/sns/oauth2/access_token")
+                    .query(&[
+                        ("appid", client_id.as_str()),
+                        ("secret", client_secret.as_str()),
+                        ("code", code.as_str()),
+                        ("grant_type", "authorization_code"),
+                    ])
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .text()
+                    .await?;
+
+                log::debug!("WeChat token response length: {}", raw_resp.len());
+
+                #[derive(Deserialize)]
+                struct WeChatTokenResp {
+                    pub access_token: Option<String>,
+                    pub openid: Option<String>,
+                    pub errcode: Option<i64>,
+                    pub errmsg: Option<String>,
+                }
+
+                #[derive(Serialize)]
+                struct WeChatToken {
+                    pub access_token: String,
+                    pub openid: String,
+                }
+
+                let resp: WeChatTokenResp = serde_json::from_str(&raw_resp)?;
+
+                if resp.errcode.unwrap_or(0) != 0 {
+                    log::warn!(
+                        "WeChat token exchange failed with code: {:?}, message: {:?}",
+                        resp.errcode,
+                        resp.errmsg
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                serde_json::to_string(&WeChatToken {
+                    access_token: resp
+                        .access_token
+                        .ok_or(AuthenticationError::InvalidCredentials)?,
+                    openid: resp
+                        .openid
+                        .ok_or(AuthenticationError::InvalidCredentials)?,
+                })?
             }
         };
 
@@ -1035,47 +1046,6 @@ impl AuthProvider {
                     return Err(AuthenticationError::InvalidCredentials);
                 }
             }
-            AuthProvider::PayPal => {
-                #[derive(Deserialize, Debug)]
-                pub struct PayPalUser {
-                    pub payer_id: String,
-                    pub email: String,
-                    pub picture: Option<String>,
-                    pub address: PayPalAddress,
-                }
-
-                #[derive(Deserialize, Debug)]
-                pub struct PayPalAddress {
-                    pub country: String,
-                }
-
-                let api_url = dotenvy::var("PAYPAL_API_URL")?;
-
-                let paypal_user: PayPalUser = reqwest::Client::new()
-                    .get(format!(
-                        "{api_url}identity/openidconnect/userinfo?schema=openid"
-                    ))
-                    .header(reqwest::header::USER_AGENT, "Modrinth")
-                    .header(AUTHORIZATION, format!("Bearer {token}"))
-                    .send()
-                    .await?
-                    .json()
-                    .await?;
-
-                TempUser {
-                    id: paypal_user.payer_id,
-                    username: paypal_user
-                        .email
-                        .split('@')
-                        .next()
-                        .unwrap_or_default()
-                        .to_string(),
-                    email: Some(paypal_user.email),
-                    avatar_url: paypal_user.picture,
-                    bio: None,
-                    country: Some(paypal_user.address.country),
-                }
-            }
             AuthProvider::Bilibili => {
                 use hmac::{Hmac, Mac};
                 use sha2::Sha256;
@@ -1246,6 +1216,80 @@ impl AuthProvider {
                     country: None,
                 }
             }
+            AuthProvider::WeChat => {
+                #[derive(Deserialize)]
+                struct WeChatToken {
+                    pub access_token: String,
+                    pub openid: String,
+                }
+
+                let token_data: WeChatToken = serde_json::from_str(token)?;
+
+                #[derive(Deserialize, Debug)]
+                struct WeChatUserInfo {
+                    pub openid: Option<String>,
+                    pub nickname: Option<String>,
+                    pub headimgurl: Option<String>,
+                    pub errcode: Option<i64>,
+                    pub errmsg: Option<String>,
+                }
+
+                let raw_resp = reqwest::Client::new()
+                    .get("https://api.weixin.qq.com/sns/userinfo")
+                    .query(&[
+                        ("access_token", token_data.access_token.as_str()),
+                        ("openid", token_data.openid.as_str()),
+                        ("lang", "zh_CN"),
+                    ])
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .text()
+                    .await?;
+
+                log::debug!(
+                    "WeChat user info response length: {}",
+                    raw_resp.len()
+                );
+
+                let user_info: WeChatUserInfo =
+                    serde_json::from_str(&raw_resp)?;
+
+                if user_info.errcode.unwrap_or(0) != 0 {
+                    log::warn!(
+                        "WeChat user info failed with code: {:?}, message: {:?}",
+                        user_info.errcode,
+                        user_info.errmsg
+                    );
+                    return Err(AuthenticationError::InvalidCredentials);
+                }
+
+                let openid = match user_info.openid {
+                    Some(openid) if openid == token_data.openid => openid,
+                    Some(openid) => {
+                        log::warn!(
+                            "WeChat user info openid mismatch: token={}, userinfo={}",
+                            token_data.openid,
+                            openid
+                        );
+                        return Err(AuthenticationError::InvalidCredentials);
+                    }
+                    None => token_data.openid,
+                };
+                let avatar_url =
+                    user_info.headimgurl.filter(|url| !url.trim().is_empty());
+
+                TempUser {
+                    id: openid,
+                    username: user_info
+                        .nickname
+                        .unwrap_or_else(|| "wechat_user".to_string()),
+                    email: None,
+                    avatar_url,
+                    bio: None,
+                    country: None,
+                }
+            }
         };
 
         Ok(res)
@@ -1324,16 +1368,6 @@ impl AuthProvider {
 
                 value.map(|x| crate::database::models::UserId(x.id))
             }
-            AuthProvider::PayPal => {
-                let value = sqlx::query!(
-                    "SELECT id FROM users WHERE paypal_id = $1",
-                    id
-                )
-                .fetch_optional(executor)
-                .await?;
-
-                value.map(|x| crate::database::models::UserId(x.id))
-            }
             AuthProvider::Bilibili => {
                 let value = sqlx::query!(
                     "SELECT id FROM users WHERE bilibili_id = $1",
@@ -1349,6 +1383,16 @@ impl AuthProvider {
                     sqlx::query!("SELECT id FROM users WHERE qq_id = $1", id)
                         .fetch_optional(executor)
                         .await?;
+
+                value.map(|x| crate::database::models::UserId(x.id))
+            }
+            AuthProvider::WeChat => {
+                let value = sqlx::query!(
+                    "SELECT id FROM users WHERE wechat_id = $1",
+                    id
+                )
+                .fetch_optional(executor)
+                .await?;
 
                 value.map(|x| crate::database::models::UserId(x.id))
             }
@@ -1440,32 +1484,6 @@ impl AuthProvider {
                 .execute(&mut **transaction)
                 .await?;
             }
-            AuthProvider::PayPal => {
-                if id.is_none() {
-                    sqlx::query!(
-                        "
-                        UPDATE users
-                        SET paypal_country = NULL, paypal_email = NULL, paypal_id = NULL
-                        WHERE (id = $1)
-                        ",
-                        user_id as crate::database::models::UserId,
-                    )
-                    .execute(&mut **transaction)
-                    .await?;
-                } else {
-                    sqlx::query!(
-                        "
-                        UPDATE users
-                        SET paypal_id = $2
-                        WHERE (id = $1)
-                        ",
-                        user_id as crate::database::models::UserId,
-                        id,
-                    )
-                    .execute(&mut **transaction)
-                    .await?;
-                }
-            }
             AuthProvider::Bilibili => {
                 sqlx::query!(
                     "
@@ -1492,6 +1510,19 @@ impl AuthProvider {
                 .execute(&mut **transaction)
                 .await?;
             }
+            AuthProvider::WeChat => {
+                sqlx::query!(
+                    "
+                    UPDATE users
+                    SET wechat_id = $2
+                    WHERE (id = $1)
+                    ",
+                    user_id as crate::database::models::UserId,
+                    id,
+                )
+                .execute(&mut **transaction)
+                .await?;
+            }
         }
 
         Ok(())
@@ -1505,9 +1536,9 @@ impl AuthProvider {
             AuthProvider::GitLab => "GitLab",
             AuthProvider::Google => "Google",
             AuthProvider::Steam => "Steam",
-            AuthProvider::PayPal => "PayPal",
             AuthProvider::Bilibili => "Bilibili",
             AuthProvider::QQ => "QQ",
+            AuthProvider::WeChat => "微信",
         }
     }
 }
@@ -1518,6 +1549,8 @@ pub struct AuthorizationInit {
     #[serde(default)]
     pub provider: AuthProvider,
     pub token: Option<String>,
+    #[serde(default)]
+    pub return_url: bool,
 }
 #[derive(Serialize, Deserialize)]
 pub struct Authorization {
@@ -1572,9 +1605,13 @@ pub async fn init(
     .await?;
 
     let url = info.provider.get_redirect_url(state)?;
-    Ok(HttpResponse::TemporaryRedirect()
-        .append_header(("Location", &*url))
-        .json(serde_json::json!({ "url": url })))
+    if info.return_url {
+        Ok(HttpResponse::Ok().json(serde_json::json!({ "url": url })))
+    } else {
+        Ok(HttpResponse::TemporaryRedirect()
+            .append_header(("Location", &*url))
+            .json(serde_json::json!({ "url": url })))
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -1671,21 +1708,7 @@ pub async fn auth_callback(
 
                 let user = crate::database::models::User::get_id(id, &**client, &redis).await?;
 
-                if provider == AuthProvider::PayPal  {
-                    sqlx::query!(
-                        "
-                        UPDATE users
-                        SET paypal_country = $1, paypal_email = $2, paypal_id = $3
-                        WHERE (id = $4)
-                        ",
-                        oauth_user.country,
-                        oauth_user.email,
-                        oauth_user.id,
-                        id as crate::database::models::ids::UserId,
-                    )
-                        .execute(&mut *transaction)
-                        .await?;
-                } else if let Some(email) = user.and_then(|x| x.email) {
+                if let Some(email) = user.and_then(|x| x.email) {
                     send_email(
                         email,
                         "已添加身份验证方法",
@@ -1706,6 +1729,7 @@ pub async fn auth_callback(
                     Err(AuthenticationError::InvalidCredentials)
                 }
             } else {
+                let mut new_account_username = None;
                 let user_id = if let Some(user_id) = user_id_opt {
                     let user = crate::database::models::User::get_id(user_id, &**client, &redis)
                         .await?
@@ -1759,11 +1783,20 @@ pub async fn auth_callback(
 
                     user_id
                 } else {
-                    oauth_user.create_account(provider, &mut transaction, &client, &file_host, &redis).await?
+                    let (user_id, username) = oauth_user.create_account(provider, &mut transaction, &client, &file_host, &redis).await?;
+                    new_account_username = Some(username);
+                    user_id
                 };
 
                 let session = issue_session(req, user_id, &mut transaction, &redis).await?;
                 transaction.commit().await?;
+                if let Some(username) = new_account_username {
+                    crate::database::models::User::clear_caches(
+                        &[(user_id, Some(username))],
+                        &redis,
+                    )
+                    .await?;
+                }
 
                 if let Some(url) = url {
                     let redirect_url = format!(
@@ -1883,9 +1916,7 @@ pub async fn delete_auth_provider(
         .update_user_id(user.id.into(), None, &mut transaction)
         .await?;
 
-    if delete_provider.provider != AuthProvider::PayPal
-        && let Some(email) = user.email
-    {
+    if let Some(email) = user.email {
         send_email(
             email,
             "身份验证方法已移除",
@@ -2031,11 +2062,8 @@ pub async fn create_account_with_password(
         microsoft_id: None,
         bilibili_id: None,
         qq_id: None,
+        wechat_id: None,
         password: Some(password_hash),
-        paypal_id: None,
-        paypal_country: None,
-        paypal_email: None,
-        venmo_handle: None,
         stripe_customer_id: None,
         totp_secret: None,
         username: new_account.username.clone(),
@@ -2079,6 +2107,11 @@ pub async fn create_account_with_password(
     }
 
     transaction.commit().await?;
+    crate::database::models::User::clear_caches(
+        &[(user_id, Some(new_account.username.clone()))],
+        &redis,
+    )
+    .await?;
 
     Ok(HttpResponse::Ok().json(res))
 }
@@ -2873,7 +2906,10 @@ pub async fn change_password(
                 || user.microsoft_id.is_some()
                 || user.google_id.is_some()
                 || user.steam_id.is_some()
-                || user.discord_id.is_some())
+                || user.discord_id.is_some()
+                || user.bilibili_id.is_some()
+                || user.qq_id.is_some()
+                || user.wechat_id.is_some())
             {
                 return Err(ApiError::InvalidInput(
                     "移除密码登录前，必须先添加其他身份验证方式！".to_string(),

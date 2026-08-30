@@ -67,6 +67,12 @@ zxcvbn.workspace = true
 totp-rs.workspace = true
 ring.workspace = true
 
+# 云账户对接专用
+des.workspace = true
+cbc.workspace = true
+cipher.workspace = true
+rsa.workspace = true
+
 # URL 处理
 url.workspace = true
 urlencoding.workspace = true

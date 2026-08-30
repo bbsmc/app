@@ -107,15 +107,15 @@ export const formatNumber = (number, abbreviate = true) => {
 export function formatMoney(number, abbreviate = false) {
   const x = Number(number)
   if (x >= 100000000 && abbreviate) {
-    return `$${(x / 100000000).toFixed(2).toString()}亿`
+    return `¥${(x / 100000000).toFixed(2).toString()}亿`
   } else if (x >= 10000000 && abbreviate) {
-    return `$${(x / 10000000).toFixed(2).toString()}千万`
+    return `¥${(x / 10000000).toFixed(2).toString()}千万`
   } else if (x >= 1000000 && abbreviate) {
-    return `$${(x / 1000000).toFixed(2).toString()}百万`
+    return `¥${(x / 1000000).toFixed(2).toString()}百万`
   } else if (x >= 100000 && abbreviate) {
-    return `$${(x / 10000).toFixed(2).toString()}万`
+    return `¥${(x / 10000).toFixed(2).toString()}万`
   }
-  return `$${x
+  return `¥${x
     .toFixed(2)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
@@ -154,9 +154,6 @@ export const localString = (name) => {
 }
 
 export const formatWallet = (name) => {
-  if (name === 'paypal') {
-    return 'PayPal'
-  }
   return capitalizeString(name)
 }
 

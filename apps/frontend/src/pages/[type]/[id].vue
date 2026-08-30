@@ -101,6 +101,15 @@
           >
             <UsersIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem
+            v-if="canViewIncentiveSettings"
+            :link="`/${project.project_type}/${
+              project.slug ? project.slug : project.id
+            }/settings/incentive`"
+            label="创作者激励"
+          >
+            <CurrencyIcon aria-hidden="true" />
+          </NavStackItem>
           <h3>视图</h3>
           <NavStackItem
             :link="`/${project.project_type}/${
@@ -601,18 +610,21 @@
               v-if="filteredRelease"
               :version="filteredRelease"
               @on-download="onDownload"
+              @on-disk-qr="onDiskQrDownload"
               @on-navigate="downloadModal.hide"
             />
             <VersionSummary
               v-if="filteredBeta"
               :version="filteredBeta"
               @on-download="onDownload"
+              @on-disk-qr="onDiskQrDownload"
               @on-navigate="downloadModal.hide"
             />
             <VersionSummary
               v-if="filteredAlpha"
               :version="filteredAlpha"
               @on-download="onDownload"
+              @on-disk-qr="onDiskQrDownload"
               @on-navigate="downloadModal.hide"
             />
             <p
@@ -683,7 +695,7 @@
           </div>
 
           <!-- 服务器推荐 -->
-          <ServerPromo v-if="projectAffKey" @navigate="navigateToServer" />
+          <ServerPromo v-if="showServerPromotion" @navigate="navigateToServer" />
         </div>
       </template>
     </NewModal>
@@ -782,12 +794,8 @@
                 购买
               </button>
             </ButtonStyled>
-            <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
-              <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
-                <ServerIcon aria-hidden="true" />
-                联机
-              </nuxt-link>
-              <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+            <ButtonStyled v-if="showServerPromotion" size="large" color="purple" type="transparent">
+              <nuxt-link :to="serverPromotionLink" target="_blank">
                 <ServerIcon aria-hidden="true" />
                 联机
               </nuxt-link>
@@ -979,12 +987,13 @@
                 </button>
               </ButtonStyled>
 
-              <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
-                <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
-                  <ServerIcon aria-hidden="true" />
-                  联机搭建
-                </nuxt-link>
-                <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+              <ButtonStyled
+                v-if="showServerPromotion"
+                size="large"
+                color="purple"
+                type="transparent"
+              >
+                <nuxt-link :to="serverPromotionLink" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
@@ -1013,12 +1022,13 @@
                 </button>
               </ButtonStyled>
 
-              <ButtonStyled v-if="projectAffKey" size="large" color="purple" type="transparent">
-                <nuxt-link v-if="projectAffKey === 'pcl'" :to="`/pcl`" target="_blank">
-                  <ServerIcon aria-hidden="true" />
-                  联机搭建
-                </nuxt-link>
-                <nuxt-link v-else :to="`/server?aff=${projectAffKey}`" target="_blank">
+              <ButtonStyled
+                v-if="showServerPromotion"
+                size="large"
+                color="purple"
+                type="transparent"
+              >
+                <nuxt-link :to="serverPromotionLink" target="_blank">
                   <ServerIcon aria-hidden="true" />
                   联机搭建
                 </nuxt-link>
@@ -1344,17 +1354,19 @@
           <section v-for="(items, header) in categoriesByHeader" :key="header">
             <h3>{{ header }}</h3>
             <div class="tag-list">
-              <div
-                v-for="item in items"
-                :key="`cat-${header}-${item.name}`"
-                class="tag-list__item"
-              >
+              <div v-for="item in items" :key="`cat-${header}-${item.name}`" class="tag-list__item">
                 <svg v-if="item.icon" v-html="item.icon"></svg>
                 {{ formatCategory(item.name) }}
               </div>
             </div>
           </section>
         </div>
+
+        <ResourcePromoAd
+          :variant="showServerPromotion ? 'server' : 'incentive'"
+          :affiliate-key="projectAffKey"
+          class="project-sidebar-ad"
+        />
 
         <div
           v-if="
@@ -1647,7 +1659,7 @@
           </div>
         </div>
         <!-- Google AdSense -->
-<!--        <AdUnit slot="7766138161" class="card" />-->
+        <!--        <AdUnit slot="7766138161" class="card" />-->
       </div>
       <div class="normal-page__content">
         <div class="overflow-x-auto">
@@ -1754,7 +1766,6 @@ import {
   formatDateTime,
 } from "@modrinth/utils";
 import dayjs from "dayjs";
-import AdUnit from "~/components/ui/AdUnit.vue";
 import Badge from "~/components/ui/Badge.vue";
 import NavTabs from "~/components/ui/NavTabs.vue";
 import NavStack from "~/components/ui/NavStack.vue";
@@ -1771,6 +1782,7 @@ import VersionSummary from "~/components/ui/VersionSummary.vue";
 import AutomaticAccordion from "~/components/ui/AutomaticAccordion.vue";
 import TranslationPromo from "~/components/ui/TranslationPromo.vue";
 import ServerPromo from "~/components/ui/ServerPromo.vue";
+import ResourcePromoAd from "~/components/ui/ResourcePromoAd.vue";
 import PurchaseButton from "~/components/ui/PurchaseButton.vue";
 import { getVersionsToDisplay } from "~/helpers/projects.js";
 import { projectAffiliates } from "~/config/affiliates.ts";
@@ -1875,6 +1887,19 @@ const projectAffKey = computed(() => {
   }
 
   return null;
+});
+
+const showServerPromotion = computed(() =>
+  Boolean(projectAffKey.value || project.value?.incentive_enabled),
+);
+
+const serverPromotionLink = computed(() => {
+  const affId = projectAffKey.value || "LaotouY";
+  if (affId === "pcl") {
+    return "/pcl";
+  }
+
+  return `/server?aff=${affId}`;
 });
 const compatibilityMessages = defineMessages({
   title: {
@@ -2471,6 +2496,26 @@ const currentMember = computed(() => {
   return val;
 });
 
+const EDIT_DETAILS = 1 << 2;
+const VIEW_PAYOUTS = 1 << 9;
+const canViewIncentiveSettings = computed(() => {
+  if (auth.value.user?.role === "admin") return true;
+
+  const projectMember = allMembers?.value?.find(
+    (member) => member.user.id === auth.value.user?.id && member.accepted,
+  );
+  const organizationMember = organization.value?.members?.find(
+    (member) => member.user.id === auth.value.user?.id && member.accepted,
+  );
+  const member = projectMember || organizationMember;
+  if (!member) return false;
+
+  const permissions = member.permissions || 0;
+  return (
+    (permissions & EDIT_DETAILS) === EDIT_DETAILS || (permissions & VIEW_PAYOUTS) === VIEW_PAYOUTS
+  );
+});
+
 // 上游修复: 防止 labrinth 下线时页面崩溃
 versions.value = data.$computeVersions(versions.value ?? [], allMembers.value);
 
@@ -2996,6 +3041,16 @@ function onDownload(event) {
   }, 400);
 }
 
+// 网盘二维码模式下载统计：只计数，不关闭下载弹窗
+function onDiskQrDownload(versionId) {
+  if (versionId) {
+    useBaseFetch(`version/${versionId}/download`, {
+      method: "PATCH",
+      apiVersion: 3,
+    });
+  }
+}
+
 async function fetchTranslationRecommendation() {
   // 确保数据已经初始化
   if (!versions || !versions.value) {
@@ -3088,12 +3143,7 @@ function navigateToTranslation(translationData) {
 
 function navigateToServer() {
   // 跳转到服务器页面，与联机搭建按钮的跳转逻辑一致
-  const affId = projectAffKey.value;
-  if (affId === "pcl") {
-    window.open("/pcl", "_blank");
-  } else if (affId) {
-    window.open(`/server?aff=${affId}`, "_blank");
-  }
+  window.open(serverPromotionLink.value, "_blank");
   downloadModal.value.hide();
 }
 
@@ -4587,6 +4637,10 @@ const navLinks = computed(() => {
 // ==========================================
 // ENHANCED SIDEBAR FOR REVOLUTION LAYOUT
 // ==========================================
+
+.project-sidebar-ad {
+  margin-bottom: 16px;
+}
 
 .revolution-layout {
   :deep(.normal-page__sidebar) {

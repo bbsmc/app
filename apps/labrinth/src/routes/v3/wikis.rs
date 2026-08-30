@@ -486,9 +486,7 @@ pub async fn wiki_edit_start(
                     .as_ref()
                     .unwrap()
                     .wiki_ban_time
-                    .with_timezone(
-                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                    )
+                    .with_timezone(&crate::util::date::app_tz())
                     .format("%Y-%m-%d %H:%M:%S")
                     .to_string(),
             ));

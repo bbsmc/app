@@ -232,6 +232,12 @@ async fn version_create_inner(
                         "最多提供三个网盘".to_string(),
                     ));
                 }
+                if let Some(urls) = &version_create_data.disk_urls {
+                    for u in urls {
+                        u.normalized_display()
+                            .map_err(CreateError::InvalidInput)?;
+                    }
+                }
 
                 let project_id: models::ProjectId = version_create_data.project_id.unwrap().into();
 

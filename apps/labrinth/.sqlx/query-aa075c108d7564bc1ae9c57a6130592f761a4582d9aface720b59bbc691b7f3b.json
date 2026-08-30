@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COALESCE((\n                SELECT SUM(amount)\n                FROM payouts_values\n                WHERE user_id = $1 AND date_available <= NOW()\n            ), 0)::numeric AS \"earned!\",\n            COALESCE((\n                SELECT SUM(amount)\n                FROM payouts_values\n                WHERE user_id = $1\n                  AND date_available <= NOW()\n                  AND amount > 0\n            ), 0)::numeric AS \"positive_earned!\",\n            COALESCE((\n                SELECT SUM(amount)\n                FROM payouts\n                WHERE user_id = $1 AND status IN ('success', 'in-transit')\n            ), 0)::numeric AS \"withdrawn!\",\n            COALESCE((\n                SELECT SUM(\n                    CASE\n                        WHEN method = 'yunzhanghu_alipay' THEN 0\n                        ELSE COALESCE(fee, 0)\n                    END\n                )\n                FROM payouts\n                WHERE user_id = $1 AND status IN ('success', 'in-transit')\n            ), 0)::numeric AS \"old_channel_fees!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "earned!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "positive_earned!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "withdrawn!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "old_channel_fees!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "aa075c108d7564bc1ae9c57a6130592f761a4582d9aface720b59bbc691b7f3b"
+}

@@ -1,0 +1,96 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.id, a.project_id,\n               m.name AS \"project_title?\",\n               m.slug AS \"project_slug?\",\n               a.applicant_user_id,\n               u.username AS \"applicant_username?\",\n               a.reason, a.status, a.review_notes,\n               a.reviewed_by, a.reviewed_at, a.created_at, a.thread_id\n        FROM incentive_applications a\n        LEFT JOIN mods m ON m.id = a.project_id\n        LEFT JOIN users u ON u.id = a.applicant_user_id\n        WHERE ($3::text IS NULL OR a.status = $3)\n        ORDER BY a.created_at DESC\n        LIMIT $1 OFFSET $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_title?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_slug?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "applicant_user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "applicant_username?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "review_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "reviewed_by",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "reviewed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "23e2f42e6664b9ffb155464d5b5736e06027493b04243a63e70f3bbc1b250362"
+}

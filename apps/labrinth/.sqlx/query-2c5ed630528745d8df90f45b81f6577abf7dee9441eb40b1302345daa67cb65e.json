@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, yunzhanghu_order_id\n        FROM payouts\n        WHERE status = 'in-transit'\n          AND method = 'yunzhanghu_alipay'\n          AND (\n              platform_id IS NOT NULL\n              OR yunzhanghu_submit_started_at IS NOT NULL\n          )\n          AND COALESCE(yunzhanghu_submit_started_at, created) < NOW() - INTERVAL '30 seconds'\n        ORDER BY created ASC\n        LIMIT 200\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "yunzhanghu_order_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "2c5ed630528745d8df90f45b81f6577abf7dee9441eb40b1302345daa67cb65e"
+}

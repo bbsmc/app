@@ -58,6 +58,9 @@ const EMPTY_DRAFT_VERSION: Labrinth.Versions.v3.DraftVersion = {
   baidu_disk: "",
   modrinth: "",
   curseforge: "",
+  quark_disk_display: "default",
+  xunlei_disk_display: "default",
+  baidu_disk_display: "default",
 };
 
 export type VersionStage =
@@ -597,6 +600,9 @@ export function createManageVersionContext(
         version.baidu_disk = "";
         version.modrinth = "";
         version.curseforge = "";
+        version.quark_disk_display = "default";
+        version.xunlei_disk_display = "default";
+        version.baidu_disk_display = "default";
         // 不强制重置 is_modpack：local 模式下整合包标识可能由文件自动检测得到（modrinth.index.json/manifest.json）
       }
     }
@@ -670,6 +676,9 @@ export function createManageVersionContext(
         draftVersion.value.baidu_disk = "";
         draftVersion.value.modrinth = "";
         draftVersion.value.curseforge = "";
+        draftVersion.value.quark_disk_display = "default";
+        draftVersion.value.xunlei_disk_display = "default";
+        draftVersion.value.baidu_disk_display = "default";
       }
     }
 
@@ -904,14 +913,14 @@ function aggregateDiskUrlsFromDraft(
   draft: Labrinth.Versions.v3.DraftVersion,
 ): Labrinth.Versions.v3.QueryDisk[] | null {
   const out: Labrinth.Versions.v3.QueryDisk[] = [];
-  const push = (platform: string, url?: string) => {
-    if (url && url.trim() !== "") out.push({ platform, url });
+  const push = (platform: string, url?: string, display?: string) => {
+    if (url && url.trim() !== "") out.push({ platform, url, display: display ?? "default" });
   };
-  push("quark", draft.quark_disk);
-  push("baidu", draft.baidu_disk);
+  push("quark", draft.quark_disk, draft.quark_disk_display);
+  push("baidu", draft.baidu_disk, draft.baidu_disk_display);
   push("curseforge", draft.curseforge);
   push("modrinth", draft.modrinth);
-  push("xunlei", draft.xunlei_disk);
+  push("xunlei", draft.xunlei_disk, draft.xunlei_disk_display);
 
   // 如果调用者已经设置了 disk_urls 数组（直接用），优先使用
   if ((!out.length) && draft.disk_urls && draft.disk_urls.length > 0) {

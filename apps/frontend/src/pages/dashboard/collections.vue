@@ -144,7 +144,12 @@ if (import.meta.client) {
 const filterQuery = ref("");
 
 const { data: collections } = await useAsyncData(`user/${auth.value.user.id}/collections`, () =>
-  useBaseFetch(`user/${auth.value.user.id}/collections`, { apiVersion: 3 }),
+  fetchPaginatedHits(({ page, limit }) =>
+    useBaseFetch(`user/${auth.value.user.id}/collections`, {
+      apiVersion: 3,
+      query: { page, limit },
+    }),
+  ),
 );
 
 const orderedCollections = computed(() => {

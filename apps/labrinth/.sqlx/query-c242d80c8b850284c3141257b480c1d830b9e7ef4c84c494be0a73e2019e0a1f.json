@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT pending_amount, settled_amount\n            FROM incentive_project_counters WHERE project_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pending_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "settled_amount",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c242d80c8b850284c3141257b480c1d830b9e7ef4c84c494be0a73e2019e0a1f"
+}

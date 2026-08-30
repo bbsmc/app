@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin_payout_batch_orders\n            SET status = 'created', payout_id = $4\n            WHERE batch_id = $1\n              AND user_id = $2\n              AND chunk_index = $3\n              AND status = 'planned'\n              AND payout_id IS NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39a357fedbc35e0d60c1a17162817b55f2b8792bf969dab12febef4bd4337384"
+}

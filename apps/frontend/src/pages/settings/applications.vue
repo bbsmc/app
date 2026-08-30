@@ -22,7 +22,7 @@
         <div v-if="editingId" class="icon-submission">
           <Avatar size="md" :src="icon" />
           <FileInput
-            :max-size="262144"
+            :max-size="1048576"
             class="btn"
             prompt="Upload icon"
             accept="image/png,image/jpeg,image/gif,image/webp"

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT lifetime_eff_downloads FROM incentive_project_counters\n        WHERE project_id = $1 FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lifetime_eff_downloads",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "14b1afa1bf916a8b01eecaf040b40529526fbdeaefc37cfc403d7826165ab91f"
+}

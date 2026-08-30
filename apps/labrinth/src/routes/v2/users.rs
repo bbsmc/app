@@ -1,7 +1,9 @@
 use crate::database::redis::RedisPool;
 use crate::file_hosting::FileHost;
 use crate::models::notifications::Notification;
-use crate::models::projects::Project;
+use crate::models::projects::{
+    PaginatedProjects, Project, ProjectListPagination,
+};
 use crate::models::users::{Badges, Role, User};
 use crate::models::v2::notifications::LegacyNotification;
 use crate::models::v2::projects::LegacyProject;
@@ -123,6 +125,7 @@ pub async fn user_get(
 pub async fn projects_list(
     req: HttpRequest,
     info: web::Path<(String,)>,
+    query: web::Query<ProjectListPagination>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
@@ -130,6 +133,7 @@ pub async fn projects_list(
     let response = v3::users::projects_list(
         req,
         info,
+        query,
         pool.clone(),
         redis.clone(),
         session_queue,
@@ -138,11 +142,21 @@ pub async fn projects_list(
     .or_else(v2_reroute::flatten_404_error)?;
 
     // 将响应转换为 V2 格式
-    match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
-        Ok(project) => {
+    match v2_reroute::extract_ok_json::<PaginatedProjects<Project>>(response)
+        .await
+    {
+        Ok(projects) => {
             let legacy_projects =
-                LegacyProject::from_many(project, &**pool, &redis).await?;
-            Ok(HttpResponse::Ok().json(legacy_projects))
+                LegacyProject::from_many(projects.hits, &**pool, &redis)
+                    .await?;
+            Ok(HttpResponse::Ok().json(PaginatedProjects {
+                hits: legacy_projects,
+                offset: projects.offset,
+                limit: projects.limit,
+                total_hits: projects.total_hits,
+                total_downloads: projects.total_downloads,
+                project_types: projects.project_types,
+            }))
         }
         Err(response) => Ok(response),
     }
@@ -194,7 +208,6 @@ pub async fn user_edit(
             bio: new_user.bio,
             role: new_user.role,
             badges: new_user.badges,
-            venmo_handle: None,
         }),
         pool,
         redis,

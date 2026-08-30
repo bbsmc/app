@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COUNT(*)::bigint AS \"eff_downloads!\",\n            COALESCE(SUM(payout_amount), 0)::numeric AS \"amount!\",\n            COUNT(DISTINCT project_id)::bigint AS \"active_projects!\"\n        FROM incentive_download_events\n        WHERE recorded_at >= CURRENT_DATE\n          AND recorded_at < CURRENT_DATE + INTERVAL '1 day'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "eff_downloads!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "amount!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "active_projects!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "26d37b4b3cd8c9581ab2998d26a163dee6c4c6e4f710299a0ea1a21b90afb22c"
+}

@@ -14,9 +14,14 @@
               case 'mod': {
                 return '模组';
               }
+              case 'project': {
+                return '资源';
+              }
+              case 'shader':
               case 'shaders': {
                 return '光影';
               }
+              case 'resourcepack':
               case 'resourcepacks': {
                 return '资源包';
               }
@@ -82,10 +87,7 @@
     >
       <div class="project-title">
         <div class="mobile-row">
-          <nuxt-link
-            :to="`/${project.inferred_project_type}/${project.slug}`"
-            class="iconified-stacked-link"
-          >
+          <nuxt-link :to="getProjectPath(project)" class="iconified-stacked-link">
             <Avatar :src="project.icon_url" size="xs" no-shadow raised />
             <span class="stacked">
               <span class="title">{{ project.name }}</span>
@@ -119,7 +121,7 @@
       </div>
       <div class="input-group">
         <nuxt-link
-          :to="`/${project.inferred_project_type}/${project.slug}`"
+          :to="getProjectPath(project)"
           target="_blank"
           class="iconified-button raised-button"
         >
@@ -167,11 +169,22 @@ const members = ref([]);
 const projectType = ref("all");
 const oldestFirst = ref(true);
 
+function getProjectUrlType(project) {
+  const projectType = app.$getProjectTypeForUrl(
+    project.project_types?.[0] ?? project.project_type,
+    project.loaders ?? [],
+  );
+
+  return projectType || "project";
+}
+
+function getProjectPath(project) {
+  return `/${getProjectUrlType(project)}/${project.slug ? project.slug : project.id}`;
+}
+
 const projectsFiltered = computed(() =>
   (projects.value ?? []).filter(
-    (x) =>
-      projectType.value === "all" ||
-      app.$getProjectTypeForUrl(x.project_types[0], x.loaders) === projectType.value,
+    (x) => projectType.value === "all" || getProjectUrlType(x) === projectType.value,
   ),
 );
 
@@ -191,7 +204,7 @@ const projectTypes = computed(() => {
 
   if (projects.value) {
     for (const project of projects.value) {
-      set.add(project.inferred_project_type);
+      set.add(getProjectUrlType(project));
     }
   }
 
@@ -207,35 +220,30 @@ if (projects.value) {
   const { data: result } = await useAsyncData(url, () => useBaseFetch(url));
   const { data: orgs } = await useAsyncData(orgUrl, () => useBaseFetch(orgUrl, { apiVersion: 3 }));
 
-  if (result.value) {
-    members.value = result.value;
+  members.value = result.value ?? [];
 
-    projects.value = projects.value.map((project) => {
-      project.owner = members.value
-        .flat()
-        .find((x) => x.team_id === project.team_id && x.role === "Owner");
-      project.org = orgs.value.find((x) => x.id === project.organization);
-      project.age = project.queued ? now - app.$dayjs(project.queued) : Number.MAX_VALUE;
-      project.age_warning = "";
-      if (project.age > TIME_24H * 2) {
-        project.age_warning = "danger";
-      } else if (project.age > TIME_24H) {
-        project.age_warning = "warning";
-      }
-      project.inferred_project_type = app.$getProjectTypeForUrl(
-        project.project_types[0],
-        project.loaders,
-      );
-      return project;
-    });
-  }
+  projects.value = projects.value.map((project) => {
+    project.owner = members.value
+      .flat()
+      .find((x) => x.team_id === project.team_id && x.role === "Owner");
+    project.org = (orgs.value ?? []).find((x) => x.id === project.organization);
+    project.age = project.queued ? now - app.$dayjs(project.queued) : Number.MAX_VALUE;
+    project.age_warning = "";
+    if (project.age > TIME_24H * 2) {
+      project.age_warning = "danger";
+    } else if (project.age > TIME_24H) {
+      project.age_warning = "warning";
+    }
+    project.inferred_project_type = getProjectUrlType(project);
+    return project;
+  });
 }
 async function goToProjects() {
   const project = projectsFiltered.value[0];
   await router.push({
     name: "type-id",
     params: {
-      type: project.project_types[0],
+      type: getProjectUrlType(project),
       id: project.slug ? project.slug : project.id,
     },
     state: {

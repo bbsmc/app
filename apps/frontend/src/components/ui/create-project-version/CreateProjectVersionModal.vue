@@ -44,10 +44,14 @@ async function openEditVersionModal(versionId: string, projectId: string, stageI
     // BBSMC: 从已有 disk_urls 反推 5 个 input 临时字段，让 FilesUploadStage 能直接展示编辑
     const diskByPlatform = (versionData.disk_urls ?? []).reduce(
       (acc, d) => {
-        if (d?.platform && d?.url) acc[d.platform] = d.url;
+        if (d?.platform && d?.url)
+          acc[d.platform] = {
+            url: d.url,
+            display: (d.display as Labrinth.Versions.v3.DiskDisplayMode) ?? "default",
+          };
         return acc;
       },
-      {} as Record<string, string>,
+      {} as Record<string, { url: string; display: Labrinth.Versions.v3.DiskDisplayMode }>,
     );
 
     const draftVersionData: Labrinth.Versions.v3.DraftVersion = {
@@ -69,11 +73,14 @@ async function openEditVersionModal(versionId: string, projectId: string, stageI
       disk_urls: versionData.disk_urls ?? [],
       version_links: versionData.version_links ?? [],
       is_modpack: versionData.is_modpack,
-      quark_disk: diskByPlatform.quark ?? "",
-      xunlei_disk: diskByPlatform.xunlei ?? "",
-      baidu_disk: diskByPlatform.baidu ?? "",
-      modrinth: diskByPlatform.modrinth ?? "",
-      curseforge: diskByPlatform.curseforge ?? "",
+      quark_disk: diskByPlatform.quark?.url ?? "",
+      xunlei_disk: diskByPlatform.xunlei?.url ?? "",
+      baidu_disk: diskByPlatform.baidu?.url ?? "",
+      modrinth: diskByPlatform.modrinth?.url ?? "",
+      curseforge: diskByPlatform.curseforge?.url ?? "",
+      quark_disk_display: diskByPlatform.quark?.display ?? "default",
+      xunlei_disk_display: diskByPlatform.xunlei?.display ?? "default",
+      baidu_disk_display: diskByPlatform.baidu?.display ?? "default",
     };
 
     if (projectV2.value.project_type === "modpack" && draftVersionData.loaders.includes("mrpack")) {

@@ -1133,6 +1133,7 @@ async fn project_create_inner(
             color: project_builder.color,
             thread_id: thread_id.into(),
             monetization_status: MonetizationStatus::Monetized,
+            incentive_enabled: false,
             fields: HashMap::new(), // Fields instantiate to empty
             wiki_open: false,
             issues_type: 0,
@@ -1242,13 +1243,13 @@ async fn process_icon_upload(
     redis: &RedisPool,
     username: String,
 ) -> Result<(String, String, Option<u32>), CreateError> {
-    let mut cap = 262144;
+    let mut cap = 1048576;
 
     if username.to_lowercase() == "bbsmc" {
         cap = 2621440
     }
 
-    let data = read_from_field(&mut field, cap, "图标必须小于 256KB").await?;
+    let data = read_from_field(&mut field, cap, "图标必须小于 1MiB").await?;
     let upload_result = crate::util::img::upload_image_optimized(
         &format!("data/{}", to_base62(id)),
         data.freeze(),

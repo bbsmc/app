@@ -50,6 +50,41 @@ where
     Ok((scopes, user))
 }
 
+pub async fn get_optional_user_from_headers<'a, E>(
+    req: &HttpRequest,
+    executor: E,
+    redis: &RedisPool,
+    session_queue: &AuthQueue,
+    required_scopes: Option<&[Scopes]>,
+) -> Result<Option<User>, AuthenticationError>
+where
+    E: sqlx::Executor<'a, Database = sqlx::Postgres>
+        + sqlx::Acquire<'a, Database = sqlx::Postgres>
+        + Copy,
+{
+    if !req.headers().contains_key(AUTHORIZATION) {
+        return Ok(None);
+    }
+
+    match get_user_from_headers(
+        req,
+        executor,
+        redis,
+        session_queue,
+        required_scopes,
+    )
+    .await
+    {
+        Ok((_, user)) => Ok(Some(user)),
+        Err(
+            AuthenticationError::InvalidAuthMethod
+            | AuthenticationError::InvalidCredentials
+            | AuthenticationError::InvalidClientId,
+        ) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
 pub async fn get_user_record_from_bearer_token<'a, 'b, E>(
     req: &HttpRequest,
     token: Option<&str>,

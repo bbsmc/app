@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT user_id\n        FROM user_yunzhanghu_profiles\n        WHERE id_card_last4 = $1 AND sign_status IN ('signed', 'signing')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "73021beb8e143c4ebdb2a21200eaf864cbe56e0835c07c4390c6149c44e6fa13"
+}

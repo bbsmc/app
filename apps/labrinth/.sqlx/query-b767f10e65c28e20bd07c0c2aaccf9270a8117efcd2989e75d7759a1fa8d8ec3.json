@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE incentive_project_counters\n            SET pending_amount = 0,\n                voided_amount = voided_amount + $2,\n                updated_at = NOW()\n            WHERE project_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b767f10e65c28e20bd07c0c2aaccf9270a8117efcd2989e75d7759a1fa8d8ec3"
+}

@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, user_id, created, amount, status, method, method_address,\n                platform_id, fee, admin_reject_reason\n            FROM payouts\n            WHERE id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "method",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "method_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "platform_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "fee",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "admin_reject_reason",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "cb8ff7a7633a019b82461253c6bb6b5cb9dd99da19288350ff98adec4d834fd8"
+}

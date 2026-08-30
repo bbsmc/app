@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE incentive_applications\n        SET status = 'withdrawn', reviewed_at = NOW()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d6d2ef345b3a875908ed0b1669680edadf8d8fc193591769b081c0bf685e9e6b"
+}

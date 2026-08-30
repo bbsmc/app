@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id, p.user_id, p.created, p.amount, p.fee, p.status,\n               p.method, p.method_address, p.platform_id,\n               p.yunzhanghu_submit_started_at, p.yunzhanghu_submit_error,\n               p.yunzhanghu_submit_attempts, u.username\n        FROM payouts p\n        INNER JOIN users u ON u.id = p.user_id\n        WHERE p.id = $1\n          AND p.status = 'in-transit'\n          AND p.method = 'yunzhanghu_alipay'\n          AND p.platform_id IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "fee",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "method",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "method_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "platform_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "yunzhanghu_submit_started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "yunzhanghu_submit_error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "yunzhanghu_submit_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "username",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "702cb2cdcf34edf361e6ac77c3adb4daa66ba694fc25992c44799faacce6c1fa"
+}

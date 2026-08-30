@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH earnings AS (\n            SELECT\n                user_id,\n                COALESCE(SUM(amount), 0)::numeric AS earned\n            FROM payouts_values\n            WHERE date_available <= NOW()\n              AND user_id <> $1\n            GROUP BY user_id\n        ), withdrawn AS (\n            SELECT\n                user_id,\n                COALESCE(SUM(amount), 0)::numeric AS amount,\n                COALESCE(SUM(\n                    CASE\n                        WHEN method = 'yunzhanghu_alipay' THEN 0\n                        ELSE COALESCE(fee, 0)\n                    END\n                ), 0)::numeric AS old_channel_fees\n            FROM payouts\n            WHERE status IN ('success', 'in-transit')\n              AND user_id <> $1\n            GROUP BY user_id\n        ), withdrawable_users AS (\n            SELECT\n                e.user_id,\n                TRUNC(GREATEST(\n                    ROUND(e.earned, 16)\n                        - ROUND(COALESCE(w.amount, 0), 16)\n                        - ROUND(COALESCE(w.old_channel_fees, 0), 16),\n                    0\n                ), 2) AS amount\n            FROM earnings e\n            LEFT JOIN withdrawn w ON w.user_id = e.user_id\n        )\n        SELECT\n            COUNT(*) AS \"total_projects!\",\n            COALESCE(SUM(lifetime_eff_downloads), 0)::bigint AS \"total_eff_downloads!\",\n            COALESCE(SUM(pending_amount), 0)::numeric AS \"total_pending!\",\n            COALESCE(SUM(settled_amount), 0)::numeric AS \"total_settled!\",\n            COALESCE((\n                SELECT SUM(amount)\n                FROM withdrawable_users\n            ), 0)::numeric AS \"total_withdrawable!\",\n            COALESCE(SUM(voided_amount), 0)::numeric AS \"total_voided!\"\n        FROM incentive_project_counters\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_projects!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_eff_downloads!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_pending!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_settled!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_withdrawable!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_voided!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "e00d6a6508ebe7e10ce9cad11a3293ec7e8441289bef39023a494a22cff68dec"
+}

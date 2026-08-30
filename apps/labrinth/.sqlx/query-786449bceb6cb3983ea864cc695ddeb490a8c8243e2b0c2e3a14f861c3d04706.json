@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE incentive_download_events\n                SET status = 'voided', settled_at = NOW()\n                WHERE id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "786449bceb6cb3983ea864cc695ddeb490a8c8243e2b0c2e3a14f861c3d04706"
+}

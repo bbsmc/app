@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO incentive_download_events\n        (project_id, team_id, user_identity, ip_identity, week_bucket, payout_amount, status, split_snapshot)\n        VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)\n        ON CONFLICT DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Int8",
+        "Numeric",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a8e632bfac43587075ee57964d48175ce6b09297299d0db76165fa0faa2de5af"
+}

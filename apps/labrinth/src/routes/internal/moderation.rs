@@ -1,13 +1,15 @@
 use super::ApiError;
 use crate::database;
 use crate::database::redis::RedisPool;
+use crate::models::ids::base62_impl::to_base62;
 use crate::models::ids::random_base62;
 use crate::models::projects::ProjectStatus;
 use crate::queue::moderation::{ApprovalType, IdentifiedFile, MissingMetadata};
 use crate::queue::session::AuthQueue;
 use crate::{auth::check_is_moderator_from_headers, models::pats::Scopes};
 use actix_web::{HttpRequest, HttpResponse, web};
-use serde::Deserialize;
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -52,6 +54,19 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route(
         "moderation/image-reviews/{id}/reject",
         web::post().to(crate::routes::v3::image_reviews::reject_image_review),
+    );
+    // 数据分析路由
+    cfg.route(
+        "moderation/analytics/registrations",
+        web::get().to(get_analytics_registrations),
+    );
+    cfg.route(
+        "moderation/analytics/downloads",
+        web::get().to(get_analytics_downloads),
+    );
+    cfg.route(
+        "moderation/analytics/top-projects",
+        web::get().to(get_analytics_top_projects),
     );
 }
 
@@ -531,10 +546,15 @@ pub struct ModerationPendingCounts {
     pub profile_reviews: i64,
     pub image_reviews: i64,
     pub creator_applications: i64,
+    #[serde(default)]
+    pub incentive_applications: i64,
+    #[serde(default)]
+    pub payout_transfers: i64,
 }
 
 pub(crate) const PENDING_COUNTS_NAMESPACE: &str = "moderation_pending_counts";
-const PENDING_COUNTS_CACHE_KEY: &str = "all";
+const PENDING_COUNTS_ADMIN_CACHE_KEY: &str = "admin";
+const PENDING_COUNTS_MODERATOR_CACHE_KEY: &str = "moderator";
 const PENDING_COUNTS_TTL: i64 = 180; // 3 分钟
 
 /// 获取各审核类别的待处理数量
@@ -546,7 +566,7 @@ pub async fn get_pending_counts(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    check_is_moderator_from_headers(
+    let user = check_is_moderator_from_headers(
         &req,
         &**pool,
         &redis,
@@ -555,12 +575,18 @@ pub async fn get_pending_counts(
     )
     .await?;
 
+    let cache_key = if user.role.is_admin() {
+        PENDING_COUNTS_ADMIN_CACHE_KEY
+    } else {
+        PENDING_COUNTS_MODERATOR_CACHE_KEY
+    };
+
     // 查 Redis 缓存
     let mut redis_conn = redis.connect().await?;
     if let Some(cached) = redis_conn
         .get_deserialized_from_json::<ModerationPendingCounts>(
             PENDING_COUNTS_NAMESPACE,
-            PENDING_COUNTS_CACHE_KEY,
+            cache_key,
         )
         .await?
     {
@@ -581,6 +607,31 @@ pub async fn get_pending_counts(
     .fetch_one(&**pool)
     .await?;
 
+    let incentive_applications: i64 = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM incentive_applications WHERE status = 'pending'"
+    )
+    .fetch_one(&**pool)
+    .await?
+    .unwrap_or(0);
+
+    let payout_transfers = if user.role.is_admin() {
+        sqlx::query_scalar!(
+            "
+            SELECT COUNT(*)
+            FROM payouts
+            WHERE status = 'in-transit'
+              AND method = 'yunzhanghu_alipay'
+              AND platform_id IS NULL
+              AND yunzhanghu_submit_started_at IS NULL
+            "
+        )
+        .fetch_one(&**pool)
+        .await?
+        .unwrap_or(0)
+    } else {
+        0
+    };
+
     let result = ModerationPendingCounts {
         projects: counts.projects,
         reports: counts.reports,
@@ -588,12 +639,14 @@ pub async fn get_pending_counts(
         profile_reviews: counts.profile_reviews,
         image_reviews: counts.image_reviews,
         creator_applications: counts.creator_applications,
+        incentive_applications,
+        payout_transfers,
     };
 
     redis_conn
         .set_serialized_to_json(
             PENDING_COUNTS_NAMESPACE,
-            PENDING_COUNTS_CACHE_KEY,
+            cache_key,
             &result,
             Some(PENDING_COUNTS_TTL),
         )
@@ -607,11 +660,477 @@ pub async fn clear_pending_counts_cache(redis: &RedisPool) {
     if let Err(e) = async {
         let mut redis_conn = redis.connect().await?;
         redis_conn
-            .delete(PENDING_COUNTS_NAMESPACE, PENDING_COUNTS_CACHE_KEY)
+            .delete(PENDING_COUNTS_NAMESPACE, PENDING_COUNTS_ADMIN_CACHE_KEY)
+            .await?;
+        redis_conn
+            .delete(
+                PENDING_COUNTS_NAMESPACE,
+                PENDING_COUNTS_MODERATOR_CACHE_KEY,
+            )
             .await
     }
     .await
     {
         log::warn!("清除待处理计数缓存失败: {}", e);
     }
+}
+
+// ==================== 数据分析 ====================
+
+const ANALYTICS_NAMESPACE: &str = "moderation_analytics";
+const ANALYTICS_CACHE_TTL: i64 = 300; // 5 分钟
+
+#[derive(Deserialize)]
+pub struct RegistrationsQuery {
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
+    #[serde(default = "default_registrations_resolution")]
+    pub resolution: String,
+}
+
+fn default_registrations_resolution() -> String {
+    "day".to_string()
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RegistrationsPoint {
+    pub time: i64,
+    pub total: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RegistrationsResponse {
+    pub start_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
+    pub resolution: String,
+    pub total: i64,
+    pub points: Vec<RegistrationsPoint>,
+}
+
+/// 注册趋势
+///
+/// GET /_internal/moderation/analytics/registrations
+pub async fn get_analytics_registrations(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    query: web::Query<RegistrationsQuery>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    check_is_moderator_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ]),
+    )
+    .await?;
+
+    let resolution = match query.resolution.as_str() {
+        "hour" => "hour",
+        _ => "day",
+    };
+    let default_span = if resolution == "hour" {
+        Duration::days(2)
+    } else {
+        Duration::days(30)
+    };
+    let end_date = query.end_date.unwrap_or_else(Utc::now);
+    let start_date = query.start_date.unwrap_or(end_date - default_span);
+
+    if end_date < start_date {
+        return Err(ApiError::InvalidInput(
+            "end_date 必须晚于 start_date".to_string(),
+        ));
+    }
+
+    let cache_key = format!(
+        "registrations:{resolution}:{}:{}",
+        start_date.timestamp(),
+        end_date.timestamp()
+    );
+    let mut redis_conn = redis.connect().await?;
+    if let Some(cached) = redis_conn
+        .get_deserialized_from_json::<RegistrationsResponse>(
+            ANALYTICS_NAMESPACE,
+            &cache_key,
+        )
+        .await?
+    {
+        return Ok(HttpResponse::Ok().json(cached));
+    }
+
+    let rows = sqlx::query!(
+        r#"
+        SELECT
+            DATE_TRUNC($1, created) as "bucket!",
+            COUNT(*) as "total!"
+        FROM users
+        WHERE created BETWEEN $2 AND $3
+        GROUP BY DATE_TRUNC($1, created)
+        ORDER BY DATE_TRUNC($1, created)
+        "#,
+        resolution,
+        start_date,
+        end_date,
+    )
+    .fetch_all(&**pool)
+    .await?;
+
+    let points: Vec<RegistrationsPoint> = rows
+        .into_iter()
+        .map(|r| RegistrationsPoint {
+            time: r.bucket.timestamp(),
+            total: r.total,
+        })
+        .collect();
+
+    let total: i64 = points.iter().map(|p| p.total).sum();
+
+    let response = RegistrationsResponse {
+        start_date,
+        end_date,
+        resolution: resolution.to_string(),
+        total,
+        points,
+    };
+
+    redis_conn
+        .set_serialized_to_json(
+            ANALYTICS_NAMESPACE,
+            &cache_key,
+            &response,
+            Some(ANALYTICS_CACHE_TTL),
+        )
+        .await?;
+
+    Ok(HttpResponse::Ok().json(response))
+}
+
+#[derive(Deserialize)]
+pub struct DownloadsQuery {
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
+    pub resolution_minutes: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DownloadsPoint {
+    pub time: i64,
+    pub total: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DownloadsResponse {
+    pub start_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
+    pub resolution_minutes: u32,
+    pub total: u64,
+    pub points: Vec<DownloadsPoint>,
+}
+
+/// 全站下载趋势
+///
+/// GET /_internal/moderation/analytics/downloads
+pub async fn get_analytics_downloads(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    clickhouse: web::Data<clickhouse::Client>,
+    query: web::Query<DownloadsQuery>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    check_is_moderator_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ]),
+    )
+    .await?;
+
+    let end_date = query.end_date.unwrap_or_else(Utc::now);
+    let start_date = query.start_date.unwrap_or(end_date - Duration::days(14));
+    let resolution_minutes = query.resolution_minutes.unwrap_or(60 * 24);
+
+    if end_date < start_date {
+        return Err(ApiError::InvalidInput(
+            "end_date 必须晚于 start_date".to_string(),
+        ));
+    }
+    if resolution_minutes == 0 {
+        return Err(ApiError::InvalidInput(
+            "resolution_minutes 必须大于 0".to_string(),
+        ));
+    }
+
+    let cache_key = format!(
+        "downloads:{}:{}:{}",
+        start_date.timestamp(),
+        end_date.timestamp(),
+        resolution_minutes
+    );
+    let mut redis_conn = redis.connect().await?;
+    if let Some(cached) = redis_conn
+        .get_deserialized_from_json::<DownloadsResponse>(
+            ANALYTICS_NAMESPACE,
+            &cache_key,
+        )
+        .await?
+    {
+        return Ok(HttpResponse::Ok().json(cached));
+    }
+
+    let intervals = crate::clickhouse::fetch_global_downloads_timeseries(
+        start_date,
+        end_date,
+        resolution_minutes,
+        clickhouse.into_inner(),
+    )
+    .await?;
+
+    let points: Vec<DownloadsPoint> = intervals
+        .into_iter()
+        .map(|i| DownloadsPoint {
+            time: i.time as i64,
+            total: i.total,
+        })
+        .collect();
+
+    let total: u64 = points.iter().map(|p| p.total).sum();
+
+    let response = DownloadsResponse {
+        start_date,
+        end_date,
+        resolution_minutes,
+        total,
+        points,
+    };
+
+    redis_conn
+        .set_serialized_to_json(
+            ANALYTICS_NAMESPACE,
+            &cache_key,
+            &response,
+            Some(ANALYTICS_CACHE_TTL),
+        )
+        .await?;
+
+    Ok(HttpResponse::Ok().json(response))
+}
+
+#[derive(Deserialize)]
+pub struct TopProjectsQuery {
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
+    #[serde(default = "default_top_projects_limit")]
+    pub limit: u32,
+    #[serde(default)]
+    pub offset: u32,
+    pub search: Option<String>,
+}
+
+fn default_top_projects_limit() -> u32 {
+    50
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TopProjectItem {
+    pub rank: u32,
+    pub project_id: String,
+    pub slug: Option<String>,
+    pub name: String,
+    pub icon_url: Option<String>,
+    pub downloads: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TopProjectsResponse {
+    pub start_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
+    pub total_downloads: u64,
+    pub total_count: u32,
+    pub items: Vec<TopProjectItem>,
+}
+
+/// 资源下载排行
+///
+/// GET /_internal/moderation/analytics/top-projects
+pub async fn get_analytics_top_projects(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    clickhouse: web::Data<clickhouse::Client>,
+    query: web::Query<TopProjectsQuery>,
+    session_queue: web::Data<AuthQueue>,
+) -> Result<HttpResponse, ApiError> {
+    check_is_moderator_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::PROJECT_READ]),
+    )
+    .await?;
+
+    let end_date = query.end_date.unwrap_or_else(Utc::now);
+    let start_date = query.start_date.unwrap_or(end_date - Duration::days(7));
+    let limit = query.limit.clamp(1, 200);
+    let offset = query.offset;
+    let search = query
+        .search
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    if end_date < start_date {
+        return Err(ApiError::InvalidInput(
+            "end_date 必须晚于 start_date".to_string(),
+        ));
+    }
+
+    // 仅缓存默认请求（无搜索、offset=0、limit=50）
+    let is_cacheable = search.is_none()
+        && offset == 0
+        && limit == default_top_projects_limit();
+    let cache_key = format!(
+        "top-projects:{}:{}:{}",
+        start_date.timestamp(),
+        end_date.timestamp(),
+        limit
+    );
+    let mut redis_conn = redis.connect().await?;
+    if is_cacheable
+        && let Some(cached) = redis_conn
+            .get_deserialized_from_json::<TopProjectsResponse>(
+                ANALYTICS_NAMESPACE,
+                &cache_key,
+            )
+            .await?
+    {
+        return Ok(HttpResponse::Ok().json(cached));
+    }
+
+    // ClickHouse 拿排行（按搜索过滤前先多取一些以便后续过滤）
+    let fetch_limit = if search.is_some() {
+        // 搜索时取更大窗口再用 PG 过滤
+        (limit + offset).clamp(500, 2000)
+    } else {
+        limit + offset
+    };
+
+    let totals = crate::clickhouse::fetch_top_projects_downloads(
+        start_date,
+        end_date,
+        fetch_limit,
+        clickhouse.into_inner(),
+    )
+    .await?;
+
+    if totals.is_empty() {
+        return Ok(HttpResponse::Ok().json(TopProjectsResponse {
+            start_date,
+            end_date,
+            total_downloads: 0,
+            total_count: 0,
+            items: vec![],
+        }));
+    }
+
+    let project_ids: Vec<i64> = totals.iter().map(|t| t.id as i64).collect();
+
+    let project_rows = sqlx::query!(
+        r#"
+        SELECT id, name, slug, icon_url
+        FROM mods
+        WHERE id = ANY($1)
+        "#,
+        &project_ids,
+    )
+    .fetch_all(&**pool)
+    .await?;
+
+    let project_map: HashMap<i64, (String, Option<String>, Option<String>)> =
+        project_rows
+            .into_iter()
+            .map(|r| (r.id, (r.name, r.slug, r.icon_url)))
+            .collect();
+
+    let total_downloads: u64 = totals.iter().map(|t| t.total).sum();
+
+    struct EnrichedRow {
+        rank: u32,
+        id: u64,
+        total: u64,
+        name: String,
+        slug: Option<String>,
+        icon_url: Option<String>,
+    }
+
+    let needle = search.as_ref().map(|s| s.to_lowercase());
+
+    // 全站排名按 ClickHouse 返回顺序（已按下载量降序），过滤后保留原始排名
+    let mut items: Vec<TopProjectItem> = totals
+        .into_iter()
+        .enumerate()
+        .filter_map(|(idx, t)| {
+            project_map.get(&(t.id as i64)).map(|(name, slug, icon)| {
+                EnrichedRow {
+                    rank: (idx + 1) as u32,
+                    id: t.id,
+                    total: t.total,
+                    name: name.clone(),
+                    slug: slug.clone(),
+                    icon_url: icon.clone(),
+                }
+            })
+        })
+        .filter(|row| {
+            if let Some(needle) = &needle {
+                row.name.to_lowercase().contains(needle)
+                    || row
+                        .slug
+                        .as_ref()
+                        .map(|sl| sl.to_lowercase().contains(needle))
+                        .unwrap_or(false)
+            } else {
+                true
+            }
+        })
+        .map(|row| TopProjectItem {
+            rank: row.rank,
+            project_id: to_base62(row.id),
+            slug: row.slug,
+            name: row.name,
+            icon_url: row.icon_url,
+            downloads: row.total,
+        })
+        .collect();
+
+    let total_count = items.len() as u32;
+
+    let start = (offset as usize).min(items.len());
+    let end = (start + limit as usize).min(items.len());
+    items = items[start..end].to_vec();
+
+    let response = TopProjectsResponse {
+        start_date,
+        end_date,
+        total_downloads,
+        total_count,
+        items,
+    };
+
+    if is_cacheable {
+        redis_conn
+            .set_serialized_to_json(
+                ANALYTICS_NAMESPACE,
+                &cache_key,
+                &response,
+                Some(ANALYTICS_CACHE_TTL),
+            )
+            .await?;
+    }
+
+    Ok(HttpResponse::Ok().json(response))
 }

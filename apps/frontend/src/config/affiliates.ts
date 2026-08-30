@@ -22,12 +22,12 @@ export interface Affiliate {
 export const affiliates: Record<string, Affiliate> = {
   wutuobang: {
     name: "乌托邦",
-    link: "https://item.taobao.com/item.htm?ft=t&id=876821726196",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["1p2TFl6X"],
   },
   wuye: {
     name: "吴也MC",
-    link: "https://item.taobao.com/item.htm?ft=t&id=874809176779",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: [
       "NxtrWNas", // 探索自然2
       "Z1Z1xI1K", // 自然之旅3
@@ -41,36 +41,37 @@ export const affiliates: Record<string, Affiliate> = {
   },
   cuiguzheng: {
     name: "脆骨症",
-    link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: [
       "fZSAKVSg", // 脆骨症
       "dL0Tbr7N", // 脆骨症：黯光
+      "DqpQXzc2", // 脆骨症2
     ],
   },
   grannixie: {
     name: "浙水院Minecraft社",
-    link: "https://item.taobao.com/item.htm?ft=t&id=883095512357",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["r0WJ4XSq"], // 群峦：重生
   },
   Unknown_Entity_: {
     name: "Unknown_Entity_",
-    link: "https://item.taobao.com/item.htm?ft=t&id=888196449273",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["tRR4pnOA"], // 机械动力，无限构件
   },
   ruoling: {
     name: "龙之冒险:新征程",
-    link: "https://item.taobao.com/item.htm?ft=t&id=889881824125",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["EIrkPpcm"],
   },
   JQKA326: {
     name: "香草纪元:食旅纪行",
     code: "香草纪元",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["e11vzqXl"],
   },
   song_5007: {
     name: "song_5007",
-    link: "https://item.taobao.com/item.htm?ft=t&id=895854389205",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["S5mhiSMC"],
   },
   Puikre: {
@@ -84,7 +85,7 @@ export const affiliates: Record<string, Affiliate> = {
   ZangHeRo: {
     name: "ZangHeRo",
     link: "https://item.taobao.com/item.htm?id=807034865363&sku_properties=122216883%3A27889",
-    projects: ["F4xIzfIX"], // 机械殖民地
+    projects: ["F4xIzfIX", "k04waacm"], // 机械殖民地
   },
   snk: {
     name: "二十二度幻月",
@@ -94,19 +95,31 @@ export const affiliates: Record<string, Affiliate> = {
   thefool: {
     name: "愚者：The Fool",
     code: "愚者",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["XMUypeti"],
   },
   skillet_man: {
     name: "平底锅侠",
     code: "平底锅侠",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["YgvldBV8"],
+  },
+  "ymzz": {
+    name: "远梦之棺",
+    code: "远梦之棺",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["g1Bj9aPx"],
+  },
+  "incandescent-verity": {
+    name: "方可梦：炽白真形",
+    code: "方可梦：炽白真形",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["qoClGU9p"],
   },
   Latxx: {
     name: "辣某人",
     code: "沉浸战斗",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["aa8zTitm"],
   },
   Karashok_Leo: {
@@ -132,57 +145,87 @@ export const affiliates: Record<string, Affiliate> = {
   wuwei: {
     name: "无畏灬大魔王",
     code: "真实地球",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["UJBwwyq3"],
   },
   ft_wt: {
     name: "农场物语",
     code: "农场物语",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["YtS91hhr"],
   },
   martyredroad: {
     name: "殉道之路",
     code: "殉道之路",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["2cDBzlDs"],
   },
   tfg: {
     name: "锻造之旅",
     code: "锻造之旅",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["92pKuCHs"],
   },
   shenhuaqiyuan: {
     name: "神话：起源4.7重制版",
     code: "神话起源",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["ZSSC3pSh"],
   },
   "unfinished-path": {
     name: "墨言",
     code: "墨言",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
-    projects: ["zT3k10EZ", "i2V4lWdp"],
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["zT3k10EZ", "i2V4lWdp", "37yTxfMk"],
+  },
+  "syqj": {
+    name: "摄影奇境",
+    code: "摄影奇境",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["iz5Q6p0G"],
   },
   deceasedcraft: {
     name: "亡者世界",
     code: "亡者世界",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["PRsqHZRu"],
   },
   LaotouY: {
     name: "BBSMC",
     code: "BBSMC",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: [], // 通过组织级别配置，不需要手动添加项目
     isOrganization: true,
   },
   bff: {
     name: "逆转未来",
     code: "逆转未来",
-    link: "https://item.taobao.com/item.htm?ft=t&id=861597382773",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
     projects: ["vxAmfb3Y"],
+  },
+  cfgj: {
+    name: "尘封古纪",
+    code: "尘封古纪",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["PNjet8tS"],
+  },
+  heavenlypath: {
+    name: "通天之路",
+    code: "通天之路",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["Nt9lp3GH"],
+  },
+  arcadiaapocalypse: {
+    name: "阿卡迪亚的天启",
+    code: "阿卡迪亚的天启",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["ZvIENE9v"],
+  },
+  woyaozuofan: {
+    name: "我要做饭",
+    code: "我要做饭",
+    link: "https://item.taobao.com/item.htm?ft=t&id=1052116079164",
+    projects: ["LLxkeMHx"],
   },
 };
 

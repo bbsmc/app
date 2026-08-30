@@ -220,6 +220,7 @@ impl ProjectBuilder {
             translation_tracking: false,
             translation_tracker: None,
             translation_source: None,
+            incentive_enabled: false,
             is_paid: self.is_paid,
         };
         project_struct.insert(&mut *transaction).await?;
@@ -300,6 +301,9 @@ pub struct Project {
     pub translation_tracker: Option<String>,
     /// 汉化来源：哪个项目将当前项目作为汉化目标（通过反向查询 translation_tracker 获取）
     pub translation_source: Option<String>,
+    /// 是否已开通创作者激励
+    #[serde(default)]
+    pub incentive_enabled: bool,
     pub is_paid: bool, // 是否为付费资源
 }
 
@@ -936,6 +940,7 @@ impl Project {
                     m.team_id team_id, m.organization_id organization_id, m.license license, m.slug slug, m.moderation_message moderation_message, m.moderation_message_body moderation_message_body,
                     m.webhook_sent, m.color, m.wiki_open, m.forum, m.translation_tracking, m.translation_tracker,
                     (SELECT slug FROM mods WHERE translation_tracker = m.slug AND m.slug IS NOT NULL LIMIT 1) as translation_source,
+                    EXISTS(SELECT 1 FROM incentive_enabled_projects iep WHERE iep.project_id = m.id) AS \"incentive_enabled!\",
                     t.id thread_id, m.monetization_status monetization_status, m.is_paid,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is false) categories,
                     ARRAY_AGG(DISTINCT c.category) filter (where c.category is not null and mc.is_additional is true) additional_categories
@@ -1011,6 +1016,7 @@ impl Project {
                                 translation_tracking: m.translation_tracking,
                                 translation_tracker: m.translation_tracker.clone(),
                                 translation_source: m.translation_source.clone(),
+                                incentive_enabled: m.incentive_enabled,
                                 is_paid: m.is_paid,
                             },
                             categories: m.categories.unwrap_or_default(),

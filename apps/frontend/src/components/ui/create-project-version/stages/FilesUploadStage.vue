@@ -130,30 +130,63 @@
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div class="flex flex-col gap-1">
           <label class="text-xs font-semibold text-contrast">夸克网盘</label>
-          <input
-            v-model="draftVersion.quark_disk"
-            type="text"
-            class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm text-contrast"
-            placeholder="直接链接，不要设置访问密码"
-          />
+          <div class="flex gap-2">
+            <input
+              v-model="draftVersion.quark_disk"
+              type="text"
+              class="border-surface-5 min-w-0 flex-1 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm text-contrast"
+              placeholder="直接链接，不要设置访问密码"
+            />
+            <div class="w-36 shrink-0">
+              <DropdownSelect
+                v-model="draftVersion.quark_disk_display"
+                :options="diskUrlDisplayModes"
+                :display-name="diskUrlDisplayLabel"
+                style="width: 100%"
+                name="夸克网盘展示方式"
+              />
+            </div>
+          </div>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs font-semibold text-contrast">迅雷网盘</label>
-          <input
-            v-model="draftVersion.xunlei_disk"
-            type="text"
-            class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm text-contrast"
-            placeholder="直接链接，不要设置访问密码"
-          />
+          <div class="flex gap-2">
+            <input
+              v-model="draftVersion.xunlei_disk"
+              type="text"
+              class="border-surface-5 min-w-0 flex-1 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm text-contrast"
+              placeholder="直接链接，不要设置访问密码"
+            />
+            <div class="w-36 shrink-0">
+              <DropdownSelect
+                v-model="draftVersion.xunlei_disk_display"
+                :options="diskUrlDisplayModes"
+                :display-name="diskUrlDisplayLabel"
+                style="width: 100%"
+                name="迅雷网盘展示方式"
+              />
+            </div>
+          </div>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs font-semibold text-contrast">百度网盘</label>
-          <input
-            v-model="draftVersion.baidu_disk"
-            type="text"
-            class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm text-contrast"
-            placeholder="直接链接，不要设置访问密码"
-          />
+          <div class="flex gap-2">
+            <input
+              v-model="draftVersion.baidu_disk"
+              type="text"
+              class="border-surface-5 min-w-0 flex-1 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm text-contrast"
+              placeholder="直接链接，不要设置访问密码"
+            />
+            <div class="w-36 shrink-0">
+              <DropdownSelect
+                v-model="draftVersion.baidu_disk_display"
+                :options="diskUrlDisplayModes"
+                :display-name="diskUrlDisplayLabel"
+                style="width: 100%"
+                name="百度网盘展示方式"
+              />
+            </div>
+          </div>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs font-semibold text-contrast">Modrinth 转载</label>
@@ -174,6 +207,10 @@
           />
         </div>
       </div>
+
+      <p class="m-0 text-xs text-secondary">
+        展示方式说明：「默认下载」点击后直接跳转网盘；「纯二维码」弹出扫码窗口，用户用手机App扫码转存；「二维码+链接」扫码窗口内同时保留跳转按钮。网盘转存可为作者提供收益。
+      </p>
 
       <!-- 整合包标识提示（已在 upload-mode 步骤设置过，这里只显示状态） -->
       <div
@@ -202,6 +239,7 @@ import { InfoIcon } from "@modrinth/assets";
 import {
   Admonition,
   DropzoneFileInput,
+  DropdownSelect,
   injectNotificationManager,
   injectProjectPageContext,
 } from "@modrinth/ui";
@@ -209,6 +247,7 @@ import { acceptFileFromProjectType } from "@modrinth/utils";
 import { computed } from "vue";
 
 import { injectManageVersionContext } from "~/providers/version/manage-version-modal";
+import { diskUrlDisplayLabel, diskUrlDisplayModes } from "~/utils/disk-urls";
 
 import VersionFileRow from "../components/VersionFileRow.vue";
 

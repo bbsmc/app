@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT user_id\n        FROM user_yunzhanghu_profiles\n        WHERE sign_status = 'signing'\n          AND sign_nonce = $1\n        ORDER BY user_id\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "72312baf6ef71fcd91f552ea39633b27086741ddc823ee88d513c7655d1b5b30"
+}

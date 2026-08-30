@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT user_id, real_name, phone, alipay_account\n                FROM user_yunzhanghu_profiles\n                WHERE real_name IS NOT NULL\n                   OR phone IS NOT NULL\n                   OR alipay_account IS NOT NULL\n                ORDER BY user_id\n                LIMIT 500\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "real_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "alipay_account",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "324f3de83dca83aaedd2f409edbae95c119066af7e9d06faa927e53975c0aa98"
+}

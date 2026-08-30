@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{DatabaseError, PayoutId, UserId};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Payout {
     pub id: PayoutId,
     pub user_id: UserId,
@@ -17,6 +17,7 @@ pub struct Payout {
     pub method: Option<PayoutMethodType>,
     pub method_address: Option<String>,
     pub platform_id: Option<String>,
+    pub admin_reject_reason: Option<String>,
 }
 
 impl Payout {
@@ -71,7 +72,9 @@ impl Payout {
 
         let results = sqlx::query!(
             "
-            SELECT id, user_id, created, amount, status, method, method_address, platform_id, fee
+            SELECT
+                id, user_id, created, amount, status, method, method_address,
+                platform_id, fee, admin_reject_reason
             FROM payouts
             WHERE id = ANY($1)
             ",
@@ -88,6 +91,7 @@ impl Payout {
             method_address: r.method_address,
             platform_id: r.platform_id,
             fee: r.fee,
+            admin_reject_reason: r.admin_reject_reason,
         })
         .try_collect::<Vec<Payout>>()
         .await?;

@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.project_id, m.name AS \"title?\", m.slug AS \"slug?\",\n               c.lifetime_eff_downloads, c.pending_amount\n        FROM incentive_project_counters c\n        LEFT JOIN mods m ON m.id = c.project_id\n        WHERE c.lifetime_eff_downloads > 0\n        ORDER BY c.pending_amount DESC, c.lifetime_eff_downloads DESC\n        LIMIT 20\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "title?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "lifetime_eff_downloads",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "pending_amount",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6f68a506e18d86e06238854069f955370c5fc4e6895557c4c2578e638a1582cf"
+}

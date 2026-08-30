@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE payouts\n        SET yunzhanghu_order_id = $2,\n            yunzhanghu_submit_started_at = NOW(),\n            yunzhanghu_submit_finished_at = NULL,\n            yunzhanghu_submit_attempts = yunzhanghu_submit_attempts + 1,\n            yunzhanghu_submit_error = NULL,\n            yunzhanghu_confirmed_by = $3\n        WHERE id = $1 AND platform_id IS NULL AND status = 'in-transit'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8a6f58b3df48263e5bac9381ad57bf14b2b0977d91e969a2dffbacdc99bd0951"
+}

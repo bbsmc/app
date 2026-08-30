@@ -108,26 +108,28 @@
             "
           />
         </div>
-        <!--        <div class="adjacent-input">-->
-        <!--          <label :for="`member-${member.user.id}-monetization-weight`">-->
-        <!--            <span class="label__title">Monetization weight</span>-->
-        <!--            <span class="label__description">-->
-        <!--              Relative to all other members' monetization weights, this determines what portion of-->
-        <!--              the organization projects' revenue goes to this member.-->
-        <!--            </span>-->
-        <!--          </label>-->
-        <!--          <input-->
-        <!--            :id="`member-${member.user.id}-monetization-weight`"-->
-        <!--            v-model="member.payouts_split"-->
-        <!--            type="number"-->
-        <!--            :disabled="-->
-        <!--              !isPermission(-->
-        <!--                currentMember.organization_permissions,-->
-        <!--                organizationPermissions.EDIT_MEMBER,-->
-        <!--              )-->
-        <!--            "-->
-        <!--          />-->
-        <!--        </div>-->
+        <div class="adjacent-input">
+          <label :for="`member-${member.user.id}-payouts-split`">
+            <span class="label__title">默认激励分账权重</span>
+            <span class="label__description">
+              用于团队项目的默认激励分账权重，可在单个资源成员设置中覆盖。
+            </span>
+          </label>
+          <input
+            :id="`member-${member.user.id}-payouts-split`"
+            v-model.number="member.payouts_split"
+            type="number"
+            min="0"
+            max="5000"
+            step="0.01"
+            :disabled="
+              !isPermission(
+                currentMember.organization_permissions,
+                organizationPermissions.EDIT_MEMBER,
+              )
+            "
+          />
+        </div>
         <template v-if="!member.is_owner">
           <span class="label">
             <span class="label__title">资源权限</span>
@@ -314,7 +316,7 @@ const permToLabel = (key) => {
     return "查看分析";
   }
   if (key === "VIEW_PAYOUTS") {
-    return "查看支付";
+    return "查看激励收益";
   }
   if (key === "WIKI_EDIT") {
     return "管理百科";

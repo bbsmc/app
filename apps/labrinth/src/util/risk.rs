@@ -65,9 +65,7 @@ pub async fn check_text_risk(
             // 使用北京时间输出
             let time = upload_limit
                 .time
-                .with_timezone(
-                    &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                )
+                .with_timezone(&crate::util::date::app_tz())
                 .format("%Y-%m-%d %H:%M:%S")
                 .to_string();
             return Err(ApiError::RiskLimit(time));
@@ -93,9 +91,7 @@ pub async fn check_text_risk(
             return Err(ApiError::RiskLimit(
                 upload_limit
                     .time
-                    .with_timezone(
-                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                    )
+                    .with_timezone(&crate::util::date::app_tz())
                     .format("%Y-%m-%d %H:%M:%S")
                     .to_string(),
             ));
@@ -148,9 +144,7 @@ pub async fn check_image_risk(
             // 使用北京时间输出
             let time = upload_limit
                 .time
-                .with_timezone(
-                    &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                )
+                .with_timezone(&crate::util::date::app_tz())
                 .format("%Y-%m-%d %H:%M:%S")
                 .to_string();
             return Err(ApiError::RiskLimit(time));
@@ -176,9 +170,7 @@ pub async fn check_image_risk(
             return Err(ApiError::RiskLimit(
                 upload_limit
                     .time
-                    .with_timezone(
-                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                    )
+                    .with_timezone(&crate::util::date::app_tz())
                     .format("%Y-%m-%d %H:%M:%S")
                     .to_string(),
             ));
@@ -229,9 +221,7 @@ pub async fn check_text_risk_with_labels(
         if upload_limit.is_limit() {
             let time = upload_limit
                 .time
-                .with_timezone(
-                    &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                )
+                .with_timezone(&crate::util::date::app_tz())
                 .format("%Y-%m-%d %H:%M:%S")
                 .to_string();
             return Err(ApiError::RiskLimit(time));
@@ -254,9 +244,7 @@ pub async fn check_text_risk_with_labels(
             return Err(ApiError::RiskLimit(
                 upload_limit
                     .time
-                    .with_timezone(
-                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                    )
+                    .with_timezone(&crate::util::date::app_tz())
                     .format("%Y-%m-%d %H:%M:%S")
                     .to_string(),
             ));
@@ -317,9 +305,7 @@ pub async fn check_image_risk_with_labels(
         if upload_limit.is_limit() {
             let time = upload_limit
                 .time
-                .with_timezone(
-                    &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                )
+                .with_timezone(&crate::util::date::app_tz())
                 .format("%Y-%m-%d %H:%M:%S")
                 .to_string();
             return Err(ApiError::RiskLimit(time));
@@ -347,9 +333,7 @@ pub async fn check_image_risk_with_labels(
             return Err(ApiError::RiskLimit(
                 upload_limit
                     .time
-                    .with_timezone(
-                        &chrono::FixedOffset::east_opt(8 * 3600).unwrap(),
-                    )
+                    .with_timezone(&crate::util::date::app_tz())
                     .format("%Y-%m-%d %H:%M:%S")
                     .to_string(),
             ));

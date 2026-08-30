@@ -35,6 +35,7 @@ pub mod project_pricing_item;
 pub mod user_ban_item;
 pub mod user_purchase_item;
 pub mod wiki_cache_item;
+pub mod yunzhanghu_profile_item;
 
 pub use collection_item::Collection;
 pub use creator_application_item::{

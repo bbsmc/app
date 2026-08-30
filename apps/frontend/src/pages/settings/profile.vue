@@ -16,7 +16,7 @@
         />
         <div class="input-stack">
           <FileInput
-            :max-size="262144"
+            :max-size="1048576"
             :show-icon="true"
             class="btn"
             :prompt="formatMessage(commonMessages.uploadImageButton)"

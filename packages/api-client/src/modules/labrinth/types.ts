@@ -473,11 +473,20 @@ export namespace Labrinth {
       export type DiskPlatform = 'quark' | 'xunlei' | 'baidu' | 'modrinth' | 'curseforge'
 
       /**
+       * BBSMC 网盘链接展示方式
+       * - default: 默认，点击直接跳转网盘
+       * - qrcode: 纯二维码，弹出扫码窗口（手机App扫码转存）
+       * - both: 共存，弹出扫码窗口 + 跳转网盘按钮
+       */
+      export type DiskDisplayMode = 'default' | 'qrcode' | 'both'
+
+      /**
        * BBSMC 网盘下载链接（与后端 QueryDisk struct 对应）
        */
       export interface QueryDisk {
         platform: DiskPlatform | string
         url: string
+        display?: DiskDisplayMode | string
       }
 
       /**
@@ -561,6 +570,10 @@ export namespace Labrinth {
         baidu_disk?: string
         modrinth?: string
         curseforge?: string
+        /** 3 个网盘的展示方式（仅夸克/迅雷/百度支持），提交时聚合进 disk_urls */
+        quark_disk_display?: Labrinth.Versions.v3.DiskDisplayMode
+        xunlei_disk_display?: Labrinth.Versions.v3.DiskDisplayMode
+        baidu_disk_display?: Labrinth.Versions.v3.DiskDisplayMode
       }
 
       export interface CreateVersionRequest {
@@ -626,12 +639,11 @@ export namespace Labrinth {
         | 'gitlab'
         | 'google'
         | 'steam'
-        | 'paypal'
+        | 'bilibili'
+        | 'qq'
+        | 'wechat'
 
       export type UserPayoutData = {
-        paypal_address?: string
-        paypal_country?: string
-        venmo_handle?: string
         balance: number
       }
     }

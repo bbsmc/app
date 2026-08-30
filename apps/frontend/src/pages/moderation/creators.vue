@@ -354,7 +354,8 @@ const getStatusLabel = (status) => {
   return labels[status] || status;
 };
 
-const formatDateTime = (date) => nuxtApp.$dayjs(date).format("YYYY-MM-DD HH:mm");
+const formatDateTime = (date) =>
+  nuxtApp.$dayjs(date).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
 
 const maskIdCard = (idCard) => {
   if (!idCard || idCard.length < 8) return idCard;

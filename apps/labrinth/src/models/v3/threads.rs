@@ -76,6 +76,7 @@ pub enum ThreadType {
     VersionLink,
     BanAppeal,
     CreatorApplication,
+    IncentiveApplication,
 }
 
 impl std::fmt::Display for ThreadType {
@@ -94,6 +95,7 @@ impl ThreadType {
             ThreadType::VersionLink => "version_link",
             ThreadType::BanAppeal => "ban_appeal",
             ThreadType::CreatorApplication => "creator_application",
+            ThreadType::IncentiveApplication => "incentive_application",
         }
     }
 
@@ -105,6 +107,7 @@ impl ThreadType {
             "version_link" => ThreadType::VersionLink,
             "ban_appeal" => ThreadType::BanAppeal,
             "creator_application" => ThreadType::CreatorApplication,
+            "incentive_application" => ThreadType::IncentiveApplication,
             _ => ThreadType::DirectMessage,
         }
     }

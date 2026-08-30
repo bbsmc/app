@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT project_id, applicant_user_id, thread_id\n        FROM incentive_applications\n        WHERE id = $1 AND status = 'pending'\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "applicant_user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "thread_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "dbd5aa24413c5e3f5e01a9fc232a87dc798f9fe127d4d09cacc6f4ce681f9430"
+}

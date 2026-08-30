@@ -71,6 +71,13 @@ zxcvbn = "3.1.0"
 totp-rs = { version = "5.7.0", features = ["gen_secret"] }
 ring = "0.17.3"
 
+# 云账户对接：3DES (CBC/PKCS7)、RSA-SHA256
+# （AES-256-GCM 复用 ring，由 crate::util::encrypt 提供）
+des = "0.8.1"
+cbc = { version = "0.1.2", features = ["std"] }
+cipher = { version = "0.4.4", features = ["block-padding"] }
+rsa = { version = "0.9.6", features = ["sha2"] }
+
 # URL 处理
 url = "2.5.7"
 urlencoding = "2.1.3"

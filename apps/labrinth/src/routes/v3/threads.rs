@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::auth::{check_forum_ban, get_user_from_headers};
@@ -12,10 +13,12 @@ use crate::models::images::{Image, ImageContext};
 use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
 use crate::models::projects::ProjectStatus;
+use crate::models::teams::ProjectPermissions;
 use crate::models::threads::{MessageBody, Thread, ThreadId, ThreadType};
 use crate::models::users::User;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
+use crate::util::routes::parse_limited_ids_json;
 use actix_web::{HttpRequest, HttpResponse, web};
 use futures::TryStreamExt;
 use serde::Deserialize;
@@ -33,12 +36,88 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("threads", web::get().to(threads_get));
 }
 
+/// 判断用户是否可访问激励申请线程。
+/// accepted 的项目直属成员权限优先于所属组织成员的默认项目权限。
+fn can_access_incentive_application_thread(
+    is_applicant: bool,
+    project_permissions: Option<i64>,
+    organization_permissions: Option<i64>,
+) -> bool {
+    if is_applicant {
+        return true;
+    }
+
+    project_permissions
+        .or(organization_permissions)
+        .and_then(|permissions| {
+            ProjectPermissions::from_bits(permissions as u64)
+        })
+        .is_some_and(|permissions| {
+            permissions.intersects(
+                ProjectPermissions::EDIT_DETAILS
+                    | ProjectPermissions::VIEW_PAYOUTS,
+            )
+        })
+}
+
+async fn authorized_incentive_application_thread_ids(
+    thread_ids: &[i64],
+    user_id: i64,
+    pool: &PgPool,
+) -> Result<HashSet<i64>, ApiError> {
+    if thread_ids.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let applications = sqlx::query!(
+        r#"
+        SELECT a.thread_id AS "thread_id!", a.applicant_user_id,
+               project_tm.permissions AS "project_permissions?",
+               organization_tm.permissions AS "organization_permissions?"
+        FROM incentive_applications a
+        JOIN mods m ON m.id = a.project_id
+        LEFT JOIN team_members project_tm
+            ON project_tm.team_id = m.team_id
+            AND project_tm.user_id = $2
+            AND project_tm.accepted = TRUE
+        LEFT JOIN organizations o ON o.id = m.organization_id
+        LEFT JOIN team_members organization_tm
+            ON organization_tm.team_id = o.team_id
+            AND organization_tm.user_id = $2
+            AND organization_tm.accepted = TRUE
+        WHERE a.thread_id = ANY($1::bigint[])
+          AND a.thread_id IS NOT NULL
+        "#,
+        thread_ids,
+        user_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(applications
+        .into_iter()
+        .filter(|application| {
+            can_access_incentive_application_thread(
+                application.applicant_user_id == user_id,
+                application.project_permissions,
+                application.organization_permissions,
+            )
+        })
+        .map(|application| application.thread_id)
+        .collect())
+}
+
 pub async fn is_authorized_thread(
     thread: &database::models::Thread,
     user: &User,
     pool: &PgPool,
 ) -> Result<bool, ApiError> {
-    if user.role.is_mod() {
+    // 激励申请 thread 只有 admin 能跨越限制访问；其他 thread 沿用 mod 兜底
+    if thread.type_ == ThreadType::IncentiveApplication {
+        if user.role.is_admin() {
+            return Ok(true);
+        }
+    } else if user.role.is_mod() {
         return Ok(true);
     }
 
@@ -171,6 +250,17 @@ pub async fn is_authorized_thread(
                 false
             }
         }
+        ThreadType::IncentiveApplication => {
+            // 激励申请线程：申请人或团队成员可以访问
+            let thread_ids = [thread.id.0];
+            authorized_incentive_application_thread_ids(
+                &thread_ids,
+                user_id.0,
+                pool,
+            )
+            .await?
+            .contains(&thread.id.0)
+        }
     })
 }
 
@@ -186,7 +276,14 @@ pub async fn filter_authorized_threads(
     let mut check_threads = Vec::new();
 
     for thread in threads {
-        if user.role.is_mod()
+        let has_global_access =
+            if thread.type_ == ThreadType::IncentiveApplication {
+                user.role.is_admin()
+            } else {
+                user.role.is_mod()
+            };
+
+        if has_global_access
             || (thread.type_ == ThreadType::DirectMessage
                 && thread.members.contains(&user_id))
         {
@@ -357,6 +454,31 @@ pub async fn filter_authorized_threads(
             .try_collect::<Vec<()>>()
             .await?;
         }
+
+        // 处理 IncentiveApplication 类型的线程：通过 thread_id 反查 + 申请人或团队成员可读
+        let incentive_thread_ids = check_threads
+            .iter()
+            .filter(|x| x.type_ == ThreadType::IncentiveApplication)
+            .map(|x| x.id.0)
+            .collect::<Vec<_>>();
+
+        if !incentive_thread_ids.is_empty() {
+            let authorized_thread_ids =
+                authorized_incentive_application_thread_ids(
+                    &incentive_thread_ids,
+                    user_id.0,
+                    pool.get_ref(),
+                )
+                .await?;
+
+            check_threads.retain(|thread| {
+                let matched = authorized_thread_ids.contains(&thread.id.0);
+                if matched {
+                    return_threads.push(thread.clone());
+                }
+                !matched
+            });
+        }
     }
 
     let mut user_ids = return_threads
@@ -489,9 +611,11 @@ pub async fn threads_get(
     .await?
     .1;
 
+    let mut seen = HashSet::new();
     let thread_ids: Vec<database::models::ids::ThreadId> =
-        serde_json::from_str::<Vec<ThreadId>>(&ids.ids)?
+        parse_limited_ids_json::<ThreadId>(&ids.ids)?
             .into_iter()
+            .filter(|id| seen.insert(id.0))
             .map(|x| x.into())
             .collect();
 
@@ -748,6 +872,100 @@ pub async fn thread_send_message(
                     }
                 }
             }
+        } else if thread.type_ == ThreadType::IncentiveApplication {
+            // 激励申请线程的消息通知
+            let appl = sqlx::query!(
+                r#"
+                SELECT a.applicant_user_id, a.project_id, m.name AS "project_name?"
+                FROM incentive_applications a
+                LEFT JOIN mods m ON m.id = a.project_id
+                WHERE a.thread_id = $1
+                ORDER BY a.created_at DESC LIMIT 1
+                "#,
+                thread.id.0
+            )
+            .fetch_optional(&**pool)
+            .await?;
+
+            if let Some(appl) = appl {
+                let applicant_user_id =
+                    database::models::ids::UserId(appl.applicant_user_id);
+                let project_title =
+                    appl.project_name.unwrap_or_else(|| "项目".to_string());
+
+                // 管理员回复时通知申请人；作者回复时通知最近回复过的管理员。
+                if user.role.is_admin() && user.id != applicant_user_id.into() {
+                    let project_b62 =
+                        crate::models::ids::base62_impl::to_base62(
+                            appl.project_id as u64,
+                        );
+                    NotificationBuilder {
+                        body: NotificationBody::LegacyMarkdown {
+                            notification_type: Some(
+                                "incentive_application_message".to_string(),
+                            ),
+                            name: format!(
+                                "[激励申请] 管理员回复：{project_title}"
+                            ),
+                            text:
+                                "管理员在你的激励申请中回复了消息，请前往查看。"
+                                    .to_string(),
+                            link: format!(
+                                "/project/{project_b62}/settings/incentive"
+                            ),
+                            actions: vec![],
+                        },
+                    }
+                    .insert(applicant_user_id, &mut transaction, &redis)
+                    .await?;
+                } else if !user.role.is_admin() {
+                    let project_b62 =
+                        crate::models::ids::base62_impl::to_base62(
+                            appl.project_id as u64,
+                        );
+                    let admin_id = sqlx::query!(
+                        "
+                        SELECT tm.author_id AS \"author_id!\"
+                        FROM threads_messages tm
+                        INNER JOIN users u ON u.id = tm.author_id
+                        WHERE tm.thread_id = $1
+                          AND tm.author_id IS NOT NULL
+                          AND tm.author_id <> $2
+                          AND u.role = 'admin'
+                        ORDER BY tm.created DESC, tm.id DESC
+                        LIMIT 1
+                        ",
+                        thread.id.0,
+                        user.id.0 as i64,
+                    )
+                    .fetch_optional(&mut *transaction)
+                    .await?
+                    .map(|row| database::models::ids::UserId(row.author_id));
+
+                    if let Some(admin_id) = admin_id {
+                        NotificationBuilder {
+                            body: NotificationBody::LegacyMarkdown {
+                                notification_type: Some(
+                                    "incentive_application_user_reply"
+                                        .to_string(),
+                                ),
+                                name: format!(
+                                    "[激励申请] 作者回复：{project_title}"
+                                ),
+                                text:
+                                    "作者在激励申请中回复了消息，请前往查看。"
+                                        .to_string(),
+                                link: format!(
+                                    "/project/{project_b62}/settings/incentive"
+                                ),
+                                actions: vec![],
+                            },
+                        }
+                        .insert(admin_id, &mut transaction, &redis)
+                        .await?;
+                    }
+                }
+            }
         }
 
         if let MessageBody::Text {
@@ -875,5 +1093,52 @@ pub async fn message_delete(
         Ok(HttpResponse::NoContent().body(""))
     } else {
         Err(ApiError::NotFound)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::can_access_incentive_application_thread;
+    use crate::models::teams::ProjectPermissions;
+
+    #[test]
+    fn incentive_applicant_can_always_access_thread() {
+        assert!(can_access_incentive_application_thread(true, None, None));
+    }
+
+    #[test]
+    fn organization_member_with_incentive_permission_can_access_thread() {
+        assert!(can_access_incentive_application_thread(
+            false,
+            None,
+            Some(ProjectPermissions::EDIT_DETAILS.bits() as i64),
+        ));
+    }
+
+    #[test]
+    fn organization_member_with_view_payouts_can_access_thread() {
+        assert!(can_access_incentive_application_thread(
+            false,
+            None,
+            Some(ProjectPermissions::VIEW_PAYOUTS.bits() as i64),
+        ));
+    }
+
+    #[test]
+    fn accepted_project_member_overrides_organization_permissions() {
+        assert!(!can_access_incentive_application_thread(
+            false,
+            Some(ProjectPermissions::empty().bits() as i64),
+            Some(ProjectPermissions::VIEW_PAYOUTS.bits() as i64),
+        ));
+    }
+
+    #[test]
+    fn member_without_incentive_permission_cannot_access_thread() {
+        assert!(!can_access_incentive_application_thread(
+            false,
+            Some(ProjectPermissions::EDIT_BODY.bits() as i64),
+            None,
+        ));
     }
 }

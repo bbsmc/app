@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.team_id, o.team_id AS \"organization_team_id?\"\n        FROM mods m\n        LEFT JOIN organizations o ON m.organization_id = o.id\n        WHERE m.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_team_id?",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "a603616be7f9c903cabc754cab6153679c59fd956e4eb2bc6184288e959913ac"
+}
