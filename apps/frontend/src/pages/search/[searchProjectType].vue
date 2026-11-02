@@ -442,13 +442,6 @@ const bannerItemsConfig = ref({
     },
     {
       image:
-        "https://cdn.bbsmc.net/bbsmc/data/KJpwyjn4/images/ea9561e2939d6a0076802e92e8db2c05705b1143_350.webp",
-      title: "终焉决斗NW",
-      description: "战魂不熄，决至终焉",
-      slug: "/modpack/dcnw",
-    },
-    {
-      image:
         "https://cdn.bbsmc.net/bbsmc/data/C6qzOJgo/images/d33efa210924380430a479f308725885d38b899a_350.webp",
       title: "猎杀：历史 1949",
       description: "纯 PVE 猎杀对决：搜打撤×枪械成长×Boss 攻坚",
@@ -502,6 +495,13 @@ const bannerItemsConfig = ref({
       title: "奇妙商店物语",
       description: "城市餐厅经营核心整合包",
       slug: "/modpack/wss",
+    },
+    {
+      image:
+        "https://cdn.bbsmc.net/bbsmc/data/9I9KjIy7/images/ecef611b3941d4f879abd509bfef09ae411ac5c5.jpeg",
+      title: "新:模拟大都市",
+      description: "结合农夫乐事、拾光剪影的城市建设养老整合包",
+      slug: "/modpack/nsuk",
     },
   ],
   mod: [

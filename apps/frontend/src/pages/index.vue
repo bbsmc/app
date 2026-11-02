@@ -755,6 +755,14 @@ const heroBanners = ref([
     badge: "热门整合包",
     slug: "/modpack/wss",
   },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/9I9KjIy7/images/ecef611b3941d4f879abd509bfef09ae411ac5c5.jpeg",
+    title: "新:模拟大都市",
+    description: "从零起步规划城市，结合农夫乐事、拾光剪影的养老整合包",
+    badge: "精选整合包",
+    slug: "/modpack/nsuk",
+  },
 ]);
 
 const currentHeroSlide = ref(0);
