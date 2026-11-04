@@ -49,6 +49,7 @@
           :class="{ 'max-lg:!hidden': !sidebarMenuOpen }"
           @mouseenter="stopSidebarAdAutoPlay"
           @mouseleave="startSidebarAdAutoPlay"
+          @dismiss="stopSidebarAdAutoPlay"
         />
       </Transition>
       <section class="card gap-1" :class="{ 'max-lg:!hidden': !sidebarMenuOpen }">
@@ -570,6 +571,7 @@ const sidebarAdAutoPlayInterval = ref(null);
 const currentSidebarAdVariant = computed(
   () => sidebarAdVariants[currentSidebarAdIndex.value] || "server",
 );
+const { dismissed: sidebarAdDismissed } = usePromoAdDismissal();
 
 const data = useNuxtApp();
 const route = useNativeRoute();
@@ -1442,7 +1444,8 @@ const handleMouseLeave = () => {
 };
 
 const startSidebarAdAutoPlay = () => {
-  if (!isClientMounted.value) return;
+  // 用户关闭广告后（24 小时内）不再轮播
+  if (!isClientMounted.value || sidebarAdDismissed.value) return;
   stopSidebarAdAutoPlay();
   sidebarAdAutoPlayInterval.value = setInterval(() => {
     currentSidebarAdIndex.value = (currentSidebarAdIndex.value + 1) % sidebarAdVariants.length;
