@@ -22,57 +22,7 @@
         v-if="notifTypes.length > 1"
         v-model="selectedType"
         :items="notifTypes"
-        :format-label="
-          (x) => {
-            switch (x) {
-              case 'all': {
-                return '全部';
-              }
-              case 'status_change': {
-                return '状态变更';
-              }
-              case 'moderator_message': {
-                return '社区管理员消息';
-              }
-              case 'project_update': {
-                return '资源更新';
-              }
-              case 'team_invite': {
-                return '项目邀请';
-              }
-              case 'wiki_cache': {
-                return '百科';
-              }
-              case 'forum': {
-                return '论坛';
-              }
-              case 'organization_invite': {
-                return '团队邀请';
-              }
-              case 'creator_application_message': {
-                return '创作者申请消息';
-              }
-              case 'creator_application_approved': {
-                return '创作者申请通过';
-              }
-              case 'creator_application_rejected': {
-                return '创作者申请拒绝';
-              }
-              case 'profile_review_pending': {
-                return '资料审核中';
-              }
-              case 'profile_review_result': {
-                return '资料审核结果';
-              }
-              case 'image_review_result': {
-                return '图片审核';
-              }
-              default: {
-                return x;
-              }
-            }
-          }
-        "
+        :format-label="formatNotifType"
         :capitalize="false"
       />
       <p v-if="pending">加载中...</p>
@@ -126,6 +76,50 @@ const router = useNativeRouter();
 const history = computed(() => {
   return route.name === "dashboard-notifications-history";
 });
+
+// 通知类型筛选的中文标签。
+// 键为 v2 通知的 type：NotificationBody 变体名，或 LegacyMarkdown 的 notification_type。
+// 后端新增通知类型时需要在这里补上，否则筛选按钮会直接显示英文 key。
+const NOTIF_TYPE_LABELS = {
+  all: "全部",
+  status_change: "状态变更",
+  moderator_message: "社区管理员消息",
+  project_update: "资源更新",
+  team_invite: "项目邀请",
+  organization_invite: "团队邀请",
+  wiki_cache: "百科",
+  forum: "论坛",
+  user_banned: "账号封禁",
+  user_unbanned: "封禁解除",
+  appeal_reviewed: "申诉结果",
+  ban_appeal_message: "申诉消息",
+  creator_application_message: "创作者申请消息",
+  creator_application_approved: "创作者申请通过",
+  creator_application_rejected: "创作者申请拒绝",
+  profile_review_pending: "资料审核中",
+  profile_review_result: "资料审核结果",
+  image_review_result: "图片审核",
+  incentive_application_reviewed: "激励申请结果",
+  incentive_application_message: "激励申请消息",
+  incentive_application_user_reply: "激励申请作者回复",
+  incentive_project_enabled: "激励已开通",
+  incentive_project_disabled: "激励已关闭",
+  payout_success: "提现到账",
+  payout_failed: "提现失败",
+  payout_cancelled: "提现退回",
+  yunzhanghu_sign_signed: "云账户已签约",
+  yunzhanghu_sign_terminated: "云账户已解约",
+  yunzhanghu_sign_unsigned: "云账户未签约",
+};
+
+function formatNotifType(type) {
+  // type 为 null：后端无法识别的通知（Unknown）或未带 notification_type 的旧通知
+  if (!type) {
+    return "其他";
+  }
+  const label = NOTIF_TYPE_LABELS[type];
+  return typeof label === "string" ? label : type;
+}
 
 const selectedType = ref("all");
 const page = ref(1);
