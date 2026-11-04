@@ -2,9 +2,13 @@ use actix_rt::Arbiter;
 use futures::StreamExt;
 use tokio_stream::wrappers::IntervalStream;
 
+mod homepage_stats;
 mod translation_tracking;
 mod versions;
 
+pub use homepage_stats::{
+    HomepageStats, get_homepage_stats, schedule_homepage_stats,
+};
 pub use translation_tracking::schedule_translation_tracking;
 pub use versions::schedule_versions;
 

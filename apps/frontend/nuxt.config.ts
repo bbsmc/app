@@ -148,6 +148,12 @@ export default defineNuxtConfig({
         homePageProjects?: any[];
         homePageSearch?: any[];
         homePageNotifs?: any[];
+        homePageStats?: {
+          projects: number;
+          downloads: number;
+          users: number;
+          updated_at: string;
+        };
         products?: any[];
       } = {};
 
@@ -165,7 +171,9 @@ export default defineNuxtConfig({
         state.lastGenerated &&
         new Date(state.lastGenerated).getTime() + TTL > new Date().getTime() &&
         // ...but only if the API URL is the same
-        state.apiUrl === API_URL
+        state.apiUrl === API_URL &&
+        // 旧缓存里没有首页统计时也要重新生成
+        state.homePageStats
       ) {
         return;
       }
@@ -205,6 +213,14 @@ export default defineNuxtConfig({
       state.reportTypes = reportTypes;
       state.homePageSearch = homePageSearch;
       state.homePageNotifs = homePageNotifs;
+
+      // 首页统计（后端每小时写入 Redis）。单独请求：失败时保留上次的值，不阻断构建
+      try {
+        const v3ApiUrl = API_URL.replace(/\/v\d+\/?$/, "/v3/");
+        state.homePageStats = await $fetch(`${v3ApiUrl}statistics/homepage`, headers);
+      } catch (e) {
+        console.warn("首页统计获取失败，沿用上次构建的数据:", e);
+      }
 
       await fs.writeFile("./src/generated/state.json", JSON.stringify(state));
 

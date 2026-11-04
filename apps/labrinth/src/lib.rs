@@ -197,6 +197,13 @@ pub fn app_setup(
         redis_pool.clone(),
     );
 
+    // 首页统计（资源总数 / 累计下载 / 注册用户）每小时写入 Redis
+    scheduler::schedule_homepage_stats(
+        &mut scheduler,
+        pool.clone(),
+        redis_pool.clone(),
+    );
+
     // 每 5 分钟清理超过 12 小时未付款的待支付订单
     let pool_ref = pool.clone();
     scheduler.run(std::time::Duration::from_secs(60 * 5), move || {

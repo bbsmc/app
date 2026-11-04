@@ -1,9 +1,20 @@
+use crate::database::redis::RedisPool;
 use crate::routes::ApiError;
 use actix_web::{HttpResponse, web};
 use sqlx::PgPool;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("statistics", web::get().to(get_stats));
+    cfg.route("statistics/homepage", web::get().to(get_homepage_stats));
+}
+
+/// 首页统计（公开接口，无需登录）。数据由调度器每小时写入 Redis。
+pub async fn get_homepage_stats(
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+) -> Result<HttpResponse, ApiError> {
+    let stats = crate::scheduler::get_homepage_stats(&pool, &redis).await?;
+    Ok(HttpResponse::Ok().json(stats))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

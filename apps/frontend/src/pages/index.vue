@@ -20,17 +20,17 @@
           >
         </div>
 
-        <div class="hero-stats">
+        <div v-if="homePageStats" class="hero-stats">
           <div class="hero-stat">
-            <div class="hero-stat-value">{{ formatStatNumber(stats.projects) }}+</div>
+            <div class="hero-stat-value">{{ $formatNumber(homePageStats.projects, false) }}</div>
             <div class="hero-stat-label">资源总数</div>
           </div>
           <div class="hero-stat">
-            <div class="hero-stat-value">{{ formatStatNumber(stats.downloads) }}+</div>
+            <div class="hero-stat-value">{{ $formatNumber(homePageStats.downloads) }}</div>
             <div class="hero-stat-label">累计下载</div>
           </div>
           <div class="hero-stat">
-            <div class="hero-stat-value">{{ formatStatNumber(stats.users) }}</div>
+            <div class="hero-stat-value">{{ formatUserCount(homePageStats.users) }}</div>
             <div class="hero-stat-label">注册用户</div>
           </div>
         </div>
@@ -562,6 +562,7 @@ import {
   SearchIcon,
   XIcon,
 } from "@modrinth/assets";
+import generatedState from "~/generated/state.json";
 
 useSeoMeta({
   title: "BBSMC - 我的世界中文资源社区 | Minecraft 模组、整合包、光影下载",
@@ -679,15 +680,8 @@ watch(searchQuery, (val) => {
   searchDebounceTimer = setTimeout(() => performSearch(val), 300);
 });
 
-const stats = ref({
-  projects: 12580,
-  downloads: 1580000,
-  users: 89234,
-  modpacks: 1247,
-  mods: 3842,
-  languages: 4521,
-  forums: 28000,
-});
+// 首页统计：构建期从 /v3/statistics/homepage 拉取（后端每小时写入 Redis），见 nuxt.config.ts build:before
+const homePageStats = generatedState.homePageStats ?? null;
 
 // Hero Banners - 来自整合包页面的内容
 const heroBanners = ref([
@@ -792,15 +786,13 @@ const formatNumber = (num) => {
   return num.toLocaleString();
 };
 
-const formatStatNumber = (num) => {
-  if (!num) return "0";
-  if (num >= 10000) {
-    return (num / 10000).toFixed(0) + "万";
+// 注册用户只显示整数：满一万按「万」向下取整（舍去小数，不四舍五入），不足一万显示原数
+const formatUserCount = (num) => {
+  const n = Math.trunc(Number(num) || 0);
+  if (n >= 10000) {
+    return `${Math.floor(n / 10000)}万`;
   }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
-  }
-  return num.toLocaleString();
+  return n.toLocaleString("en-US");
 };
 
 // Project link
