@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE mods\n        SET follows = GREATEST(follows - 1, 0)\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "34441a8499350a663c9e89fa7d37ad171387011038d7d13475005aa383a3ed58"
+}

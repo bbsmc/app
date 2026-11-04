@@ -83,8 +83,29 @@ pub async fn index_projects(
     pool: PgPool,
     redis: RedisPool,
     config: &SearchConfig,
+    clickhouse: clickhouse::Client,
 ) -> Result<(), IndexingError> {
     info!("索引项目。");
+
+    // 查询所有项目最近 72 小时下载量，随全量索引写入文档的 recent_downloads 字段。
+    // ClickHouse 故障时降级为空表（热门排序退化为总下载量），不让它阻塞整个索引流程。
+    let recent_downloads: std::collections::HashMap<i64, u64> =
+        match crate::clickhouse::fetch_recent_downloads(std::sync::Arc::new(
+            clickhouse,
+        ))
+        .await
+        {
+            Ok(rows) => rows
+                .into_iter()
+                .map(|row| (row.id as i64, row.total))
+                .collect(),
+            Err(e) => {
+                log::warn!(
+                    "查询最近 72 小时下载量失败，本次索引 recent_downloads 将全部为 0：{e}"
+                );
+                std::collections::HashMap::new()
+            }
+        };
 
     // 首先，确保当前索引存在（这样不会发生错误- 当前索引应该是空的最坏情况，而不是缺失）
     get_indexes_for_indexing(config, false).await?;
@@ -106,7 +127,7 @@ pub async fn index_projects(
         .map(|x| x.field)
         .collect::<Vec<_>>();
 
-    let uploads = index_local(&pool).await?;
+    let uploads = index_local(&pool, &recent_downloads).await?;
     add_projects(&indices, &uploads, all_loader_fields.clone(), config).await?;
 
     // 交换索引
@@ -500,5 +521,10 @@ const DEFAULT_ATTRIBUTES_FOR_FACETING: &[&str] = &[
     "server_side",
 ];
 
-const DEFAULT_SORTABLE_ATTRIBUTES: &[&str] =
-    &["downloads", "follows", "date_created", "date_modified"];
+const DEFAULT_SORTABLE_ATTRIBUTES: &[&str] = &[
+    "downloads",
+    "recent_downloads",
+    "follows",
+    "date_created",
+    "date_modified",
+];

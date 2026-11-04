@@ -14,6 +14,7 @@ pub use checks::{
     filter_visible_collections,
     filter_visible_project_ids,
     filter_visible_projects,
+    require_verified_email,
 };
 use serde::{Deserialize, Serialize};
 // pub use pat::{generate_pat, PersonalAccessToken};

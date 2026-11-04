@@ -391,7 +391,13 @@
             <BrandTextLogo aria-hidden="true" class="h-8 w-auto" />
           </NuxtLink>
           <p class="footer-tagline">中国最活跃的 Minecraft 中文资源社区</p>
-          <a href="javascript:void(0)" class="footer-qq-group" @click="copyQQGroup">
+          <a
+            href="https://qm.qq.com/q/QvaS7XmooM"
+            target="_blank"
+            rel="noopener"
+            class="footer-qq-group"
+            @click="copyQQGroup"
+          >
             QQ 群：1078515449
           </a>
           <div class="footer-social">
@@ -547,7 +553,7 @@ const { formatMessage } = useVIntl();
 const auth = await useAuth();
 const unreadNotifications = ref(0);
 
-// 复制 QQ 群号
+// 复制 QQ 群号（链接本身会在新标签打开加群页面）
 const copyQQGroup = () => {
   navigator.clipboard.writeText("1078515449").then(() => {
     addNotification({

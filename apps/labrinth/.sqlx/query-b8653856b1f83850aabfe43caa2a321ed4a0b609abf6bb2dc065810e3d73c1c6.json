@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM issue_assignees\n                WHERE user_id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8653856b1f83850aabfe43caa2a321ed4a0b609abf6bb2dc065810e3d73c1c6"
+}

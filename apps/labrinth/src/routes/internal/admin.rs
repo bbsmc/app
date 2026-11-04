@@ -174,7 +174,9 @@ pub async fn force_reindex(
 ) -> Result<HttpResponse, ApiError> {
     use crate::search::indexing::index_projects;
     let redis = redis.get_ref();
-    index_projects(pool.as_ref().clone(), redis.clone(), &config).await?;
+    let clickhouse = crate::clickhouse::init_client().await?;
+    index_projects(pool.as_ref().clone(), redis.clone(), &config, clickhouse)
+        .await?;
     Ok(HttpResponse::NoContent().finish())
 }
 
@@ -475,10 +477,12 @@ pub async fn fix_modpack_loaders(
         if body.reindex && result.fixed_count > 0 {
             use crate::search::indexing::index_projects;
             let redis_ref = redis.get_ref();
+            let clickhouse = crate::clickhouse::init_client().await?;
             index_projects(
                 pool.as_ref().clone(),
                 redis_ref.clone(),
                 &search_config,
+                clickhouse,
             )
             .await?;
             result.reindexed = true;

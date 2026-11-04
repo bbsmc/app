@@ -162,16 +162,14 @@ pub async fn version_create(
                             &redis,
                         )
                         .await?
-                    {
-                        if let Some(env_field) = example_version_fields
+                        && let Some(env_field) = example_version_fields
                             .into_iter()
                             .find(|f| f.field_name == "environment")
-                        {
-                            fields.insert(
-                                "environment".to_string(),
-                                env_field.value.serialize_internal(),
-                            );
-                        }
+                    {
+                        fields.insert(
+                            "environment".to_string(),
+                            env_field.value.serialize_internal(),
+                        );
                     }
                 }
                 // 通过文件扩展名预测处理项目类型

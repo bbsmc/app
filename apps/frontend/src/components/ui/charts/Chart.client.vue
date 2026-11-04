@@ -296,7 +296,10 @@ const flipLegend = (legend, newVal) => {
 };
 
 const resetChart = () => {
-  if (!chart.value) return;
+  // vue3-apexcharts 的内部实例在 mounted 后经 nextTick 异步创建；数据刷新会走 loading
+  // 分支导致图表重挂载，此窗口期内实例为 null，直接调 updateSeries 会抛 TypeError。
+  // 刚挂载的图表本就是初始状态，跳过即可。
+  if (!chart.value?.chart) return;
   chart.value.updateSeries([...props.data]);
   chart.value.updateOptions({
     xaxis: {

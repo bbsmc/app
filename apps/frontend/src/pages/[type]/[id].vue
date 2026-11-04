@@ -2241,10 +2241,11 @@ try {
       useBaseFetch(`project/${route.params.id}/dependencies`, {}),
     ),
     useAsyncData(`project/${route.params.id}/version?featured=true`, () =>
-      useBaseFetch(`project/${route.params.id}/version?featured=true`),
+      // 上游 4871abfb3 (#5121): 列表省略 changelog，避免把全部版本正文塞进 SSR payload
+      useBaseFetch(`project/${route.params.id}/version?featured=true&include_changelog=false`),
     ),
     useAsyncData(`project/${route.params.id}/version`, () =>
-      useBaseFetch(`project/${route.params.id}/version`),
+      useBaseFetch(`project/${route.params.id}/version?include_changelog=false`),
     ),
     useAsyncData(`project/${route.params.id}/wiki`, () => {
       return useBaseFetch(`project/${route.params.id}/wiki`, { apiVersion: 3 });
@@ -2348,7 +2349,9 @@ try {
 
 // 提供 ProjectPageContext 供子组件使用
 const refreshVersions = async () => {
-  const newVersions = await useBaseFetch(`project/${route.params.id}/version`);
+  const newVersions = await useBaseFetch(
+    `project/${route.params.id}/version?include_changelog=false`,
+  );
   if (versions && versions.value) {
     versions.value = newVersions;
   }

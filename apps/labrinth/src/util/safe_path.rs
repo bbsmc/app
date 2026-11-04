@@ -63,6 +63,19 @@ impl SafeRelativePath {
     }
 }
 
+/// 校验单个文件名（非路径）是否安全。
+/// 上游修复: e58af98f2 (#6569) - 上传文件名必须是单个安全路径组件：
+/// 不含路径分隔符、不是 . / ..、不是 Windows 保留设备名。
+/// 这里额外拒绝 ':'（拦 Windows 盘符前缀与 NTFS ADS）。注意不要把 ':' 规则加进
+/// SafeRelativePath::new，否则会误伤 mrpack 路径校验与 AutoMod 的整合包重解析。
+pub fn is_safe_file_name(file_name: &str) -> bool {
+    !file_name.is_empty()
+        && !file_name.contains(['/', '\\', ':'])
+        && file_name != "."
+        && file_name != ".."
+        && !is_windows_reserved_name(file_name)
+}
+
 /// 检查是否为 Windows 保留设备名称
 fn is_windows_reserved_name(name: &str) -> bool {
     let upper_name = name.to_ascii_uppercase();

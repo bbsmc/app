@@ -25,6 +25,7 @@ const INDEX_BATCH_SIZE: usize = 500;
 
 pub async fn index_local(
     pool: &PgPool,
+    recent_downloads: &HashMap<i64, u64>,
 ) -> Result<Vec<UploadSearchProject>, IndexingError> {
     info!("索引本地项目");
 
@@ -431,6 +432,11 @@ pub async fn index_local(
                         display_categories: display_categories.clone(),
                         follows: project.follows,
                         downloads: project.downloads,
+                        recent_downloads: recent_downloads
+                            .get(&project.id.0)
+                            .copied()
+                            .unwrap_or(0)
+                            as i64,
                         icon_url: project.icon_url.clone(),
                         author: owner.clone(),
                         date_created: project.approved,

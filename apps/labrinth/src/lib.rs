@@ -121,16 +121,19 @@ pub fn app_setup(
     let pool_ref = pool.clone();
     let search_config_ref = search_config.clone();
     let redis_pool_ref = redis_pool.clone();
+    let clickhouse_ref = clickhouse.clone();
     scheduler.run(local_index_interval, move || {
         let pool_ref = pool_ref.clone();
         let redis_pool_ref = redis_pool_ref.clone();
         let search_config_ref = search_config_ref.clone();
+        let clickhouse_ref = clickhouse_ref.clone();
         async move {
             info!("索引本地数据库");
             let result = index_projects(
                 pool_ref,
                 redis_pool_ref.clone(),
                 &search_config_ref,
+                clickhouse_ref,
             )
             .await;
             if let Err(e) = result {

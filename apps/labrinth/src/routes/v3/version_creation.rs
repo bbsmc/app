@@ -20,6 +20,7 @@ use crate::models::projects::{
 };
 use crate::models::projects::{DependencyType, ProjectStatus, skip_nulls};
 use crate::models::teams::ProjectPermissions;
+use crate::models::v3::user_limits::UserLimits;
 use crate::queue::moderation::AutomatedModerationQueue;
 use crate::queue::session::AuthQueue;
 use crate::util::routes::read_from_field;
@@ -290,6 +291,23 @@ async fn version_create_inner(
                 if !permissions.contains(ProjectPermissions::UPLOAD_VERSION) {
                     return Err(CreateError::CustomAuthenticationError(
                         "您没有权限上传此版本!".to_string(),
+                    ));
+                }
+
+                // 上游 ddb131a70 (#7591): 单项目版本数 + 每日上传版本数限额（北京时间自然日，管理员不受限）
+                let project_version_limits =
+                    UserLimits::get_for_versions_per_project(&user, project_id, pool).await?;
+                if project_version_limits.would_exceed(1) {
+                    return Err(CreateError::ProjectVersionLimitReached(
+                        project_version_limits.max,
+                    ));
+                }
+
+                let daily_version_limits =
+                    UserLimits::get_for_versions_per_day(&user, Utc::now(), pool).await?;
+                if daily_version_limits.would_exceed(1) {
+                    return Err(CreateError::DailyVersionLimitReached(
+                        daily_version_limits.max,
                     ));
                 }
 
@@ -649,7 +667,7 @@ async fn version_create_inner(
         version_number: builder.version_number.clone(),
         project_types: all_project_types,
         games: all_games,
-        changelog: builder.changelog.clone(),
+        changelog: Some(builder.changelog.clone()),
         date_published: Utc::now(),
         downloads: 0,
         version_type: version_data.release_channel,
@@ -1034,15 +1052,19 @@ pub async fn upload_file(
 ) -> Result<(), CreateError> {
     let (file_name, file_extension) = get_name_ext(content_disposition)?;
 
-    if other_file_names.contains(&format!("{}.{}", file_name, file_extension)) {
+    // 上游修复: d378b64f9 (#7387) - file_name 已含扩展名，原来又拼了一次扩展名
+    // （mod.jar → mod.jar.jar），导致同名检查永不命中、同名文件会覆盖同一对象。
+    if other_file_names.iter().any(|x| x == file_name) {
         return Err(CreateError::InvalidInput(
             "此文件在这之前已经被上传到 BBSMC 过，无法重复上传".to_string(),
         ));
     }
 
-    if file_name.contains('/') {
+    // 上游修复: e58af98f2 (#6569) - 文件名必须是单个安全路径组件
+    if !crate::util::safe_path::is_safe_file_name(file_name) {
         return Err(CreateError::InvalidInput(
-            "文件名不能包含斜杠！".to_string(),
+            "文件名不合法：不能包含路径分隔符、冒号、特殊组件或 Windows 保留名"
+                .to_string(),
         ));
     }
 
@@ -1249,9 +1271,15 @@ pub async fn upload_file(
 pub fn get_name_ext(
     content_disposition: &actix_web::http::header::ContentDisposition,
 ) -> Result<(&str, &str), CreateError> {
-    let file_name = content_disposition.get_filename().ok_or_else(|| {
-        CreateError::MissingValueError("Missing content file name".to_string())
-    })?;
+    // 上游修复: eaef14fca (#7898) - 去除文件名首尾空白，避免影响存储键与同名判断
+    let file_name = content_disposition
+        .get_filename()
+        .ok_or_else(|| {
+            CreateError::MissingValueError(
+                "Missing content file name".to_string(),
+            )
+        })?
+        .trim();
     let file_extension = if let Some(last_period) = file_name.rfind('.') {
         file_name.get((last_period + 1)..).unwrap_or("")
     } else {

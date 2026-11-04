@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+# 上游 a4f3c63fc: 供应链加固——不安装发布不足 7 天的新包，缓解 npm 投毒窗口。
+# 注意：minimumReleaseAge 需 pnpm 10.16+ 才生效；本仓库 packageManager 当前为 pnpm@9.4.0，
+# 升级到 pnpm 10+ 之前此项被忽略、不起保护作用（升级后自动生效）。
+minimumReleaseAge: 10080 # 7 days

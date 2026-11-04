@@ -17,6 +17,7 @@ pub mod redis;
 pub mod risk;
 pub mod routes;
 pub mod safe_path;
+pub mod submail;
 pub mod validate;
 pub mod webhook;
 pub mod yunzhanghu;

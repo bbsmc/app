@@ -62,11 +62,19 @@ export class LabrinthProjectsV2Module extends AbstractModule {
    * ```
    */
   public async search(params: ProjectSearchParams): Promise<SearchResult> {
+    const { facets, ...rest } = params
     return this.client.request<SearchResult>(`/search`, {
       api: 'labrinth',
       version: 2,
       method: 'GET',
-      params: params as Record<string, unknown>,
+      params: {
+        ...rest,
+        // The API expects facets as a JSON string (like ids in getMultiple).
+        // ofetch (ufo) cannot serialize nested arrays, and would flatten
+        // [['project_type:mod']] into ["project_type:mod"], which the
+        // backend rejects with "invalid type: string, expected a sequence".
+        ...(facets !== undefined ? { facets: JSON.stringify(facets) } : {}),
+      },
     })
   }
 

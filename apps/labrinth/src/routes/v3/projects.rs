@@ -1268,8 +1268,15 @@ pub async fn project_edit(
 
             // BBSMC 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
             // 在事务提交和缓存清理后再删除搜索索引，确保任务完成后再返回响应
-            if let Some(versions) = versions_to_remove {
-                remove_documents(&versions, &search_config).await?;
+            // 上游修复思路 345ada27c: 事务已提交，搜索索引删除失败只记录日志，
+            // 不再因 Meilisearch 超时把已成功的请求变成 500；每小时的全量重建兜底。
+            if let Some(versions) = versions_to_remove
+                && let Err(e) =
+                    remove_documents(&versions, &search_config).await
+            {
+                log::error!(
+                    "从搜索索引删除版本失败 versions={versions:?}: {e:?}"
+                );
             }
 
             // 仅在项目可搜索状态下通知 Bing IndexNow（内容编辑）
@@ -2610,15 +2617,18 @@ pub async fn project_delete(
         crate::util::indexnow::notify_project(project_type, slug);
     }
 
-    remove_documents(
-        &project
-            .versions
-            .into_iter()
-            .map(|x| x.into())
-            .collect::<Vec<_>>(),
-        &search_config,
-    )
-    .await?;
+    // 事务已提交，搜索索引删除失败只记录日志，不让删除请求返回 500
+    let removed_version_ids = project
+        .versions
+        .into_iter()
+        .map(|x| x.into())
+        .collect::<Vec<_>>();
+    if let Err(e) = remove_documents(&removed_version_ids, &search_config).await
+    {
+        log::error!(
+            "从搜索索引删除项目版本失败 ids={removed_version_ids:?}: {e:?}"
+        );
+    }
 
     if result.is_some() {
         Ok(HttpResponse::NoContent().body(""))
@@ -2658,49 +2668,50 @@ pub async fn project_follow(
         return Err(ApiError::NotFound);
     }
 
-    let following = sqlx::query!(
+    // 上游修复: 249e43db7 (#7402) - 原来先 SELECT EXISTS 再写入，存在竞态：并发关注会
+    // 撞主键报 500、并发取关会重复扣减计数（可能为负）。改为原子操作，并清理项目缓存。
+    let mut transaction = pool.begin().await?;
+
+    let inserted = sqlx::query!(
         "
-        SELECT EXISTS(SELECT 1 FROM mod_follows mf WHERE mf.follower_id = $1 AND mf.mod_id = $2)
+        INSERT INTO mod_follows (follower_id, mod_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
         ",
         user_id as db_ids::UserId,
         project_id as db_ids::ProjectId
     )
-    .fetch_one(&**pool)
+    .execute(&mut *transaction)
     .await?
-    .exists
-    .unwrap_or(false);
+    .rows_affected();
 
-    if !following {
-        let mut transaction = pool.begin().await?;
-
-        sqlx::query!(
-            "
-            UPDATE mods
-            SET follows = follows + 1
-            WHERE id = $1
-            ",
-            project_id as db_ids::ProjectId,
-        )
-        .execute(&mut *transaction)
-        .await?;
-
-        sqlx::query!(
-            "
-            INSERT INTO mod_follows (follower_id, mod_id)
-            VALUES ($1, $2)
-            ",
-            user_id as db_ids::UserId,
-            project_id as db_ids::ProjectId
-        )
-        .execute(&mut *transaction)
-        .await?;
-
-        transaction.commit().await?;
-
-        Ok(HttpResponse::NoContent().body(""))
-    } else {
-        Err(ApiError::InvalidInput("您已经关注了此项目!".to_string()))
+    if inserted == 0 {
+        // 事务回滚，计数不变
+        return Err(ApiError::InvalidInput("您已经关注了此项目!".to_string()));
     }
+
+    sqlx::query!(
+        "
+        UPDATE mods
+        SET follows = follows + 1
+        WHERE id = $1
+        ",
+        project_id as db_ids::ProjectId,
+    )
+    .execute(&mut *transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    db_models::Project::clear_cache(
+        project_id,
+        result.inner.slug,
+        None,
+        &redis,
+    )
+    .await?;
+
+    Ok(HttpResponse::NoContent().body(""))
 }
 
 pub async fn project_unfollow(
@@ -2730,49 +2741,48 @@ pub async fn project_unfollow(
     let user_id: db_ids::UserId = user.id.into();
     let project_id = result.inner.id;
 
-    let following = sqlx::query!(
+    // 上游修复: 249e43db7 (#7402) - 原子取关，按影响行数判断是否关注过，
+    // 计数用 GREATEST(..,0) 防止为负，并清理项目缓存。
+    let mut transaction = pool.begin().await?;
+
+    let deleted = sqlx::query!(
         "
-        SELECT EXISTS(SELECT 1 FROM mod_follows mf WHERE mf.follower_id = $1 AND mf.mod_id = $2)
+        DELETE FROM mod_follows
+        WHERE follower_id = $1 AND mod_id = $2
         ",
         user_id as db_ids::UserId,
         project_id as db_ids::ProjectId
     )
-    .fetch_one(&**pool)
+    .execute(&mut *transaction)
     .await?
-    .exists
-    .unwrap_or(false);
+    .rows_affected();
 
-    if following {
-        let mut transaction = pool.begin().await?;
-
-        sqlx::query!(
-            "
-            UPDATE mods
-            SET follows = follows - 1
-            WHERE id = $1
-            ",
-            project_id as db_ids::ProjectId,
-        )
-        .execute(&mut *transaction)
-        .await?;
-
-        sqlx::query!(
-            "
-            DELETE FROM mod_follows
-            WHERE follower_id = $1 AND mod_id = $2
-            ",
-            user_id as db_ids::UserId,
-            project_id as db_ids::ProjectId
-        )
-        .execute(&mut *transaction)
-        .await?;
-
-        transaction.commit().await?;
-
-        Ok(HttpResponse::NoContent().body(""))
-    } else {
-        Err(ApiError::InvalidInput("您没有关注此项目!".to_string()))
+    if deleted == 0 {
+        return Err(ApiError::InvalidInput("您没有关注此项目!".to_string()));
     }
+
+    sqlx::query!(
+        "
+        UPDATE mods
+        SET follows = GREATEST(follows - 1, 0)
+        WHERE id = $1
+        ",
+        project_id as db_ids::ProjectId,
+    )
+    .execute(&mut *transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    db_models::Project::clear_cache(
+        project_id,
+        result.inner.slug,
+        None,
+        &redis,
+    )
+    .await?;
+
+    Ok(HttpResponse::NoContent().body(""))
 }
 
 pub async fn project_get_organization(

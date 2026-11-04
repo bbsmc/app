@@ -11,6 +11,17 @@ use crate::routes::ApiError;
 use itertools::Itertools;
 use sqlx::PgPool;
 
+/// 上游 7144f08f0 (#6777): 发布项目/收藏/组织前要求已验证邮箱，防垃圾注册刷。
+pub fn require_verified_email(user: &User) -> Result<(), ApiError> {
+    if !user.email_verified.unwrap_or(false) {
+        return Err(ApiError::CustomAuthentication(
+            "请先验证邮箱后再发布！".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 pub trait ValidateAuthorized {
     fn validate_authorized(
         &self,

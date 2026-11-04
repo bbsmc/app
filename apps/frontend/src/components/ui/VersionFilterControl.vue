@@ -147,40 +147,37 @@ selectedChannels.value = route.query.c ? getArrayOrString(route.query.c) : [];
 selectedGameVersions.value = route.query.g ? getArrayOrString(route.query.g) : [];
 selectedPlatforms.value = route.query.l ? getArrayOrString(route.query.l) : [];
 
-async function toggleFilters(type: FilterType, filters: Filter[]) {
-  for (const filter of filters) {
-    await toggleFilter(type, filter);
+function selectedFiltersOfType(type: FilterType) {
+  if (type === "channel") {
+    return selectedChannels;
+  } else if (type === "gameVersion") {
+    return selectedGameVersions;
+  } else {
+    return selectedPlatforms;
   }
-
-  await router.replace({
-    query: {
-      ...route.query,
-      c: selectedChannels.value,
-      g: selectedGameVersions.value,
-      l: selectedPlatforms.value,
-    },
-  });
-
-  emit("switch-page", 1);
 }
 
-async function toggleFilter(type: FilterType, filter: Filter, skipRouter = false) {
-  if (type === "channel") {
-    selectedChannels.value = selectedChannels.value.includes(filter)
-      ? selectedChannels.value.filter((x) => x !== filter)
-      : [...selectedChannels.value, filter];
-  } else if (type === "gameVersion") {
-    selectedGameVersions.value = selectedGameVersions.value.includes(filter)
-      ? selectedGameVersions.value.filter((x) => x !== filter)
-      : [...selectedGameVersions.value, filter];
-  } else if (type === "platform") {
-    selectedPlatforms.value = selectedPlatforms.value.includes(filter)
-      ? selectedPlatforms.value.filter((x) => x !== filter)
-      : [...selectedPlatforms.value, filter];
-  }
-  if (!skipRouter) {
-    await updateFilters();
-  }
+// 上游 3487523f7 (#6967): 一次性批量应用，避免逐版本 await 触发多次路由跳转与重渲染导致页面卡死；
+// 若传入项全部已选则整体取消，否则补选缺失项（而非逐个盲目反转）
+function toggleFilters(type: FilterType, filters: Filter[]) {
+  const selected = selectedFiltersOfType(type);
+  const allSelected = filters.every((filter) => selected.value.includes(filter));
+
+  selected.value = allSelected
+    ? selected.value.filter((x) => !filters.includes(x))
+    : [...selected.value, ...filters.filter((filter) => !selected.value.includes(filter))];
+
+  updateFilters();
+}
+
+function toggleFilter(type: FilterType, filter: Filter) {
+  const selected = selectedFiltersOfType(type);
+
+  selected.value = selected.value.includes(filter)
+    ? selected.value.filter((x) => x !== filter)
+    : [...selected.value, filter];
+
+  updateFilters();
 }
 
 async function updateFilters() {

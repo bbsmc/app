@@ -109,6 +109,8 @@ pub struct UploadSearchProject {
     pub display_categories: Vec<String>,
     pub follows: i32,
     pub downloads: i32,
+    /// 最近 72 小时下载量（来自 ClickHouse 防刷清洗后的明细聚合），仅用于热门排序
+    pub recent_downloads: i64,
     pub icon_url: Option<String>,
     pub license: String,
     pub gallery: Vec<String>,
@@ -174,16 +176,21 @@ pub struct ResultSearchProject {
 pub fn get_sort_index(
     config: &SearchConfig,
     index: &str,
-) -> Result<(String, [&'static str; 1]), SearchError> {
+) -> Result<(String, Vec<&'static str>), SearchError> {
     let projects_name = config.get_index_name("projects", false);
     let projects_filtered_name =
         config.get_index_name("projects_filtered", false);
     Ok(match index {
-        "relevance" => (projects_name, ["downloads:desc"]),
-        "downloads" => (projects_filtered_name, ["downloads:desc"]),
-        "follows" => (projects_name, ["follows:desc"]),
-        "updated" => (projects_name, ["date_modified:desc"]),
-        "newest" => (projects_name, ["date_created:desc"]),
+        "relevance" => (projects_name, vec!["downloads:desc"]),
+        // 热门：最近 72 小时下载量优先，回退总下载量（大量项目 72h 为 0 时避免随机排序）
+        "trending" => (
+            projects_name,
+            vec!["recent_downloads:desc", "downloads:desc"],
+        ),
+        "downloads" => (projects_filtered_name, vec!["downloads:desc"]),
+        "follows" => (projects_name, vec!["follows:desc"]),
+        "updated" => (projects_name, vec!["date_modified:desc"]),
+        "newest" => (projects_name, vec!["date_created:desc"]),
         i => return Err(SearchError::InvalidIndex(i.to_string())),
     })
 }

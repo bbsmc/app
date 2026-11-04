@@ -5,4 +5,5 @@ rustflags = ["-C", "link-args=/STACK:16777220"]
 replace-with = 'ustc'
 
 [source.ustc]
-registry = 'https://mirrors.ustc.edu.cn/crates.io-index'
+# USTC 镜像已停用 git 协议索引（旧地址返回 404），只提供 sparse 协议
+registry = 'sparse+https://mirrors.ustc.edu.cn/crates.io-index/'

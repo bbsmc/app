@@ -31,10 +31,13 @@ const search = async (query: string) => {
   }
 
   try {
+    // 不过滤 project_type：后端对依赖无类型限制（可跨类型依赖，
+    // 如 modpack→mod、mod→resourcepack），与上游行为一致。
+    // 若加 facets [["project_type:mod"]]，v2 兼容层会将其展开为
+    // mod/plugin/datapack，导致 resourcepack 等类型搜不到。
     const results = await labrinth.projects_v2.search({
       query: query,
       limit: 20,
-      facets: [["project_type:mod"]],
     });
 
     options.value = results.hits.map((hit) => ({

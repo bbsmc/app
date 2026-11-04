@@ -180,5 +180,11 @@ lto = true
 opt-level = "s"
 strip = true
 
+# 上游修复: 8aede4e08 (#4314) - labrinth 生产构建专用 profile，
+# 单个请求中的 panic 不再导致整个进程退出
+[profile.release-labrinth]
+inherits = "release"
+panic = "unwind"
+
 [profile.dev.package.sqlx-macros]
 opt-level = 3

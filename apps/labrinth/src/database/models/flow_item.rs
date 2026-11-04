@@ -30,6 +30,8 @@ pub enum Flow {
     },
     ForgotPassword {
         user_id: UserId,
+        // 上游修复: c00e68096 (#7762) - 记录发起重置时的邮箱，改密时校验一致性
+        email: String,
     },
     ConfirmEmail {
         user_id: UserId,

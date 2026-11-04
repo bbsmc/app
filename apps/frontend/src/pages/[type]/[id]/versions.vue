@@ -104,13 +104,15 @@
                 >
                   <div class="tag-list">
                     <div
-                      v-for="gameVersion in formatVersionsForDisplay(version.game_versions)"
-                      :key="`version-tag-${gameVersion}`"
-                      v-tooltip="`Toggle filter for ${gameVersion}`"
+                      v-for="gameVersionGroup in getVersionGroupsForDisplay(version.game_versions)"
+                      :key="`version-tag-${gameVersionGroup.label}`"
+                      v-tooltip="`Toggle filter for ${gameVersionGroup.label}`"
                       class="tag-list__item z-[1] cursor-pointer hover:underline"
-                      @click="versionFilters.toggleFilters('gameVersion', version.game_versions)"
+                      @click="
+                        versionFilters.toggleFilters('gameVersion', gameVersionGroup.versions)
+                      "
                     >
-                      {{ gameVersion }}
+                      {{ gameVersionGroup.label }}
                     </div>
                   </div>
                 </div>
@@ -209,6 +211,13 @@
                       ),
                   },
                   {
+                    id: 'duplicate',
+                    hoverFilled: true,
+                    action: () => createVersionModal?.openDuplicateVersionModal(version.id),
+                    // 与页面顶部上传按钮一致：还需 UPLOAD_VERSION 权限位
+                    shown: currentMember && isPermission(currentMember?.permissions, 1 << 0),
+                  },
+                  {
                     id: 'share',
                     action: () => {},
                     shown: false,
@@ -251,6 +260,10 @@
                 <template #copy-link>
                   <LinkIcon aria-hidden="true" />
                   复制URL
+                </template>
+                <template #duplicate>
+                  <UpdatedIcon aria-hidden="true" />
+                  复用信息创建新版本
                 </template>
                 <template #share>
                   <ShareIcon aria-hidden="true" />
@@ -319,9 +332,10 @@ import {
   ReportIcon,
   UploadIcon,
   InfoIcon,
+  UpdatedIcon,
 } from "@modrinth/assets";
 import { formatBytes, formatCategory } from "@modrinth/utils";
-import { formatVersionsForDisplay } from "~/helpers/projects.js";
+import { getVersionGroupsForDisplay } from "~/helpers/projects.js";
 import VersionFilterControl from "~/components/ui/VersionFilterControl.vue";
 import DropArea from "~/components/ui/DropArea.vue";
 import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";

@@ -12,3 +12,7 @@
 **/target
 **/node_modules
 **/.turbo
+
+# 不把环境变量 / 密钥文件带进构建上下文（构建用 SQLX_OFFLINE=true，不需要 .env；运行时配置由部署环境注入）
+**/.env
+**/.env.*

@@ -92,15 +92,13 @@ impl YzhClient {
         T: for<'de> Deserialize<'de>,
     {
         let creds = load_credentials()?;
-        if auto_inject_ids {
-            if let Some(obj) = payload.as_object_mut() {
-                obj.entry("dealer_id").or_insert_with(|| {
-                    serde_json::Value::String(creds.dealer_id.clone())
-                });
-                obj.entry("broker_id").or_insert_with(|| {
-                    serde_json::Value::String(creds.broker_id.clone())
-                });
-            }
+        if auto_inject_ids && let Some(obj) = payload.as_object_mut() {
+            obj.entry("dealer_id").or_insert_with(|| {
+                serde_json::Value::String(creds.dealer_id.clone())
+            });
+            obj.entry("broker_id").or_insert_with(|| {
+                serde_json::Value::String(creds.broker_id.clone())
+            });
         }
 
         let body = self.build_body(creds, &payload)?;

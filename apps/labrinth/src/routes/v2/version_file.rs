@@ -281,9 +281,11 @@ pub struct ManyUpdateData {
 
 #[post("update")]
 pub async fn update_files(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     update_data: web::Json<ManyUpdateData>,
+    session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
     let update_data = update_data.into_inner();
     let update_data = v3::version_file::ManyUpdateData {
@@ -294,10 +296,16 @@ pub async fn update_files(
         hashes: update_data.hashes,
     };
 
-    let response =
-        v3::version_file::update_files(pool, redis, web::Json(update_data))
-            .await
-            .or_else(v2_reroute::flatten_404_error)?;
+    // 上游修复: ffa81a14d (#7576) - 透传请求与会话，按请求者可见性过滤
+    let response = v3::version_file::update_files(
+        req,
+        pool,
+        redis,
+        web::Json(update_data),
+        session_queue,
+    )
+    .await
+    .or_else(v2_reroute::flatten_404_error)?;
 
     //将响应转换为 V2 格式
     match v2_reroute::extract_ok_json::<HashMap<String, Version>>(response)

@@ -207,6 +207,25 @@ pub async fn fetch_top_projects_downloads(
     Ok(query.fetch_all().await?)
 }
 
+// 获取所有项目最近 72 小时的下载量（用于搜索索引的热门排序字段 recent_downloads）。
+// 数据源是 downloads 明细表，写入前已通过 Redis 做同 IP 限流去重，天然防刷。
+pub async fn fetch_recent_downloads(
+    client: Arc<clickhouse::Client>,
+) -> Result<Vec<ReturnProjectTotal>, ApiError> {
+    let query = client.query(
+        "
+            SELECT
+                project_id AS id,
+                count(1) AS total
+            FROM downloads
+            WHERE recorded >= now() - INTERVAL 72 HOUR
+            GROUP BY project_id
+            ",
+    );
+
+    Ok(query.fetch_all().await?)
+}
+
 pub async fn fetch_countries_views(
     projects: Vec<ProjectId>,
     start_date: DateTime<Utc>,

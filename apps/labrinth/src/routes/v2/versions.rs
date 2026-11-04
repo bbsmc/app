@@ -59,6 +59,13 @@ pub struct VersionListFilters {
     pub version_type: Option<VersionType>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
+    // 上游 f85a2d3ec (#5115): include_changelog 默认 true，不传则行为不变
+    #[serde(default = "default_true")]
+    pub include_changelog: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[get("version")]
@@ -117,6 +124,7 @@ pub async fn version_list(
         version_type: filters.version_type,
         limit: filters.limit,
         offset: filters.offset,
+        include_changelog: filters.include_changelog,
     };
 
     let response = v3::versions::version_list(
@@ -175,6 +183,8 @@ pub async fn version_project_get(
 #[derive(Serialize, Deserialize)]
 pub struct VersionIds {
     pub ids: String,
+    #[serde(default = "default_true")]
+    pub include_changelog: bool,
 }
 
 #[get("versions")]
@@ -185,7 +195,10 @@ pub async fn versions_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    let ids = v3::versions::VersionIds { ids: ids.ids };
+    let ids = v3::versions::VersionIds {
+        ids: ids.ids,
+        include_changelog: ids.include_changelog,
+    };
     let response = v3::versions::versions_get(
         req,
         web::Query(ids),

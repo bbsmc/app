@@ -62,7 +62,12 @@
       class="w-full h-1 appearance-none border-none absolute top-0 left-0"
     ></progress>
 
-    <component :is="currentStage?.stageContent" />
+    <!-- 内容宽度基准：NewModal 的 modal-body 是 width:fit-content，
+         窄内容 stage（如元数据汇总列表）会把弹窗收缩到 ~250px，
+         故在此固定内容宽度；小屏由 max-w-full 兜底 -->
+    <div class="w-[48rem] max-w-full">
+      <component :is="currentStage?.stageContent" />
+    </div>
 
     <template #actions>
       <div

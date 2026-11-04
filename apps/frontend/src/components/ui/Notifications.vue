@@ -10,8 +10,9 @@
         @mouseleave="setNotificationTimer(item)"
       >
         <div class="vue-notification-template vue-notification" :class="{ [item.type]: true }">
-          <div class="notification-title" v-html="item.title"></div>
-          <div class="notification-content" v-html="item.text"></div>
+          <!-- 上游修复: 8789d7b05 (#5310) - 通知内容改用文本插值，避免 title/text 的 XSS -->
+          <div class="notification-title">{{ item.title }}</div>
+          <div class="notification-content">{{ item.text }}</div>
         </div>
       </div>
     </transition-group>

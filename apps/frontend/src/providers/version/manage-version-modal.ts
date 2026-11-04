@@ -145,10 +145,7 @@ export interface ManageVersionContextValue {
   saveButtonConfig: () => StageButtonConfig;
 
   // === 版本/文件方法 ===
-  newDraftVersion: (
-    projectId: string,
-    version?: Labrinth.Versions.v3.DraftVersion | null,
-  ) => void;
+  newDraftVersion: (projectId: string, version?: Labrinth.Versions.v3.DraftVersion | null) => void;
   /** 主次切换：把 index 处的文件交换到位置 0（成为主文件） */
   swapPrimaryFile: (index: number) => Promise<void>;
   /** @deprecated 兼容旧 stage UI；新代码请使用 swapPrimaryFile */
@@ -220,9 +217,7 @@ export function createManageVersionContext(
   const { refreshVersions, invalidate, projectV2 } = injectProjectPageContext();
 
   // === 状态 ===
-  const draftVersion = ref<Labrinth.Versions.v3.DraftVersion>(
-    structuredClone(EMPTY_DRAFT_VERSION),
-  );
+  const draftVersion = ref<Labrinth.Versions.v3.DraftVersion>(structuredClone(EMPTY_DRAFT_VERSION));
   const filesToAdd = ref<Labrinth.Versions.v3.DraftVersionFile[]>([]);
   const existingFilesToDelete = ref<Labrinth.Versions.v3.VersionFileHash["sha1"][]>([]);
   const handlingNewFiles = ref(false);
@@ -496,10 +491,11 @@ export function createManageVersionContext(
         primaryFileData,
         project as unknown as Labrinth.Projects.v2.Project,
       );
-      const mappedInferredData: Partial<Labrinth.Versions.v3.DraftVersion> = {
-        ...inferredData,
-        name: inferredData.name || "",
-      };
+      // 仅带上推断出的非空字段：name 推断失败时不能把复刻等入口预填的名称清成空，
+      // loaders / game_versions 等有值时仍然推断优先（新上传的文件语义更新）
+      const mappedInferredData = Object.fromEntries(
+        Object.entries(inferredData).filter(([, v]) => v !== undefined),
+      ) as Partial<Labrinth.Versions.v3.DraftVersion>;
 
       draftVersion.value = {
         ...draftVersion.value,
@@ -641,7 +637,7 @@ export function createManageVersionContext(
     } catch (err: any) {
       addNotification({
         title: "创建版本失败",
-        text: err?.data ? err.data.description : err?.message ?? String(err),
+        text: err?.data ? err.data.description : (err?.message ?? String(err)),
         type: "error",
       });
     } finally {
@@ -790,7 +786,7 @@ export function createManageVersionContext(
     } catch (err: any) {
       addNotification({
         title: "保存失败",
-        text: err?.data ? err.data.description : err?.message ?? String(err),
+        text: err?.data ? err.data.description : (err?.message ?? String(err)),
         type: "error",
       });
     } finally {
@@ -923,7 +919,7 @@ function aggregateDiskUrlsFromDraft(
   push("xunlei", draft.xunlei_disk, draft.xunlei_disk_display);
 
   // 如果调用者已经设置了 disk_urls 数组（直接用），优先使用
-  if ((!out.length) && draft.disk_urls && draft.disk_urls.length > 0) {
+  if (!out.length && draft.disk_urls && draft.disk_urls.length > 0) {
     return draft.disk_urls;
   }
 

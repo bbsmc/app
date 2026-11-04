@@ -504,13 +504,30 @@ export const inferVersionInfo = async function (rawFile, project, gameVersions) 
     }
   }
 
+  // BBSMC: 外层 zip 打包了 .mrpack 整合包（根目录存在 .mrpack 文件）。
+  // .mrpack 本身就是 zip，递归解开读内层 modrinth.index.json，复用现有解析推断
+  // loaders / 游戏版本 / 版本号；内层损坏时仍按整合包标识返回，加载器让用户自选
+  const mrpackEntry = Object.keys(zip.files).find(
+    (f) => !zip.files[f].dir && /^[^/]+\.mrpack(-primary)?$/i.test(f),
+  );
+  if (mrpackEntry) {
+    try {
+      const innerZip = await JSZip.loadAsync(await zip.file(mrpackEntry).async("blob"));
+      const innerIndex = innerZip.file("modrinth.index.json");
+      if (innerIndex) {
+        return inferFunctions["modrinth.index.json"](await innerIndex.async("text"), zip);
+      }
+    } catch (err) {
+      console.warn("Failed to parse nested .mrpack:", err);
+    }
+    return { is_modpack: true, project_type: "modpack" };
+  }
+
   // BBSMC 地图板块: zip 容器内的地图特征
   // - 含 level.dat → 完整地图存档
   // - 含 .schem/.litematic/.nbt/.mcstructure → 建筑/结构模板压缩包
   const allEntries = Object.keys(zip.files);
-  const hasLevelDat = allEntries.some(
-    (f) => f === "level.dat" || f.endsWith("/level.dat"),
-  );
+  const hasLevelDat = allEntries.some((f) => f === "level.dat" || f.endsWith("/level.dat"));
   if (hasLevelDat) {
     return { loaders: ["map"], project_type: "map" };
   }

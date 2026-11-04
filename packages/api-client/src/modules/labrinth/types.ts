@@ -514,7 +514,7 @@ export namespace Labrinth {
        * - minecraft: Minecraft 资源
        * - language: 汉化包
        */
-      export type VersionType = 'software' | 'minecraft' | 'language'
+      export type VersionType = 'software' | 'minecraft' | 'language' | 'map'
 
       // ===== End BBSMC 自定义类型 =====
 

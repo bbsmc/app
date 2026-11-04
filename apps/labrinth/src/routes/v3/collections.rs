@@ -1,7 +1,7 @@
 use crate::auth::checks::is_visible_collection;
 use crate::auth::{
     filter_visible_collections, get_optional_user_from_headers,
-    get_user_from_headers,
+    get_user_from_headers, require_verified_email,
 };
 use crate::database::models::{
     collection_item, generate_collection_id, project_item,
@@ -78,6 +78,9 @@ pub async fn collection_create(
     )
     .await?
     .1;
+
+    // 上游 7144f08f0 (#6777): 发布前要求已验证邮箱
+    require_verified_email(&current_user)?;
 
     collection_create_data.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))

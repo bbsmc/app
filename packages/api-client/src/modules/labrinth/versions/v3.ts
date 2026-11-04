@@ -144,6 +144,12 @@ export class LabrinthVersionsV3Module extends AbstractModule {
       disk_urls: aggregatedDisks.length > 0 ? aggregatedDisks : null,
     }
 
+    // BBSMC: 显式携带状态（复刻入口带入源版本 status；内部默认值 'draft' 表示未指定，
+    // 不发送 → 走后端默认 Listed，保持普通创建流程行为不变）
+    if (draftVersion.status && draftVersion.status !== 'draft') {
+      data.status = draftVersion.status
+    }
+
     // BBSMC: 仅 minecraft 类型（含 modpack）发 game_versions
     if (!isLanguageType && !isSoftwareType) {
       data.game_versions = draftVersion.game_versions ?? []
@@ -259,7 +265,9 @@ function uploadFormDataWithProgress<T>(
   const xhr = new XMLHttpRequest()
 
   // 拼接完整 URL
-  const baseUrl: string = (client?.config?.labrinthBaseUrl ?? '').replace(/\/v\d+\/?$/, '').replace(/\/$/, '')
+  const baseUrl: string = (client?.config?.labrinthBaseUrl ?? '')
+    .replace(/\/v\d+\/?$/, '')
+    .replace(/\/$/, '')
   const fullPath = path.startsWith('/') ? path : `/${path}`
   const url = `${baseUrl}${fullPath}`
 
@@ -378,4 +386,3 @@ function aggregateDiskUrls(
   push('xunlei', draft.xunlei_disk, draft.xunlei_disk_display)
   return out
 }
-

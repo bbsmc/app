@@ -701,7 +701,7 @@ const heroBanners = ref([
   },
   {
     image:
-      "https://cdn.bbsmc.net/bbsmc/data/EIrkPpcm/images/7c2ccd747457f54652540972f8f61cc88f24d3a0_350.webp",
+      "https://cdn.bbsmc.net/bbsmc/data/cached_images/a959f776cdae05bbd7084bc605785e0d356eeb7c_0.webp",
     title: "龙之冒险：新征程",
     description: "面对众多怪物的冒险之旅，你做好准备了吗？",
     badge: "精选整合包",
@@ -722,6 +722,46 @@ const heroBanners = ref([
     description: "农夫乐事全附属与异界冒险",
     badge: "热门整合包",
     slug: "/modpack/vefc",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/PRsqHZRu/images/1b1abb2c5198447165de3f72b3c10dab6dc53ce8_350.webp",
+    title: "亡者世界",
+    description: "现代都市僵尸启示录，在废墟之间挣扎求存",
+    badge: "热门整合包",
+    slug: "/modpack/deceasedcraft",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/OIIWCwpQ/images/14506df30b5f9568b62fa564f36d2d90e4bcfcc6_350.webp",
+    title: "机械动力:齿轮盛宴",
+    description: "大型深度魔改机械动力×农夫乐事整合包",
+    badge: "精选整合包",
+    slug: "/modpack/create-delight",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/KgeSn4uG/images/9a6543080718f76152133e4a5048b1302c29eced_350.webp",
+    title: "勇者之章Ⅲ",
+    description: "多线性枪魔+战斗发展整合包",
+    badge: "精选整合包",
+    slug: "/modpack/chapter-of-yuusha-3",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/IwY0MZn5/images/e4702790bff5c4e4418a348945770b398d0a516e_350.webp",
+    title: "奇妙商店物语",
+    description: "在这座城市里，开一家你想去吃饭的小店",
+    badge: "热门整合包",
+    slug: "/modpack/wss",
+  },
+  {
+    image:
+      "https://cdn.bbsmc.net/bbsmc/data/9I9KjIy7/images/ecef611b3941d4f879abd509bfef09ae411ac5c5.jpeg",
+    title: "新:模拟大都市",
+    description: "从零起步规划城市，结合农夫乐事、拾光剪影的养老整合包",
+    badge: "精选整合包",
+    slug: "/modpack/nsuk",
   },
 ]);
 

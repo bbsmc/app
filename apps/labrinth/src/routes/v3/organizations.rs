@@ -4,7 +4,7 @@ use std::sync::Arc;
 use super::ApiError;
 use crate::auth::{
     checks::is_visible_organization, get_optional_user_from_headers,
-    get_user_from_headers,
+    get_user_from_headers, require_verified_email,
 };
 use crate::database::models::team_item::TeamMember;
 use crate::database::models::{
@@ -382,6 +382,9 @@ pub async fn organization_create(
     )
     .await?
     .1;
+
+    // 上游 7144f08f0 (#6777): 发布前要求已验证邮箱
+    require_verified_email(&current_user)?;
 
     new_organization.validate().map_err(|err| {
         ApiError::Validation(validation_errors_to_string(err, None))

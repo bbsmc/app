@@ -12,6 +12,24 @@ export const useAuth = async (oldToken = null) => {
   return auth;
 };
 
+// 上游修复: aeb9f5a07 (#6186) - cookie / query 的值可能被 destr 解析成数字、布尔或
+// JSON（对象/数组），直接 startsWith 会抛 TypeError 并让整页 SSR 500。统一归一成字符串。
+function normalizeAuthToken(value) {
+  return typeof value === "string" ? value : "";
+}
+
+function getErrorStatus(error) {
+  const status = error?.statusCode ?? error?.status;
+  return typeof status === "number" ? status : null;
+}
+
+// 上游修复: 295db3fb7 - 只有在真正的鉴权失败（401/403）时才刷新 token / 清除 cookie；
+// 超时、5xx、网络错误、429 都不应导致登出。
+function isAuthFailure(error) {
+  const status = getErrorStatus(error);
+  return status === 401 || status === 403;
+}
+
 export const initAuth = async (oldToken = null) => {
   const auth = {
     user: null,
@@ -31,28 +49,38 @@ export const initAuth = async (oldToken = null) => {
     path: "/",
   });
 
-  if (oldToken) {
-    authCookie.value = oldToken;
+  const normalizedOldToken = normalizeAuthToken(oldToken);
+  if (normalizedOldToken) {
+    authCookie.value = normalizedOldToken;
   }
 
-  if (route.query.code && !route.fullPath.includes("new_account=true")) {
-    authCookie.value = route.query.code;
+  const oauthCode = normalizeAuthToken(route.query.code);
+  if (oauthCode && !route.fullPath.includes("new_account=true")) {
+    authCookie.value = oauthCode;
   }
 
   if (route.fullPath.includes("new_account=true") && route.path !== "/auth/welcome") {
     const redirect = route.path.startsWith("/auth/") ? null : route.fullPath;
 
     await navigateTo(
-      `/auth/welcome?authToken=${route.query.code}${
+      `/auth/welcome?authToken=${oauthCode}${
         redirect ? `&redirect=${encodeURIComponent(redirect)}` : ""
       }`,
     );
   }
 
-  if (authCookie.value) {
-    auth.token = authCookie.value;
+  const tokenStr = normalizeAuthToken(authCookie.value);
+  // cookie 被写成了非字符串，清除以免后续报错
+  if (authCookie.value != null && tokenStr === "") {
+    authCookie.value = null;
+    return auth;
+  }
 
-    if (!auth.token || !auth.token.startsWith("mra_")) {
+  let shouldRefresh = false;
+  if (tokenStr) {
+    auth.token = tokenStr;
+
+    if (!auth.token.startsWith("mra_")) {
       return auth;
     }
 
@@ -66,12 +94,13 @@ export const initAuth = async (oldToken = null) => {
         },
         true,
       );
-    } catch {
-      // 认证失败，忽略错误
+    } catch (error) {
+      // 仅鉴权失败才尝试刷新；超时/5xx/网络错误保留现状，不登出
+      shouldRefresh = isAuthFailure(error);
     }
   }
 
-  if (!auth.user && auth.token) {
+  if (!auth.user && auth.token && shouldRefresh) {
     try {
       const session = await useBaseFetch(
         "session/refresh",
@@ -84,21 +113,38 @@ export const initAuth = async (oldToken = null) => {
         true,
       );
 
-      auth.token = session.session;
-      authCookie.value = auth.token;
+      const refreshed = normalizeAuthToken(session?.session);
+      if (refreshed) {
+        auth.token = refreshed;
+        authCookie.value = auth.token;
 
-      auth.user = await useBaseFetch(
-        "user",
-        {
-          headers: {
-            Authorization: auth.token,
-          },
-        },
-        true,
-      );
-    } catch {
-      // 刷新失败，清除 cookie
-      authCookie.value = null;
+        try {
+          auth.user = await useBaseFetch(
+            "user",
+            {
+              headers: {
+                Authorization: auth.token,
+              },
+            },
+            true,
+          );
+        } catch (error) {
+          if (isAuthFailure(error)) {
+            authCookie.value = null;
+            auth.token = "";
+            auth.user = null;
+          }
+        }
+      } else {
+        authCookie.value = null;
+        auth.token = "";
+      }
+    } catch (error) {
+      // 刷新失败：仅鉴权失败才清除 cookie
+      if (isAuthFailure(error)) {
+        authCookie.value = null;
+        auth.token = "";
+      }
     }
   }
 

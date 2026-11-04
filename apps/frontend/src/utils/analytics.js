@@ -149,7 +149,94 @@ export const analyticsSetToCSVString = (analytics) => {
     return [label, ...values].join(",");
   });
 
-  return [header, ...data].join(newline);
+  // \uFEFF BOM，避免 Excel 打开 UTF-8 中文乱码
+  return "\uFEFF" + [header, ...data].join(newline);
+};
+
+/**
+ * 桶起点（毫秒）：day=当天零点；week=显式周一对齐（不依赖 dayjs locale 的 weekStart）；month=自然月 1 号。
+ */
+const bucketStartMs = (day, unit) => {
+  if (unit === "week") {
+    return day.subtract((day.day() + 6) % 7, "day").valueOf();
+  }
+  if (unit === "month") {
+    return day.startOf("month").valueOf();
+  }
+  return day.valueOf(); // day
+};
+
+/**
+ * 将原始分析数据按日/周/月聚合（同桶内求和）。
+ * 返回结构兼容 analyticsSetToCSVString。
+ */
+export const aggregateAnalyticsByUnit = (rawData, unit, isMoney, projects) => {
+  if (!rawData || !projects) {
+    return { sum: 0, chart: { labels: [], data: [] } };
+  }
+
+  const projectById = new Map(projects.map((p) => [p.id, p]));
+
+  // 桶起点(ms) -> { projectId -> 累计值 }
+  const buckets = new Map();
+  Object.entries(rawData).forEach(([id, series]) => {
+    if (!projectById.has(id)) {
+      return;
+    }
+    Object.entries(series).forEach(([ts, value]) => {
+      const key = bucketStartMs(unix(Number(ts)).startOf("day"), unit);
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = {};
+        buckets.set(key, bucket);
+      }
+      bucket[id] = (bucket[id] || 0) + (Number(value) || 0);
+    });
+  });
+
+  const keys = Array.from(buckets.keys()).sort((a, b) => a - b);
+  const round = (v) => (isMoney ? Math.round(v * 100) / 100 : v);
+
+  const chartData = Object.keys(rawData)
+    .filter((id) => projectById.has(id))
+    .map((id) => ({
+      name: projectById.get(id).title,
+      data: keys.map((k) => round(buckets.get(k)[id] || 0)),
+    }))
+    .sort(
+      (a, b) =>
+        b.data.reduce((acc, cur) => acc + cur, 0) - a.data.reduce((acc, cur) => acc + cur, 0),
+    );
+
+  const labelFormat = unit === "month" ? "YYYY-MM" : "YYYY-MM-DD";
+
+  return {
+    sum: chartData.reduce((acc, p) => acc + p.data.reduce((a, c) => a + c, 0), 0),
+    chart: {
+      labels: keys.map((k) => dayjs(k).format(labelFormat)),
+      data: chartData,
+    },
+  };
+};
+
+/**
+ * 将原始分析数据（{projectId: {unix秒: 值}}）聚合到更大的时间桶。
+ * 桶起点同样以 unix 秒为键，可直接交给 processAnalytics 渲染。
+ */
+export const aggregateRawAnalytics = (rawData, unit) => {
+  if (!rawData) {
+    return rawData;
+  }
+  const out = {};
+  Object.entries(rawData).forEach(([id, series]) => {
+    const buckets = {};
+    Object.entries(series).forEach(([ts, value]) => {
+      const bucketTs = bucketStartMs(unix(Number(ts)).startOf("day"), unit) / 1000;
+      buckets[bucketTs] = (buckets[bucketTs] || 0) + (Number(value) || 0);
+    });
+    out[id] = buckets;
+  });
+  return out;
 };
 
 export const processAnalytics = (category, projects, labelFn, sortFn, mapFn, chartName, theme) => {
@@ -321,10 +408,23 @@ export const useFetchAllAnalytics = (
   const error = ref(null);
   const isInitialized = ref(false);
 
+  // 图表聚合单位：31 天内按拉取粒度直出；更长区间按天拉取后聚合为自然周（周一起始）/ 自然月，
+  // 保证数据桶与日历对齐（后端的固定分钟窗口会与自然周/月错位）
+  const chartUnit = computed(() => {
+    const days = (endDate.value - startDate.value) / 86_400_000;
+    if (days <= 31) {
+      return null;
+    }
+    return days <= 180 ? "week" : "month";
+  });
+
+  const bucketize = (data) =>
+    chartUnit.value ? aggregateRawAnalytics(data, chartUnit.value) : data;
+
   const formattedData = computed(() => ({
-    downloads: processNumberAnalytics(downloadData.value, selectedProjects.value),
-    views: processNumberAnalytics(viewData.value, selectedProjects.value),
-    revenue: processRevAnalytics(revenueData.value, selectedProjects.value),
+    downloads: processNumberAnalytics(bucketize(downloadData.value), selectedProjects.value),
+    views: processNumberAnalytics(bucketize(viewData.value), selectedProjects.value),
+    revenue: processRevAnalytics(bucketize(revenueData.value), selectedProjects.value),
     downloadsByCountry: processCountryAnalytics(downloadsByCountry.value, selectedProjects.value),
     viewsByCountry: processCountryAnalytics(viewsByCountry.value, selectedProjects.value),
   }));
@@ -405,10 +505,13 @@ export const useFetchAllAnalytics = (
         return;
       }
 
+      const spanDays = (endDate.value - startDate.value) / 86_400_000;
+      // 超过 31 天的区间固定按天拉取，图表端聚合为自然周/自然月
+      const resolutionMinutes = spanDays > 31 ? 1440 : timeResolution.value;
       const q = {
         start_date: dayjs(startDate.value).toISOString(),
         end_date: dayjs(endDate.value).toISOString(),
-        resolution_minutes: timeResolution.value,
+        resolution_minutes: resolutionMinutes,
       };
 
       if (projects.value?.length && projects.value.length <= MAX_ANALYTICS_PROJECT_IDS) {
@@ -458,6 +561,9 @@ export const useFetchAllAnalytics = (
 
     startDate,
     endDate,
+
+    // 图表聚合单位：null = 按拉取粒度直出，week/month = 按天数据聚合
+    chartUnit,
 
     // Data
     downloadData,

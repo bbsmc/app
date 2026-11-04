@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT EXISTS(\n                    SELECT 1 FROM user_bans\n                    WHERE user_id = $1 AND is_active = true\n                    AND (expires_at IS NULL OR expires_at > NOW())\n                ) AS \"exists!\"\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "84b3baadb2b95dae70bd6990cc23e10c3572ba6773b070a93e456b65f01ca6ea"
+}
