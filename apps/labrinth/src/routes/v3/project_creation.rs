@@ -22,6 +22,7 @@ use crate::models::projects::{
 use crate::models::teams::{OrganizationPermissions, ProjectPermissions};
 use crate::models::threads::ThreadType;
 use crate::models::users::UserId;
+use crate::models::v3::user_limits::UserLimits;
 use crate::queue::session::AuthQueue;
 use crate::search::indexing::IndexingError;
 use crate::util::img::upload_image_optimized;
@@ -93,6 +94,13 @@ pub enum CreateError {
     RerouteError(#[from] reqwest::Error),
     #[error("您已被封禁：{0}")]
     Banned(String),
+    // 上游 ddb131a70 (#7591): 每日发布限额
+    #[error("今日新建项目数已达上限（每日最多 {0} 个），请明天再试")]
+    DailyProjectLimitReached(u64),
+    #[error("该项目的版本数已达上限（最多 {0} 个）")]
+    ProjectVersionLimitReached(u64),
+    #[error("今日上传版本数已达上限（每日最多 {0} 个），请明天再试")]
+    DailyVersionLimitReached(u64),
 }
 
 impl actix_web::ResponseError for CreateError {
@@ -126,6 +134,11 @@ impl actix_web::ResponseError for CreateError {
             CreateError::ImageError(..) => StatusCode::BAD_REQUEST,
             CreateError::RerouteError(..) => StatusCode::INTERNAL_SERVER_ERROR,
             CreateError::Banned(..) => StatusCode::FORBIDDEN,
+            CreateError::DailyProjectLimitReached(..)
+            | CreateError::ProjectVersionLimitReached(..)
+            | CreateError::DailyVersionLimitReached(..) => {
+                StatusCode::BAD_REQUEST
+            }
         }
     }
 
@@ -154,6 +167,9 @@ impl actix_web::ResponseError for CreateError {
                 CreateError::ImageError(..) => "invalid_image",
                 CreateError::RerouteError(..) => "reroute_error",
                 CreateError::Banned(..) => "user_banned",
+                CreateError::DailyProjectLimitReached(..)
+                | CreateError::ProjectVersionLimitReached(..)
+                | CreateError::DailyVersionLimitReached(..) => "limit_reached",
             },
             description: self.to_string(),
         })
@@ -410,6 +426,23 @@ async fn project_create_inner(
         .await
         .map_err(|e| CreateError::Banned(e.to_string()))?;
 
+    // 上游 7144f08f0 (#6777): 发布前要求已验证邮箱
+    if !current_user.email_verified.unwrap_or(false) {
+        return Err(CreateError::CustomAuthenticationError(
+            "请先验证邮箱后再发布！".to_string(),
+        ));
+    }
+
+    // 上游 ddb131a70 (#7591): 每日新建项目数限额（北京时间自然日，管理员不受限）
+    let daily_project_limits =
+        UserLimits::get_for_projects_per_day(&current_user, Utc::now(), pool)
+            .await?;
+    if daily_project_limits.would_exceed(1) {
+        return Err(CreateError::DailyProjectLimitReached(
+            daily_project_limits.max,
+        ));
+    }
+
     let project_id: ProjectId =
         models::generate_project_id(transaction).await?.into();
     let all_loaders =
@@ -494,6 +527,35 @@ async fn project_create_inner(
             // 验证有效期（如果设置）必须大于 0
             validate_validity_days(create_data.validity_days)
                 .map_err(|e| CreateError::InvalidInput(e.to_string()))?;
+        }
+
+        // 上游 ddb131a70 (#7591): 随项目一起创建的初始版本也计入版本限额
+        let versions_to_create = create_data.initial_versions.len() as u64;
+        if versions_to_create > 0 {
+            let project_version_limits =
+                UserLimits::get_for_versions_per_project(
+                    &current_user,
+                    project_id.into(),
+                    pool,
+                )
+                .await?;
+            if project_version_limits.would_exceed(versions_to_create) {
+                return Err(CreateError::ProjectVersionLimitReached(
+                    project_version_limits.max,
+                ));
+            }
+
+            let daily_version_limits = UserLimits::get_for_versions_per_day(
+                &current_user,
+                Utc::now(),
+                pool,
+            )
+            .await?;
+            if daily_version_limits.would_exceed(versions_to_create) {
+                return Err(CreateError::DailyVersionLimitReached(
+                    daily_version_limits.max,
+                ));
+            }
         }
 
         // Modrinth 上游提交 79c263301: 添加 .to_lowercase() 确保大小写不敏感
@@ -906,17 +968,15 @@ async fn project_create_inner(
 
         let team_id = team.insert(&mut *transaction).await?;
 
-        let status;
-        if project_create_data.is_draft.unwrap_or(false) {
-            status = ProjectStatus::Draft;
-        } else {
-            status = ProjectStatus::Processing;
-            if project_create_data.initial_versions.is_empty() {
-                return Err(CreateError::InvalidInput(String::from(
-                    "请先上传一个版本文件",
-                )));
-            }
+        // 上游修复: 8c211d0d9 (#7895) - 新建项目一律为草稿，拒绝 is_draft=false，
+        // 防止第三方直接调 API 建出 processing 项目、跳过提交审核与 AutoMod 检查。
+        // BBSMC 前端固定传 is_draft:true，不受影响。
+        if project_create_data.is_draft == Some(false) {
+            return Err(CreateError::InvalidInput(String::from(
+                "项目必须以草稿状态创建，is_draft 不能为 false",
+            )));
         }
+        let status = ProjectStatus::Draft;
 
         let license_id = spdx::Expression::parse(
             &project_create_data.license_id,
@@ -1003,6 +1063,18 @@ async fn project_create_inner(
         let now = Utc::now();
 
         let id = project_builder_actual.insert(&mut *transaction).await?;
+
+        // 记录创建者，供"今日新建项目数"按创建者计数（组织名下建项目也算）。
+        // created_by 由迁移 202611041200001 新增，迁移运行前开发库里没有该列，故用运行时查询；
+        // 与上面的 INSERT 在同一事务内，失败则整个创建回滚。
+        // 注意：今后若新增其它"用户创建项目"的入口，也必须写 created_by，否则该项目不计入每日限额
+        // （开发库跑过迁移后，可把 created_by 并入 ProjectBuilder 的 INSERT 列表）。
+        sqlx::query("UPDATE mods SET created_by = $1 WHERE id = $2")
+            .bind(DBUserId::from(current_user.id).0)
+            .bind(id.0)
+            .execute(&mut **transaction)
+            .await?;
+
         User::clear_project_cache(&[current_user.id.into()], redis).await?;
 
         // 如果是付费资源，插入定价信息

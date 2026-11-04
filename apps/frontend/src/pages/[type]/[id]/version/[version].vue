@@ -1670,6 +1670,18 @@ export default defineNuxtComponent({
 
     version = JSON.parse(JSON.stringify(version));
 
+    // 上游 f85a2d3ec + 4871abfb3: 版本列表不再带 changelog，这里按需补取当前版本的 changelog
+    if (!isCreating && version.id && version.id !== "none") {
+      try {
+        const fullVersion = await useBaseFetch(`version/${version.id}`, { apiVersion: 3 });
+        if (fullVersion && fullVersion.changelog !== undefined) {
+          version.changelog = fullVersion.changelog;
+        }
+      } catch (err) {
+        console.error("加载版本 changelog 失败:", err);
+      }
+    }
+
     if (version.disk_only && version.disk_urls && version.disk_urls.length > 0) {
       version.disk_urls.forEach((url) => {
         if (url.platform === "baidu") {

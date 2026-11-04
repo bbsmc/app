@@ -148,6 +148,13 @@ pub async fn version_project_get_helper(
 #[derive(Serialize, Deserialize)]
 pub struct VersionIds {
     pub ids: String,
+    // 上游 f85a2d3ec (#5115): include_changelog 默认 true，不传则行为不变
+    #[serde(default = "default_true")]
+    pub include_changelog: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 pub async fn versions_get(
@@ -177,9 +184,15 @@ pub async fn versions_get(
     )
     .await?;
 
-    let versions =
+    let mut versions =
         filter_visible_versions(versions_data, &user_option, &pool, &redis)
             .await?;
+
+    if !ids.include_changelog {
+        for version in &mut versions {
+            version.changelog = None;
+        }
+    }
 
     Ok(HttpResponse::Ok().json(versions))
 }
@@ -1176,6 +1189,9 @@ pub struct VersionListFilters {
         返回如果它匹配任何值
     */
     pub loader_fields: Option<String>,
+    // 上游 f85a2d3ec (#5115): include_changelog 默认 true，不传则行为不变
+    #[serde(default = "default_true")]
+    pub include_changelog: bool,
 }
 
 pub async fn version_list(
@@ -1318,9 +1334,15 @@ pub async fn version_list(
         });
         response.dedup_by(|a, b| a.inner.id == b.inner.id);
 
-        let response =
+        let mut response =
             filter_visible_versions(response, &user_option, &pool, &redis)
                 .await?;
+
+        if !filters.include_changelog {
+            for version in &mut response {
+                version.changelog = None;
+            }
+        }
 
         Ok(HttpResponse::Ok().json(response))
     } else {
@@ -1428,7 +1450,15 @@ pub async fn version_delete(
     .await?;
     // Modrinth 上游修复 97e4d8e13: 确保版本在路由执行结束前从搜索索引中删除
     // 将搜索索引删除移到缓存清理之后，确保任务完成后再返回响应
-    remove_documents(&[version.inner.id.into()], &search_config).await?;
+    // 事务已提交，搜索索引删除失败只记录日志，不让删除请求返回 500
+    if let Err(e) =
+        remove_documents(&[version.inner.id.into()], &search_config).await
+    {
+        log::error!(
+            "从搜索索引删除版本失败 version={}: {e:?}",
+            version.inner.id.0
+        );
+    }
 
     if result.is_some() {
         Ok(HttpResponse::NoContent().body(""))

@@ -153,17 +153,27 @@ pub async fn upload_image_optimized(
     })
 }
 
+/// WebP 格式允许的最大边长（像素）
+const WEBP_MAX_DIMENSION: u32 = 16383;
+
 fn process_image(
     image_bytes: bytes::Bytes,
     content_type: &str,
     target_width: Option<u32>,
     min_aspect_ratio: Option<f32>,
-) -> Result<(bytes::Bytes, String), ImageError> {
+) -> Result<(bytes::Bytes, String), ApiError> {
     if content_type.to_lowercase() == "image/gif" {
         return Ok((image_bytes.clone(), "gif".to_string()));
     }
 
     let mut img = image::load_from_memory(&image_bytes)?;
+
+    // 上游修复: d5eb55ca4 (#7656) - 超出 WebP 尺寸上限的图片提前拒绝，不再进入编码器
+    if img.width() > WEBP_MAX_DIMENSION || img.height() > WEBP_MAX_DIMENSION {
+        return Err(ApiError::InvalidInput(format!(
+            "图片尺寸过大：宽和高均不能超过 {WEBP_MAX_DIMENSION} 像素"
+        )));
+    }
 
     let webp_bytes = convert_to_webp(&img)?;
     img = image::load_from_memory(&webp_bytes)?;
@@ -199,7 +209,14 @@ fn process_image(
 fn convert_to_webp(img: &DynamicImage) -> Result<Vec<u8>, ImageError> {
     let rgba = img.to_rgba8();
     let encoder = Encoder::from_rgba(&rgba, img.width(), img.height());
-    let webp = encoder.encode(75.0); // 质量因子: 0-100, 75 是平衡
+    // 上游修复: d5eb55ca4 (#7656) - encode() 内部会 unwrap，改用 encode_simple 并返回错误
+    // 质量因子: 0-100, 75 是平衡
+    let webp = encoder.encode_simple(false, 75.0).map_err(|e| {
+        ImageError::Encoding(image::error::EncodingError::new(
+            image::error::ImageFormatHint::Exact(ImageFormat::WebP),
+            format!("WebP 编码失败: {e:?}"),
+        ))
+    })?;
     Ok(webp.to_vec())
 }
 

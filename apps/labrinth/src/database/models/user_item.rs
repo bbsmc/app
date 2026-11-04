@@ -1,5 +1,5 @@
 use super::ids::{ProjectId, UserId};
-use super::{CollectionId, ReportId, ThreadId};
+use super::{CollectionId, ReportId};
 use crate::database::models;
 use crate::database::models::{DatabaseError, OrganizationId};
 use crate::database::redis::RedisPool;
@@ -851,29 +851,28 @@ impl User {
                     .await?;
             }
 
-            let report_threads = sqlx::query!(
+            // 上游修复: 0a0ef1ce8 (#6465) + c017038f7 - 原来会删除“本人提交”和“针对本人”
+            // 的全部举报及其审核线程，导致审核证据丢失。改为把举报双方的引用转给 Ghost，
+            // 举报记录与审核线程都保留下来。
+            sqlx::query!(
                 "
-                SELECT t.id
-                FROM threads t
-                INNER JOIN reports r ON t.report_id = r.id AND (r.user_id = $1 OR r.reporter = $1)
-                WHERE report_id IS NOT NULL
+                UPDATE reports
+                SET reporter = $1
+                WHERE reporter = $2
                 ",
+                deleted_user as UserId,
                 id as UserId,
             )
-            .fetch(&mut **transaction)
-            .map_ok(|x| ThreadId(x.id))
-            .try_collect::<Vec<_>>()
+            .execute(&mut **transaction)
             .await?;
-
-            for thread_id in report_threads {
-                models::Thread::remove_full(thread_id, transaction).await?;
-            }
 
             sqlx::query!(
                 "
-                DELETE FROM reports
-                WHERE user_id = $1 OR reporter = $1
+                UPDATE reports
+                SET user_id = $1
+                WHERE user_id = $2
                 ",
+                deleted_user as UserId,
                 id as UserId,
             )
             .execute(&mut **transaction)
@@ -913,11 +912,16 @@ impl User {
             .execute(&mut **transaction)
             .await?;
 
+            // 上游修复: c017038f7 / 1c1683adb - 提现记录转给 Ghost 而非删除，
+            // 保留对账依据（payout_yunzhanghu_order_details 对 payouts 为 ON DELETE CASCADE，
+            // 原来的 DELETE 会连带抹掉云账户订单与税费明细）。
             sqlx::query!(
                 "
-                DELETE FROM payouts
-                WHERE user_id = $1
+                UPDATE payouts
+                SET user_id = $1
+                WHERE user_id = $2
                 ",
+                deleted_user as UserId,
                 id as UserId,
             )
             .execute(&mut **transaction)
@@ -969,6 +973,73 @@ impl User {
                 "
                 DELETE FROM user_backup_codes
                 WHERE user_id = $1
+                ",
+                id as UserId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            // 上游修复: c017038f7 / e7eb4899a - 把其余指向该用户、且外键为 NO ACTION 的引用
+            // 转给 Ghost，否则 DELETE FROM users 会因外键约束报错（500）。
+            // ON DELETE CASCADE 的表（oauth_client_authorizations、payment_merchants、
+            // payment_orders.user_id、user_purchases、user_yunzhanghu_profiles、
+            // creator_applications.user_id、user_bans.user_id 等）会随删除自动处理，无需在此转移。
+            for (table, column) in [
+                // 上游表
+                ("uploaded_images", "owner_id"),
+                ("oauth_clients", "created_by"),
+                // BBSMC 内容类
+                ("wiki_cache", "user_id"),
+                ("discussions", "user_id"),
+                ("posts", "user_id"),
+                ("issues", "author_id"),
+                ("issue_comments", "author_id"),
+                ("issue_assignees", "assigned_by"),
+                // BBSMC 激励类
+                ("incentive_applications", "applicant_user_id"),
+                ("incentive_applications", "reviewed_by"),
+                ("incentive_enabled_projects", "enabled_by"),
+                ("incentive_anomaly_alerts", "handled_by"),
+                ("incentive_audit_log", "actor_user_id"),
+                // BBSMC 交易/账务类（billing 当前停用，表多为空，转移为 no-op）
+                ("payment_orders", "seller_id"),
+                ("charges", "user_id"),
+                ("users_subscriptions", "user_id"),
+                // BBSMC 审核/封禁审计类（保留操作人留痕）
+                ("creator_applications", "reviewer_id"),
+                ("image_content_reviews", "reviewed_by"),
+                ("user_bans", "banned_by"),
+                ("user_ban_history", "operator_id"),
+                ("user_ban_appeals", "reviewed_by"),
+                ("payouts", "admin_rejected_by"),
+                ("payouts", "yunzhanghu_confirmed_by"),
+            ] {
+                // 表名与列名来自固定白名单（非外部输入），用 format! 拼接是安全的
+                let query = format!(
+                    "UPDATE {table} SET {column} = $1 WHERE {column} = $2"
+                );
+                sqlx::query(&query)
+                    .bind(deleted_user.0)
+                    .bind(id.0)
+                    .execute(&mut **transaction)
+                    .await?;
+            }
+
+            // issue 指派对象（被指派人）与好友关系没有留痕价值，直接删除
+            sqlx::query!(
+                "
+                DELETE FROM issue_assignees
+                WHERE user_id = $1
+                ",
+                id as UserId,
+            )
+            .execute(&mut **transaction)
+            .await?;
+
+            sqlx::query!(
+                "
+                DELETE FROM friends
+                WHERE user_id = $1 OR friend_id = $1
                 ",
                 id as UserId,
             )

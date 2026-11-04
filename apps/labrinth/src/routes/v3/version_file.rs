@@ -1,5 +1,7 @@
 use super::ApiError;
-use crate::auth::checks::{filter_visible_versions, is_visible_version};
+use crate::auth::checks::{
+    filter_visible_version_ids, filter_visible_versions, is_visible_version,
+};
 use crate::auth::{filter_visible_projects, get_user_from_headers};
 use crate::database::models::user_purchase_item::UserPurchase;
 use crate::database::redis::RedisPool;
@@ -326,10 +328,25 @@ pub struct ManyUpdateData {
     pub version_types: Option<Vec<VersionType>>,
 }
 pub async fn update_files(
+    req: HttpRequest,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     update_data: web::Json<ManyUpdateData>,
+    session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
+    // 上游修复: cee942dce (#6105) + ffa81a14d (#7576) - 按当前请求者的可见性过滤，
+    // 返回其可见的最新版本，避免草稿/定时发布/隐藏项目的版本通过该接口暴露
+    let user_option = get_user_from_headers(
+        &req,
+        &**pool,
+        &redis,
+        &session_queue,
+        Some(&[Scopes::VERSION_READ]),
+    )
+    .await
+    .map(|x| x.1)
+    .ok();
+
     let algorithm = update_data
         .algorithm
         .clone()
@@ -369,10 +386,32 @@ pub async fn update_files(
         })
         .await?;
 
+    let candidate_versions = database::models::Version::get_many(
+        &update_version_ids
+            .iter()
+            .flat_map(|x| x.value().clone())
+            .collect::<Vec<_>>(),
+        &**pool,
+        &redis,
+    )
+    .await?;
+    let visible_version_ids = filter_visible_version_ids(
+        candidate_versions.iter().map(|x| &x.inner).collect(),
+        &user_option,
+        &pool,
+        &redis,
+    )
+    .await?;
+
+    // 候选版本按 date_published 升序排列，倒序取第一个可见的即为最新可见版本
     let versions = database::models::Version::get_many(
         &update_version_ids
             .into_iter()
-            .filter_map(|x| x.1.last().copied())
+            .filter_map(|x| {
+                x.1.into_iter()
+                    .rev()
+                    .find(|id| visible_version_ids.contains(id))
+            })
             .collect::<Vec<_>>(),
         &**pool,
         &redis,

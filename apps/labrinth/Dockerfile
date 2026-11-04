@@ -6,13 +6,12 @@ FROM --platform=linux/amd64 rust:1.89.0 AS build
 WORKDIR /usr/src/app
 COPY . .
 
-# 设置SQLx离线模式
+# 设置SQLx离线模式；构建后把二进制复制到标准位置（release-labrinth profile 的产物目录）
 RUN --mount=type=cache,target=/usr/src/app/target \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry \
-    SQLX_OFFLINE=true cargo build --release --package labrinth && \
-    # 复制二进制文件到标准位置
-    cp target/release/labrinth /usr/local/bin/labrinth
+    SQLX_OFFLINE=true cargo build --profile release-labrinth --package labrinth && \
+    cp target/release-labrinth/labrinth /usr/local/bin/labrinth
 
 # 收集所有依赖库
 RUN ldd /usr/local/bin/labrinth | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' /usr/local/lib/ || true
@@ -43,7 +42,9 @@ RUN apt-get update && \
         tzdata \
         curl && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --system app && \
+    useradd --system --gid app --create-home app
 
 # 容器时区设为北京时间，使容器日志、chrono::Local 等系统级时间显示一致。
 # 注意：应用层 PG/CH/Utc::now 都已显式管理时区，与该 ENV 无依赖关系。
@@ -56,6 +57,12 @@ COPY --from=artifacts /labrinth /labrinth
 
 # 更新动态链接器缓存
 RUN ldconfig
+
+# 上游 d43a3d399: 以非 root 用户运行，降低容器被攻破后的影响面。
+# chown /labrinth（上游未做）以防运行时需要写工作目录（如本地存储后端），更稳妥。
+# 保留 curl（未按上游删除）：fork 的 k8s 探针可能依赖它，删除风险大于收益。
+RUN chown -R app:app /labrinth
+USER app
 
 WORKDIR /labrinth
 ENTRYPOINT ["dumb-init", "--"]

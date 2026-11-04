@@ -1,5 +1,9 @@
 import { fetchPaginatedHits } from "~/composables/fetch.js";
 
+// 上游修复: d80763be3 (#7902) - 关注列表只保留 id，避免把完整项目对象（含 markdown 正文）
+// 序列化进每个已登录页面的 SSR payload。读取方只用到 .id / .length。
+const toFollowRef = (project) => ({ id: project.id });
+
 export const useUser = async (force = false) => {
   const nuxtApp = useNuxtApp();
   const user = useState("user", () => {});
@@ -42,7 +46,7 @@ export const initUser = async () => {
       ]);
 
       user.collections = collections;
-      user.follows = follows;
+      user.follows = follows.map(toFollowRef);
       user.lastUpdated = Date.now();
     } catch (err) {
       console.error(err);
@@ -81,9 +85,11 @@ export const initUserFollows = async () => {
   if (auth.value?.user && auth.value?.user.id) {
     try {
       const base = import.meta.server ? config.apiBaseUrl : config.public.apiBaseUrl;
-      userState.value.follows = await $fetch(`${base}user/${auth.value.user.id}/follows`, {
-        headers: { Authorization: auth.value.token },
-      });
+      userState.value.follows = (
+        await $fetch(`${base}user/${auth.value.user.id}/follows`, {
+          headers: { Authorization: auth.value.token },
+        })
+      ).map(toFollowRef);
     } catch (err) {
       console.error(err);
     }
@@ -165,7 +171,7 @@ export const userFollowProject = (project) => {
       });
     });
   } else {
-    user.follows = user.follows.concat(project);
+    user.follows = user.follows.concat(toFollowRef(project));
     project.followers++;
 
     setTimeout(() => {

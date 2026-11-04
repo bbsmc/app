@@ -550,37 +550,10 @@ impl Project {
             .execute(&mut **transaction)
             .await?;
 
-            // 删除关联的 threads 及其消息和成员
-            sqlx::query!(
-                "
-                DELETE FROM threads_messages
-                WHERE thread_id IN (SELECT id FROM threads WHERE mod_id = $1)
-                ",
-                id as ProjectId,
-            )
-            .execute(&mut **transaction)
-            .await?;
-
-            sqlx::query!(
-                "
-                DELETE FROM threads_members
-                WHERE thread_id IN (SELECT id FROM threads WHERE mod_id = $1)
-                ",
-                id as ProjectId,
-            )
-            .execute(&mut **transaction)
-            .await?;
-
-            sqlx::query!(
-                "
-                DELETE FROM threads
-                WHERE mod_id = $1
-                ",
-                id as ProjectId,
-            )
-            .execute(&mut **transaction)
-            .await?;
-
+            // 上游修复: 2fd449510 (#7107) 的保留审核记录思路 - 不再随项目删除审核线程。
+            // 迁移 20251222000001 已把 threads.mod_id 设为 ON DELETE SET NULL，
+            // 删除项目后线程会保留为孤立记录（mod_id=NULL），供审核留痕，
+            // 版主仍可按线程 id 打开；作者无法再通过删号/删项目抹掉审核历史。
             sqlx::query!(
                 "
                 DELETE FROM mods
@@ -754,13 +727,16 @@ impl Project {
                     .await?;
 
                 let loader_field_enum_value_ids = DashSet::new();
+                // 上游修复: d994f0ab3 (#7901) - 按 (mod_id, field, value) 分组取 MIN(version_id)，
+                // 避免多版本项目返回“版本数 × 字段值”条重复行、并膨胀 Redis 缓存
                 let version_fields: DashMap<ProjectId, Vec<QueryVersionField>> = sqlx::query!(
-                    "
-                    SELECT DISTINCT mod_id, version_id, field_id, int_value, enum_value, string_value
+                    r#"
+                    SELECT v.mod_id, MIN(vf.version_id) AS "version_id!", vf.field_id, vf.int_value, vf.enum_value, vf.string_value
                     FROM versions v
                     INNER JOIN version_fields vf ON v.id = vf.version_id
-                    WHERE v.id = ANY($1)
-                    ",
+                    WHERE v.id = ANY($1) AND vf.version_id = ANY($1)
+                    GROUP BY v.mod_id, vf.field_id, vf.int_value, vf.enum_value, vf.string_value
+                    "#,
                     &all_version_ids.iter().map(|x| x.0).collect::<Vec<_>>()
                 )
                     .fetch(&mut *exec)

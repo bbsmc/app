@@ -189,7 +189,8 @@ async function recovery() {
       text: err.data ? err.data.description : err,
       type: "error",
     });
-    captcha.value?.reset();
+    // 修复: TACaptcha 暴露的是 resetCaptcha()，原 reset() 不存在会抛 TypeError 并跳过 stopLoading
+    captcha.value?.resetCaptcha?.();
   }
   stopLoading();
 }
@@ -222,7 +223,8 @@ async function changePassword() {
       text: err.data ? err.data.description : err,
       type: "error",
     });
-    captcha.value?.reset();
+    // 修复: 同上，使用正确的 resetCaptcha() 方法
+    captcha.value?.resetCaptcha?.();
   }
   stopLoading();
 }

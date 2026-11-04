@@ -87,6 +87,13 @@ export function getVersionsToDisplay(project) {
 }
 
 export function formatVersionsForDisplay(gameVersions, overrideTags) {
+  return getVersionGroupsForDisplay(gameVersions, overrideTags).map((group) => group.label);
+}
+
+// 上游 3487523f7 (#6967): 在按范围分组展示的同时，返回每个显示范围实际包含的版本列表，
+// 使版本标签点击时只筛选它自己代表的那些版本（而非该发行支持的全部版本），
+// 同时让筛选可以一次性批量应用、避免逐版本触发重渲染导致页面卡死。
+export function getVersionGroupsForDisplay(gameVersions, overrideTags) {
   const tags = overrideTags ?? useTags().value;
 
   const inputVersions = gameVersions.slice();
@@ -128,8 +135,10 @@ export function formatVersionsForDisplay(gameVersions, overrideTags) {
   const projectVersionsGrouped = groupVersions(releaseVersions, true);
 
   const releaseVersionsAsRanges = projectVersionsGrouped.map(({ major, minor }) => {
+    const versions = minor.map((minorVersion) => formatVersion(major, minorVersion));
+
     if (minor.length === 1) {
-      return formatVersion(major, minor[0]);
+      return { label: versions[0], versions };
     }
 
     if (
@@ -137,10 +146,13 @@ export function formatVersionsForDisplay(gameVersions, overrideTags) {
         .find((x) => x.major === major)
         .minor.every((value, index) => value === minor[index])
     ) {
-      return `${major}.x`;
+      return { label: `${major}.x`, versions };
     }
 
-    return `${formatVersion(major, minor[0])}–${formatVersion(major, minor[minor.length - 1])}`;
+    return {
+      label: `${formatVersion(major, minor[0])}–${formatVersion(major, minor[minor.length - 1])}`,
+      versions,
+    };
   });
 
   const legacyVersionsAsRanges = groupConsecutiveIndices(
@@ -163,8 +175,8 @@ export function formatVersionsForDisplay(gameVersions, overrideTags) {
     output = [...releaseVersionsAsRanges, ...output];
   }
 
-  if (latestSnapshot && !output.includes(latestSnapshot)) {
-    output = [latestSnapshot, ...output];
+  if (latestSnapshot && !output.some((group) => group.label === latestSnapshot)) {
+    output = [{ label: latestSnapshot, versions: [latestSnapshot] }, ...output];
   }
   return output;
 }
@@ -215,20 +227,23 @@ function groupConsecutiveIndices(versions, referenceList) {
 
   const sortedList = versions.slice().sort((a, b) => referenceMap.get(a) - referenceMap.get(b));
 
+  // 上游 3487523f7 (#6967): 返回 { label, versions }，versions 为该连续区间包含的具体版本
   const ranges = [];
-  let start = sortedList[0];
-  let previous = sortedList[0];
+  let rangeStartIndex = 0;
 
-  for (let i = 1; i < sortedList.length; i++) {
-    const current = sortedList[i];
-    if (referenceMap.get(current) !== referenceMap.get(previous) + 1) {
-      ranges.push(validateRange(`${previous}–${start}`));
-      start = current;
+  for (let i = 1; i <= sortedList.length; i++) {
+    if (
+      i === sortedList.length ||
+      referenceMap.get(sortedList[i]) !== referenceMap.get(sortedList[i - 1]) + 1
+    ) {
+      const members = sortedList.slice(rangeStartIndex, i);
+      ranges.push({
+        label: validateRange(`${members[members.length - 1]}–${members[0]}`),
+        versions: members,
+      });
+      rangeStartIndex = i;
     }
-    previous = current;
   }
-
-  ranges.push(validateRange(`${previous}–${start}`));
 
   return ranges;
 }

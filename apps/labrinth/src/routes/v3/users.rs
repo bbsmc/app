@@ -1242,6 +1242,69 @@ pub async fn user_delete(
             ));
         }
 
+        let is_self_delete = user.id == id.into();
+
+        // 安全闸 1：有在途/撤销中的提现时不允许删号，避免丢失对账依据。
+        // 处理中状态口径与 yunzhanghu::has_processing_payout 一致。
+        let processing_payout = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM payouts
+                WHERE user_id = $1 AND status IN ('in-transit', 'cancelling')
+            ) AS "exists!"
+            "#,
+            id.0,
+        )
+        .fetch_one(&**pool)
+        .await?;
+        if processing_payout {
+            return Err(ApiError::InvalidInput(
+                "该账户存在处理中的提现，暂时无法注销，请在提现完成后再试。"
+                    .to_string(),
+            ));
+        }
+
+        // 安全闸 2：买家或卖家有待支付订单时不允许删号。
+        let pending_order = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM payment_orders
+                WHERE (user_id = $1 OR seller_id = $1) AND status = 'pending'
+            ) AS "exists!"
+            "#,
+            id.0,
+        )
+        .fetch_one(&**pool)
+        .await?;
+        if pending_order {
+            return Err(ApiError::InvalidInput(
+                "该账户存在待处理的订单，暂时无法注销。".to_string(),
+            ));
+        }
+
+        // 安全闸 3：被封禁用户不得自助注销（防止删号重注册规避封禁）。
+        // 管理员删除他人不受此限制。
+        if is_self_delete {
+            let active_ban = sqlx::query_scalar!(
+                r#"
+                SELECT EXISTS(
+                    SELECT 1 FROM user_bans
+                    WHERE user_id = $1 AND is_active = true
+                    AND (expires_at IS NULL OR expires_at > NOW())
+                ) AS "exists!"
+                "#,
+                id.0,
+            )
+            .fetch_one(&**pool)
+            .await?;
+            if active_ban {
+                return Err(ApiError::Banned(
+                    "您的账号处于封禁状态，无法注销。如有疑问请提交申诉。"
+                        .to_string(),
+                ));
+            }
+        }
+
         let mut transaction = pool.begin().await?;
 
         let result = User::remove(id, &mut transaction, &redis).await?;

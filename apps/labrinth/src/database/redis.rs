@@ -20,6 +20,15 @@ use std::time::Instant;
 pub const DEFAULT_EXPIRY: i64 = 60 * 60 * 12; // 12 hour
 const ACTUAL_EXPIRY: i64 = 60 * 30; // 30 minutess
 
+// 上游 678f8049e: 限制单次 MGET 的 key 数量。每个 MGET 响应都要放进连接的读缓冲，
+// 该缓冲会长期保留峰值容量；按 ~1MB/值估算，32 个 key 可将单次响应峰值限制在 ~32MB。
+const MGET_CHUNK_SIZE: usize = 32;
+// 上游 678f8049e: 限制单条 pipeline 的命令数量，避免写缓冲峰值容量过大推高稳态 RSS。
+const PIPELINE_CHUNK_SIZE: usize = 25;
+// 上游 678f8049e: 连接无论是否活跃，存活超过该时长即强制回收。
+// 基于存活时长的强制回收是释放每连接 BytesMut 峰值缓冲容量的唯一手段。
+const REDIS_MAX_CONN_AGE: Duration = Duration::from_secs(120);
+
 #[derive(Clone)]
 pub struct RedisPool {
     pub pool: deadpool_redis::Pool,
@@ -90,16 +99,19 @@ impl RedisPool {
             meta_namespace: meta_namespace.unwrap_or("".to_string()),
         };
 
-        // 上游优化: 定期清理空闲超过 5 分钟的连接
+        // 上游优化 + 678f8049e: 定期清理空闲超过 5 分钟、或存活超过
+        // REDIS_MAX_CONN_AGE 的连接。基于存活时长的强制回收是释放每连接
+        // BytesMut 峰值缓冲容量的唯一手段（多路复用连接的读写缓冲会长期保留峰值容量）。
         let interval = Duration::from_secs(30);
-        let max_age = Duration::from_secs(5 * 60); // 5 minutes
+        let max_idle = Duration::from_secs(5 * 60); // 5 minutes
         let pool_ref = pool.clone();
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(interval).await;
-                pool_ref
-                    .pool
-                    .retain(|_, metrics| metrics.last_used() < max_age);
+                pool_ref.pool.retain(|_, metrics| {
+                    metrics.last_used() < max_idle
+                        && metrics.age() < REDIS_MAX_CONN_AGE
+                });
             }
         });
 
@@ -233,8 +245,6 @@ impl RedisPool {
             + Serialize,
         S: Display + Clone + DeserializeOwned + Serialize + Debug,
     {
-        let connection = self.connect().await?.connection;
-
         let ids = keys
             .iter()
             .map(|x| (x.to_string(), x.clone()))
@@ -244,73 +254,72 @@ impl RedisPool {
             return Ok(HashMap::new());
         }
 
-        let get_cached_values =
-            |ids: DashMap<String, I>,
-             mut connection: deadpool_redis::Connection| async move {
-                let slug_ids = if let Some(slug_namespace) = slug_namespace {
-                    cmd("MGET")
-                        .arg(
-                            ids.iter()
-                                .map(|x| {
-                                    format!(
-                                        "{}_{slug_namespace}:{}",
-                                        self.meta_namespace,
-                                        if case_sensitive {
-                                            x.value().to_string()
-                                        } else {
-                                            x.value().to_string().to_lowercase()
-                                        }
-                                    )
-                                })
-                                .collect::<Vec<_>>(),
+        // 上游 76be502e1: 不再跨整个函数持有同一条 Redis 连接；每次操作临时从池取用、
+        // 用后即还，避免在执行 PG 查询 (closure) 期间占着 Redis 连接，减少高并发下连接饥饿。
+        // 上游 678f8049e: MGET 按 MGET_CHUNK_SIZE 分块，限制单次响应占用的读缓冲峰值。
+        let get_cached_values = |ids: DashMap<String, I>| async move {
+            let slug_ids = if let Some(slug_namespace) = slug_namespace {
+                let mut connection = self.pool.get().await?;
+                let args = ids
+                    .iter()
+                    .map(|x| {
+                        format!(
+                            "{}_{slug_namespace}:{}",
+                            self.meta_namespace,
+                            if case_sensitive {
+                                x.value().to_string()
+                            } else {
+                                x.value().to_string().to_lowercase()
+                            }
                         )
-                        .query_async::<Vec<Option<String>>>(&mut connection)
-                        .await?
-                        .into_iter()
-                        .flatten()
-                        .collect::<Vec<_>>()
-                } else {
-                    Vec::new()
-                };
-
-                let cached_values = cmd("MGET")
-                    .arg(
-                        ids.iter()
-                            .map(|x| x.value().to_string())
-                            .chain(ids.iter().filter_map(|x| {
-                                parse_base62(&x.value().to_string())
-                                    .ok()
-                                    .map(|x| x.to_string())
-                            }))
-                            .chain(slug_ids)
-                            .map(|x| {
-                                format!(
-                                    "{}_{namespace}:{x}",
-                                    self.meta_namespace
-                                )
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                    .query_async::<Vec<Option<String>>>(&mut connection)
-                    .await?
-                    .into_iter()
-                    .filter_map(|x| {
-                        x.and_then(|val| {
-                            serde_json::from_str::<RedisValue<T, K, S>>(&val)
-                                .ok()
-                        })
-                        .map(|val| (val.key.clone(), val))
                     })
-                    .collect::<HashMap<_, _>>();
-
-                Ok::<_, DatabaseError>((cached_values, connection, ids))
+                    .collect::<Vec<_>>();
+                let mut slug_ids = Vec::new();
+                for chunk in args.chunks(MGET_CHUNK_SIZE) {
+                    let part = cmd("MGET")
+                        .arg(chunk)
+                        .query_async::<Vec<Option<String>>>(&mut connection)
+                        .await?;
+                    slug_ids.extend(part.into_iter().flatten());
+                }
+                slug_ids
+            } else {
+                Vec::new()
             };
+
+            let mut connection = self.pool.get().await?;
+            let args = ids
+                .iter()
+                .map(|x| x.value().to_string())
+                .chain(ids.iter().filter_map(|x| {
+                    parse_base62(&x.value().to_string())
+                        .ok()
+                        .map(|x| x.to_string())
+                }))
+                .chain(slug_ids)
+                .map(|x| format!("{}_{namespace}:{x}", self.meta_namespace))
+                .collect::<Vec<_>>();
+            let mut cached_values = HashMap::new();
+            for chunk in args.chunks(MGET_CHUNK_SIZE) {
+                let part = cmd("MGET")
+                    .arg(chunk)
+                    .query_async::<Vec<Option<String>>>(&mut connection)
+                    .await?;
+                cached_values.extend(part.into_iter().filter_map(|x| {
+                    x.and_then(|val| {
+                        serde_json::from_str::<RedisValue<T, K, S>>(&val).ok()
+                    })
+                    .map(|val| (val.key.clone(), val))
+                }));
+            }
+
+            Ok::<_, DatabaseError>((cached_values, ids))
+        };
 
         let current_time = Utc::now();
         let mut expired_values = HashMap::new();
 
-        let (cached_values_raw, mut connection, ids) =
-            get_cached_values(ids, connection).await?;
+        let (cached_values_raw, ids) = get_cached_values(ids).await?;
         let mut cached_values = cached_values_raw
             .into_iter()
             .filter_map(|(key, val)| {
@@ -348,7 +357,12 @@ impl RedisPool {
 
             fetch_ids.iter().for_each(|key| {
                 pipe.atomic().set_options(
-                    format!("{}_{namespace}:{}/lock", self.meta_namespace, key),
+                    // 上游 82393f2ae: 锁以小写存储（大小写不敏感）
+                    format!(
+                        "{}_{namespace}:{}/lock",
+                        self.meta_namespace,
+                        key.to_lowercase()
+                    ),
                     100,
                     SetOptions::default()
                         .get(true)
@@ -356,9 +370,11 @@ impl RedisPool {
                         .with_expiration(SetExpiry::EX(60)),
                 );
             });
-            let results = pipe
-                .query_async::<Vec<Option<i32>>>(&mut connection)
-                .await?;
+            let results = {
+                let mut connection = self.pool.get().await?;
+                pipe.query_async::<Vec<Option<i32>>>(&mut connection)
+                    .await?
+            };
 
             for (idx, key) in fetch_ids.into_iter().enumerate() {
                 if let Some(locked) = results.get(idx)
@@ -405,10 +421,16 @@ impl RedisPool {
                 let fetch_ids =
                     ids.iter().map(|x| x.value().clone()).collect::<Vec<_>>();
 
+                // 上游 76be502e1: 先执行 PG 查询，期间不持有 Redis 连接；
+                // 查询返回后再从池取连接写回缓存。
                 let vals = closure(fetch_ids).await?;
                 let mut return_values = HashMap::new();
 
+                // 上游 678f8049e: 写回 pipeline 按 PIPELINE_CHUNK_SIZE 分块刷新，限制写缓冲峰值。
+                // 分块按序刷新，保证每个 key 的 SET 一定先于其 /lock 的 DEL，故无需 MULTI/EXEC 原子性。
+                let mut connection = self.pool.get().await?;
                 let mut pipe = redis::pipe();
+                let mut pipe_cmds: usize = 0;
                 if !vals.is_empty() {
                     for (key, (slug, value)) in vals {
                         let value = RedisValue {
@@ -418,7 +440,7 @@ impl RedisPool {
                             alias: slug.clone(),
                         };
 
-                        pipe.atomic().set_ex(
+                        pipe.set_ex(
                             format!(
                                 "{}_{namespace}:{key}",
                                 self.meta_namespace
@@ -426,6 +448,7 @@ impl RedisPool {
                             serde_json::to_string(&value)?,
                             DEFAULT_EXPIRY as u64,
                         );
+                        pipe_cmds += 1;
 
                         if let Some(slug) = slug {
                             ids.remove(&slug.to_string());
@@ -437,7 +460,7 @@ impl RedisPool {
                                     slug.to_string().to_lowercase()
                                 };
 
-                                pipe.atomic().set_ex(
+                                pipe.set_ex(
                                     format!(
                                         "{}_{slug_namespace}:{}",
                                         self.meta_namespace, actual_slug
@@ -445,11 +468,15 @@ impl RedisPool {
                                     key.to_string(),
                                     DEFAULT_EXPIRY as u64,
                                 );
+                                pipe_cmds += 1;
 
-                                pipe.atomic().del(format!(
+                                pipe.del(format!(
                                     "{}_{namespace}:{}/lock",
-                                    self.meta_namespace, actual_slug
+                                    // 上游 82393f2ae: 锁以小写存储
+                                    self.meta_namespace,
+                                    actual_slug.to_lowercase()
                                 ));
+                                pipe_cmds += 1;
                             }
                         }
 
@@ -460,29 +487,45 @@ impl RedisPool {
                             let base62 = to_base62(value);
                             ids.remove(&base62);
 
-                            pipe.atomic().del(format!(
-                                "{}_{namespace}:{base62}/lock",
-                                self.meta_namespace
+                            pipe.del(format!(
+                                "{}_{namespace}:{}/lock",
+                                self.meta_namespace,
+                                // 上游 82393f2ae: 锁以小写存储
+                                base62.to_lowercase()
                             ));
+                            pipe_cmds += 1;
                         }
 
-                        pipe.atomic().del(format!(
+                        pipe.del(format!(
                             "{}_{namespace}:{key}/lock",
                             self.meta_namespace
                         ));
+                        pipe_cmds += 1;
 
                         return_values.insert(key, value);
+
+                        if pipe_cmds >= PIPELINE_CHUNK_SIZE {
+                            pipe.query_async::<()>(&mut connection).await?;
+                            pipe = redis::pipe();
+                            pipe_cmds = 0;
+                        }
                     }
                 }
 
                 for (key, _) in ids {
-                    pipe.atomic().del(format!(
-                        "{}_{namespace}:{key}/lock",
-                        self.meta_namespace
+                    pipe.del(format!(
+                        "{}_{namespace}:{}/lock",
+                        self.meta_namespace,
+                        // 上游 82393f2ae 的延伸: 锁以小写存储，未命中 (not-found)
+                        // 的 key 也按小写释放，避免与小写写入的锁不匹配而残留
+                        key.to_lowercase()
                     ));
+                    pipe_cmds += 1;
                 }
 
-                pipe.query_async::<()>(&mut connection).await?;
+                if pipe_cmds > 0 {
+                    pipe.query_async::<()>(&mut connection).await?;
+                }
 
                 Ok(return_values)
             }));
@@ -508,7 +551,8 @@ impl RedisPool {
                                         format!(
                                             "{}_{namespace}:{}/lock",
                                             self.meta_namespace,
-                                            x.key()
+                                            // 上游 82393f2ae: 锁以小写存储
+                                            x.key().to_lowercase()
                                         )
                                     })
                                     .collect::<Vec<_>>(),
@@ -544,10 +588,9 @@ impl RedisPool {
                     wait_time_ms *= 2; // 50, 100, 200, 400, 800, 1600, 3200
                 }
 
-                // 重新获取连接用于获取缓存值
-                let connection = self.pool.get().await?;
-                let (return_values, _, _) =
-                    get_cached_values(subscribe_ids, connection).await?;
+                // 上游 76be502e1: get_cached_values 内部自行按需取连接
+                let (return_values, _) =
+                    get_cached_values(subscribe_ids).await?;
 
                 Ok(return_values)
             }));
@@ -751,6 +794,23 @@ impl RedisConnection {
         );
         redis_execute::<()>(&mut cmd, &mut self.connection).await?;
         Ok(())
+    }
+
+    /// 原子地标记一次性 token：SET key 1 NX EX <expiry>。
+    /// 首次写入返回 true；若 key 已存在（即该 token 已被使用过）返回 false。
+    pub async fn set_if_not_exists(
+        &mut self,
+        namespace: &str,
+        id: &str,
+        expiry: i64,
+    ) -> Result<bool, DatabaseError> {
+        let key = format!("{}_{}:{}", self.meta_namespace, namespace, id);
+        let mut cmd = cmd("SET");
+        cmd.arg(&key).arg(1).arg("NX").arg("EX").arg(expiry);
+        // SET ... NX 命中已存在的 key 时返回 nil → None
+        let res: Option<String> =
+            redis_execute(&mut cmd, &mut self.connection).await?;
+        Ok(res.is_some())
     }
 
     pub async fn set_serialized_to_json<Id, D>(

@@ -32,7 +32,11 @@ export const useBaseFetch = async (url, options = {}, skipAuth = false) => {
     delete options.apiVersion;
   }
 
-  return await $fetch(`${base}${url}`, options);
+  // 上游修复: d4381f513 (#5164) - 服务端请求加 10s 超时，避免 labrinth 变慢时 SSR 一直挂起
+  return await $fetch(`${base}${url}`, {
+    timeout: import.meta.server ? 10000 : undefined,
+    ...options,
+  });
 };
 
 export const fetchPaginatedHits = async (fetchPage, limit = 30) => {

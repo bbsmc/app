@@ -46,7 +46,14 @@ export const configuredXss = new FilterXSS({
         },
       ]
 
-      const url = new URL(value.startsWith('//') ? 'https:' + value : value)
+      // 上游修复: 565ac2cb5 (#5985) - src 非法（无协议/空/相对路径等）时 new URL 会抛
+      // TypeError，导致整段 markdown 渲染失败。这里捕获后丢弃 src（与非白名单 iframe 一致）。
+      let url: URL
+      try {
+        url = new URL(value.startsWith('//') ? 'https:' + value : value)
+      } catch {
+        return
+      }
 
       for (const source of allowedSources) {
         if (source.url.test(url.href)) {

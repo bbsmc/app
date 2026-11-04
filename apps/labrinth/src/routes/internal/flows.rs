@@ -1581,7 +1581,13 @@ pub async fn init(
     }
 
     let user_id = if let Some(token) = info.token {
-        let (_, user) = get_user_record_from_bearer_token(
+        // 上游修复: f106dc580 (#6137) - 绑定新的登录方式会改变账号的访问方式，
+        // 只允许站内会话令牌（mra_）发起；PAT / OAuth 令牌可能被委托给第三方或离线保存
+        if !token.starts_with("mra_") {
+            return Err(AuthenticationError::InvalidCredentials);
+        }
+
+        let (scopes, user) = get_user_record_from_bearer_token(
             &req,
             Some(&token),
             &**client,
@@ -1590,6 +1596,10 @@ pub async fn init(
         )
         .await?
         .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+
+        if !scopes.contains(Scopes::USER_AUTH_WRITE) {
+            return Err(AuthenticationError::InvalidCredentials);
+        }
 
         Some(user.id)
     } else {
@@ -1988,7 +1998,7 @@ pub async fn create_account_with_password(
         ApiError::InvalidInput(validation_errors_to_string(err, None))
     })?;
 
-    if !check_hcaptcha(&new_account.challenge).await? {
+    if !check_hcaptcha(&new_account.challenge, &redis).await? {
         return Err(ApiError::Turnstile);
     }
 
@@ -2139,7 +2149,7 @@ pub async fn login_password(
     redis: Data<RedisPool>,
     login: web::Json<Login>,
 ) -> Result<HttpResponse, ApiError> {
-    if !check_hcaptcha(&login.challenge).await? {
+    if !check_hcaptcha(&login.challenge, &redis).await? {
         return Err(ApiError::Turnstile);
     }
 
@@ -2206,7 +2216,7 @@ pub async fn phone_number_code(
     phone_number_code: web::Json<PhoneNumberCode>,
     session_queue: Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    if !check_hcaptcha(&phone_number_code.challenge).await? {
+    if !check_hcaptcha(&phone_number_code.challenge, &redis).await? {
         return Err(ApiError::Turnstile);
     }
     let user = get_user_from_headers(
@@ -2756,7 +2766,7 @@ pub async fn reset_password_begin(
     redis: Data<RedisPool>,
     reset_password: web::Json<ResetPassword>,
 ) -> Result<HttpResponse, ApiError> {
-    if !check_hcaptcha(&reset_password.challenge).await? {
+    if !check_hcaptcha(&reset_password.challenge, &redis).await? {
         return Err(ApiError::Turnstile);
     }
 
@@ -2777,11 +2787,15 @@ pub async fn reset_password_begin(
     };
 
     if let Some(user) = user {
-        let flow = Flow::ForgotPassword { user_id: user.id }
+        // 上游修复: c00e68096 (#7762) - 仅在有邮箱时创建重置 flow，并把邮箱写入 flow
+        if let Some(email) = user.email {
+            let flow = Flow::ForgotPassword {
+                user_id: user.id,
+                email: email.clone(),
+            }
             .insert(Duration::hours(24), &redis)
             .await?;
 
-        if let Some(email) = user.email {
             send_email(
                 email,
                 "重置您的密码",
@@ -2821,11 +2835,19 @@ pub async fn change_password(
     let user = if let Some(flow) = &change_password.flow {
         let flow = Flow::get(flow, &redis).await?;
 
-        if let Some(Flow::ForgotPassword { user_id }) = flow {
+        if let Some(Flow::ForgotPassword { user_id, email }) = flow {
             let user =
                 crate::database::models::User::get_id(user_id, &**pool, &redis)
                     .await?
                     .ok_or_else(|| AuthenticationError::InvalidCredentials)?;
+
+            // 上游修复: c00e68096 (#7762) - 账户当前邮箱须与发起重置时记录的邮箱一致，
+            // 换邮箱后旧的重置链接立即失效
+            if user.email.as_deref() != Some(email.as_str()) {
+                return Err(ApiError::Authentication(
+                    AuthenticationError::InvalidCredentials,
+                ));
+            }
 
             Some(user)
         } else {

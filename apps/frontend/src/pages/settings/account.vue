@@ -1040,12 +1040,15 @@ async function deleteAccount() {
       method: "DELETE",
     });
   } catch (err) {
+    // 注销被拒（如有处理中的提现、待处理订单或账号处于封禁）时保持登录、留在本页，让用户看到原因
     data.$notify({
       group: "main",
       title: "发生错误",
-      text: err.data.description,
+      text: err.data?.description ?? err.message,
       type: "error",
     });
+    stopLoading();
+    return;
   }
 
   useCookie("auth-token").value = null;
@@ -1112,6 +1115,10 @@ async function sendVerificationCode() {
       text: err.data.description,
       type: "error",
     });
+  } finally {
+    // 人机验证 token 后端只认一次（用过即作废），无论成败都清空，让人机验证重新出现：
+    // 否则冷却结束后重发、或失败后重试都会带着作废的 token，只能刷新页面
+    token.value = "";
   }
 }
 

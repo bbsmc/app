@@ -104,13 +104,15 @@
                 >
                   <div class="tag-list">
                     <div
-                      v-for="gameVersion in formatVersionsForDisplay(version.game_versions)"
-                      :key="`version-tag-${gameVersion}`"
-                      v-tooltip="`Toggle filter for ${gameVersion}`"
+                      v-for="gameVersionGroup in getVersionGroupsForDisplay(version.game_versions)"
+                      :key="`version-tag-${gameVersionGroup.label}`"
+                      v-tooltip="`Toggle filter for ${gameVersionGroup.label}`"
                       class="tag-list__item z-[1] cursor-pointer hover:underline"
-                      @click="versionFilters.toggleFilters('gameVersion', version.game_versions)"
+                      @click="
+                        versionFilters.toggleFilters('gameVersion', gameVersionGroup.versions)
+                      "
                     >
-                      {{ gameVersion }}
+                      {{ gameVersionGroup.label }}
                     </div>
                   </div>
                 </div>
@@ -333,7 +335,7 @@ import {
   UpdatedIcon,
 } from "@modrinth/assets";
 import { formatBytes, formatCategory } from "@modrinth/utils";
-import { formatVersionsForDisplay } from "~/helpers/projects.js";
+import { getVersionGroupsForDisplay } from "~/helpers/projects.js";
 import VersionFilterControl from "~/components/ui/VersionFilterControl.vue";
 import DropArea from "~/components/ui/DropArea.vue";
 import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";

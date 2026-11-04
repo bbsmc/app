@@ -67,17 +67,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       returnVersions.push(version);
     }
 
-    return returnVersions
-      .reverse()
-      .map((version, index) => {
-        const nextVersion = returnVersions[index + 1];
-        if (nextVersion && version.changelog && nextVersion.changelog === version.changelog) {
-          return { duplicate: true, ...version };
-        } else {
-          return { duplicate: false, ...version };
-        }
-      })
-      .sort((a, b) => nuxtApp.$dayjs(b.date_published) - nuxtApp.$dayjs(a.date_published));
+    // 上游 4871abfb3/aec268c6e (#5121/#5146): 版本列表不再带 changelog，
+    // duplicate 改由 changelog 页在按页补取完整版本后计算
+    return returnVersions.sort(
+      (a, b) => nuxtApp.$dayjs(b.date_published) - nuxtApp.$dayjs(a.date_published),
+    );
   });
   nuxtApp.provide("getProjectTypeForDisplay", (type, categories) => {
     if (type === "mod") {

@@ -11,11 +11,8 @@
       />
     </div>
     <div class="card changelog-wrapper">
-      <div
-        v-for="version in filteredVersions.slice((currentPage - 1) * 20, currentPage * 20)"
-        :key="version.id"
-        class="changelog-item"
-      >
+      <SpinnerIcon v-if="!paginatedVersions" class="mx-auto my-4 animate-spin" />
+      <div v-for="version in paginatedVersions ?? []" :key="version.id" class="changelog-item">
         <div
           :class="`changelog-bar ${version.version_type} ${version.duplicate ? 'duplicate' : ''}`"
         />
@@ -70,7 +67,7 @@
 </template>
 <script setup>
 import { Pagination } from "@modrinth/ui";
-import { DownloadIcon } from "@modrinth/assets";
+import { DownloadIcon, UpdatedIcon as SpinnerIcon } from "@modrinth/assets";
 
 import { renderHighlightedString } from "~/helpers/highlight.js";
 import VersionFilterControl from "~/components/ui/VersionFilterControl.vue";
@@ -114,11 +111,16 @@ useSeoMeta({
 const router = useNativeRouter();
 const route = useNativeRoute();
 
+// useNativeRoute 是全局实时路由：离开本页时（目标页 async setup 未完成，本页仍挂着）冻结在本页的 query，
+// 免得为正在离开的页面按新路由重新补取、闪 Spinner
+const pagePath = route.path;
+const pageQuery = computed((previous) => (route.path === pagePath ? route.query : previous));
+
 const currentPage = ref(Number(route.query.page ?? 1));
 const filteredVersions = computed(() => {
-  const selectedGameVersions = getArrayOrString(route.query.g) ?? [];
-  const selectedLoaders = getArrayOrString(route.query.l) ?? [];
-  const selectedVersionTypes = getArrayOrString(route.query.c) ?? [];
+  const selectedGameVersions = getArrayOrString(pageQuery.value.g) ?? [];
+  const selectedLoaders = getArrayOrString(pageQuery.value.l) ?? [];
+  const selectedVersionTypes = getArrayOrString(pageQuery.value.c) ?? [];
 
   return props.versions.filter(
     (projectVersion) =>
@@ -131,6 +133,85 @@ const filteredVersions = computed(() => {
       (selectedVersionTypes.length === 0 ||
         selectedVersionTypes.includes(projectVersion.version_type)),
   );
+});
+
+// 筛选变化时在同一拍里回到第 1 页：VersionFilterControl 先改 query（保留 ?page=N）再 emit switch-page(1)，
+// 分两拍的话会先按「新筛选 + 旧页码」多补取一次
+watch(
+  () => JSON.stringify([pageQuery.value.g, pageQuery.value.l, pageQuery.value.c]),
+  () => {
+    currentPage.value = 1;
+  },
+  { flush: "sync" },
+);
+
+// 上游 4871abfb3 + aec268c6e (#5121/#5146): 列表不再带 changelog，这里按当前页（20 条）
+// 补取完整版本（含 changelog）并计算 duplicate，渲染 paginatedVersions。
+// BBSMC: 用 useAsyncData 在服务端补取并渲染，更新日志正文对搜索引擎可见；结果随 payload 带到客户端，
+// 水合时直接复用、不再请求；翻页/筛选时客户端按新 ids 重新补取。payload 只多当前页 20 条 changelog。
+const pageVersions = computed(() =>
+  filteredVersions.value.slice((currentPage.value - 1) * 20, currentPage.value * 20),
+);
+// watch 源用 ids 拼成的字符串：route.query 整体替换（如翻页写 ?page=）会让数组重新计算，
+// 字符串不变就不重复请求
+const pageVersionIds = computed(() => pageVersions.value.map((v) => v.id).join(","));
+
+const {
+  data: pageChangelogs,
+  status: pageChangelogsStatus,
+  refresh: refreshPageChangelogs,
+} = useAsyncData(
+  `project/${props.project.id}/changelog`,
+  async () => {
+    // 非规范 URL 会被 [id].vue 301 到规范地址、这次服务端渲染结果直接丢弃，不必补取（条件与 [id].vue 一致）
+    if (
+      import.meta.server &&
+      (props.project.project_type !== route.params.type || route.params.id !== props.project.slug)
+    ) {
+      return {};
+    }
+    const ids = pageVersions.value.map((v) => v.id);
+    if (ids.length === 0) {
+      return {};
+    }
+    const fullVersions = await useBaseFetch("versions", {
+      apiVersion: 3,
+      query: { ids: JSON.stringify(ids) },
+    });
+    // 只留 id -> changelog，不把整份版本对象重复塞进 payload；接口没返回的版本按空 changelog 处理
+    const changelogById = new Map(fullVersions.map((v) => [v.id, v.changelog ?? ""]));
+    return Object.fromEntries(ids.map((id) => [id, changelogById.get(id) ?? ""]));
+  },
+  // lazy：服务端仍经 onServerPrefetch 等数据再渲染（SEO 不受影响）；客户端切到本 tab 不再被补取阻塞，先显示 Spinner
+  { lazy: true, watch: [pageVersionIds] },
+);
+
+// 服务端补取失败时，错误随 payload 带到客户端、水合不会重试：挂载后补试一次
+onMounted(() => {
+  if (pageChangelogsStatus.value === "error") {
+    refreshPageChangelogs();
+  }
+});
+
+const paginatedVersions = computed(() => {
+  const changelogs = pageChangelogs.value ?? {};
+  // 当前页还没补取到（加载中，含失败后的重试）时显示 Spinner；补取已失败则照常列出版本、不带正文
+  if (
+    pageChangelogsStatus.value !== "error" &&
+    !pageVersions.value.every((v) => v.id in changelogs)
+  ) {
+    return null;
+  }
+  return pageVersions.value.map((version, index) => {
+    const changelog = changelogs[version.id] ?? "";
+    const next = pageVersions.value[index + 1];
+    return {
+      ...version,
+      // 与紧邻的下一个（更旧的）版本 changelog 相同才算重复，正文只显示在这一段的最后一条（同 HEAD 的 computeVersions）
+      duplicate: !!changelog && !!next && changelogs[next.id] === changelog,
+      changelog,
+    };
+  });
 });
 
 function switchPage(page) {
