@@ -26,11 +26,11 @@
             <div class="hero-stat-label">资源总数</div>
           </div>
           <div class="hero-stat">
-            <div class="hero-stat-value">{{ $formatNumber(homePageStats.downloads) }}</div>
+            <div class="hero-stat-value">{{ formatWanCount(homePageStats.downloads) }}</div>
             <div class="hero-stat-label">累计下载</div>
           </div>
           <div class="hero-stat">
-            <div class="hero-stat-value">{{ formatUserCount(homePageStats.users) }}</div>
+            <div class="hero-stat-value">{{ formatWanCount(homePageStats.users) }}</div>
             <div class="hero-stat-label">注册用户</div>
           </div>
         </div>
@@ -786,8 +786,8 @@ const formatNumber = (num) => {
   return num.toLocaleString();
 };
 
-// 注册用户只显示整数：满一万按「万」向下取整（舍去小数，不四舍五入），不足一万显示原数
-const formatUserCount = (num) => {
+// 累计下载 / 注册用户只显示整数：满一万按「万」向下取整（舍去小数，不四舍五入），不足一万显示原数
+const formatWanCount = (num) => {
   const n = Math.trunc(Number(num) || 0);
   if (n >= 10000) {
     return `${Math.floor(n / 10000)}万`;
