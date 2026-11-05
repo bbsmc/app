@@ -604,26 +604,38 @@ const ogTitle = computed(
     `${projectType.value.display} - BBSMC 我的世界资源下载${query.value ? " | " + query.value : ""}`,
 );
 const projectTypeDescriptions = {
-  mod: "浏览和下载 Minecraft 模组，涵盖 Fabric、Forge、NeoForge、Quilt 等主流加载器，为你的游戏增添新内容、机制和玩法。",
+  mod: "浏览和下载 Minecraft 我的世界模组，涵盖 Fabric、Forge、NeoForge、Quilt 等主流加载器，支持按游戏版本、分类和加载器筛选。科技、魔法、冒险、生存、装饰、优化等各类模组一应俱全，为你的游戏增添全新内容、机制和玩法。",
   project:
-    "探索 BBSMC 上的各类 Minecraft 资源，包括模组、插件、光影包、资源包等，一站式满足你的所有需求。",
+    "探索 BBSMC 上的各类 Minecraft 我的世界资源，包括模组、整合包、插件、光影包、资源包、数据包和汉化，支持按类型、游戏版本和加载器筛选，一站式找到你需要的全部内容，免费下载并参与社区讨论。",
   plugin:
-    "查找适用于 Bukkit、Spigot、Paper 等服务端的 Minecraft 插件，轻松管理和扩展你的多人服务器功能。",
+    "查找适用于 Bukkit、Spigot、Paper、Folia 等服务端的 Minecraft 我的世界插件，涵盖权限管理、经济系统、领地保护、小游戏和实用工具等类型，帮助你轻松搭建、管理和扩展多人服务器功能。",
   datapack:
-    "下载 Minecraft 原版数据包，无需安装模组即可修改游戏规则、合成配方、战利品表和世界生成。",
+    "下载 Minecraft 我的世界原版数据包，无需安装模组即可修改游戏规则、合成配方、战利品表、进度和世界生成，支持按游戏版本筛选，附带安装位置说明和使用介绍，轻松为单人存档或多人服务器添加新玩法与内容。",
   shader:
-    "发现精美的 Minecraft 光影包，通过实时光影、水面反射和动态天气效果，让你的游戏画面焕然一新。",
-  resourcepack: "浏览 Minecraft 资源包，更换游戏纹理、模型、音效和界面，打造独一无二的视觉风格。",
+    "发现精美的 Minecraft 我的世界光影包，兼容 Iris 和 OptiFine，通过实时光影、水面反射、体积云和动态天气效果让游戏画面焕然一新，从轻量流畅到极致画质，支持按游戏版本和性能需求筛选，总有一款适合你的电脑配置。",
+  resourcepack:
+    "浏览 Minecraft 我的世界资源包和材质包，更换游戏方块纹理、物品模型、音效和界面，涵盖写实、卡通、像素和高清等多种风格，支持按分辨率、游戏版本和分类筛选，免费下载并打造独一无二的视觉体验。",
   modpack:
-    "下载精心整合的 Minecraft 模组包/整合包，开箱即用的模组组合，体验科技、魔法、冒险等各类主题玩法。",
+    "下载精心整合的 Minecraft 我的世界整合包，开箱即用的模组组合，涵盖科技、魔法、冒险、生存、养老、建筑等各类主题玩法，附带完整汉化与安装说明，支持多款启动器一键安装，按游戏版本和加载器筛选，轻松开始你的新旅程。",
   software:
-    "获取 Minecraft 相关软件和工具，包括启动器、服务端、地图编辑器等实用资源，提升你的游戏体验。",
-  language: "下载 Minecraft 汉化资源和语言包，为你喜爱的模组和资源包提供中文翻译支持。",
+    "获取 Minecraft 我的世界相关软件和工具，包括启动器、服务端核心、地图编辑器、皮肤和建筑工具等实用资源，免费下载并查看使用说明、系统要求与版本更新记录，全面提升你的游戏、建筑与开服体验。",
+  language:
+    "下载 Minecraft 我的世界汉化资源和语言包，为你喜爱的模组、整合包和资源包提供高质量中文翻译，支持按游戏版本和加载器筛选，附带详细安装教程和适配说明，让你无障碍畅玩各类英文模组与整合包内容。",
+  map: "下载 Minecraft 我的世界地图存档，涵盖冒险、解谜、跑酷、建筑、生存和 PVP 等各类玩法，支持按游戏版本筛选，查看截图与介绍后免费下载并导入存档，和朋友一起探索玩家创作的精彩世界与精美建筑。",
 };
-const description = computed(
-  () =>
+const description = computed(() => {
+  const base =
     projectTypeDescriptions[projectType.value.id] ||
-    `在 BBSMC 上搜索和下载 Minecraft ${projectType.value.display}，丰富的筛选条件帮助你快速找到所需资源。`,
+    `在 BBSMC 上搜索和下载 Minecraft 我的世界${projectType.value.display}，支持按游戏版本、加载器和分类筛选，丰富的筛选条件帮助你快速找到所需资源，免费下载并参与社区讨论。`;
+  return currentPage.value > 1 ? `${base}（第 ${currentPage.value} 页）` : base;
+});
+// 搜索词和筛选条件的组合会产生大量内容相近的 URL：不收录，但允许继续抓取页内链接。
+// 分页（o）和排序（s）保持可收录，canonical 由 layout 统一处理（只保留 o）。
+const filterQueryKeys = ["q", "f", "g", "nf", "v", "l", "h", "e", "m", "sid", "shi"];
+const robots = computed(() =>
+  filterQueryKeys.some((key) => route.query[key] !== undefined)
+    ? "noindex, follow"
+    : "index, follow",
 );
 
 useSeoMeta({
@@ -631,6 +643,7 @@ useSeoMeta({
   ogTitle,
   ogDescription: description,
   ogImage: "https://cdn.bbsmc.net/raw/bbsmc-logo.png",
+  robots,
 });
 
 if (route.query.q) {

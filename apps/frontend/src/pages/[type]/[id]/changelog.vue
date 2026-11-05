@@ -97,8 +97,8 @@ const title = `${props.project.title} 更新日志 - 我的世界资源版本记
 const versionCount = props.versions.length;
 const description =
   versionCount > 0
-    ? `查看 ${props.project.title} 的完整更新日志，追踪 ${versionCount} 个版本的所有更新内容和改进。在 BBSMC 了解项目的开发进展和最新变化。`
-    : `查看 ${props.project.title} 的更新日志和开发进展。在 BBSMC 关注项目动态，获取最新的 Minecraft 资源版本信息和更新内容。`;
+    ? `查看 ${props.project.title} 的完整更新日志，按时间追踪 ${versionCount} 个版本的新增内容、功能改动、问题修复和兼容性调整，了解每次更新支持的 Minecraft 游戏版本与加载器。在 BBSMC 掌握这款我的世界资源的开发进展和最新变化。`
+    : `查看 ${props.project.title} 的更新日志和开发进展，创作者发布新版本后，新增内容、功能改动和问题修复都会在这里按时间记录。在 BBSMC 关注这款 Minecraft 我的世界资源的动态，第一时间获取最新版本信息。`;
 
 useSeoMeta({
   title,

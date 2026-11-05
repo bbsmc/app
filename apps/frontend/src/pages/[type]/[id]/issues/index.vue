@@ -428,7 +428,7 @@ const themeVars = computed(() => {
 
 // SEO 设置
 const title = `${props.project.title} 问题追踪 - 我的世界资源反馈 | BBSMC`;
-const description = `查看和提交 ${props.project.title} 的问题反馈和功能建议。在 BBSMC 参与资源改进，帮助创作者完善 Minecraft 资源。`;
+const description = `查看和提交 ${props.project.title} 的问题反馈与功能建议，追踪崩溃报错、兼容性冲突和玩法问题的处理进度，了解哪些问题已经修复、哪些正在处理。在 BBSMC 参与这款 Minecraft 我的世界资源的改进，帮助创作者把资源做得更好。`;
 useSeoMeta({
   title,
   description,

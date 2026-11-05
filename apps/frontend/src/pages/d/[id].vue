@@ -116,6 +116,53 @@ forum.value = await useBaseFetch(`forum/${forumId}`, {
   apiVersion: "3",
 });
 
+// 页面级 SEO：之前所有 /d/<id> 都沿用 layout 的默认标题和描述，
+// Bing 站长工具因此报「大量页面标题 / 描述重复」。帖子不存在或已删除时不设置，保持原有行为。
+const forumCategoryNames = {
+  chat: "矿工茶馆",
+  notice: "公告",
+  project: "资源讨论",
+  article: "专栏",
+};
+if (forum.value && !forum.value.deleted) {
+  const boardName = forumCategoryNames[forum.value.category] ?? "论坛";
+  const postTitle = (forum.value.title || "").trim() || "帖子";
+  const author = forum.value.organization || forum.value.user_name || "BBSMC 用户";
+  const seoTitle = `${postTitle} - ${boardName} | BBSMC 我的世界社区论坛`;
+
+  // 取正文开头做摘要（粗略去掉 Markdown / HTML 标记和实体），让每个帖子的 description 各不相同
+  const plainText = (forum.value.content || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&[a-z]+;|&#\d+;/gi, " ")
+    .replace(/[#>*_`~|-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tail = `由 ${author} 发布于 BBSMC 我的世界社区论坛「${boardName}」板块，查看帖子完整内容并参与回复讨论，与 Minecraft 玩家和创作者交流心得与资讯。`;
+  // 摘要约 70 字，同时保证整体不超过 160 字（作者名很长时自动缩短摘要）
+  const excerptBudget = Math.min(70, 157 - tail.length);
+  let excerpt = "";
+  if (excerptBudget >= 2) {
+    excerpt =
+      plainText.length > excerptBudget ? `${plainText.slice(0, excerptBudget - 1)}…` : plainText;
+  }
+  let seoDescription = excerpt ? `${excerpt} - ${tail}` : tail;
+  // 正文很短（例如只有图片）时补一句站点介绍，保证 description 不少于 100 字
+  if (seoDescription.length < 100) {
+    seoDescription +=
+      "BBSMC 汇集 Minecraft 模组、整合包、光影、资源包、插件与汉化资源的免费下载和交流讨论。";
+  }
+
+  useSeoMeta({
+    title: seoTitle,
+    description: seoDescription,
+    ogTitle: seoTitle,
+    ogDescription: seoDescription,
+  });
+}
+
 const isCreate = computed(() => {
   return auth.value.user.role === "admin" || auth.value.user.username === forum.value.user_name;
 });

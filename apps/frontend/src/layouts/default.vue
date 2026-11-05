@@ -569,7 +569,15 @@ const flags = useFeatureFlags();
 
 const config = useRuntimeConfig();
 const route = useNativeRoute();
-const link = config.public.siteUrl + route.path.replace(/\/+$/, "");
+// canonical：去掉末尾斜杠，丢弃筛选/排序等 query，只保留分页偏移 o。
+// 之前 query 被整个丢掉，/mods?o=20 … ?o=1800 等几十上百个分页页全部指向同一个 canonical，
+// Bing 站长工具因此报「大量页面指向同一个 canonical URL」。
+const link = computed(() => {
+  const path = route.path.replace(/\/+$/, "") || "/";
+  const offset = Number.parseInt(String(route.query.o ?? ""), 10);
+  const pagination = Number.isInteger(offset) && offset > 0 ? `?o=${offset}` : "";
+  return `${config.public.siteUrl}${path}${pagination}`;
+});
 
 const verifyEmailBannerMessages = defineMessages({
   title: {
@@ -680,7 +688,7 @@ useHead({
   link: [
     {
       rel: "canonical",
-      href: link,
+      href: () => link.value,
     },
   ],
 });
@@ -690,8 +698,7 @@ useSeoMeta({
     formatMessage({
       id: "layout.meta.description",
       defaultMessage:
-        "在 BBSMC 上下载 Minecraft 模组、插件、数据包、光影、资源包和整合包 " +
-        "使用现代、易于使用的界面和 API 在 BBSMC 上发现和发布项目。",
+        "BBSMC 是面向中文玩家的 Minecraft 我的世界资源社区，提供模组、整合包、光影、资源包、数据包、插件和汉化的免费下载，支持 Forge、Fabric、NeoForge 等主流加载器。在这里发现优质资源、参与社区讨论、发布你的作品，与百万玩家一起交流分享。",
     }),
   publisher: "BBSMC",
   themeColor: "#1bd96a",
@@ -708,7 +715,7 @@ useSeoMeta({
     }),
   ogType: "website",
   ogImage: "https://cdn.bbsmc.net/raw/bbsmc-logo.png",
-  ogUrl: link,
+  ogUrl: () => link.value,
 
   // Twitter
   twitterCard: "summary_large_image",

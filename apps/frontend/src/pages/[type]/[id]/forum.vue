@@ -43,7 +43,7 @@ const props = defineProps({
 });
 
 const title = `${props.project.title} 讨论区 - 我的世界资源交流 | BBSMC`;
-const description = `参与 ${props.project.title} 的社区讨论，与其他玩家交流使用心得、报告问题和分享创意。在 BBSMC 加入活跃的 Minecraft 资源讨论社区。`;
+const description = `参与 ${props.project.title} 的专属讨论区，与其他 Minecraft 玩家交流这款我的世界资源的使用心得、安装配置经验和玩法技巧，反馈遇到的问题，提出功能建议，并直接与创作者互动。在 BBSMC 加入活跃友好的资源讨论社区，一起把资源玩得更好。`;
 useSeoMeta({
   title,
   description,

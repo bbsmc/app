@@ -6,3 +6,5 @@ Disallow: /moderation/
 Disallow: /auth/
 Disallow: /report
 Disallow: /flags
+
+Sitemap: https://bbsmc.net/sitemap.xml

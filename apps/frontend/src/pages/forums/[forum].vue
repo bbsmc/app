@@ -193,10 +193,21 @@ const forumTitle = ref("");
 const ogTitle = computed(
   () => `${title.value} - BBSMC 我的世界社区论坛${query.value ? " | " + query.value : ""}`,
 );
-const description = computed(
-  () =>
-    `在 BBSMC 我的世界社区浏览和参与${title.value}讨论，与其他 Minecraft 玩家交流经验、分享心得，获取最新资讯和攻略。`,
-);
+const forumDescriptions = {
+  chat: "矿工茶馆是 BBSMC 我的世界社区的综合闲聊板块，在这里和其他 Minecraft 玩家聊游戏日常、分享建筑与生存心得、交流模组整合包体验、寻找开黑队友，也可以提问求助，随时获取社区的最新资讯、教程和攻略。",
+  notice:
+    "BBSMC 我的世界社区官方公告板块，第一时间发布平台更新、功能上线、活动通知、规则调整和维护安排等重要信息，帮助 Minecraft 玩家与创作者及时了解社区动态和最新变化，建议经常关注以免错过重要通知。",
+  project:
+    "资源讨论是 BBSMC 我的世界社区的资源交流板块，围绕 Minecraft 模组、整合包、光影、资源包、插件和汉化展开讨论，分享使用心得、反馈问题、推荐好用资源并与创作者直接交流，获取安装教程与常见问题解答。",
+  article:
+    "专栏是 BBSMC 我的世界社区的长文板块，汇集 Minecraft 玩家与创作者撰写的深度教程、模组评测、整合包攻略、建筑分享和开服经验，内容经过精心整理，适合慢慢阅读与收藏，帮助你更深入地了解游戏。",
+};
+const description = computed(() => {
+  const base =
+    forumDescriptions[type.value] ||
+    `${title.value} - BBSMC 我的世界社区论坛板块。在这里浏览玩家发布的帖子，参与 Minecraft 模组、整合包、服务器和游戏玩法的交流讨论，分享你的心得与问题，获取最新资讯、教程和攻略，与创作者和玩家互动。`;
+  return currentPage.value > 1 ? `${base}（第 ${currentPage.value} 页）` : base;
+});
 if (route.query.o) {
   currentPage.value = Math.ceil(route.query.o / maxResults.value) + 1;
 }

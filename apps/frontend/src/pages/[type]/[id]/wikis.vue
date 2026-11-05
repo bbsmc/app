@@ -521,9 +521,13 @@
     <!-- 付费资源未购买提示 -->
     <div v-if="props.wikis.requires_purchase" class="markdown-body card">
       <div style="text-align: center; padding: 2rem 1rem">
-        <LockIcon style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--color-text-secondary)" />
+        <LockIcon
+          style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--color-text-secondary)"
+        />
         <h2>百科内容需要购买后查看</h2>
-        <p style="color: var(--color-text-secondary); margin-top: 0.5rem">购买此资源后即可查看所有百科页面内容</p>
+        <p style="color: var(--color-text-secondary); margin-top: 0.5rem">
+          购买此资源后即可查看所有百科页面内容
+        </p>
       </div>
     </div>
     <div
@@ -551,7 +555,12 @@
 
     <!--    其他用户，百科正在编辑中，告知谁正在编辑   -->
     <div
-      v-if="props.wikis.is_visitors && props.wikis.is_editor && project.wiki_open && !props.wikis.requires_purchase"
+      v-if="
+        props.wikis.is_visitors &&
+        props.wikis.is_editor &&
+        project.wiki_open &&
+        !props.wikis.requires_purchase
+      "
       class="markdown-body card"
     >
       <h2>公开编辑百科</h2>
@@ -647,7 +656,7 @@ const props = defineProps({
   },
 });
 const title = `${props.project.title} WIKI 百科 - 我的世界资源文档 | BBSMC`;
-const description = `查阅 ${props.project.title} 的 WIKI 文档和使用指南，了解详细的安装教程、配置说明和常见问题解答。在 BBSMC 获取完整的资源百科信息。`;
+const description = `查阅 ${props.project.title} 的 WIKI 百科文档和使用指南，包含详细的安装教程、配置说明、玩法介绍、物品合成和常见问题解答，由创作者和社区共同维护整理。在 BBSMC 获取这款 Minecraft 我的世界资源最完整、最新的百科信息。`;
 let wiki = ref(null);
 const router = useNativeRouter();
 const route = useNativeRoute();

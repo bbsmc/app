@@ -324,8 +324,8 @@ const title = `${props.project.title} 渲染图和游戏截图 - 我的世界资
 const galleryCount = props.project.gallery.length;
 const description =
   galleryCount > 0
-    ? `查看 ${props.project.title} 的 ${galleryCount} 张展示图片和游戏截图。在 BBSMC 浏览项目的视觉效果和创意展示，了解更多资源详情。`
-    : `浏览 ${props.project.title} 的项目展示页面。在 BBSMC 发现更多高质量的 Minecraft 我的世界资源，了解项目详细视觉效果和创意展示。`;
+    ? `查看 ${props.project.title} 的 ${galleryCount} 张展示图片和游戏截图，直观了解这款 Minecraft 我的世界资源的画面效果、建筑风格、界面设计和实际玩法表现。在 BBSMC 浏览创作者精选的渲染图与截图，再决定是否下载体验。`
+    : `浏览 ${props.project.title} 的图片展示页面，创作者上传的渲染图和游戏截图会在这里集中呈现。在 BBSMC 了解这款 Minecraft 我的世界资源的画面效果与创意细节，并发现更多高质量的模组、整合包和光影资源。`;
 
 useSeoMeta({
   title,

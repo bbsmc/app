@@ -806,12 +806,12 @@ const messages = defineMessages({
   profileMetaDescription: {
     id: "profile.meta.description",
     defaultMessage:
-      "访问 {username} 的 BBSMC 主页，浏览和下载 {username} 发布的 Minecraft 模组、整合包、光影和其他资源。加入 BBSMC 社区，发现更多创作者和资源。",
+      "访问 {username} 的 BBSMC 个人主页，浏览和免费下载 {username} 发布的 Minecraft 我的世界模组、整合包、光影、资源包和汉化等资源，查看作品的下载量、更新动态和收藏集。关注创作者，第一时间获取新作品与新版本，在 BBSMC 社区发现更多优质内容。",
   },
   profileMetaDescriptionWithBio: {
     id: "profile.meta.description-with-bio",
     defaultMessage:
-      "{bio} - 访问 {username} 的 BBSMC 主页，下载 {username} 发布的 Minecraft 模组、整合包和其他资源。",
+      "{bio} - 访问 {username} 的 BBSMC 个人主页，浏览和免费下载 {username} 发布的 Minecraft 我的世界模组、整合包、光影和其他资源，查看作品动态与收藏集，关注创作者获取最新更新。",
   },
   profileNoProjectsLabel: {
     id: "profile.label.no-projects",
@@ -1102,14 +1102,17 @@ function getCategoryName(category) {
 const title = computed(
   () => `${user.value.username} 的主页 - BBSMC 我的世界资源社区 | 创作者资源下载`,
 );
-const description = computed(() =>
-  user.value.bio
+const description = computed(() => {
+  // 个人简介可能很长，截断后再拼进 description，避免超过 160 字
+  const bio = (user.value.bio || "").replace(/\s+/g, " ").trim();
+  const shortBio = bio.length > 60 ? `${bio.slice(0, 59)}…` : bio;
+  return shortBio
     ? formatMessage(messages.profileMetaDescriptionWithBio, {
-        bio: user.value.bio,
+        bio: shortBio,
         username: user.value.username,
       })
-    : formatMessage(messages.profileMetaDescription, { username: user.value.username }),
-);
+    : formatMessage(messages.profileMetaDescription, { username: user.value.username });
+});
 
 useSeoMeta({
   title: () => title.value,

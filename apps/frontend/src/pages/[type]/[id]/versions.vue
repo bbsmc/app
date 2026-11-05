@@ -377,7 +377,7 @@ const route = useNativeRoute();
 const router = useNativeRouter();
 
 const title = `${props.project.title} 版本列表 - 我的世界资源下载 | BBSMC`;
-const description = `浏览 ${props.project.title} 的所有版本和更新日志。下载适合您游戏版本的最新资源，支持多个 Minecraft 版本和加载器。在 BBSMC 获取完整的版本历史和更新记录。`;
+const description = `浏览 ${props.project.title} 的全部版本列表，按 Minecraft 游戏版本、加载器和版本类型筛选，查看每个版本的更新内容、文件大小、依赖项和下载量，选择适合你存档的版本免费下载。在 BBSMC 获取这款我的世界资源完整的版本历史和更新记录。`;
 useSeoMeta({
   title,
   description,

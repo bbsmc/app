@@ -395,7 +395,12 @@ const messages = defineMessages({
   collectionDescription: {
     id: "collection.description",
     defaultMessage:
-      "{description} - 在 BBSMC 浏览 {username} 创建的收藏集 {name}，发现精选的 Minecraft 资源。",
+      "{description} - 在 BBSMC 浏览 {username} 创建的收藏集「{name}」，精选 Minecraft 我的世界模组、整合包、光影和资源包，查看每个资源的简介与下载量并免费下载。",
+  },
+  collectionDescriptionNoSummary: {
+    id: "collection.description.no-summary",
+    defaultMessage:
+      "在 BBSMC 浏览 {username} 创建的收藏集「{name}」，里面精选了 Minecraft 我的世界模组、整合包、光影和资源包等内容，查看收藏的每个资源的简介与下载量，一键找到同类优质资源并免费下载。",
   },
   collectionLabel: {
     id: "collection.label.collection",
@@ -582,21 +587,25 @@ const title = computed(() =>
   formatMessage(messages.collectionTitle, { name: collection.value.name }),
 );
 
+// 收藏集简介可能为空或很长：为空时用不带简介的文案，过长时截断，避免出现「 - 在 BBSMC…」或超过 160 字
+const metaDescription = computed(() => {
+  const summary = (collection.value.description || "").replace(/\s+/g, " ").trim();
+  const shortSummary = summary.length > 60 ? `${summary.slice(0, 59)}…` : summary;
+  return formatMessage(
+    shortSummary ? messages.collectionDescription : messages.collectionDescriptionNoSummary,
+    {
+      name: collection.value.name,
+      description: shortSummary,
+      username: creator.value.username,
+    },
+  );
+});
+
 useSeoMeta({
   title,
-  description: () =>
-    formatMessage(messages.collectionDescription, {
-      name: collection.value.name,
-      description: collection.value.description,
-      username: creator.value.username,
-    }),
+  description: metaDescription,
   ogTitle: title,
-  ogDescription: () =>
-    formatMessage(messages.collectionDescription, {
-      name: collection.value.name,
-      description: collection.value.description,
-      username: creator.value.username,
-    }),
+  ogDescription: metaDescription,
   ogImage: collection.value.icon_url ?? "https://cdn.bbsmc.net/raw/placeholder.png",
   robots: collection.value.status === "listed" ? "all" : "noindex",
 });

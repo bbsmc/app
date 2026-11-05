@@ -2580,13 +2580,50 @@ const title = computed(() => {
   if (!project || !project.value) return "";
   return `${project.value.title} - 我的世界${projectTypeDisplay.value} | BBSMC 下载`;
 });
+// meta description = 简介 + 类型/作者/分类/加载器/游戏版本/下载量，整体控制在 160 字以内。
+// Bing 站长工具会把过短的 description 标为问题，目标 100 字以上、160 字以内。
+const META_DESCRIPTION_MAX = 160;
 const description = computed(() => {
   if (!project || !project.value) return "";
-  const owner = members.value.find((x) => x.is_owner)?.user?.username || "创作者";
-  const desc = project.value.description?.trim();
-  return desc
-    ? `${desc} - 在 BBSMC 下载我的世界${projectTypeDisplay.value} ${project.value.title}，由 ${owner} 创建。`
-    : `在 BBSMC 下载我的世界${projectTypeDisplay.value} ${project.value.title}，由 ${owner} 创建。浏览详情、版本列表和社区评价。`;
+  const p = project.value;
+  const owner =
+    members.value.find((x) => x.is_owner)?.user?.username || organization?.value?.name || "创作者";
+  const title = p.title?.trim() || "";
+  const foot = "。查看详细介绍、版本列表、安装说明和玩家评价。";
+  const core = `在 BBSMC 免费下载我的世界${projectTypeDisplay.value}「${title}」，由 ${owner} 创建`;
+
+  // 简介优先：和标题一样就不重复，最多 80 字，再按剩余空间截断
+  let lead = (p.description || "").replace(/\s+/g, " ").trim();
+  if (lead === title) lead = "";
+  const leadRoom = Math.min(80, META_DESCRIPTION_MAX - core.length - foot.length - 3); // 3 = " - "
+  if (lead && leadRoom < 12) lead = "";
+  if (lead.length > leadRoom) lead = `${lead.slice(0, leadRoom - 1)}…`;
+  const head = `${lead ? `${lead} - ` : ""}${core}`;
+
+  // 其余信息按顺序追加，放不下的省略，保证整体不超过 160 字
+  const details = [];
+  const categories = (p.categories || []).slice(0, 4).map((c) => formatCategory(c));
+  if (categories.length) details.push(`分类：${categories.join("、")}`);
+  const loaders = (p.loaders || [])
+    .filter((l) => !["minecraft", "vanilla", "datapack"].includes(l))
+    .map((l) => formatCategory(l));
+  let gameVersions = p.game_versions?.length ? data.$formatVersion(p.game_versions) : "";
+  if (gameVersions.length > 24) {
+    gameVersions = `${p.game_versions[p.game_versions.length - 1]} 等 ${p.game_versions.length} 个游戏版本`;
+  }
+  const support = [loaders.join("/"), gameVersions].filter(Boolean).join(" ");
+  if (support) details.push(`支持 ${support}`);
+  if (p.downloads) {
+    const downloads = data.$formatNumber(p.downloads);
+    details.push(`已有 ${downloads}${/[万亿]$/.test(downloads) ? "" : " "}次下载`);
+  }
+  let extra = "";
+  for (const detail of details) {
+    const next = `${extra}，${detail}`;
+    if (head.length + next.length + foot.length > META_DESCRIPTION_MAX) continue;
+    extra = next;
+  }
+  return `${head}${extra}${foot}`;
 });
 
 if (!route.name?.startsWith("type-id-settings")) {

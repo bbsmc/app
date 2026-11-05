@@ -617,9 +617,12 @@ provide("organizationContext", {
 });
 
 const title = `${organization.value.name} - BBSMC 组织 | 我的世界 Minecraft 创作者团队`;
-const description = organization.value.description
-  ? `${organization.value.description} - 在 BBSMC 浏览 ${organization.value.name} 组织发布的 Minecraft 模组、整合包和其他资源。`
-  : `在 BBSMC 浏览 ${organization.value.name} 组织发布的 Minecraft 模组、整合包、光影和资源包，发现更多高质量创作者和资源。`;
+// 组织简介可能很长，截断后再拼进 description，避免超过 160 字
+const orgSummary = (organization.value.description || "").replace(/\s+/g, " ").trim();
+const orgSummaryShort = orgSummary.length > 60 ? `${orgSummary.slice(0, 59)}…` : orgSummary;
+const description = orgSummaryShort
+  ? `${orgSummaryShort} - 在 BBSMC 浏览 ${organization.value.name} 组织发布的 Minecraft 我的世界模组、整合包、光影和资源包等资源，了解团队成员与作品动态，关注组织获取最新更新。`
+  : `在 BBSMC 浏览 ${organization.value.name} 组织发布的 Minecraft 我的世界模组、整合包、光影、资源包和汉化等资源，了解团队成员、作品下载量与更新动态，关注组织第一时间获取新作品，发现更多高质量的创作者团队。`;
 
 useSeoMeta({
   title,

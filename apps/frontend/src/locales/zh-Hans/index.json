@@ -216,10 +216,13 @@
     "message": "你确定要删除该收藏夹吗？"
   },
   "collection.description": {
-    "message": "{description} - 在 BBSMC 浏览 {username} 创建的收藏集 {name}，发现精选的 Minecraft 资源。"
+    "message": "{description} - 在 BBSMC 浏览 {username} 创建的收藏集「{name}」，精选 Minecraft 我的世界模组、整合包、光影和资源包，查看每个资源的简介与下载量并免费下载。"
   },
   "collection.description.following": {
     "message": "自动生成你关注的所有资源的收藏夹。"
+  },
+  "collection.description.no-summary": {
+    "message": "在 BBSMC 浏览 {username} 创建的收藏集「{name}」，里面精选了 Minecraft 我的世界模组、整合包、光影和资源包等内容，查看收藏的每个资源的简介与下载量，一键找到同类优质资源并免费下载。"
   },
   "collection.error.not-found": {
     "message": "未找到收藏夹"
@@ -417,10 +420,10 @@
     "message": "切换菜单"
   },
   "layout.meta.description": {
-    "message": "在 BBSMC 上下载 Minecraft 模组、插件、数据包、光影、资源包和整合包。通过现代化、易于使用的界面和 API 在 BBSMC 上发现和发布资源。"
+    "message": "BBSMC 是面向中文玩家的 Minecraft 我的世界资源社区，提供模组、整合包、光影、资源包、数据包、插件和汉化的免费下载，支持 Forge、Fabric、NeoForge 等主流加载器。在这里发现优质资源、参与社区讨论、发布你的作品，与百万玩家一起交流分享。"
   },
   "layout.meta.og-description": {
-    "message": "发现并发布 Minecraft 内容！"
+    "message": "BBSMC 是面向中文玩家的 Minecraft 我的世界资源社区，提供模组、整合包、光影、资源包、数据包、插件和汉化的免费下载，支持 Forge、Fabric、NeoForge 等主流加载器。在这里发现优质资源、参与社区讨论、发布你的作品，与百万玩家一起交流分享。"
   },
   "layout.nav.home": {
     "message": "首页"
@@ -459,10 +462,10 @@
     "message": "团队"
   },
   "profile.meta.description": {
-    "message": "访问 {username} 的 BBSMC 主页，浏览和下载 {username} 发布的 Minecraft 模组、整合包、光影和其他资源。加入 BBSMC 社区，发现更多创作者和资源。"
+    "message": "访问 {username} 的 BBSMC 个人主页，浏览和免费下载 {username} 发布的 Minecraft 我的世界模组、整合包、光影、资源包和汉化等资源，查看作品的下载量、更新动态和收藏集。关注创作者，第一时间获取新作品与新版本，在 BBSMC 社区发现更多优质内容。"
   },
   "profile.meta.description-with-bio": {
-    "message": "{bio} - 访问 {username} 的 BBSMC 主页，下载 {username} 发布的 Minecraft 模组、整合包和其他资源。"
+    "message": "{bio} - 访问 {username} 的 BBSMC 个人主页，浏览和免费下载 {username} 发布的 Minecraft 我的世界模组、整合包、光影和其他资源，查看作品动态与收藏集，关注创作者获取最新更新。"
   },
   "profile.stats.downloads": {
     "message": "{count, plural,other {<stat>{count}</stat> 次下载}}"

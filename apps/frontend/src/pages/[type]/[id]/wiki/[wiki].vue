@@ -62,16 +62,22 @@
     <!-- 付费资源未购买提示 -->
     <div v-if="props.wikis.requires_purchase" class="markdown-body card">
       <div style="text-align: center; padding: 2rem 1rem">
-        <LockIcon style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--color-text-secondary)" />
+        <LockIcon
+          style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--color-text-secondary)"
+        />
         <h2>百科内容需要购买后查看</h2>
-        <p style="color: var(--color-text-secondary); margin-top: 0.5rem">购买此资源后即可查看所有百科页面内容</p>
+        <p style="color: var(--color-text-secondary); margin-top: 0.5rem">
+          购买此资源后即可查看所有百科页面内容
+        </p>
       </div>
     </div>
 
     <template v-else>
       <div
         v-if="
-          props.wikis.is_editor && props.wikis.is_editor_user && props.wikis.cache.status === 'draft'
+          props.wikis.is_editor &&
+          props.wikis.is_editor_user &&
+          props.wikis.cache.status === 'draft'
         "
         class="universal-card"
       >
@@ -209,7 +215,16 @@ wikiSort = wiki.sort_order;
 
 const wikiName = wiki.title || route.params.wiki;
 const title = `${wikiName} - ${props.project.title} WIKI | BBSMC`;
-const description = `查阅 ${props.project.title} 的 WIKI 页面「${wikiName}」，了解详细的使用指南、安装教程和配置说明。在 BBSMC 获取完整的资源百科信息。`;
+// 取正文开头做摘要（粗略去掉 Markdown 标记），让每个 WIKI 页的 description 各不相同
+const wikiPlainText = (wiki.body || "")
+  .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+  .replace(/<[^>]+>/g, "")
+  .replace(/[#>*_`~|-]+/g, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+const wikiExcerpt = wikiPlainText.length > 70 ? `${wikiPlainText.slice(0, 69)}…` : wikiPlainText;
+const description = `${wikiExcerpt ? `${wikiExcerpt} - ` : ""}查阅 ${props.project.title} 的 WIKI 页面「${wikiName}」，了解这款 Minecraft 我的世界资源的使用指南、安装教程、配置说明和常见问题解答，内容由创作者和社区共同维护。在 BBSMC 获取完整、最新的资源百科信息。`;
 useSeoMeta({
   title,
   description,

@@ -1856,7 +1856,13 @@ export default defineNuxtComponent({
         ? version.loaders.map((x) => x.charAt(0).toUpperCase() + x.slice(1)).join(" & ")
         : "";
       const supportStr = [gameVersionStr, loaderStr].filter(Boolean).join(" ");
-      return `下载 ${props.project.title} ${version.version_number}。${supportStr ? `支持 ${supportStr}。` : ""}发布于 ${data.$dayjs(version.date_published).format("YYYY-MM-DD")}，已有 ${version.downloads} 次下载。在 BBSMC 获取最新版本。`;
+      const versionLabel =
+        version.name && version.name !== version.version_number
+          ? `${version.name}（${version.version_number}）`
+          : version.version_number;
+      const downloads = data.$formatNumber(version.downloads);
+      const downloadsText = /[万亿]$/.test(downloads) ? `${downloads}次` : `${downloads} 次`;
+      return `免费下载 ${props.project.title} 的 ${versionLabel} 版本。${supportStr ? `支持 Minecraft ${supportStr}。` : ""}发布于 ${data.$dayjs(version.date_published).format("YYYY-MM-DD")}，已有 ${downloadsText}下载。查看该版本的更新日志、依赖项和文件列表，在 BBSMC 获取这款我的世界资源的最新版本与历史版本。`;
     });
 
     useSeoMeta({
