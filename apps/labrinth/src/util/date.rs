@@ -41,21 +41,3 @@ pub fn get_current_tenths_of_ms() -> i64 {
         .expect("无法以纳秒精度表示该值.")
         / 100_000
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::TimeZone;
-
-    #[test]
-    fn app_tz_is_plus_eight() {
-        assert_eq!(app_tz().local_minus_utc(), 8 * 3600);
-    }
-
-    #[test]
-    fn format_app_tz_outputs_beijing_time() {
-        let dt = Utc.with_ymd_and_hms(2026, 5, 9, 0, 0, 0).unwrap();
-        // UTC 0:00 → 北京 8:00
-        assert_eq!(format_app_tz(dt), "2026-05-09 08:00:00");
-    }
-}

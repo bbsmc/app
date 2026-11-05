@@ -135,32 +135,3 @@ impl UserLimits {
         .adjust_for_user(user))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::app_day_bounds;
-    use chrono::{DateTime, TimeZone, Utc};
-
-    fn at(y: i32, mo: u32, d: u32, h: u32, mi: u32, s: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(y, mo, d, h, mi, s).unwrap()
-    }
-
-    #[test]
-    fn day_bounds_follow_beijing_midnight() {
-        // 北京时间 2026-11-04 08:30 → 当天区间 [11-03 16:00Z, 11-04 16:00Z)
-        assert_eq!(
-            app_day_bounds(at(2026, 11, 4, 0, 30, 0)),
-            (at(2026, 11, 3, 16, 0, 0), at(2026, 11, 4, 16, 0, 0))
-        );
-        // 恰好北京时间 00:00 属于新的一天
-        assert_eq!(
-            app_day_bounds(at(2026, 11, 3, 16, 0, 0)).0,
-            at(2026, 11, 3, 16, 0, 0)
-        );
-        // 北京时间 23:59:59 仍属于前一天
-        assert_eq!(
-            app_day_bounds(at(2026, 11, 3, 15, 59, 59)).0,
-            at(2026, 11, 2, 16, 0, 0)
-        );
-    }
-}

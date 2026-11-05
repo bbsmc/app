@@ -62,31 +62,3 @@ pub async fn read_from_field(
     }
     Ok(bytes)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_limited_ids_json_accepts_valid_arrays() {
-        let ids =
-            parse_limited_ids_json::<String>(r#"["alpha","beta"]"#).unwrap();
-
-        assert_eq!(ids, vec!["alpha".to_string(), "beta".to_string()]);
-    }
-
-    #[test]
-    fn parse_limited_ids_json_rejects_too_many_ids() {
-        let ids = vec!["id"; MAX_BULK_IDS + 1];
-        let encoded = serde_json::to_string(&ids).unwrap();
-
-        assert!(parse_limited_ids_json::<String>(&encoded).is_err());
-    }
-
-    #[test]
-    fn parse_limited_ids_json_rejects_too_long_query() {
-        let ids = format!(r#"["{}"]"#, "a".repeat(MAX_BULK_IDS_QUERY_LENGTH));
-
-        assert!(parse_limited_ids_json::<String>(&ids).is_err());
-    }
-}

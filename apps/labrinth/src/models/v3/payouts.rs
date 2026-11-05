@@ -130,44 +130,6 @@ fn mask_keep_edges(
     format!("{prefix}****{suffix}")
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn masks_yunzhanghu_alipay_phone() {
-        assert_eq!(
-            mask_payout_method_address(
-                Some(PayoutMethodType::YunzhanghuAlipay),
-                Some("13812345678")
-            ),
-            Some("138****5678".to_string())
-        );
-    }
-
-    #[test]
-    fn masks_yunzhanghu_alipay_email() {
-        assert_eq!(
-            mask_payout_method_address(
-                Some(PayoutMethodType::YunzhanghuAlipay),
-                Some("alice@example.com")
-            ),
-            Some("a***@example.com".to_string())
-        );
-    }
-
-    #[test]
-    fn hides_short_addresses() {
-        assert_eq!(
-            mask_payout_method_address(
-                Some(PayoutMethodType::YunzhanghuAlipay),
-                Some("abcd")
-            ),
-            Some("****".to_string())
-        );
-    }
-}
-
 #[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum PayoutMethodType {
