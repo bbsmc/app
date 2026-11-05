@@ -153,9 +153,13 @@ const visibleGroups = computed<GroupLabels[]>(() => {
 const loaderGroup = ref<GroupLabels>(visibleGroups.value[0] ?? "mods");
 
 // versionType 变化时切换默认 group
-watch(visibleGroups, (groups) => {
-  if (!groups.includes(loaderGroup.value)) {
-    loaderGroup.value = groups[0] ?? "mods";
-  }
-}, { immediate: true });
+watch(
+  visibleGroups,
+  (groups) => {
+    if (!groups.includes(loaderGroup.value)) {
+      loaderGroup.value = groups[0] ?? "mods";
+    }
+  },
+  { immediate: true },
+);
 </script>

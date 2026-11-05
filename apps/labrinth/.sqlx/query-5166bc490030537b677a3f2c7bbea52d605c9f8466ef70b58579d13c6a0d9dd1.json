@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE featured_items\n             SET title = $2, description = $3, badge = $4, image_url = $5, link = $6,\n                 project_id = $7, enabled = $8, updated_at = NOW()\n             WHERE id = $1\n             RETURNING id, section, title, description, badge, image_url, link, project_id,\n                       sort_order, enabled, created_by, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "section",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "badge",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "image_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "link",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "sort_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5166bc490030537b677a3f2c7bbea52d605c9f8466ef70b58579d13c6a0d9dd1"
+}

@@ -187,7 +187,7 @@
       >
         <div
           v-for="(item, index) in bannerItems"
-          :key="index"
+          :key="item.id"
           :class="[
             'absolute inset-0 h-full w-full select-none transition-opacity duration-500',
             {
@@ -403,154 +403,19 @@ const showAllLoaders = ref(false);
 
 const filterAccordions = ref([]);
 
-// Banner 轮播相关状态 - 按项目类型分类
-const bannerItemsConfig = ref({
-  modpack: [
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1_350.webp",
-      title: "剑与王国",
-      description: "围绕模拟殖民地与村民招募玩法的深度魔改整合包",
-      slug: "/modpack/snk",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/cached_images/a959f776cdae05bbd7084bc605785e0d356eeb7c_0.webp",
-      title: "龙之冒险：新征程",
-      description: "面对众多怪物的冒险之旅，你做好准备了吗？",
-      slug: "/modpack/lzmx",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
-      title: "愚者 - The Fool",
-      description: "愚弄、伪装、欺诈，屠龙者终成恶龙。",
-      slug: "/modpack/the-fool",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/e11vzqXl/images/346fd8930411f592c94acce68b8290a5266843e3_350.webp",
-      title: "香草纪元:食旅纪行 ",
-      description: "农夫乐事全附属与异界冒险",
-      slug: "/modpack/vefc",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/aa8zTitm/images/77731030ea51c688974ead8228486bf5bbba38e6_350.webp",
-      title: "沉浸战斗 - Immersive Fight",
-      description: "史诗战斗冒险整合包",
-      slug: "/modpack/immersive-fight",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/C6qzOJgo/images/d33efa210924380430a479f308725885d38b899a_350.webp",
-      title: "猎杀：历史 1949",
-      description: "纯 PVE 猎杀对决：搜打撤×枪械成长×Boss 攻坚",
-      slug: "/modpack/mc-1949",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/PRsqHZRu/images/1b1abb2c5198447165de3f72b3c10dab6dc53ce8_350.webp",
-      title: "亡者世界",
-      description: "现代都市僵尸启示录",
-      slug: "/modpack/deceasedcraft",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/cached_images/343f82fc65e0a32ca274b8710c970d0acf1e4b56_0.webp",
-      title: "方可梦：炽白真形",
-      description: "沉浸式宝可梦 RPG，全图鉴收集",
-      slug: "/modpack/incandescent-verity",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/OIIWCwpQ/images/14506df30b5f9568b62fa564f36d2d90e4bcfcc6_350.webp",
-      title: "机械动力:齿轮盛宴",
-      description: "机械动力×农夫乐事大型深度魔改",
-      slug: "/modpack/create-delight",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/q267Hrkj/images/38e31142d27fa04c717af6742b7526b1bfe077e9_350.webp",
-      title: "工匠：技艺革新 - CTI",
-      description: "以匠魂为核心的中高度魔改科技向整包",
-      slug: "/modpack/cti",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/uUD1tysY/images/5080b09e19506cf2583bb0af7af5b51cc8313c92_350.webp",
-      title: "方块宝可梦x纪元",
-      description: "1-9 世代全宝可梦休闲养老整合包",
-      slug: "/modpack/cobblemonxera",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/RJbEfCdK/images/2d4f155c8a5547fb7721b98e706409563a68a1cc_350.webp",
-      title: "伙伴物语整合包",
-      description: "伙伴与成长为主题的冒险整合包",
-      slug: "/modpack/huobanwuyu",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/IwY0MZn5/images/e4702790bff5c4e4418a348945770b398d0a516e_350.webp",
-      title: "奇妙商店物语",
-      description: "城市餐厅经营核心整合包",
-      slug: "/modpack/wss",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/9I9KjIy7/images/ecef611b3941d4f879abd509bfef09ae411ac5c5.jpeg",
-      title: "新:模拟大都市",
-      description: "结合农夫乐事、拾光剪影的城市建设养老整合包",
-      slug: "/modpack/nsuk",
-    },
-  ],
-  mod: [
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/sifCoVKG/images/0f9a066a769874f3b706374f40c9d1207bc10f5f_350.webp",
-      title: "伙伴物语ParnterMonogatari",
-      description: "27 位伙伴角色，每位拥有独特的外观、技能与战斗风格",
-      slug: "/mod/parntermonogatari",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/gBP14yf3/images/10b54d4b8019c693151a39d54f53479d61fdd51b_350.webp",
-      title: "[TaCZ]永恒枪械工坊:零",
-      description: "高度自定义的现代风格 3D 枪械模组",
-      slug: "/mod/timeless-and-classics-zero",
-    },
-  ],
-  language: [
-    {
-      image: "/tutorial/language-banner.jpg",
-      title: "整合包汉化教程 - 全流程使用指南",
-      description: "想要游玩中文版整合包？村民带你学汉化！",
-      slug: "/install-tutorial",
-    },
-  ],
-  software: [
-    {
-      image: "https://cdn.bbsmc.net/raw/images/pcl2.jpg",
-      title: "PCL2",
-      description:
-        "Minecraft 启动器：Plain Craft Launcher！简称 PCL！ 超快的下载速度，下载安装 Mod 和整合包，简洁且高度自定义的界面，流畅精细的动画……总之很棒就完事啦！",
-      slug: "https://afdian.com/p/0164034c016c11ebafcb52540025c377",
-    },
-    {
-      image:
-        "https://cdn.bbsmc.net/bbsmc/data/vC327lbX/images/9b83a4e1111aadfff2e6ca82bec99883bb04bc3f.webp",
-      title: "PCL CE",
-      description: "基于 PCL 公开源代码二次开发的社区版本，添加了许多实用功能与改进",
-      slug: "https://github.com/PCL-Community/PCL-CE",
-    },
-  ],
-});
+const { data: featuredData } = await useFeatured();
 
-// 获取当前项目类型的 banner 列表
-const bannerItems = computed(() => {
-  return bannerItemsConfig.value[projectType.value.id] || [];
-});
+const bannerItems = computed(() =>
+  (featuredData.value?.sections?.[featuredSearchSection(projectType.value?.id)] ?? []).map(
+    (item) => ({
+      id: item.id,
+      image: item.image_url,
+      title: item.title,
+      description: item.description,
+      slug: item.link,
+    }),
+  ),
+);
 
 // 判断当前类型是否有 banner
 const hasBanner = computed(() => {
@@ -1407,7 +1272,7 @@ const nextBannerSlide = () => {
 };
 
 const openBannerTarget = (url) => {
-  window.open(url, "_blank", "noopener");
+  openFeaturedLink(url);
 };
 
 const goToBannerSlide = (index) => {
@@ -1473,6 +1338,17 @@ const stopSidebarAdAutoPlay = () => {
 };
 
 // 生命周期钩子
+watch(bannerItems, (items) => {
+  if (currentBannerSlide.value >= items.length) {
+    currentBannerSlide.value = 0;
+  }
+  if (items.length === 0) {
+    stopBannerAutoPlay();
+  } else if (isClientMounted.value && !bannerAutoPlayInterval.value) {
+    startBannerAutoPlay();
+  }
+});
+
 onMounted(() => {
   isClientMounted.value = true;
   currentSidebarAdIndex.value = Math.floor(Math.random() * sidebarAdVariants.length);

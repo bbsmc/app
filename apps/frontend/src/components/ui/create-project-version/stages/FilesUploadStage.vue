@@ -8,11 +8,11 @@
           v-for="opt in uploadModeOptions"
           :key="opt.value"
           type="button"
-          class="rounded-lg border-2 border-solid bg-button-bg px-3 py-2 text-sm text-left transition-all"
+          class="rounded-lg border-2 border-solid bg-button-bg px-3 py-2 text-left text-sm transition-all"
           :class="
             uploadMode === opt.value
               ? 'border-brand bg-highlight-green text-brand'
-              : 'border-surface-5 text-contrast hover:bg-button-bg-hover'
+              : 'border-surface-5 hover:bg-button-bg-hover text-contrast'
           "
           @click="uploadMode = opt.value"
         >
@@ -26,9 +26,7 @@
     <div v-if="needsLocalFiles" class="flex flex-col gap-3">
       <div class="flex items-center justify-between">
         <span class="text-base font-semibold text-contrast">站内文件</span>
-        <span class="text-xs text-secondary">
-          上传到本站 CDN，用户可直接下载
-        </span>
+        <span class="text-xs text-secondary"> 上传到本站 CDN，用户可直接下载 </span>
       </div>
 
       <template v-if="!(filesToAdd.length || draftVersion.existing_files?.length)">
@@ -60,9 +58,7 @@
               "
             />
           </div>
-          <span class="text-xs text-secondary">
-            主文件是用户安装项目时默认下载的文件。
-          </span>
+          <span class="text-xs text-secondary"> 主文件是用户安装项目时默认下载的文件。 </span>
         </div>
 
         <div class="flex flex-col gap-2">
@@ -118,13 +114,11 @@
     <!-- 网盘下载区（disk / both 模式显示） -->
     <div
       v-if="needsDiskInputs"
-      class="flex flex-col gap-3 rounded-xl border border-solid border-surface-5 p-4"
+      class="border-surface-5 flex flex-col gap-3 rounded-xl border border-solid p-4"
     >
       <div class="flex items-center justify-between">
         <span class="text-base font-semibold text-contrast">网盘下载链接</span>
-        <span class="text-xs text-secondary">
-          至少填写一个网盘链接
-        </span>
+        <span class="text-xs text-secondary"> 至少填写一个网盘链接 </span>
       </div>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -193,7 +187,7 @@
           <input
             v-model="draftVersion.modrinth"
             type="text"
-            class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm text-contrast"
+            class="border-surface-5 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm text-contrast"
             placeholder="转载资源时填写对应版本子页面"
           />
         </div>
@@ -202,7 +196,7 @@
           <input
             v-model="draftVersion.curseforge"
             type="text"
-            class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm text-contrast"
+            class="border-surface-5 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm text-contrast"
             placeholder="转载资源时填写对应版本子页面"
           />
         </div>
@@ -222,12 +216,8 @@
         "
       >
         <InfoIcon />
-        <span v-if="draftVersion.is_modpack">
-          已标识为整合包资源（如需修改请返回上一步）
-        </span>
-        <span v-else>
-          已标识为非整合包资源（如需修改请返回上一步）
-        </span>
+        <span v-if="draftVersion.is_modpack"> 已标识为整合包资源（如需修改请返回上一步） </span>
+        <span v-else> 已标识为非整合包资源（如需修改请返回上一步） </span>
       </div>
     </div>
   </div>

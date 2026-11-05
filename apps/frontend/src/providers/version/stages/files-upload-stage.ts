@@ -15,8 +15,7 @@ function canProceed(ctx: ManageVersionContextValue): boolean {
   if (ctx.handlingNewFiles.value) return false;
 
   const draft = ctx.draftVersion.value;
-  const hasFiles =
-    ctx.filesToAdd.value.length > 0 || (draft.existing_files?.length ?? 0) > 0;
+  const hasFiles = ctx.filesToAdd.value.length > 0 || (draft.existing_files?.length ?? 0) > 0;
   const networks = [
     draft.quark_disk,
     draft.xunlei_disk,

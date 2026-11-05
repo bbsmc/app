@@ -25,6 +25,7 @@ pub mod version_file;
 pub mod versions;
 
 pub mod creator;
+pub mod featured;
 pub mod image_reviews;
 pub mod incentive;
 pub mod issues;
@@ -45,6 +46,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .configure(analytics_get::config)
             .configure(collections::config)
             .configure(homepage::config)
+            .configure(featured::config)
             .configure(images::config)
             .configure(notifications::config)
             .configure(organizations::config)

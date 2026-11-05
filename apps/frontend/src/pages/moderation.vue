@@ -79,6 +79,13 @@
           >
             <CoinsIcon aria-hidden="true" />
           </NavStackItem>
+          <NavStackItem
+            v-if="auth?.user?.role === 'admin'"
+            link="/moderation/featured"
+            label="推荐位"
+          >
+            <SparklesIcon aria-hidden="true" />
+          </NavStackItem>
         </NavStack>
       </aside>
     </div>
@@ -89,6 +96,7 @@
 </template>
 <script setup>
 import { onMounted, onUnmounted } from "vue";
+import { SparklesIcon } from "@modrinth/assets";
 import NavStack from "~/components/ui/NavStack.vue";
 import NavStackItem from "~/components/ui/NavStackItem.vue";
 

@@ -312,13 +312,7 @@
 </template>
 
 <script setup>
-import {
-  ButtonStyled,
-  OverflowMenu,
-  Pagination,
-  VersionChannelIndicator,
-} from "@modrinth/ui";
-import CreateProjectVersionModal from "~/components/ui/create-project-version/CreateProjectVersionModal.vue";
+import { ButtonStyled, OverflowMenu, Pagination, VersionChannelIndicator } from "@modrinth/ui";
 import {
   StarIcon,
   CalendarIcon,
@@ -335,6 +329,7 @@ import {
   UpdatedIcon,
 } from "@modrinth/assets";
 import { formatBytes, formatCategory } from "@modrinth/utils";
+import CreateProjectVersionModal from "~/components/ui/create-project-version/CreateProjectVersionModal.vue";
 import { getVersionGroupsForDisplay } from "~/helpers/projects.js";
 import VersionFilterControl from "~/components/ui/VersionFilterControl.vue";
 import DropArea from "~/components/ui/DropArea.vue";

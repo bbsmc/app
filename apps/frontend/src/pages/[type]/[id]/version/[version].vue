@@ -1342,14 +1342,18 @@
 <script>
 import { formatProjectRelease, renderString } from "@modrinth/utils";
 import { ButtonStyled, ConfirmModal, DropdownSelect, MarkdownEditor, NewModal } from "@modrinth/ui";
-import { BoxIcon as ModBoxIcon, InfoIcon as ModInfoIcon, FileIcon as ModFileIcon } from "@modrinth/assets";
-import CreateProjectVersionModal from "~/components/ui/create-project-version/CreateProjectVersionModal.vue";
-import MapInstallHint from "~/components/ui/MapInstallHint.vue";
-import { diskUrlDisplayLabel, diskUrlDisplayModes } from "~/utils/disk-urls";
+import {
+  BoxIcon as ModBoxIcon,
+  InfoIcon as ModInfoIcon,
+  FileIcon as ModFileIcon,
+} from "@modrinth/assets";
 import { Multiselect } from "vue-multiselect";
 import JSZip from "jszip";
 import UploadModal from "@modrinth/ui/src/components/modal/UploadModal.vue";
 import ConfirmModal2 from "@modrinth/ui/src/components/modal/ConfirmModal2.vue";
+import { diskUrlDisplayLabel, diskUrlDisplayModes } from "~/utils/disk-urls.ts";
+import MapInstallHint from "~/components/ui/MapInstallHint.vue";
+import CreateProjectVersionModal from "~/components/ui/create-project-version/CreateProjectVersionModal.vue";
 import { acceptFileFromProjectType } from "~/helpers/fileUtils.js";
 import { inferVersionInfo } from "~/helpers/infer.js";
 import { renderHighlightedString } from "~/helpers/highlight.js";
@@ -1393,6 +1397,7 @@ import { usePrivateDownload, isPrivateUrl } from "~/composables/usePrivateDownlo
 
 export default defineNuxtComponent({
   components: {
+    MapInstallHint,
     ConfirmModal2,
     AutomaticAccordion,
     VersionSummary,

@@ -8,8 +8,12 @@
         </div>
       </template>
       <div class="modal-content">
-        <p>项目：<b>{{ reviewing?.item?.project_title }}</b></p>
-        <p>申请人：<b>{{ reviewing?.item?.applicant_username }}</b></p>
+        <p>
+          项目：<b>{{ reviewing?.item?.project_title }}</b>
+        </p>
+        <p>
+          申请人：<b>{{ reviewing?.item?.applicant_username }}</b>
+        </p>
         <p v-if="reviewing?.item?.reason"><b>申请理由：</b>{{ reviewing.item.reason }}</p>
         <div class="form-group">
           <label>审核备注（可选）</label>
@@ -90,17 +94,13 @@
           </div>
 
           <div class="review-actions">
-            <button class="btn btn-secondary" @click="openThread(item)">
-              查看对话
-            </button>
+            <button class="btn btn-secondary" @click="openThread(item)">查看对话</button>
             <template v-if="item.status === 'pending'">
               <button class="btn btn-primary" @click="openReview(item, 'approved')">
                 <CheckIcon aria-hidden="true" />
                 通过
               </button>
-              <button class="btn btn-danger" @click="openReview(item, 'rejected')">
-                拒绝
-              </button>
+              <button class="btn btn-danger" @click="openReview(item, 'rejected')">拒绝</button>
             </template>
           </div>
         </div>
@@ -110,9 +110,7 @@
         <InfoIcon aria-hidden="true" />
         <p>
           {{
-            statusFilter === "all"
-              ? "暂无申请记录"
-              : `暂无${formatStatusLabel(statusFilter)}的申请`
+            statusFilter === "all" ? "暂无申请记录" : `暂无${formatStatusLabel(statusFilter)}的申请`
           }}
         </p>
       </div>
@@ -259,10 +257,9 @@ const sendThreadReply = async () => {
       },
     });
     threadReply.value = "";
-    activeThread.value = await useBaseFetch(
-      `thread/${activeThreadItem.value.thread_id}`,
-      { method: "GET" },
-    );
+    activeThread.value = await useBaseFetch(`thread/${activeThreadItem.value.thread_id}`, {
+      method: "GET",
+    });
   } catch (e) {
     addNotification({
       group: "main",
@@ -286,8 +283,7 @@ const formatStatusLabel = (status) => {
   return m[status] || status;
 };
 
-const formatDateTime = (s) =>
-  app.$dayjs(s).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
+const formatDateTime = (s) => app.$dayjs(s).tz("Asia/Shanghai").format("YYYY-MM-DD HH:mm");
 
 const fetchItems = async () => {
   loading.value = true;
@@ -321,17 +317,14 @@ const doReview = async () => {
   if (!reviewing.value || submitting.value) return;
   submitting.value = true;
   try {
-    await useBaseFetch(
-      `admin/incentive/applications/${reviewing.value.item.id}`,
-      {
-        method: "PATCH",
-        internal: true,
-        body: {
-          status: reviewing.value.action,
-          review_notes: reviewNotes.value || null,
-        },
+    await useBaseFetch(`admin/incentive/applications/${reviewing.value.item.id}`, {
+      method: "PATCH",
+      internal: true,
+      body: {
+        status: reviewing.value.action,
+        review_notes: reviewNotes.value || null,
       },
-    );
+    });
     addNotification({
       group: "main",
       title: "成功",
@@ -520,7 +513,9 @@ onMounted(fetchItems);
         font-size: 0.85rem;
         color: var(--color-text-secondary);
         margin-bottom: 0.25rem;
-        .author { font-weight: 600; }
+        .author {
+          font-weight: 600;
+        }
       }
       .message-body {
         white-space: pre-wrap;

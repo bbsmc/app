@@ -10,12 +10,8 @@
           v-for="opt in versionTypeOptions"
           :key="opt.value"
           type="button"
-          class="rounded-xl border border-solid bg-button-bg px-3 py-2.5 text-left text-contrast transition-colors hover:bg-button-bg-hover"
-          :class="
-            draftVersion.type === opt.value
-              ? 'border-brand !text-brand'
-              : 'border-surface-5'
-          "
+          class="hover:bg-button-bg-hover rounded-xl border border-solid bg-button-bg px-3 py-2.5 text-left text-contrast transition-colors"
+          :class="draftVersion.type === opt.value ? 'border-brand !text-brand' : 'border-surface-5'"
           :disabled="editingVersion"
           @click="handleSelectType(opt.value)"
         >

@@ -104,7 +104,7 @@ export const affiliates: Record<string, Affiliate> = {
     link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",
     projects: ["YgvldBV8"],
   },
-  "ymzz": {
+  ymzz: {
     name: "远梦之棺",
     code: "远梦之棺",
     link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",
@@ -184,7 +184,7 @@ export const affiliates: Record<string, Affiliate> = {
     link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",
     projects: ["zT3k10EZ", "i2V4lWdp", "37yTxfMk"],
   },
-  "syqj": {
+  syqj: {
     name: "摄影奇境",
     code: "摄影奇境",
     link: "https://item.taobao.com/item.htm?ft=t&id=791787996763",

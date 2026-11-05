@@ -1,4 +1,4 @@
-import { useTags } from './tag'
+import { useTags } from "./tag.js";
 
 /**
  * 上游 stages/components 用 useGeneratedState() 读取 categories/loaders/gameVersions 等元数据。
@@ -9,4 +9,4 @@ import { useTags } from './tag'
  *
  * @see ~/composables/tag.ts
  */
-export const useGeneratedState = useTags
+export const useGeneratedState = useTags;

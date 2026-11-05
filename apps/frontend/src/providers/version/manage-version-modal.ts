@@ -14,10 +14,9 @@ import JSZip from "jszip";
 import type { ComputedRef, Ref, ShallowRef } from "vue";
 import type { ComponentExposed } from "vue-component-type-helpers";
 
-import { useGeneratedState } from "~/composables/generated";
-import { inferVersionInfo } from "~/helpers/infer.js";
-
 import { stageConfigs } from "./stages/index.ts";
+import { useGeneratedState } from "~/composables/generated.ts";
+import { inferVersionInfo } from "~/helpers/infer.js";
 
 // this interface should be in infer.js, but gotta refactor that to ts first
 export interface InferredVersionInfo {

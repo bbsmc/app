@@ -144,10 +144,7 @@
                       class="avatar-cell avatar-cell--new"
                       :aria-label="`查看 ${review.username} 待审核头像大图`"
                       @click="
-                        openExpanded(
-                          getAvatarUrl(review.new_value, 'avatar_url'),
-                          review.username,
-                        )
+                        openExpanded(getAvatarUrl(review.new_value, 'avatar_url'), review.username)
                       "
                     >
                       <span class="avatar-cell__label">违规</span>
@@ -209,12 +206,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { NewModal, ButtonStyled } from "@modrinth/ui";
-import {
-  XIcon,
-  ExternalIcon,
-  ExpandIcon,
-  ContractIcon,
-} from "@modrinth/assets";
+import { XIcon, ExternalIcon, ExpandIcon, ContractIcon } from "@modrinth/assets";
 import Avatar from "~/components/ui/Avatar.vue";
 import Chips from "~/components/ui/Chips.vue";
 import ProfileReviewModal from "~/components/ui/ProfileReviewModal.vue";

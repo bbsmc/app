@@ -9,7 +9,7 @@ pub mod payment;
 pub mod session;
 
 pub use super::ApiError;
-use super::v3::oauth_clients;
+use super::v3::{featured, oauth_clients};
 use crate::util::cors::default_cors;
 
 pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
@@ -23,6 +23,7 @@ pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
             .configure(pats::config)
             .configure(moderation::config)
             .configure(creator::config)
+            .configure(featured::admin_config)
             // .configure(billing::config)
             .configure(gdpr::config)
             .configure(payment::config),

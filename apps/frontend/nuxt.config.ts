@@ -446,15 +446,8 @@ export default defineNuxtConfig({
   },
   nitro: {
     moduleSideEffects: ["@vintl/compact-number/locale-data"],
-    hooks: {
-      compiled() {
-        // Fix: Nitro doesn't copy tslib/modules/index.js but Node 22 resolves to it via exports.import.node
-        const tslibModulesDir = resolve(__dirname, ".output/server/node_modules/tslib/modules");
-        const tslibSource = resolve(__dirname, "../../node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/modules/index.js");
-        fs.mkdir(tslibModulesDir, { recursive: true })
-          .then(() => fs.copyFile(tslibSource, resolve(tslibModulesDir, "index.js")))
-          .catch(() => {});
-      },
+    externals: {
+      inline: ["tslib"],
     },
   },
   devtools: {

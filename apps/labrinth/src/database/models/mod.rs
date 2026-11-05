@@ -29,6 +29,7 @@ pub mod version_item;
 pub mod wiki_item;
 
 pub mod creator_application_item;
+pub mod featured_item;
 pub mod issues;
 pub mod payment_merchant_item;
 pub mod payment_order_item;

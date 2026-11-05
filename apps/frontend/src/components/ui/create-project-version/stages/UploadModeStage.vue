@@ -17,7 +17,7 @@
         :class="
           uploadMode === 'local'
             ? 'border-brand bg-highlight-green text-brand'
-            : 'border-surface-5 bg-button-bg text-contrast hover:bg-button-bg-hover'
+            : 'border-surface-5 hover:bg-button-bg-hover bg-button-bg text-contrast'
         "
         @click="handleSelect('local')"
       >
@@ -38,7 +38,7 @@
         :class="
           uploadMode === 'disk'
             ? 'border-brand bg-highlight-green text-brand'
-            : 'border-surface-5 bg-button-bg text-contrast hover:bg-button-bg-hover'
+            : 'border-surface-5 hover:bg-button-bg-hover bg-button-bg text-contrast'
         "
         @click="handleSelect('disk')"
       >
@@ -59,7 +59,7 @@
         :class="
           uploadMode === 'both'
             ? 'border-brand bg-highlight-green text-brand'
-            : 'border-surface-5 bg-button-bg text-contrast hover:bg-button-bg-hover'
+            : 'border-surface-5 hover:bg-button-bg-hover bg-button-bg text-contrast'
         "
         @click="handleSelect('both')"
       >
@@ -77,14 +77,15 @@
     <!-- 网盘模式 + Minecraft 类型下的整合包确认（软件资源 / 汉化包不需要询问） -->
     <div
       v-if="shouldAskModpack"
-      class="flex flex-col gap-3 rounded-xl border-2 border-solid border-orange-500/60 bg-orange-500/10 p-4"
+      class="border-orange-500/60 bg-orange-500/10 flex flex-col gap-3 rounded-xl border-2 border-solid p-4"
     >
       <div class="flex items-center gap-2 font-semibold text-contrast">
         <InfoIcon class="text-orange-500" />
         重要：是否为整合包资源？
       </div>
       <div class="text-sm text-secondary">
-        请确认本网盘文件是否为<b>整合包 / 导入包</b>类型。整合包标识会影响搜索、下载页展示与统计，不准确会导致用户误下载。
+        请确认本网盘文件是否为<b>整合包 / 导入包</b
+        >类型。整合包标识会影响搜索、下载页展示与统计，不准确会导致用户误下载。
       </div>
       <div class="flex flex-col gap-2 sm:flex-row">
         <button
@@ -93,7 +94,7 @@
           :class="
             draftVersion.is_modpack === true
               ? 'border-orange-500 bg-orange-500 text-white shadow-md'
-              : 'border-surface-5 bg-button-bg text-contrast hover:bg-button-bg-hover'
+              : 'border-surface-5 hover:bg-button-bg-hover bg-button-bg text-contrast'
           "
           @click="draftVersion.is_modpack = true"
         >
@@ -105,7 +106,7 @@
           :class="
             draftVersion.is_modpack === false
               ? 'border-brand bg-brand text-white shadow-md'
-              : 'border-surface-5 bg-button-bg text-contrast hover:bg-button-bg-hover'
+              : 'border-surface-5 hover:bg-button-bg-hover bg-button-bg text-contrast'
           "
           @click="draftVersion.is_modpack = false"
         >

@@ -1,0 +1,103 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO featured_items\n                (section, title, description, badge, image_url, link, project_id, enabled, created_by, sort_order)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,\n                (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM featured_items WHERE section = $10))\n             RETURNING id, section, title, description, badge, image_url, link, project_id,\n                       sort_order, enabled, created_by, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "section",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "badge",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "image_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "link",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "sort_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int8",
+        "Bool",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f4306acfcdf6cee805e882b14dbbf8d0f6f610612d58fc321e8d52c5736709e3"
+}

@@ -12,12 +12,14 @@
             <input
               v-model="linkTargetId"
               type="text"
-              class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm"
+              class="border-surface-5 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm"
               placeholder="请输入要翻译的版本 ID"
             />
           </div>
           <div class="grid gap-2.5">
-            <span class="font-semibold text-contrast">翻译语言 <span class="text-red">*</span></span>
+            <span class="font-semibold text-contrast"
+              >翻译语言 <span class="text-red">*</span></span
+            >
             <Combobox
               v-model="linkLanguageCode"
               placeholder="选择翻译语言"
@@ -29,7 +31,7 @@
             <input
               v-model="linkDescription"
               type="text"
-              class="rounded-lg border border-solid border-surface-5 bg-button-bg px-3 py-2 text-sm"
+              class="border-surface-5 rounded-lg border border-solid bg-button-bg px-3 py-2 text-sm"
               placeholder="翻译说明..."
             />
           </div>
@@ -55,9 +57,7 @@
           >
             <div class="flex flex-col">
               <span class="font-semibold">{{ langLabel(link.language_code) }}</span>
-              <span class="text-xs text-secondary">
-                源版本 ID: {{ link.joining_version_id }}
-              </span>
+              <span class="text-xs text-secondary"> 源版本 ID: {{ link.joining_version_id }} </span>
               <span v-if="link.description" class="text-xs">{{ link.description }}</span>
             </div>
             <ButtonStyled type="transparent" size="standard">
@@ -256,8 +256,7 @@ function handleAddVersionLink() {
   const existing = draftVersion.value.version_links ?? [];
   const dup = existing.find(
     (l: any) =>
-      l.joining_version_id === linkTargetId.value &&
-      l.language_code === linkLanguageCode.value,
+      l.joining_version_id === linkTargetId.value && l.language_code === linkLanguageCode.value,
   );
   if (dup) {
     addNotification({

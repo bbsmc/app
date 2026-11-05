@@ -49,11 +49,7 @@
 
     <!-- 特色版本切换 -->
     <div class="flex items-center gap-2">
-      <input
-        id="version-featured"
-        v-model="draftVersion.featured"
-        type="checkbox"
-      />
+      <input id="version-featured" v-model="draftVersion.featured" type="checkbox" />
       <label for="version-featured" class="cursor-pointer text-sm">
         将此版本设为特色（在项目页突出显示）
       </label>

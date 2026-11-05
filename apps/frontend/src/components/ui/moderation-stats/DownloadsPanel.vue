@@ -25,9 +25,7 @@
         <UpdatedIcon aria-hidden="true" class="animate-spin" />
         <span>加载中...</span>
       </div>
-      <div v-else-if="error" class="empty-section">
-        加载失败：{{ error }}
-      </div>
+      <div v-else-if="error" class="empty-section">加载失败：{{ error }}</div>
       <div v-else-if="!chartData[0]?.data?.length" class="empty-section">
         所选区间内暂无下载数据
       </div>
@@ -147,7 +145,9 @@ const peakLabel = computed(() => {
   if (!peakPoint.value) return "";
   const cfg = rangeConfig(rangeKey.value);
   const fmt = cfg.resolution < 60 * 24 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD";
-  return dayjs(peakPoint.value.time * 1000).tz("Asia/Shanghai").format(fmt);
+  return dayjs(peakPoint.value.time * 1000)
+    .tz("Asia/Shanghai")
+    .format(fmt);
 });
 
 // 强制按北京时间格式化，避免管理员浏览器在其他时区时显示偏差

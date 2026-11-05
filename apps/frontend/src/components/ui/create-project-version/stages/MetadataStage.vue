@@ -35,7 +35,9 @@
       :editable="editingVersion"
       @edit="goto('from-details-mc-versions')"
     >
-      <span v-if="draftVersion.game_versions?.length">{{ draftVersion.game_versions.join(", ") }}</span>
+      <span v-if="draftVersion.game_versions?.length">{{
+        draftVersion.game_versions.join(", ")
+      }}</span>
       <span v-else class="text-secondary">未选择</span>
     </SectionRow>
 
@@ -54,11 +56,7 @@
     </SectionRow>
 
     <!-- 文件 -->
-    <SectionRow
-      label="已选文件"
-      :editable="editingVersion"
-      @edit="goto('from-details-files')"
-    >
+    <SectionRow label="已选文件" :editable="editingVersion" @edit="goto('from-details-files')">
       <div
         v-if="filesToAdd.length || draftVersion.existing_files?.length"
         class="flex flex-col gap-1"
@@ -115,11 +113,7 @@
       </template>
       <template v-else>
         <div v-if="draftVersion.dependencies?.length" class="flex flex-col gap-1">
-          <div
-            v-for="(dep, idx) in draftVersion.dependencies"
-            :key="`dep-${idx}`"
-            class="text-sm"
-          >
+          <div v-for="(dep, idx) in draftVersion.dependencies" :key="`dep-${idx}`" class="text-sm">
             {{ dep.dependency_type }} ·
             {{ dep.project_id || dep.version_id || dep.file_name || "" }}
           </div>

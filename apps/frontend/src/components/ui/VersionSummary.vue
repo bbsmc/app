@@ -79,8 +79,8 @@
         请使用{{ qrTarget.platformLabel }}手机App「扫一扫」识别二维码，转存后即可下载
       </p>
       <p v-if="qrTarget.mode === 'both'" class="m-0 text-center text-sm text-secondary">
-      或直接点击下面按钮跳转到{{ qrTarget.platformLabel }}下载
-    </p>
+        或直接点击下面按钮跳转到{{ qrTarget.platformLabel }}下载
+      </p>
       <Admonition type="info" class="w-full">
         {{ DISK_QR_REVENUE_NOTICE }}
       </Admonition>

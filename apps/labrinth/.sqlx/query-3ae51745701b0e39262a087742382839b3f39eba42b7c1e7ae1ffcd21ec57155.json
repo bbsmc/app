@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, section, title, description, badge, image_url, link, project_id,\n                    sort_order, enabled, created_by, created_at, updated_at\n             FROM featured_items\n             WHERE enabled = TRUE\n             ORDER BY section, sort_order, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "section",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "badge",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "image_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "link",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "project_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "sort_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3ae51745701b0e39262a087742382839b3f39eba42b7c1e7ae1ffcd21ec57155"
+}

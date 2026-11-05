@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE featured_items SET sort_order = $3, updated_at = NOW()\n             WHERE id = $1 AND section = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cfd9600d573c55931e7528d78db3a66d84870765b771b1d285e819beec2b91a4"
+}

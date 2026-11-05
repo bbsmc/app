@@ -1,7 +1,11 @@
 <template>
   <div class="panel">
     <div class="filter-bar">
-      <Chips v-model="resolution" :items="resolutionOptions" :format-label="formatResolutionLabel" />
+      <Chips
+        v-model="resolution"
+        :items="resolutionOptions"
+        :format-label="formatResolutionLabel"
+      />
       <Chips v-model="rangeKey" :items="rangeOptions" :format-label="formatRangeLabel" />
     </div>
 
@@ -26,9 +30,7 @@
         <UpdatedIcon aria-hidden="true" class="animate-spin" />
         <span>加载中...</span>
       </div>
-      <div v-else-if="error" class="empty-section">
-        加载失败：{{ error }}
-      </div>
+      <div v-else-if="error" class="empty-section">加载失败：{{ error }}</div>
       <div v-else-if="!chartData[0]?.data?.length" class="empty-section">
         所选区间内暂无注册数据
       </div>
@@ -85,7 +87,15 @@ const formatRangeLabel = (v) => {
 };
 
 const rangeToHours = (key) => {
-  const map = { "24h": 24, "48h": 48, "7d": 168, "30d": 720, "90d": 2160, "180d": 4320, "365d": 8760 };
+  const map = {
+    "24h": 24,
+    "48h": 48,
+    "7d": 168,
+    "30d": 720,
+    "90d": 2160,
+    "180d": 4320,
+    "365d": 8760,
+  };
   return map[key] || 720;
 };
 
@@ -156,7 +166,9 @@ const peakValue = computed(() => peakPoint.value?.total ?? 0);
 const peakLabel = computed(() => {
   if (!peakPoint.value) return "";
   const fmt = resolution.value === "hour" ? "YYYY-MM-DD HH:00" : "YYYY-MM-DD";
-  return dayjs(peakPoint.value.time * 1000).tz("Asia/Shanghai").format(fmt);
+  return dayjs(peakPoint.value.time * 1000)
+    .tz("Asia/Shanghai")
+    .format(fmt);
 });
 
 // 强制按北京时间格式化，避免管理员浏览器在其他时区时显示偏差

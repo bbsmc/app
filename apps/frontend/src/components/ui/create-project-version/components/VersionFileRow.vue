@@ -78,16 +78,15 @@ const emit = defineEmits<{
   (e: "setFileType", type: Labrinth.Versions.v3.FileType): void;
 }>();
 
-const { name, isPrimary, onRemove, initialFileType, editingVersion, acceptOverride } =
-  defineProps<{
-    name: string;
-    isPrimary: boolean;
-    onRemove?: () => void;
-    initialFileType?: Labrinth.Versions.v3.FileType | "primary";
-    editingVersion: boolean;
-    /** 覆盖默认的 accept（如汉化包仅接受 .zip） */
-    acceptOverride?: string;
-  }>();
+const { name, isPrimary, onRemove, initialFileType, editingVersion, acceptOverride } = defineProps<{
+  name: string;
+  isPrimary: boolean;
+  onRemove?: () => void;
+  initialFileType?: Labrinth.Versions.v3.FileType | "primary";
+  editingVersion: boolean;
+  /** 覆盖默认的 accept（如汉化包仅接受 .zip） */
+  acceptOverride?: string;
+}>();
 
 const selectedType = ref<Labrinth.Versions.v3.FileType | "primary">(initialFileType || "unknown");
 const primaryFileInput = ref<HTMLInputElement>();

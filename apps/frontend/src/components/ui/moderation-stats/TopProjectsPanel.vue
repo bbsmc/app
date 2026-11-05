@@ -10,9 +10,7 @@
           @keyup.enter="applySearch"
         />
         <button class="btn btn-secondary" @click="applySearch">搜索</button>
-        <button v-if="appliedSearch" class="btn btn-transparent" @click="clearSearch">
-          清除
-        </button>
+        <button v-if="appliedSearch" class="btn btn-transparent" @click="clearSearch">清除</button>
       </div>
     </div>
 
@@ -33,15 +31,9 @@
       <span>加载中...</span>
     </div>
     <div v-else-if="error" class="empty-section">加载失败：{{ error }}</div>
-    <div v-else-if="!data?.items?.length" class="empty-section">
-      所选区间内暂无下载记录
-    </div>
+    <div v-else-if="!data?.items?.length" class="empty-section">所选区间内暂无下载记录</div>
     <div v-else class="ranking-list">
-      <div
-        v-for="item in data.items"
-        :key="item.project_id"
-        class="ranking-row"
-      >
+      <div v-for="item in data.items" :key="item.project_id" class="ranking-row">
         <div class="rank">#{{ item.rank }}</div>
         <div class="project-icon">
           <img

@@ -41,8 +41,7 @@ export const stageConfig: StageConfigInput<ManageVersionContextValue> = {
     iconPosition: "before",
     iconClass: ctx.isSubmitting.value ? "animate-spin" : undefined,
     color: "green",
-    disabled:
-      ctx.isSubmitting.value || ctx.draftVersion.value.version_number.trim().length === 0,
+    disabled: ctx.isSubmitting.value || ctx.draftVersion.value.version_number.trim().length === 0,
     onClick: () =>
       ctx.editingVersion.value ? ctx.handleSaveVersionEdits() : ctx.handleCreateVersion(),
   }),

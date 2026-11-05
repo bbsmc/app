@@ -38,6 +38,7 @@
 
       <div class="hero-visual">
         <div
+          v-if="heroBanners.length > 0"
           class="hero-banner"
           :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
           @mouseenter="handleMouseEnter"
@@ -49,7 +50,7 @@
         >
           <div
             v-for="(item, index) in heroBanners"
-            :key="index"
+            :key="item.id"
             :class="[
               'hero-slide',
               {
@@ -70,7 +71,7 @@
               fetchpriority="high"
             />
             <div class="hero-slide-overlay">
-              <span class="hero-slide-badge">{{ item.badge }}</span>
+              <span v-if="item.badge" class="hero-slide-badge">{{ item.badge }}</span>
               <h3 class="hero-slide-title">{{ item.title }}</h3>
               <p class="hero-slide-desc">{{ item.description }}</p>
             </div>
@@ -609,37 +610,40 @@ const HOMEPAGE_TYPES = [
 ];
 
 // 使用 useAsyncData 获取所有主页数据，支持 SSR
-const { data: pageData } = await useAsyncData(
-  "homepage-data",
-  async () => {
-    const sections = await useBaseFetch(`homepage?types=${HOMEPAGE_TYPES.join(",")}`, {
-      apiVersion: 3,
-    });
+const [{ data: pageData }, { data: featuredData }] = await Promise.all([
+  useAsyncData(
+    "homepage-data",
+    async () => {
+      const sections = await useBaseFetch(`homepage?types=${HOMEPAGE_TYPES.join(",")}`, {
+        apiVersion: 3,
+      });
 
-    return {
-      fetchedAt: Date.now(),
-      hotProjects: sections.hot_projects ?? [],
-      translations: sections.latest_translations ?? [],
-      latestModpackTranslations: sections.hot_translations ?? [],
-      latestPlugins: (sections.latest_plugins ?? []).map((plugin) => ({
-        ...plugin,
-        project_type: plugin.project_type || "plugin", // 确保插件类型正确
-      })),
-    };
-  },
-  {
-    getCachedData(key, nuxtApp) {
-      const cached = nuxtApp.payload.data[key];
-      if (!cached) return undefined;
-      if (nuxtApp.isHydrating) {
-        // 服务端与浏览器可能有时钟偏差，以浏览器水合时刻作为取数时间
-        cached.fetchedAt = Date.now();
-        return cached;
-      }
-      return Date.now() - (cached.fetchedAt ?? 0) < HOMEPAGE_DATA_TTL ? cached : undefined;
+      return {
+        fetchedAt: Date.now(),
+        hotProjects: sections.hot_projects ?? [],
+        translations: sections.latest_translations ?? [],
+        latestModpackTranslations: sections.hot_translations ?? [],
+        latestPlugins: (sections.latest_plugins ?? []).map((plugin) => ({
+          ...plugin,
+          project_type: plugin.project_type || "plugin", // 确保插件类型正确
+        })),
+      };
     },
-  },
-);
+    {
+      getCachedData(key, nuxtApp) {
+        const cached = nuxtApp.payload.data[key];
+        if (!cached) return undefined;
+        if (nuxtApp.isHydrating) {
+          // 服务端与浏览器可能有时钟偏差，以浏览器水合时刻作为取数时间
+          cached.fetchedAt = Date.now();
+          return cached;
+        }
+        return Date.now() - (cached.fetchedAt ?? 0) < HOMEPAGE_DATA_TTL ? cached : undefined;
+      },
+    },
+  ),
+  useFeatured(),
+]);
 
 // 从 pageData 中提取数据
 const hotProjects = computed(() => pageData.value?.hotProjects ?? []);
@@ -693,81 +697,16 @@ watch(searchQuery, (val) => {
 // 首页统计：构建期从 /v3/statistics/homepage 拉取（后端每小时写入 Redis），见 nuxt.config.ts build:before
 const homePageStats = generatedState.homePageStats ?? null;
 
-// Hero Banners - 来自整合包页面的内容
-const heroBanners = ref([
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/G23dLUsP/images/e681d996cd07316e12facedd8fb22e9f74ce68a1_350.webp",
-    title: "剑与王国",
-    description: "围绕模拟殖民地与村民招募玩法的深度魔改整合包",
-    badge: "热门整合包",
-    slug: "/modpack/snk",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/cached_images/a959f776cdae05bbd7084bc605785e0d356eeb7c_0.webp",
-    title: "龙之冒险：新征程",
-    description: "面对众多怪物的冒险之旅，你做好准备了吗？",
-    badge: "精选整合包",
-    slug: "/modpack/lzmx",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/XMUypeti/images/82d38f228afad3b75202eaf8a148c1318a8cea48_350.webp",
-    title: "愚者 - The Fool",
-    description: "愚弄、伪装、欺诈，屠龙者终成恶龙。",
-    badge: "精选整合包",
-    slug: "/modpack/the-fool",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/e11vzqXl/images/346fd8930411f592c94acce68b8290a5266843e3_350.webp",
-    title: "香草纪元:食旅纪行",
-    description: "农夫乐事全附属与异界冒险",
-    badge: "热门整合包",
-    slug: "/modpack/vefc",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/PRsqHZRu/images/1b1abb2c5198447165de3f72b3c10dab6dc53ce8_350.webp",
-    title: "亡者世界",
-    description: "现代都市僵尸启示录，在废墟之间挣扎求存",
-    badge: "热门整合包",
-    slug: "/modpack/deceasedcraft",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/OIIWCwpQ/images/14506df30b5f9568b62fa564f36d2d90e4bcfcc6_350.webp",
-    title: "机械动力:齿轮盛宴",
-    description: "大型深度魔改机械动力×农夫乐事整合包",
-    badge: "精选整合包",
-    slug: "/modpack/create-delight",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/KgeSn4uG/images/9a6543080718f76152133e4a5048b1302c29eced_350.webp",
-    title: "勇者之章Ⅲ",
-    description: "多线性枪魔+战斗发展整合包",
-    badge: "精选整合包",
-    slug: "/modpack/chapter-of-yuusha-3",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/IwY0MZn5/images/e4702790bff5c4e4418a348945770b398d0a516e_350.webp",
-    title: "奇妙商店物语",
-    description: "在这座城市里，开一家你想去吃饭的小店",
-    badge: "热门整合包",
-    slug: "/modpack/wss",
-  },
-  {
-    image:
-      "https://cdn.bbsmc.net/bbsmc/data/9I9KjIy7/images/ecef611b3941d4f879abd509bfef09ae411ac5c5.jpeg",
-    title: "新:模拟大都市",
-    description: "从零起步规划城市，结合农夫乐事、拾光剪影的养老整合包",
-    badge: "精选整合包",
-    slug: "/modpack/nsuk",
-  },
-]);
+const heroBanners = computed(() =>
+  (featuredData.value?.sections?.[FEATURED_SECTION_HOME] ?? []).map((item) => ({
+    id: item.id,
+    image: item.image_url,
+    title: item.title,
+    description: item.description,
+    badge: item.badge,
+    slug: item.link,
+  })),
+);
 
 const currentHeroSlide = ref(0);
 const autoPlayInterval = ref(null);
@@ -906,7 +845,7 @@ const formatLoader = (loader) => {
 
 // Hero Banner controls
 const startAutoPlay = () => {
-  if (!isClient.value) return;
+  if (!isClient.value || heroBanners.value.length === 0) return;
   stopAutoPlay();
   autoPlayInterval.value = setInterval(() => {
     currentHeroSlide.value = (currentHeroSlide.value + 1) % heroBanners.value.length;
@@ -922,7 +861,7 @@ const stopAutoPlay = () => {
 
 const goToHeroSlide = (index) => {
   if (index === currentHeroSlide.value) {
-    navigateTo(heroBanners.value[index].slug);
+    openFeaturedLink(heroBanners.value[index].slug);
     return;
   }
   currentHeroSlide.value = index;
@@ -1004,7 +943,7 @@ const handleBannerClick = (e, index) => {
     return;
   }
 
-  navigateTo(heroBanners.value[index].slug);
+  openFeaturedLink(heroBanners.value[index].slug);
 };
 
 const handleMouseEnter = () => {
@@ -1017,9 +956,22 @@ const handleMouseLeave = () => {
   startAutoPlay();
 };
 
+watch(heroBanners, (banners) => {
+  if (currentHeroSlide.value >= banners.length) {
+    currentHeroSlide.value = 0;
+  }
+  if (banners.length === 0) {
+    stopAutoPlay();
+  } else if (isClient.value && !autoPlayInterval.value) {
+    startAutoPlay();
+  }
+});
+
 onMounted(() => {
   isClient.value = true;
-  currentHeroSlide.value = Math.floor(Math.random() * heroBanners.value.length);
+  if (heroBanners.value.length > 0) {
+    currentHeroSlide.value = Math.floor(Math.random() * heroBanners.value.length);
+  }
   startAutoPlay();
 });
 

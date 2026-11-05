@@ -3,7 +3,9 @@
     <LoaderPicker
       v-model="draftVersion.loaders"
       :loaders="loaders"
-      :version-type="(draftVersion.type as 'software' | 'language' | 'minecraft' | null | undefined) ?? null"
+      :version-type="
+        (draftVersion.type as 'software' | 'language' | 'minecraft' | null | undefined) ?? null
+      "
       :toggle-loader="toggleLoader"
     />
 
