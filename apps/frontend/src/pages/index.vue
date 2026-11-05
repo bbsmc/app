@@ -596,43 +596,53 @@ useHead({
   ],
 });
 
-// 使用 useAsyncData 获取所有主页数据，支持 SSR
-const { data: pageData } = await useAsyncData("homepage-data", async () => {
-  const [
-    projectsResponse,
-    forumsResponse,
-    noticesResponse,
-    articlesResponse,
-    translationsResponse,
-    latestModpackTranslationsResponse,
-    latestPluginsResponse,
-  ] = await Promise.all([
-    useBaseFetch(`search?limit=6&index=relevance`),
-    useBaseFetch(`forum`, { apiVersion: 3 }),
-    useBaseFetch(`forum/notice/lists`, { apiVersion: 3 }),
-    useBaseFetch(`forum/article/lists`, { apiVersion: 3 }),
-    useBaseFetch(`search?limit=5&index=updated&facets=[["project_type:language"]]`),
-    useBaseFetch(`search?limit=6&index=relevance&facets=[["project_type:language"]]`),
-    useBaseFetch(`search?limit=5&index=updated&facets=[["project_type:plugin"]]`),
-  ]);
+// 站内跳回首页时，在此时间内复用已取到的数据，不再重复请求
+const HOMEPAGE_DATA_TTL = 5 * 60 * 1000;
 
-  return {
-    hotProjects: projectsResponse.hits ?? [],
-    forums: (forumsResponse.forums ?? []).slice(0, 5),
-    notices: (noticesResponse.forums ?? []).slice(0, 5),
-    articles: (articlesResponse.forums ?? []).slice(0, 3),
-    translations: translationsResponse.hits ?? [],
-    latestModpackTranslations: latestModpackTranslationsResponse.hits ?? [],
-    latestPlugins: (latestPluginsResponse.hits ?? []).map((plugin) => ({
-      ...plugin,
-      project_type: plugin.project_type || "plugin", // 确保插件类型正确
-    })),
-  };
-});
+// 首页需要的数据类型，后端 /v3/homepage 按 types 一次返回（各 type 在后端 Redis 缓存）
+// 社区资讯 / 热门讨论 / 测评专栏板块已在模板中隐藏，未请求对应数据；恢复这些板块时需要后端新增 type。
+const HOMEPAGE_TYPES = [
+  "hot_projects",
+  "hot_translations",
+  "latest_translations",
+  "latest_plugins",
+];
+
+// 使用 useAsyncData 获取所有主页数据，支持 SSR
+const { data: pageData } = await useAsyncData(
+  "homepage-data",
+  async () => {
+    const sections = await useBaseFetch(`homepage?types=${HOMEPAGE_TYPES.join(",")}`, {
+      apiVersion: 3,
+    });
+
+    return {
+      fetchedAt: Date.now(),
+      hotProjects: sections.hot_projects ?? [],
+      translations: sections.latest_translations ?? [],
+      latestModpackTranslations: sections.hot_translations ?? [],
+      latestPlugins: (sections.latest_plugins ?? []).map((plugin) => ({
+        ...plugin,
+        project_type: plugin.project_type || "plugin", // 确保插件类型正确
+      })),
+    };
+  },
+  {
+    getCachedData(key, nuxtApp) {
+      const cached = nuxtApp.payload.data[key];
+      if (!cached) return undefined;
+      if (nuxtApp.isHydrating) {
+        // 服务端与浏览器可能有时钟偏差，以浏览器水合时刻作为取数时间
+        cached.fetchedAt = Date.now();
+        return cached;
+      }
+      return Date.now() - (cached.fetchedAt ?? 0) < HOMEPAGE_DATA_TTL ? cached : undefined;
+    },
+  },
+);
 
 // 从 pageData 中提取数据
 const hotProjects = computed(() => pageData.value?.hotProjects ?? []);
-// forums, notices, articles available from pageData if needed
 const translations = computed(() => pageData.value?.translations ?? []);
 const latestModpackTranslations = computed(() => pageData.value?.latestModpackTranslations ?? []);
 const latestPlugins = computed(() => pageData.value?.latestPlugins ?? []);

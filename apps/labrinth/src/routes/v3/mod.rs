@@ -7,6 +7,7 @@ pub mod analytics_get;
 pub mod bans;
 pub mod collections;
 pub mod forum;
+pub mod homepage;
 pub mod images;
 pub mod notifications;
 pub mod organizations;
@@ -43,6 +44,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .wrap(default_cors())
             .configure(analytics_get::config)
             .configure(collections::config)
+            .configure(homepage::config)
             .configure(images::config)
             .configure(notifications::config)
             .configure(organizations::config)

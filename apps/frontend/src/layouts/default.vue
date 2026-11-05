@@ -854,6 +854,8 @@ onMounted(() => {
   }
 
   runAnalytics();
+  // 未读通知只在浏览器端取：unreadNotifications 是普通 ref，SSR 时取到的值不会带到客户端
+  fetchNotifications();
 });
 
 watch(
@@ -887,9 +889,6 @@ async function fetchNotifications() {
     unreadNotifications.value = count;
   }
 }
-
-// 调用异步函数
-fetchNotifications();
 
 async function logoutUser() {
   await logout();
